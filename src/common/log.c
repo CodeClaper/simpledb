@@ -40,7 +40,9 @@ inline char *get_stack_message() {
 /* Get current log file desc. */
 int get_current_log_fdesc() {
     char file_path[BUFF_SIZE];
-    char *sys_date = get_sys_time("%Y-%m-%d");
+    char *sys_date;
+
+    sys_date = get_sys_time("%Y-%m-%d");
     sprintf(file_path, "%s%s.%s", conf->log_dir, sys_date, "log");
     int desc= open(file_path, O_APPEND, S_IRUSR | S_IWUSR);
     if (desc == -1) 
@@ -56,15 +58,18 @@ int get_current_log_fdesc() {
 /* Flush log message to disk. */
 static void flush_log(char* msg) {
     char log_path[BUFF_SIZE];
-    char *sys_date = get_sys_time("%Y-%m-%d");
-    sprintf(log_path, "%s%s.%s", conf->log_dir, sys_date, "log");
     FILE *file;
+    char *sys_date;
+
+    sys_date = get_sys_time("%Y-%m-%d");
+    sprintf(log_path, "%s%s.%s", conf->log_dir, sys_date, "log");
     file = fopen(log_path, "a");
     if (file == NULL) {
         fprintf(stderr, "Try to open log file '%s', error info: %s. \n", 
                 log_path, strerror(errno));
         exit(1);
     }
+
     fputs(msg, file);
     fflush(file);
     fclose(file);

@@ -3876,6 +3876,6 @@ yyreturnlab:
 
 
 int yyerror(List *states, const char *s) {
-	db_log(ERROR, "%s.", s);
+	db_log(ERROR, "%s, that happened near [%s].", s, yylval);
     return 0;
 }

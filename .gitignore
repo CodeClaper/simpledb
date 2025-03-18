@@ -118,6 +118,6 @@ test/pytest/concurrency/__pycache__
 .cache/
 compile_commands.json
 
-src/tinydb
-src/tinydb_cli
+src/simpledb
+src/simpledb_cli
 test/gtest/gtest

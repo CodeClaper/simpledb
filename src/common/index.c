@@ -16,17 +16,20 @@
 
 /* Check if key already exists  */
  bool check_duplicate_key(Cursor *cursor, void *key) {
+    Buffer buffer;
+    void *node, *target;
+    uint32_t key_len, value_len;
+    MetaColumn *primary_key_meta_column;
 
     /* Get the buffer. */
-    Buffer buffer = ReadBuffer(cursor->table, cursor->page_num); 
-    void *node = GetBufferPage(buffer);
+    buffer = ReadBuffer(cursor->table, cursor->page_num); 
+    node = GetBufferPage(buffer);
 
-    uint32_t key_len, value_len;
     value_len = calc_table_row_length(cursor->table);
     key_len = calc_primary_key_length(cursor->table);
 
-    MetaColumn *primary_key_meta_column = get_primary_key_meta_column(cursor->table->meta_table);
-    void *target = get_leaf_node_cell_key(node, cursor->cell_num, key_len, value_len);
+    primary_key_meta_column = get_primary_key_meta_column(cursor->table->meta_table);
+    target = get_leaf_node_cell_key(node, cursor->cell_num, key_len, value_len);
 
     /* Release the buffer. */
     ReleaseBuffer(buffer);
