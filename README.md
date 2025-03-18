@@ -1,19 +1,19 @@
-# An object-oriented database engine --TinyDb
+# An object-oriented database engine --SimpleDb
 
 ## Introduction
 
-TinyDb (can also be called tinydb as well) is a light, statble and effecive object-oriented relational server-side database engine. TinyDb is intended to design and store more intuitive data model. When you use object-oriented language to build program like java, python etc,  the object  data structure in the code and the table structure in the TinyDb database have direct one-to-one mapping relationship. By TinyDb, you can easily save the data in memory to disk without unnecessary data structure conversion as well as reading data from disk.
+SimpleDb (can also be called simpledb as well) is a light, statble and effecive object-oriented relational server-side database engine. SimpleDb is intended to design and store more intuitive data model. When you use object-oriented language to build program like java, python etc,  the object  data structure in the code and the table structure in the SimpleDb database have direct one-to-one mapping relationship. By SimpleDb, you can easily save the data in memory to disk without unnecessary data structure conversion as well as reading data from disk.
 
 ## Requirements
 
 ### Linux OS
 
-TinyDb is a server-side database engine and only support Linux environment for now. 
+SimpleDb is a server-side database engine and only support Linux environment for now. 
 
 
 ### Lex & Yacc
 
-TinyDb uses Lex & Yacc to realize sql lexical analyzer and parser. If you want to compile the sql file, you must have theses tools or substitutes. 
+SimpleDb uses Lex & Yacc to realize sql lexical analyzer and parser. If you want to compile the sql file, you must have theses tools or substitutes. 
 
 **Debian** or **Ubuntu**
 
@@ -29,7 +29,7 @@ yum install flex bison
 
 ### GNU Readline
 
-Tinydb cli bases the GNU Readline as command helper, so if you want use cli, you must install GNU Readline firstly.
+SimpleDb cli bases the GNU Readline as command helper, so if you want use cli, you must install GNU Readline firstly.
 
 **Debian** or **Ubuntu**
 

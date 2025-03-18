@@ -12,12 +12,12 @@ include ./common.mk
 
 LDADDCFLAGS = -lpthread -lm 
 
-all: $(SUBDIRS) tinydb tinydb_cli
+all: $(SUBDIRS) simpledb simpledb_cli
 
-tinydb: db.o $(OBJS)
+simpledb: db.o $(OBJS)
 	$(CC) $(CFLAGS)  db.o $(OBJS) -o $@ $(LDADDCFLAGS)
 
-tinydb_cli: db_cli.o
+simpledb_cli: db_cli.o
 	$(CC) $(CFLAGS) db_cli.o -o $@ -lreadline -ltinfo
 
 db.o: db.c $(headers)
@@ -32,6 +32,6 @@ $(SUBDIRS):
 .PHONY: clean $(SUBDIRS) all
 
 clean:
-	rm -f *.o  tinydb tinydb_cli
+	rm -f *.o  simpledb simpledb_cli
 	@$(foreach dir, $(SUBDIRS), $(MAKE) -C $(dir) clean;)
 

@@ -1,8 +1,8 @@
-from support.tinydb_cli import TinyDbClient
+from support.db_cli import DbClient
 from support.asserts import assert_all
 import uuid
 
-client = TinyDbClient("127.0.0.1", 4083)    
+client = DbClient("127.0.0.1", 4083)    
 client.login("root", "Zc120130211")
 
 # mock table

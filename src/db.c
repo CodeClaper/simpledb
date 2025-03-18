@@ -140,7 +140,7 @@ static void db_run() {
 
     /* Start up server. */
     server_socket = startup(conf->port);
-    db_log(INFO, "Tinydb server start up successfully and listen port %d.", conf->port);
+    db_log(INFO, "Simpledb server start up successfully and listen port %d.", conf->port);
 
     /* Start up bgwriter.*/
     start_bgwriter();

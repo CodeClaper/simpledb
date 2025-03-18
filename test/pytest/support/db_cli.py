@@ -1,10 +1,9 @@
-#tinydb_cli.py
-
+#db_cli.py
 import io
 import socket
 import json
 
-class TinyDbClient:
+class DbClient:
     
     def __init__(self, ip, port):
         # create a socket object.

@@ -1,11 +1,11 @@
 /**
  * ============================================================ Refer Manger ============================================================================
- * The Refer Manager works around the refer. TinyDb supports REFERENCE data type which help you use other table as column data type. 
- * In fact it is a pointer. And, TinyDb recommands Refer instead of Join.
+ * The Refer Manager works around the refer. Simpledb supports REFERENCE data type which help you use other table as column data type. 
+ * In fact it is a pointer. And, simpledb recommands Refer instead of Join.
  * Refer has more effecitve on DQL operation than Join. If you know the position of data in disk, you can immediately
  * get the data, but if you just have the relationship of tables on columns, you need traverse all data to find out the data satisfied the relationship.
  * Everything has a cost. Refer is good at DQL operation, but has much thing to at DML operation.
- * When inserting or modifying a row, the refer maybe will change and tinydb must manager the changes, this is what the Refer Manager to do. 
+ * When inserting or modifying a row, the refer maybe will change and simpledb must manager the changes, this is what the Refer Manager to do. 
  * ======================================================================================================================================================
  */
 

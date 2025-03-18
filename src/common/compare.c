@@ -3,7 +3,7 @@
  * Created:     2023/10/07
  * Modify:      2024/11/26
  * Locataion:   src/common/compare.c
- * Description: The compare module is intended to compare two values of all kind of data type TinyDb supports.
+ * Description: The compare module is intended to compare two values of all kind of data type simpledb supports.
  * The comparision operations include:
  * (1) Equal.
  * (2) Not Equal.

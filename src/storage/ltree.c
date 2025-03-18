@@ -3,12 +3,12 @@
  * Created:     2023/08/23
  * Modify:      2024/12/04
  * Locataion:   src/store/ltree.c
- * Description: The ltree module is the core mudule for TinyDB.
+ * Description: The ltree module is the core mudule for simpledb.
  * - A database file is divided into a whole number pages.
  * - A page includes meta data and cells.
  * - Meta data includes node type, is root leaf node, parent pointer and cell number.
  * - Cell is a Key-Value, key is index and value containes one row data in table.
- * - TinyDb use B-Tree as disk data structre.
+ * - Simpledb use B-Tree as disk data structre.
  * - Each node correspond to one page.
  * - There are two types nodes, leaf node and internal node.
  * - Leaf node store real row data.

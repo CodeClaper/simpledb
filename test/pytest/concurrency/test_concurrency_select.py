@@ -1,4 +1,4 @@
-from support.tinydb_cli import TinyDbClient
+from support.db_cli import DbClient
 import threading
 import time
 
@@ -8,7 +8,7 @@ threads = []
 share_resource = {}
 
 for _ in range(0, 10):
-    cli = TinyDbClient("127.0.0.1", 4083)    
+    cli = DbClient("127.0.0.1", 4083)    
     cli.login("root", "Zc120130211")
     clients.append(cli)
 

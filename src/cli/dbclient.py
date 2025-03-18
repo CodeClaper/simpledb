@@ -3,7 +3,7 @@ import io
 import socket
 import json
 
-class TinyDbClient:
+class DbClient:
     def __init__(self, ip, port):
         # create a socket object.
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

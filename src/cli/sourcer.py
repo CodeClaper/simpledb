@@ -1,7 +1,4 @@
-
-from re import split
 import re
-
 
 class Source:
     part = ""

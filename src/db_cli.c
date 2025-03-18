@@ -109,7 +109,7 @@ int try_connect(struct sockaddr_in *address) {
 /* re-connect. */
 int re_connect(struct sockaddr_in *address) {
 
-    printf("TinyDb server disconnect and try to re-connect ...\n");
+    printf("Simpledb server disconnect and try to re-connect ...\n");
 
     re_try++;
     if (re_try > 3) {
@@ -121,7 +121,7 @@ int re_connect(struct sockaddr_in *address) {
     if (sock_fd < 0)
         return re_connect(address);
     
-    printf("Re-connect TinyDb successfully.\n");
+    printf("Re-connect simpledb successfully.\n");
 
     return sock_fd;
 }
@@ -173,13 +173,13 @@ int main(int argc, char* argv[]) {
     int sock_fd = try_connect(address);
 
     if (sock_fd < 0) {
-        fprintf(stderr, "Connect to TinyDb server fail.\n");
+        fprintf(stderr, "Connect to simpledb server fail.\n");
         exit(1);
     }
 
     re_try = 0;
     while(true) {
-        char *input = readline("tinydb > ");
+        char *input = readline("simpledb > ");
         if (is_empty(input))
             continue;
         if (strcmp("exit", input) == 0) {

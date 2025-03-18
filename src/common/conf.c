@@ -20,7 +20,7 @@
 #include "mmgr.h"
 #include "utils.h"
 
-#define DEFAULT_CONF_FILE "/etc/tinydb.cnf"
+#define DEFAULT_CONF_FILE "/etc/simpledb.cnf"
 #define DEFAULT_LOG_LEVEL DEBUGER
 
 /* Read config file. */

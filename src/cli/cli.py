@@ -4,11 +4,11 @@ import sys
 import json
 import socket
 from sourcer import Source
-import connector
+import dbclient
 import getpass
 import readline
 
-client = connector.TinyDbClient('127.0.0.1', 4083)
+client = dbclient.DbClient('127.0.0.1', 4083)
 
 ## System keywords.
 keywords = [
@@ -87,7 +87,7 @@ def clear():
     os.system("clear")
 
 ## Execute sql statement.
-def tinydb(cmd):
+def simpledb(cmd):
     sql = handleSql(cmd)
     ret = client.execute(sql)    
     print(ret)
@@ -95,7 +95,7 @@ def tinydb(cmd):
 ## Read command.
 def readCmd():
     try:
-        return input('tinydb > ')
+        return input('simpledb > ')
     except KeyboardInterrupt:
         exit()
 
@@ -163,7 +163,7 @@ def exec_cmd(cmd):
             case 'CLS':
                 clear()
             case _:
-                tinydb(cmd)
+                simpledb(cmd)
 
 ## Login 
 def login() -> bool:

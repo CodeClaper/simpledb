@@ -1,11 +1,11 @@
 ## test_mvvc.py
-from support.tinydb_cli import TinyDbClient
+from support.db_cli import DbClient
 from support.asserts import assert_all
 
-client1 = TinyDbClient("127.0.0.1", 4083)    
+client1 = DbClient("127.0.0.1", 4083)    
 client1.login("root", "Zc120130211")
 
-client2 = TinyDbClient("127.0.0.1", 4083)    
+client2 = DbClient("127.0.0.1", 4083)    
 client2.login("root", "Zc120130211")
 
 # mock table

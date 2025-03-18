@@ -1,8 +1,8 @@
 ## test_insert_multi_values.py
 
-from support.tinydb_cli import TinyDbClient
+from support.db_cli import DbClient
 
-client = TinyDbClient("127.0.0.1", 4083)    
+client = DbClient("127.0.0.1", 4083)    
 client.login("root", "Zc120130211")
 
 

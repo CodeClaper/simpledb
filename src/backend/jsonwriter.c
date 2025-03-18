@@ -463,6 +463,6 @@ void json_list(List *list) {
 void banner() {
     DBResult result;
     result.success = true;
-    result.message = "Welcome to tinydb.";
+    result.message = "Welcome to simpledb.";
     json_db_result(&result);
 }

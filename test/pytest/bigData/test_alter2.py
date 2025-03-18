@@ -1,10 +1,9 @@
 ## test_bd_insert.py
-from support.tinydb_cli import TinyDbClient
-from support.asserts import assert_all
+from support.db_cli import DbClient
 import random
 import uuid
 
-client = TinyDbClient("127.0.0.1", 4083)
+client = DbClient("127.0.0.1", 4083)
 client.login("root", "Zc120130211")
 
 names = ["zhangsan", "lisi", "Sun", "July", "Kaili", "James", "Max"]

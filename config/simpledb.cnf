@@ -3,7 +3,7 @@ dir=/home/zc/data/
 [base]
 port=4083
 [log]
-dir=/home/zc/logs/tinydb/
+dir=/home/zc/logs/simpledb/
 level=DEBUG
 [transaction]
 ## Supports four transaction isoland level, READ_UNCOMMITTED, READ_COMMITTED, REPEATABLE_READ, SERIALIZABLE.
