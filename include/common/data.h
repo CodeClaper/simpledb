@@ -12,6 +12,8 @@
 #define DATA_H
 
 #define PAGE_SIZE 16384
+#define ACTUAL_PAGE_SIZE 8192
+
 #define MAX_TABLE_PAGE 10000000
 #define MAX_COLUMN_SIZE 256     // max column size
 #define MAX_COLUMN_NAME_LEN 30  // max column name length

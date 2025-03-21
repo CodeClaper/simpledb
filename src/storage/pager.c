@@ -42,7 +42,7 @@ Size GetPageSize(char *table_name) {
         exit(1);
     }
     
-    return (file_length / PAGE_SIZE);
+    return (file_length / ACTUAL_PAGE_SIZE);
 }
 
 /* Get next page num. */

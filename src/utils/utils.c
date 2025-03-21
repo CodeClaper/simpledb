@@ -401,4 +401,10 @@ uint32_t table_size_for(uint32_t cap) {
         return (n < 0) ? 1 : n;
 }
 
-
+/* Print binary. */
+void print_binary(void *data, Size size) {
+    for (int i = 0; i < size; i++) {
+        printf("%02X\t", *((unsigned char *) data + i));
+    }
+    printf("\n");
+}

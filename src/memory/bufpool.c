@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 #include <errno.h>
 #include "bufpool.h"
@@ -9,6 +10,7 @@
 #include "fdesc.h"
 #include "ltree.h"
 #include "table.h"
+#include "compres.h"
 #include "log.h"
 
 /*
@@ -31,17 +33,29 @@ inline void *GetBufferBlock(Buffer buffer) {
 /* Read Buffer Block. */
 void BufferReadBlock(BufferTag *tag, Buffer buffer) {
     FDesc fdesc; 
-    void *page; 
+    void *block; 
+    char compres[ACTUAL_PAGE_SIZE];
 
+    memset(compres, 0, ACTUAL_PAGE_SIZE);
     fdesc = get_file_desc(tag->tableName);
-    page = GetBufferBlock(buffer);
+    block = GetBufferBlock(buffer);
 
-    lseek(fdesc, tag->blockNum * PAGE_SIZE, SEEK_SET);
-    ssize_t read_bytes = read(fdesc, page, PAGE_SIZE);
+    lseek(fdesc, tag->blockNum * ACTUAL_PAGE_SIZE, SEEK_SET);
+    ssize_t read_bytes = read(fdesc, compres, ACTUAL_PAGE_SIZE);
     if (read_bytes == -1) {
         fprintf(stderr, "Table file read error: %s", strerror(errno));
         exit(1);
     }
+
+    /* Note that: we need to confirm it`s first to load block from pager. 
+     * We use whether `compres` is equal empty to determine if it is loding 
+     * from pager for the first time. */
+    if (streq(compres, ""))
+        /* Not uncompress, just initialization. */
+        memset(block, 0, PAGE_SIZE);
+    else
+        /* Uncompress. */
+        Uncompress(compres, block);
 }
 
 /* Write Buffer Block. */
@@ -49,14 +63,14 @@ void BufferWriteBlock(Buffer buffer) {
     FDesc fdesc;
     BufferTag tag;
     BufferDesc *desc;
-    void *node;
+    void *block;
 
     desc = GetBufferDesc(buffer);
     tag = desc->tag;
-    node = GetBufferBlock(buffer);
+    block = GetBufferBlock(buffer);
 
     /* Only flush dirty page. */
-    if (get_node_state(node) != DIRTY_STATE)
+    if (get_node_state(block) != DIRTY_STATE)
         return;
 
     /* Maybe table has dropped, so necessary 
@@ -66,19 +80,24 @@ void BufferWriteBlock(Buffer buffer) {
 
     fdesc = get_file_desc(tag.tableName);
 
-    off_t offset = lseek(fdesc, PAGE_SIZE * tag.blockNum, SEEK_SET);
+    off_t offset = lseek(fdesc, ACTUAL_PAGE_SIZE * tag.blockNum, SEEK_SET);
     if (offset == (off_t)-1) {
         db_log(PANIC, "Error seek set: %s, which happen in %s and page num %d.", 
                strerror(errno), tag.tableName, tag.blockNum);
         exit(1);
     }
 
+    /* Compress data. */
+    void *compres = Compress(block);
+
     /* Write. */
-    ssize_t write_size = write(fdesc, node, PAGE_SIZE);
+    ssize_t write_size = write(fdesc, compres, ACTUAL_PAGE_SIZE);
     if (write_size == -1) {
         db_log(PANIC, "Try to write page error: %s.", strerror(errno));
         exit(1);
     }
 
     fsync(fdesc);
+
+    dfree(compres);
 }

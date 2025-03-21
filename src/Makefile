@@ -10,7 +10,7 @@ headers := $(shell find $(headerdirs) -name "*.h")
 
 include ./common.mk
 
-LDADDCFLAGS = -lpthread -lm 
+LDADDCFLAGS = -lpthread -lm -lz
 
 all: $(SUBDIRS) simpledb simpledb_cli
 

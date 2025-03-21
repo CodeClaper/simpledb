@@ -25,6 +25,7 @@
 #include "tablelock.h"
 #include "index.h"
 #include "fdesc.h"
+#include "compres.h"
 
 /* Get table list. */
 List *get_table_list() {
@@ -119,13 +120,15 @@ bool create_table(MetaTable *meta_table) {
         offset += meta_column->column_length;
     }
 
+    void *compr = Compress(root_node);
     /* Flush to disk. */
     lseek(descr, 0, SEEK_SET);
-    ssize_t w_size = write(descr, root_node, PAGE_SIZE);
+    ssize_t w_size = write(descr, compr, ACTUAL_PAGE_SIZE);
     if (w_size == -1) {
         db_log(ERROR, "Write table meta info error and errno %d.\n", errno);
         dfree(file_path);
         dfree(root_node);
+        dfree(compr);
         return false;
     }
     
@@ -135,6 +138,7 @@ bool create_table(MetaTable *meta_table) {
     /* Free memory. */
     dfree(file_path);
     dfree(root_node);
+    dfree(compr);
 
     return true;
 }

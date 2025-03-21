@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <sys/types.h>
 #include <stdio.h>
+#include "c.h"
 
 #ifndef UTILS_H
 #define UTILS_H
@@ -116,5 +117,9 @@ inline static size_t min_size(size_t size1, size_t size2) {
 
 /* Show bytes. */
 void show_bytes(byte_pointer start, size_t len);
+
+
+/* Print binary. */
+void print_binary(void *data, Size size);
 
 #endif
