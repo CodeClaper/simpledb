@@ -4,7 +4,6 @@
 #include "mmgr.h"
 #include "log.h"
 
-
 /* Compress the block. */
 void *Compress(void *block) {
     int ret;
@@ -13,7 +12,7 @@ void *Compress(void *block) {
 
     dest_len = compressBound(PAGE_SIZE);   
     compr = dalloc(dest_len);
-    ret = compress2(compr, &dest_len, block, (uLong) PAGE_SIZE, Z_DEFAULT_COMPRESSION);
+    ret = compress2(compr, &dest_len, block, (uLong) PAGE_SIZE, Z_BEST_COMPRESSION);
 
     if (ret == Z_MEM_ERROR)
         db_log(PANIC, "Try to compress fail, out of memory.");
