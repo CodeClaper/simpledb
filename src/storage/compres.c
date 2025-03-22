@@ -25,7 +25,7 @@ void *Compress(void *block) {
         db_log(PANIC, "Try to compress fail.");
     
     if (dest_len > ACTUAL_PAGE_SIZE)
-        db_log(PANIC, "Exceed the compress page size");
+        db_log(PANIC, "Exceed the compress page size: %ld > %ld", dest_len, ACTUAL_PAGE_SIZE);
 
     return compr;
 }
@@ -47,5 +47,5 @@ void Uncompress(void *compr, void *block) {
         db_log(PANIC, "Try to uncompress fail.");
 
     if (dest_len > PAGE_SIZE)
-        db_log(PANIC, "Exceed the uncompress page size");
+        db_log(PANIC, "Exceed the uncompress page size: %ld > %ld", dest_len, PAGE_SIZE);
 }
