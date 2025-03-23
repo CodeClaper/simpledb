@@ -67,9 +67,9 @@ int startup(u_short port) {
 
 /* Auth client. */
 static bool auth_request(intptr_t client) {
+    size_t chars_num, s;
     char buf[SPOOL_SIZE];
     char sbuf[SPOOL_SIZE];
-    size_t chars_num, s;
     
     /* Intialize. */
     bzero(buf, SPOOL_SIZE);
@@ -84,7 +84,7 @@ static bool auth_request(intptr_t client) {
             sprintf(sbuf, LOG);
         else
             sprintf(sbuf, "No access.");
-        s = send(client, sbuf, SPOOL_SIZE, 0);
+        s = send(client, sbuf, strlen(sbuf), 0);
         if (s == -1) 
             db_log(ERROR, "Try to send %s fail, %s.", sbuf, strerror(errno));
         return pass;

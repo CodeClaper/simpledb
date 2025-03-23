@@ -72,7 +72,7 @@ static char *store_spool(char *message) {
  * return true if send successfully, else return false. */
 bool db_send(const char *format, ...) {
     va_list ap;
-    ssize_t s, size;
+    ssize_t s;
     uint32_t len;
     char sbuff[SPOOL_SIZE];
 
@@ -100,12 +100,11 @@ bool db_send(const char *format, ...) {
 
     Assert(!spool_is_empty());
 
-    size = strlen(inner_session.spool);
-    len = (uint32_t) size;
+    len = (uint32_t) strlen(inner_session.spool);
 
     /* Check if client close connection, if recv get zero which means client has closed conneciton. */
-    if ((s = send(inner_session.client, &len, sizeof(len), 0)) > 0
-            && (s = send(inner_session.client, inner_session.spool, len, 0)) > 0) {
+    if ((s = send(inner_session.client, &len, sizeof(len), 0)) > 0 
+        && (s = send(inner_session.client, inner_session.spool, len, 0)) > 0) {
 
         /* Clear up spool. */
         clearn_up_spool();
