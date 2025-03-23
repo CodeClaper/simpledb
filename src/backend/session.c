@@ -1,5 +1,6 @@
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,31 +18,26 @@
 #include "utils.h"
 #include "asserts.h"
 
-#define OVER_FLAG "OVER"  /* Over flag of message. */
-
-
 static Session inner_session;
 
-
-/* Init spool. */
 static void clearn_up_spool();
-
 
 /* New session. */
 void new_session(int client) {
     inner_session.client = client;
     inner_session.frequency = 0;
     inner_session.volumn = 0;
+    clearn_up_spool();
 }
 
 /* Spool if empty. */
 inline static bool spool_is_empty() {
-    return inner_session.pindex == 0 || is_empty(inner_session.spool);
+    return inner_session.pindex == 0;
 }
 
 /* Spool if full. */
 inline static bool spool_is_full() {
-    return inner_session.pindex >= SPOOL_SIZE - 1;
+    return inner_session.pindex >= SPOOL_SIZE - LEFT_SPACE;
 }
 
 /* Clear up spool. */
@@ -62,7 +58,7 @@ static char *store_spool(char *message) {
         } else {
             return message;
         }
-    } else if (current < SPOOL_SIZE - 1) {
+    } else if (current < SPOOL_SIZE - LEFT_SPACE) {
         memcpy(inner_session.spool + inner_session.pindex, message, len); 
         inner_session.pindex = current;
         return NULL;
@@ -75,14 +71,15 @@ static char *store_spool(char *message) {
 /* Socket send message.
  * return true if send successfully, else return false. */
 bool db_send(const char *format, ...) {
+    va_list ap;
+    ssize_t s, size;
+    uint32_t len;
+    char sbuff[SPOOL_SIZE];
+
     if (format == NULL)
         return false;
 
-    assert_true(strlen(format) < SPOOL_SIZE, "Overflow");
-
-    va_list ap;
-    ssize_t r = -1, s = 0;
-    char rbuff[3], sbuff[SPOOL_SIZE];
+    Assert(strlen(format) < SPOOL_SIZE);
 
     /* Initialize send buffer. */
     bzero(sbuff, SPOOL_SIZE);
@@ -94,7 +91,6 @@ bool db_send(const char *format, ...) {
     
     va_end(ap);
 
-
     /* Store message into spool. */
     char *left_msg = store_spool(sbuff);
 
@@ -104,18 +100,18 @@ bool db_send(const char *format, ...) {
 
     Assert(!spool_is_empty());
 
-    /* Check if client close connection, if recv get zero which means client has closed conneciton. */
-    if ((r = recv(inner_session.client, rbuff, 3, MSG_PEEK | MSG_DONTWAIT)) != 0 
-            && (s = send(inner_session.client, inner_session.spool, SPOOL_SIZE, 0)) > 0) {
+    size = strlen(inner_session.spool);
+    len = (uint32_t) size;
 
-        inner_session.volumn += s;
-        inner_session.frequency++;
+    /* Check if client close connection, if recv get zero which means client has closed conneciton. */
+    if ((s = send(inner_session.client, &len, sizeof(len), 0)) == sizeof(len)
+            && (s = send(inner_session.client, inner_session.spool, len, 0)) == len) {
 
         /* Clear up spool. */
         clearn_up_spool();
 
         /* If there are left message, continue db_send. */
-        if (left_msg) 
+        if (left_msg != NULL) 
             return db_send(left_msg);
 
         return true;

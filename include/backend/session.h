@@ -5,9 +5,12 @@ typedef struct {
     int client;
     uint32_t frequency;
     uint32_t volumn;
-    char spool[SPOOL_SIZE]; /* Store messsage pool. */
-    uint32_t pindex;             /* Current spool position index. */
+    char spool[SPOOL_SIZE];     /* Store messsage pool. */
+    volatile uint32_t pindex;   /* Current spool position index. */
 } Session;
+
+#define OVER_FLAG "OVER"  /* Over flag of message. */
+#define LEFT_SPACE 4
 
 /* Generate new session. */
 void new_session(int client);

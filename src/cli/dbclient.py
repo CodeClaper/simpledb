@@ -2,6 +2,7 @@
 import io
 import socket
 import json
+import sys
 
 class DbClient:
     def __init__(self, ip, port):
@@ -32,50 +33,71 @@ class DbClient:
         hex_values = ' '.join(hex(ord(c))[2:].zfill(2) for c in string_data)
         print(hex_values)
 
-    def directExecute(self, sql) -> str:
-        try:
-            self.client.send(sql.encode("utf-8")[:65535])
-            writer = io.StringIO()
-            while True:
-                resp_bytes = self.client.recv(65535)
-                if not resp_bytes:
-                    raise Exception("not recive any data")
-                response = resp_bytes.decode("utf-8").strip("\x00")
-                if response.upper() == "OVER":
-                    break
-                writer.write(response)
-            ret = writer.getvalue()
-            writer.close()
-            return ret
-        except ConnectionError:
-            exit(1)
-        except Exception as e:
-            print(f"Error: {e}")
-        return ""
+    def socket_recv(self, n):
+        data = b''
+        while len(data) < n:
+            packet = self.client.recv(n - len(data))
+            if not packet:
+                return None
+            data += packet
+        return data
 
-    def execute(self, sql) -> dict:
-        ret = ''
+    def directExecute(self, sql) -> str:
+        resp = ''
         try:
             self.client.send(sql.encode("utf-8")[:65535])
             writer = io.StringIO()
             while True:
-                resp_bytes = self.client.recv(65535)
-                if not resp_bytes:
+                len_resp_bytes = self.socket_recv(4)
+                if not len_resp_bytes:
                     raise Exception("not recive any data")
-                response = resp_bytes.decode("utf-8").strip("\x00")
+                len = int.from_bytes(len_resp_bytes, byteorder=sys.byteorder)
+                data_resp_bytes = self.socket_recv(len)
+                if not data_resp_bytes:
+                    raise Exception("not recive any data")
+                response = data_resp_bytes.decode("utf-8").strip("\x00")
                 if response.upper() == "OVER":
                     break
                 writer.write(response)
-            ret = writer.getvalue()
+            resp = writer.getvalue()
             writer.close()
-            return json.loads(ret)
+            return resp
         except ConnectionError:
             exit(1)
         except socket.timeout:
             print("timeout.")
             exit(1)
         except Exception as e:
-            print(f"Error: {e}, and Raw is {ret}")
+            print(f"Error: {e}, and Raw is {resp}")
+        return ''
+
+    def execute(self, sql) -> dict:
+        resp = ''
+        try:
+            self.client.send(sql.encode("utf-8")[:65535])
+            writer = io.StringIO()
+            while True:
+                len_resp_bytes = self.socket_recv(4)
+                if not len_resp_bytes:
+                    raise Exception("not recive any data")
+                len = int.from_bytes(len_resp_bytes, byteorder=sys.byteorder)
+                data_resp_bytes = self.socket_recv(len)
+                if not data_resp_bytes:
+                    raise Exception("not recive any data")
+                response = data_resp_bytes.decode("utf-8").strip("\x00")
+                if response.upper() == "OVER":
+                    break
+                writer.write(response)
+            resp = writer.getvalue()
+            writer.close()
+            return json.loads(resp)
+        except ConnectionError:
+            exit(1)
+        except socket.timeout:
+            print("timeout.")
+            exit(1)
+        except Exception as e:
+            print(f"Error: {e}, and Raw is {resp}")
         return {}
 
     def close(self):

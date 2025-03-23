@@ -15,6 +15,7 @@ int yywrap() {
 }
 int yylex();
 int yyerror(List *states, const char *s);
+extern char *current_token;
 %} 
 %union 
 {
@@ -1280,6 +1281,12 @@ end:
 %%
 
 int yyerror(List *states, const char *s) {
-	db_log(ERROR, "%s, that happened near [%s].", s, yylval);
+    if (current_token != NULL) {
+	    db_log(ERROR, "%s at or near [%s].", s, current_token);
+        free(current_token);
+        current_token = NULL;
+    }
+    else
+	    db_log(ERROR, "%s.", s);
     return 0;
 }

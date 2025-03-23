@@ -289,7 +289,6 @@ typedef struct {
     ColumnNode *column;
 } PrimaryKeyNode;
 
-
 /* ValuesOrQuerySpecType */
 typedef enum ValuesOrQuerySpecType {
     VQ_VALUES,

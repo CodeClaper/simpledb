@@ -14,6 +14,8 @@ int lineno = 1;
 int yylex();
 int yyerror(List *states, const char *s);
 
+ char *current_token = NULL;
+
 /* macro to save the text and return a token */
 #define TOK(name) { return name; }
 %}
@@ -90,24 +92,39 @@ AVG                     return AVG;
 REF                     return REF;
 TRUE                    return TRUE;
 FALSE                   return FALSE;
-[a-zA-Z][a-zA-Z0-9_]*   { yylval.strVal = dstrdup(yytext); return IDENTIFIER;} 
-`[a-zA-Z][a-zA-Z0-9_]*` { 
-                            yylval.strVal = replace_all(yytext, "`", ""); 
+[a-zA-Z][a-zA-Z0-9_]*   { 
+                            yylval.strVal = dstrdup(yytext); 
+                            current_token = dstrdup(yytext); 
                             return IDENTIFIER;
                         } 
-[+-]?[0-9]+             { yylval.intVal = parse_long(yytext); return INTVALUE;}
+`[a-zA-Z][a-zA-Z0-9_]*` { 
+                            yylval.strVal = replace_all(yytext, "`", ""); 
+                            current_token = dstrdup(yylval.strVal);
+                            return IDENTIFIER;
+                        } 
+[+-]?[0-9]+             { 
+                            yylval.intVal = parse_long(yytext); 
+                            current_token = dstrdup(yytext);
+                            return INTVALUE;
+                        }
 [+-]?[0-9]+	|
 [+-]?[0-9]+"."[0-9]* |
-"."[0-9]*	            { yylval.floatVal = parse_double(yytext); return FLOATVALUE; }
-'[^'\n]*'	            { if (strcmp(yytext, "''") == 0) 
-                          { 
-                              yylval.strVal = dstrdup(" ");
-                          } else 
-                          {
-                              char *str = strtok(yytext, "\'");  
-                              yylval.strVal = dstrdup(str);
-                          } 
-                          return STRINGVALUE;
+"."[0-9]*	            { 
+                            yylval.floatVal = parse_double(yytext); 
+                            current_token = dstrdup(yytext);
+                            return FLOATVALUE; 
+                        }
+'[^'\n]*'	            { 
+                            if (strcmp(yytext, "''") == 0) 
+                            { 
+                                yylval.strVal = dstrdup(" ");
+                            } 
+                            else 
+                            {
+                                char *str = strtok(yytext, "\'");  
+                                yylval.strVal = dstrdup(str);
+                            } 
+                            return STRINGVALUE;
                         } 
 '[^'\n]*$	            { yyerror(NULL, "Unterminated string");  return YYerror;}
 \n                      { lineno++; return NL;}

@@ -45,10 +45,6 @@ int startup(u_short port) {
     if ((setsockopt(httpd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on))) < 0) 
         db_log(PANIC, "Set socket SO_REUSEADDR option fail.");
 
-    /* Bind */
-    if (bind(httpd, (struct sockaddr *)address, sizeof(*address)) < 0) 
-        db_log(PANIC, "Bind socket fail.");
-
     /* SO_RCVBUF */
     if ((setsockopt(httpd, SOL_SOCKET, SO_RCVBUF, &buff_size, sizeof(buff_size))) < 0) 
         db_log(PANIC, "Set socket SO_RCVBUF option fail.");
@@ -56,6 +52,10 @@ int startup(u_short port) {
     /* SO_SNDBUF */
     if ((setsockopt(httpd, SOL_SOCKET, SO_SNDBUF, &buff_size, sizeof(buff_size))) < 0) 
         db_log(PANIC, "Set socket SO_SNDBUF option fail.");
+
+    /* Bind */
+    if (bind(httpd, (struct sockaddr *)address, sizeof(*address)) < 0) 
+        db_log(PANIC, "Bind socket fail.");
 
     /* Listen */
     if (listen(httpd, 10) < 0) 
@@ -69,12 +69,13 @@ int startup(u_short port) {
 static bool auth_request(intptr_t client) {
     char buf[SPOOL_SIZE];
     char sbuf[SPOOL_SIZE];
+    size_t chars_num, s;
     
     /* Intialize. */
     bzero(buf, SPOOL_SIZE);
     bzero(sbuf, SPOOL_SIZE);
 
-    size_t chars_num = recv(client, buf, SPOOL_SIZE, 0);
+    chars_num = recv(client, buf, SPOOL_SIZE, 0);
     if (chars_num > 0) {
         buf[chars_num] = '\0';
         /* Banner. */
@@ -83,7 +84,7 @@ static bool auth_request(intptr_t client) {
             sprintf(sbuf, LOG);
         else
             sprintf(sbuf, "No access.");
-        size_t s = send(client, sbuf, SPOOL_SIZE, 0);
+        s = send(client, sbuf, SPOOL_SIZE, 0);
         if (s == -1) 
             db_log(ERROR, "Try to send %s fail, %s.", sbuf, strerror(errno));
         return pass;

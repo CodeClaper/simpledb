@@ -29,6 +29,7 @@
 #include "asserts.h"
 #include "session.h"
 
+
 /* Handle duplicate Key. */
 static void handle_dulicate_key(Row *row);
 

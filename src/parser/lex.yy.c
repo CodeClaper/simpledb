@@ -680,10 +680,12 @@ int lineno = 1;
 int yylex();
 int yyerror(List *states, const char *s);
 
+ char *current_token = NULL;
+
 /* macro to save the text and return a token */
 #define TOK(name) { return name; }
-#line 686 "lex.yy.c"
-#line 687 "lex.yy.c"
+#line 688 "lex.yy.c"
+#line 689 "lex.yy.c"
 
 #define INITIAL 0
 
@@ -900,9 +902,9 @@ YY_DECL
 		}
 
 	{
-#line 23 "sql.l"
+#line 25 "sql.l"
 
-#line 906 "lex.yy.c"
+#line 908 "lex.yy.c"
 
 	while ( /*CONSTCOND*/1 )		/* loops until end-of-file is reached */
 		{
@@ -961,388 +963,403 @@ do_action:	/* This label is used only to access EOF actions. */
 
 case 1:
 YY_RULE_SETUP
-#line 24 "sql.l"
+#line 26 "sql.l"
 return BEGINN;
 	YY_BREAK
 case 2:
 YY_RULE_SETUP
-#line 25 "sql.l"
+#line 27 "sql.l"
 return COMMIT;
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
-#line 26 "sql.l"
+#line 28 "sql.l"
 return ROLLBACK;
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 27 "sql.l"
+#line 29 "sql.l"
 return CREATE;
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 28 "sql.l"
+#line 30 "sql.l"
 return DROP;
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 29 "sql.l"
+#line 31 "sql.l"
 return SELECT;
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 30 "sql.l"
+#line 32 "sql.l"
 return INSERT;
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
-#line 31 "sql.l"
+#line 33 "sql.l"
 return UPDATE;
 	YY_BREAK
 case 9:
 YY_RULE_SETUP
-#line 32 "sql.l"
+#line 34 "sql.l"
 return DELETE;
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
-#line 33 "sql.l"
+#line 35 "sql.l"
 return DESCRIBE;
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
-#line 34 "sql.l"
+#line 36 "sql.l"
 return DESCRIBE;
 	YY_BREAK
 case 12:
 YY_RULE_SETUP
-#line 35 "sql.l"
+#line 37 "sql.l"
 return FROM;
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
-#line 36 "sql.l"
+#line 38 "sql.l"
 return TABLE;
 	YY_BREAK
 case 14:
 YY_RULE_SETUP
-#line 37 "sql.l"
+#line 39 "sql.l"
 return WHERE;
 	YY_BREAK
 case 15:
 YY_RULE_SETUP
-#line 38 "sql.l"
+#line 40 "sql.l"
 return LIKE;
 	YY_BREAK
 case 16:
 YY_RULE_SETUP
-#line 39 "sql.l"
+#line 41 "sql.l"
 return IN;
 	YY_BREAK
 case 17:
 YY_RULE_SETUP
-#line 40 "sql.l"
+#line 42 "sql.l"
 return LIMIT;
 	YY_BREAK
 case 18:
 YY_RULE_SETUP
-#line 41 "sql.l"
+#line 43 "sql.l"
 return OFFSET;
 	YY_BREAK
 case 19:
 YY_RULE_SETUP
-#line 42 "sql.l"
+#line 44 "sql.l"
 return SHOW;
 	YY_BREAK
 case 20:
 YY_RULE_SETUP
-#line 43 "sql.l"
+#line 45 "sql.l"
 return TABLES;
 	YY_BREAK
 case 21:
 YY_RULE_SETUP
-#line 44 "sql.l"
+#line 46 "sql.l"
 return AS;
 	YY_BREAK
 case 22:
 YY_RULE_SETUP
-#line 45 "sql.l"
+#line 47 "sql.l"
 return AND;
 	YY_BREAK
 case 23:
 YY_RULE_SETUP
-#line 46 "sql.l"
+#line 48 "sql.l"
 return OR;
 	YY_BREAK
 case 24:
 YY_RULE_SETUP
-#line 47 "sql.l"
+#line 49 "sql.l"
 return NOT;
 	YY_BREAK
 case 25:
 YY_RULE_SETUP
-#line 48 "sql.l"
+#line 50 "sql.l"
 return INTO;
 	YY_BREAK
 case 26:
 YY_RULE_SETUP
-#line 49 "sql.l"
+#line 51 "sql.l"
 return SET;
 	YY_BREAK
 case 27:
 YY_RULE_SETUP
-#line 50 "sql.l"
+#line 52 "sql.l"
 return VALUES;
 	YY_BREAK
 case 28:
 YY_RULE_SETUP
-#line 51 "sql.l"
+#line 53 "sql.l"
 return PRIMARY;
 	YY_BREAK
 case 29:
 YY_RULE_SETUP
-#line 52 "sql.l"
+#line 54 "sql.l"
 return KEY;
 	YY_BREAK
 case 30:
 YY_RULE_SETUP
-#line 53 "sql.l"
+#line 55 "sql.l"
 return UNIQUE;
 	YY_BREAK
 case 31:
 YY_RULE_SETUP
-#line 54 "sql.l"
+#line 56 "sql.l"
 return DEFAULT;
 	YY_BREAK
 case 32:
 YY_RULE_SETUP
-#line 55 "sql.l"
+#line 57 "sql.l"
 return REFERENCES;
 	YY_BREAK
 case 33:
 YY_RULE_SETUP
-#line 56 "sql.l"
+#line 58 "sql.l"
 return CHECK;
 	YY_BREAK
 case 34:
 YY_RULE_SETUP
-#line 57 "sql.l"
+#line 59 "sql.l"
 return FOREIGN;
 	YY_BREAK
 case 35:
 YY_RULE_SETUP
-#line 58 "sql.l"
+#line 60 "sql.l"
 return COMMENT;
 	YY_BREAK
 case 36:
 YY_RULE_SETUP
-#line 59 "sql.l"
+#line 61 "sql.l"
 return ALTER;
 	YY_BREAK
 case 37:
 YY_RULE_SETUP
-#line 60 "sql.l"
+#line 62 "sql.l"
 return COLUMN;
 	YY_BREAK
 case 38:
 YY_RULE_SETUP
-#line 61 "sql.l"
+#line 63 "sql.l"
 return ADD;
 	YY_BREAK
 case 39:
 YY_RULE_SETUP
-#line 62 "sql.l"
+#line 64 "sql.l"
 return BEFORE;
 	YY_BREAK
 case 40:
 YY_RULE_SETUP
-#line 63 "sql.l"
+#line 65 "sql.l"
 return AFTER;
 	YY_BREAK
 case 41:
 YY_RULE_SETUP
-#line 64 "sql.l"
+#line 66 "sql.l"
 return INT;
 	YY_BREAK
 case 42:
 YY_RULE_SETUP
-#line 65 "sql.l"
+#line 67 "sql.l"
 return LONG;
 	YY_BREAK
 case 43:
 YY_RULE_SETUP
-#line 66 "sql.l"
+#line 68 "sql.l"
 return CHAR;
 	YY_BREAK
 case 44:
 YY_RULE_SETUP
-#line 67 "sql.l"
+#line 69 "sql.l"
 return VARCHAR;
 	YY_BREAK
 case 45:
 YY_RULE_SETUP
-#line 68 "sql.l"
+#line 70 "sql.l"
 return FLOAT;
 	YY_BREAK
 case 46:
 YY_RULE_SETUP
-#line 69 "sql.l"
+#line 71 "sql.l"
 return DOUBLE;
 	YY_BREAK
 case 47:
 YY_RULE_SETUP
-#line 70 "sql.l"
+#line 72 "sql.l"
 return STRING;
 	YY_BREAK
 case 48:
 YY_RULE_SETUP
-#line 71 "sql.l"
+#line 73 "sql.l"
 return DATE;
 	YY_BREAK
 case 49:
 YY_RULE_SETUP
-#line 72 "sql.l"
+#line 74 "sql.l"
 return BOOL;
 	YY_BREAK
 case 50:
 YY_RULE_SETUP
-#line 73 "sql.l"
+#line 75 "sql.l"
 return TIMESTAMP;
 	YY_BREAK
 case 51:
 YY_RULE_SETUP
-#line 74 "sql.l"
+#line 76 "sql.l"
 return NULLX;
 	YY_BREAK
 case 52:
 YY_RULE_SETUP
-#line 75 "sql.l"
+#line 77 "sql.l"
 return SYSTEM;
 	YY_BREAK
 case 53:
 YY_RULE_SETUP
-#line 76 "sql.l"
+#line 78 "sql.l"
 return MEMORY;
 	YY_BREAK
 case 54:
 YY_RULE_SETUP
-#line 77 "sql.l"
+#line 79 "sql.l"
 return CONFIG;
 	YY_BREAK
 case 55:
 YY_RULE_SETUP
-#line 78 "sql.l"
+#line 80 "sql.l"
 return yytext[0];
 	YY_BREAK
 case 56:
 YY_RULE_SETUP
-#line 79 "sql.l"
+#line 81 "sql.l"
 return EQ;
 	YY_BREAK
 case 57:
 YY_RULE_SETUP
-#line 80 "sql.l"
+#line 82 "sql.l"
 return GT;
 	YY_BREAK
 case 58:
 YY_RULE_SETUP
-#line 81 "sql.l"
+#line 83 "sql.l"
 return LT;
 	YY_BREAK
 case 59:
 YY_RULE_SETUP
-#line 82 "sql.l"
+#line 84 "sql.l"
 return NE;
 	YY_BREAK
 case 60:
 YY_RULE_SETUP
-#line 83 "sql.l"
+#line 85 "sql.l"
 return GE;
 	YY_BREAK
 case 61:
 YY_RULE_SETUP
-#line 84 "sql.l"
+#line 86 "sql.l"
 return LE;
 	YY_BREAK
 case 62:
 YY_RULE_SETUP
-#line 85 "sql.l"
+#line 87 "sql.l"
 return MAX;
 	YY_BREAK
 case 63:
 YY_RULE_SETUP
-#line 86 "sql.l"
+#line 88 "sql.l"
 return MIN;
 	YY_BREAK
 case 64:
 YY_RULE_SETUP
-#line 87 "sql.l"
+#line 89 "sql.l"
 return SUM;
 	YY_BREAK
 case 65:
 YY_RULE_SETUP
-#line 88 "sql.l"
+#line 90 "sql.l"
 return COUNT;
 	YY_BREAK
 case 66:
 YY_RULE_SETUP
-#line 89 "sql.l"
+#line 91 "sql.l"
 return AVG;
 	YY_BREAK
 case 67:
 YY_RULE_SETUP
-#line 90 "sql.l"
+#line 92 "sql.l"
 return REF;
 	YY_BREAK
 case 68:
 YY_RULE_SETUP
-#line 91 "sql.l"
+#line 93 "sql.l"
 return TRUE;
 	YY_BREAK
 case 69:
 YY_RULE_SETUP
-#line 92 "sql.l"
+#line 94 "sql.l"
 return FALSE;
 	YY_BREAK
 case 70:
 YY_RULE_SETUP
-#line 93 "sql.l"
-{ yylval.strVal = dstrdup(yytext); return IDENTIFIER;} 
+#line 95 "sql.l"
+{ 
+                            yylval.strVal = dstrdup(yytext); 
+                            current_token = dstrdup(yytext); 
+                            return IDENTIFIER;
+                        } 
 	YY_BREAK
 case 71:
 YY_RULE_SETUP
-#line 94 "sql.l"
+#line 100 "sql.l"
 { 
                             yylval.strVal = replace_all(yytext, "`", ""); 
+                            current_token = dstrdup(yylval.strVal);
                             return IDENTIFIER;
                         } 
 	YY_BREAK
 case 72:
 YY_RULE_SETUP
-#line 98 "sql.l"
-{ yylval.intVal = parse_long(yytext); return INTVALUE;}
+#line 105 "sql.l"
+{ 
+                            yylval.intVal = parse_long(yytext); 
+                            current_token = dstrdup(yytext);
+                            return INTVALUE;
+                        }
 	YY_BREAK
 case 73:
-#line 100 "sql.l"
+#line 111 "sql.l"
 case 74:
-#line 101 "sql.l"
+#line 112 "sql.l"
 case 75:
 YY_RULE_SETUP
-#line 101 "sql.l"
-{ yylval.floatVal = parse_double(yytext); return FLOATVALUE; }
+#line 112 "sql.l"
+{ 
+                            yylval.floatVal = parse_double(yytext); 
+                            current_token = dstrdup(yytext);
+                            return FLOATVALUE; 
+                        }
 	YY_BREAK
 case 76:
 YY_RULE_SETUP
-#line 102 "sql.l"
-{ if (strcmp(yytext, "''") == 0) 
-                          { 
-                              yylval.strVal = dstrdup(" ");
-                          } else 
-                          {
-                              char *str = strtok(yytext, "\'");  
-                              yylval.strVal = dstrdup(str);
-                          } 
-                          return STRINGVALUE;
+#line 117 "sql.l"
+{ 
+                            if (strcmp(yytext, "''") == 0) 
+                            { 
+                                yylval.strVal = dstrdup(" ");
+                            } 
+                            else 
+                            {
+                                char *str = strtok(yytext, "\'");  
+                                yylval.strVal = dstrdup(str);
+                            } 
+                            return STRINGVALUE;
                         } 
 	YY_BREAK
 case 77:
@@ -1350,18 +1367,18 @@ case 77:
 (yy_c_buf_p) = yy_cp -= 1;
 YY_DO_BEFORE_ACTION; /* set up yytext again */
 YY_RULE_SETUP
-#line 112 "sql.l"
+#line 129 "sql.l"
 { yyerror(NULL, "Unterminated string");  return YYerror;}
 	YY_BREAK
 case 78:
 /* rule 78 can match eol */
 YY_RULE_SETUP
-#line 113 "sql.l"
+#line 130 "sql.l"
 { lineno++; return NL;}
 	YY_BREAK
 case 79:
 YY_RULE_SETUP
-#line 114 "sql.l"
+#line 131 "sql.l"
 /* igonore space */
 	YY_BREAK
 case 80:
@@ -1369,15 +1386,15 @@ case 80:
 (yy_c_buf_p) = yy_cp -= 1;
 YY_DO_BEFORE_ACTION; /* set up yytext again */
 YY_RULE_SETUP
-#line 115 "sql.l"
+#line 132 "sql.l"
 ;	        /* comment */
 	YY_BREAK
 case 81:
 YY_RULE_SETUP
-#line 116 "sql.l"
+#line 133 "sql.l"
 ECHO;
 	YY_BREAK
-#line 1381 "lex.yy.c"
+#line 1398 "lex.yy.c"
 case YY_STATE_EOF(INITIAL):
 	yyterminate();
 
@@ -2382,7 +2399,7 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 116 "sql.l"
+#line 133 "sql.l"
 
 
 
