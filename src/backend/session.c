@@ -104,8 +104,8 @@ bool db_send(const char *format, ...) {
     len = (uint32_t) size;
 
     /* Check if client close connection, if recv get zero which means client has closed conneciton. */
-    if ((s = send(inner_session.client, &len, sizeof(len), 0)) == sizeof(len)
-            && (s = send(inner_session.client, inner_session.spool, len, 0)) == len) {
+    if ((s = send(inner_session.client, &len, sizeof(len), 0)) > 0
+            && (s = send(inner_session.client, inner_session.spool, len, 0)) > 0) {
 
         /* Clear up spool. */
         clearn_up_spool();
