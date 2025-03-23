@@ -126,3 +126,17 @@ bool db_send_over() {
     return db_send(OVER_FLAG);
 }
 
+/* Socket recv. */
+char *db_recv() {
+    size_t r;
+    char *buf = dalloc(SPOOL_SIZE);
+    bzero(buf, SPOOL_SIZE);
+    
+    r = recv(inner_session.client, buf, SPOOL_SIZE, 0);
+    if (r > 0) {
+        return buf;
+    } else {
+        dfree(buf);
+        return NULL;
+    }
+}

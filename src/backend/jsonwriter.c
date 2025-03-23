@@ -28,6 +28,7 @@
 #include "select.h"
 #include "asserts.h"
 #include "session.h"
+#include "banner.h"
 
 
 /* Handle duplicate Key. */
@@ -341,6 +342,14 @@ static void json_nondata_result(DBResult *result) {
             result->duration);
 }
 
+static void json_login_result(DBResult *result) {
+    char buf[2048];
+    memcpy(buf, LOG, sizeof(LOG));
+    db_send("{ \"success\": %s,  \"message\":", result->success ? "true" : "false");
+    db_send("\"%s\"", buf);
+    db_send(",\"duration\": %lf", result->duration);
+}
+
 /* Json list of key value. */
 static void json_key_value_list(List *list) {
     db_send("{ ");
@@ -420,6 +429,9 @@ void json_db_result(DBResult *result) {
         case SHOW_STMT:
         case DESCRIBE_STMT:
             json_result_list(result);
+            break;
+        case LOGIN_STMT:
+            json_login_result(result);
             break;
         default:
             json_nondata_result(result);

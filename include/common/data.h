@@ -77,6 +77,7 @@ typedef enum { SHOW_TABLES  } ShowNodeType;
 /* StatementType */
 typedef enum { 
     UNKONWN_STMT,
+    LOGIN_STMT,
     BEGIN_TRANSACTION_STMT, 
     COMMIT_TRANSACTION_STMT, 
     ROLLBACK_TRANSACTION_STMT, 
@@ -88,7 +89,7 @@ typedef enum {
     DESCRIBE_STMT, 
     SHOW_STMT, 
     DROP_TABLE_STMT,
-    ALTER_TABLE_STMT
+    ALTER_TABLE_STMT,
 } StatementType; // statement type
 
 /* Tansaction operation type. */

@@ -1,5 +1,4 @@
 #include <bits/types/struct_timeval.h>
-#include <errno.h>
 #include <pthread.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -26,6 +25,8 @@
 #include "mctx.h"
 #include "asctx.h"
 #include "stacktrace.h"
+#include "instance.h"
+#include "jsonwriter.h"
 
 /* Start up the server. */
 int startup(u_short port) {
@@ -67,30 +68,26 @@ int startup(u_short port) {
 
 /* Auth client. */
 static bool auth_request(intptr_t client) {
-    size_t chars_num, s;
-    char buf[SPOOL_SIZE];
-    char sbuf[SPOOL_SIZE];
-    
-    /* Intialize. */
-    bzero(buf, SPOOL_SIZE);
-    bzero(sbuf, SPOOL_SIZE);
+    DBResult *result;
+    char *login;
 
-    chars_num = recv(client, buf, SPOOL_SIZE, 0);
-    if (chars_num > 0) {
-        buf[chars_num] = '\0';
-        /* Banner. */
-        bool pass = auth(buf);
-        if (pass) 
-            sprintf(sbuf, LOG);
-        else
-            sprintf(sbuf, "No access.");
-        s = send(client, sbuf, strlen(sbuf), 0);
-        if (s == -1) 
-            db_log(ERROR, "Try to send %s fail, %s.", sbuf, strerror(errno));
-        return pass;
+    result = new_db_result();
+    login = db_recv();
+
+    bool pass = auth(login);
+    if (pass) {
+        result->success = true;
+        result->message = dstrdup(LOG);
+    } else {
+        result->success = false;
+        result->message = dstrdup("No access.");
     }
+    result->stmt_type = LOGIN_STMT;
 
-    return false;
+    json_db_result(result);
+    db_send_over();
+
+    return pass;
 }
 
 
@@ -99,7 +96,6 @@ static void loop_request(intptr_t client) {
     size_t chars_num;
     char buf[SPOOL_SIZE];
     bzero(buf, SPOOL_SIZE);
-    new_session(client);
     db_log(INFO, "Client ID '%ld' connect successfully.", getpid());
     while ((chars_num = recv(client, buf, SPOOL_SIZE, 0)) > 0) {
         buf[chars_num] = '\0';
@@ -130,6 +126,10 @@ static void memory_context_end() {
 
 /* Accept request.*/
 void accept_request(intptr_t client) {
+
+    // Start new session.
+    new_session(client);
+
     /* Set signal handler. */
     set_signal_handler();
 

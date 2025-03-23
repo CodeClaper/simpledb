@@ -24,3 +24,5 @@ bool db_send(const char *format, ...);
  * */
 bool db_send_over();
 
+/* Socket recv. */
+char *db_recv();

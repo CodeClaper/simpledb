@@ -170,7 +170,9 @@ def login() -> bool:
     account = input("Your account: ")
     password = getpass.getpass("Your password: ")
     clear()
-    return client.login(account, password)
+    ret = client.execute(f"{account}/{password}")
+    print(ret)
+    return ret["success"]
 
 ## Fetch Tables.
 def fetchTables():
