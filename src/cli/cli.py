@@ -171,8 +171,20 @@ def login() -> bool:
     password = getpass.getpass("Your password: ")
     clear()
     ret = client.execute(f"{account}/{password}")
-    print(ret)
     return ret["success"]
+
+def printLog():
+    print("  ____                            ____    ____          ")
+    print(" /\\  _`\\   __                    /\\  _`\\ /\\  _`\\        ")
+    print(" \\ \\,\\L\\_\\/\\_\\    ___ ___   _____\\ \\ \\/\\ \\ \\ \\L\\ \\      ")
+    print("  \\/_\\__ \\\\/\\ \\ /' __` __`\\/\\ '__`\\ \\ \\ \\ \\ \\  _ <'     ")
+    print("    /\\ \\L\\ \\ \\ \\/\\ \\/\\ \\/\\ \\ \\ \\L\\ \\ \\ \\_\\ \\ \\ \\L\\ \\    ")
+    print("    \\ `\\____\\ \\_\\ \\_\\ \\_\\ \\_\\ \\ ,__/\\ \\____/\\ \\____/   ")
+    print("     \\/_____/\\/_/\\/_/\\/_/\\/_/\\ \\ \\/  \\/___/  \\/___/     ")
+    print("                              \\ \\_\\                     ")
+    print("                               \\/_/                     ")
+    print(" Welcome to simpledb. Your simpledb version is 0.0.1.   ")
+    print(" Copyright (c) 2024, Inspur.com     ")
 
 ## Fetch Tables.
 def fetchTables():
@@ -186,6 +198,7 @@ def fetchTables():
 if __name__ == "__main__":
     try:
         if login():
+            printLog()
             fetchTables()
             while True:
                 cmd = readCmd()

@@ -343,11 +343,9 @@ static void json_nondata_result(DBResult *result) {
 }
 
 static void json_login_result(DBResult *result) {
-    char buf[2048];
-    memcpy(buf, LOG, sizeof(LOG));
     db_send("{ \"success\": %s,  \"message\":", result->success ? "true" : "false");
-    db_send("\"%s\"", buf);
-    db_send(",\"duration\": %lf", result->duration);
+    db_send("\"%s\"", "Login success.");
+    db_send(",\"duration\": %lf}", result->duration);
 }
 
 /* Json list of key value. */

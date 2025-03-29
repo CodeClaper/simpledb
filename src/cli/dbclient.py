@@ -17,14 +17,6 @@ class DbClient:
         except socket.error as e:
             print(f"Socket error: {e}")
 
-    def login(self, account, password) -> bool:
-        self.client.send(f"{account}/{password}".encode("utf-8"))
-        resp_bytes = self.client.recv(65535)
-        self.client.settimeout(300)
-        response = resp_bytes.decode("utf-8").rstrip("\x00")
-        print(response)
-        return response != 'No access.'
-
     def show_bytes(self, byte_data):
         hex_values = ' '.join(hex(b)[2:].zfill(2) for b in byte_data)
         print(hex_values)

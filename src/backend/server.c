@@ -77,7 +77,6 @@ static bool auth_request(intptr_t client) {
     bool pass = auth(login);
     if (pass) {
         result->success = true;
-        result->message = dstrdup(LOG);
     } else {
         result->success = false;
         result->message = dstrdup("No access.");
