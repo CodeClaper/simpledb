@@ -192,3 +192,8 @@ void DeleteQueue(Queue *queue, void *item) {
             break;
     }
 }
+
+/* Free the queue. */
+void FreeQueue(Queue *queue) {
+    dfree(queue);
+}

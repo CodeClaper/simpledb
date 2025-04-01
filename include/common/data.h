@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include "c.h"
 #include "list.h"
+#include "queue.h"
 
 #ifndef DATA_H
 #define DATA_H
@@ -644,7 +645,7 @@ typedef struct SelectResult {
     char *table_name;               /* Table name. */
     char *range_variable;           /* Range variable. */
     uint32_t row_size;              /* Row size. Although in rows list indicates the row size, these row_size works for count agg. */
-    List *rows;                     /* Selected rows. */
+    Queue *rows;                     /* Selected rows. */
     struct SelectResult *derived;   /* Derived select result, used for multi-table query. */
     bool last_derived;              /* Last derived flag. */
 } SelectResult;

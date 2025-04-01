@@ -631,10 +631,11 @@ static void merge_row(Row *row1, Row *row2) {
     }
 }
 
+/* Merge two SelectResult. */
 static void merge_select_result(SelectResult *result1, SelectResult *result2) {
-    ListCell *lc;
-    foreach (lc, result2->rows) {
-        append_list(result1->rows, lfirst(lc));
+    QueueCell *qc;
+    qforeach (qc, result2->rows) {
+        AppendQueue(result1->rows, qfirst(qc));
     }
 }
 
@@ -686,10 +687,10 @@ static void select_from_leaf_node(SelectResult *select_result, ConditionNode *co
         SelectResult *derived = select_result->derived;
         if (derived != NULL) {
             /* Cartesian product. */
-            ListCell *lc;
-            foreach (lc, derived->rows) {
+            QueueCell *qc;
+            qforeach (qc, derived->rows) {
                 /* Merge derived-row. */
-                Row *derived_row = lfirst(lc);
+                Row *derived_row = qfirst(qc);
                 merge_row(derived_row, row);
 
                 /* Check if the row data include,in another word, 
@@ -1006,21 +1007,20 @@ void select_row(Row *row, SelectResult *select_result, Table *table,
         /* If has limit clause, only append row whose pindex > offset and pindex < offset + rows. */
         if (limit_clause->poffset >= limit_clause->offset && 
                 limit_clause->poffset < (limit_clause->offset + limit_clause->rows))
-            append_list(select_result->rows, purge_row(row));
+            AppendQueue(select_result->rows, purge_row(row));
 
         limit_clause->poffset++;
     } 
     else 
-        append_list(select_result->rows, purge_row(row));
+        AppendQueue(select_result->rows, purge_row(row));
 }
 
 /* Calulate column sum value. */
 static KeyValue *calc_column_sum_value(ColumnNode *column, SelectResult *select_result) {
-    
     double sum = 0;
-    ListCell *lc;
-    foreach (lc, select_result->rows) {
-        Row *row = lfirst(lc);
+    QueueCell *qc;
+    qforeach (qc, select_result->rows) {
+        Row *row = qfirst(qc);
         KeyValue *key_value = query_plain_column_value(select_result, column, row);
         switch (key_value->data_type) {
             case T_INT: {
@@ -1060,9 +1060,9 @@ static KeyValue *calc_column_sum_value(ColumnNode *column, SelectResult *select_
 static KeyValue *calc_column_avg_value(ColumnNode *column, SelectResult *select_result) {
     double sum = 0;
     double avg = 0;
-    ListCell *lc;
-    foreach (lc, select_result->rows) {
-        Row *row = lfirst(lc);
+    QueueCell *qc;
+    qforeach (qc, select_result->rows) {
+        Row *row = qfirst(qc);
         KeyValue *key_value = query_plain_column_value(select_result, column, row);
         switch (key_value->data_type) {
             case T_INT: {
@@ -1093,7 +1093,7 @@ static KeyValue *calc_column_avg_value(ColumnNode *column, SelectResult *select_
         }
         free_key_value(key_value);
     }
-    avg = sum / len_list(select_result->rows);
+    avg = sum / (select_result->rows->size);
     return new_key_value(dstrdup(AVG_NAME), copy_value(&avg, T_DOUBLE), T_DOUBLE);
 }
 
@@ -1102,9 +1102,9 @@ static KeyValue *calc_column_avg_value(ColumnNode *column, SelectResult *select_
 static KeyValue *calc_column_max_value(ColumnNode *column, SelectResult *select_result) {
     void *max_value = NULL;
     DataType data_type;
-    ListCell *lc;
-    foreach (lc, select_result->rows) {
-        Row *row = lfirst(lc);
+    QueueCell *qc;
+    qforeach (qc, select_result->rows) {
+        Row *row = qfirst(qc);
         KeyValue *current = query_plain_column_value(select_result, column, row);
         void *current_value = current->value;
         if (!max_value || greater(current_value, max_value, current->data_type)) {
@@ -1122,9 +1122,9 @@ static KeyValue *calc_column_max_value(ColumnNode *column, SelectResult *select_
 static KeyValue *calc_column_min_value(ColumnNode *column, SelectResult *select_result) {
     void *min_value = NULL;
     DataType data_type;
-    ListCell *lc;
-    foreach (lc, select_result->rows) {
-        Row *row = lfirst(lc);
+    QueueCell *qc;
+    qforeach (qc, select_result->rows) {
+        Row *row = qfirst(qc);
         KeyValue *current = query_plain_column_value(select_result, column, row);
         void *current_value = current->value;
         if (min_value == NULL || less(current_value, min_value, current->data_type)) {
@@ -1141,7 +1141,7 @@ static KeyValue *calc_column_min_value(ColumnNode *column, SelectResult *select_
 
 /* Query count function. */
 static KeyValue *query_count_function(FunctionValueNode *value, SelectResult *select_result) {
-    uint32_t row_size = len_list(select_result->rows);
+    uint32_t row_size = select_result->rows->size;
     return new_key_value(dstrdup("count"), copy_value(&row_size, T_INT), T_INT);
 }
 
@@ -1151,7 +1151,7 @@ static KeyValue *query_sum_function(FunctionValueNode *value, SelectResult *sele
         case V_COLUMN: 
             return calc_column_sum_value(value->column, select_result);
         case V_INT: {
-            double sum = value->i_value * len_list(select_result->rows);
+            double sum = value->i_value * (select_result->rows->size);
             return new_key_value(dstrdup(SUM_NAME), copy_value(&sum, T_DOUBLE), T_DOUBLE);
         }
         case V_ALL: {
@@ -1955,7 +1955,7 @@ static KeyValue *query_function_value(ScalarExpNode *scalar_exp, SelectResult *s
         case SCALAR_COLUMN: {
             ColumnNode *column = scalar_exp->column;
             MetaColumn *meta_column = get_meta_column_by_name(table->meta_table, column->column_name);
-            if (list_empty(select_result->rows)) {
+            if (QueueIsEmpty(select_result->rows)) {
                 return new_key_value(
                     dstrdup(column->column_name), 
                     NULL, 
@@ -1968,7 +1968,7 @@ static KeyValue *query_function_value(ScalarExpNode *scalar_exp, SelectResult *s
                 return query_plain_column_value(
                     select_result, 
                     column, 
-                    lfirst(first_cell(select_result->rows))
+                    qfirst(QueueHead(select_result->rows))
                 );
             }
         }
@@ -1978,14 +1978,14 @@ static KeyValue *query_function_value(ScalarExpNode *scalar_exp, SelectResult *s
             return query_function_calculate_column_value(scalar_exp->calculate, select_result);
         case SCALAR_VALUE: {
             ValueItemNode *value = scalar_exp->value;
-            if (list_empty(select_result->rows)) 
+            if (QueueIsEmpty(select_result->rows)) 
                 return new_key_value(
                     dstrdup("value"), 
                     NULL, 
                     convert_data_type(value->value.atom->type)
                 );
             else
-                return query_value_item(value, lfirst(first_cell(select_result->rows)));
+                return query_value_item(value, qfirst(QueueHead(select_result->rows)));
         }
         default: {
             UNEXPECTED_VALUE("Unknown scalar type");
@@ -2009,11 +2009,8 @@ static void query_fuction_selecton(List *scalar_exp_list, SelectResult *select_r
         append_list(row->data, key_value);
     }
 
-    /* Free old rows memory. */
-    // free_list_deep(select_result->rows);
-
-    select_result->rows = create_list(NODE_ROW);
-    append_list(select_result->rows, row);
+    select_result->rows = CreateQueue(NODE_ROW);
+    AppendQueue(select_result->rows, row);
 }
 
 /* Query all-columns calcuate column value. */
@@ -2124,11 +2121,10 @@ static Row *query_plain_row_selection(SelectResult *select_result, List *scalar_
 
 /* Query all columns data. */
 static void query_columns_selection(List *scalar_exp_list, SelectResult *select_result) {
-    ListCell *lc;
-    foreach (lc, select_result->rows) {
-        Row *row = lfirst(lc);
-        lfirst(lc) = query_plain_row_selection(select_result, scalar_exp_list, row);
-        // free_row(row);
+    QueueCell *qc;
+    qforeach (qc, select_result->rows) {
+        Row *row = qfirst(qc);
+        qfirst(qc) = query_plain_row_selection(select_result, scalar_exp_list, row);
     }
 }
 
@@ -2239,7 +2235,7 @@ void exec_select_statement(SelectNode *select_node, DBResult *result) {
     query_with_selection(select_node->selection, select_result);
 
     /* If select all, return all row data. */
-    result->rows = len_list(select_result->rows);
+    result->rows = QueueSize(select_result->rows);
     result->data = select_result;
     result->success = true;
     result->message = format("Query %d rows data from table '%s' successfully.", 

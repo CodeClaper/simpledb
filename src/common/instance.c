@@ -38,7 +38,7 @@ SelectResult *new_select_result(StatementType stype, char *table_name) {
     select_result->row_size = 0;
     select_result->table_name = table_name ? dstrdup(table_name) : NULL;
     select_result->range_variable = NULL;
-    select_result->rows = create_list(NODE_ROW);
+    select_result->rows = CreateQueue(NODE_ROW);
     select_result->derived = NULL;
     select_result->last_derived = false;
     return select_result;

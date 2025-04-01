@@ -3,6 +3,10 @@
 #include "list.h"
 #include "c.h"
 
+#ifndef QUEUE_H
+#define QUEUE_H
+
+
 typedef struct Queue {
     NodeTag tag;
     volatile Size size;
@@ -34,6 +38,21 @@ static inline bool QueueIsEmpty(Queue *queue) {
     return queue->size == 0;
 }
 
+/* Queue size. */
+static inline int QueueSize(Queue *queue) {
+    return queue->size;
+}
+
+/* Queue head. */
+static inline QueueCell *QueueHead(Queue *queue) {
+    return queue->head;
+}
+
+/* Queue tail. */
+static inline QueueCell *QueueTail(Queue *queue) {
+    return queue->tail;
+}
+
 /* Create a Queue. */
 Queue *CreateQueue(NodeTag tag);
 
@@ -43,3 +62,7 @@ void AppendQueue(Queue *queue, void *item);
 /* Delete item from the Queue. */
 void DeleteQueue(Queue *queue, void *item);
 
+/* Free the Queue. */
+void FreeQueue(Queue *queue);
+
+#endif

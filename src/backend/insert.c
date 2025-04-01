@@ -416,9 +416,9 @@ static List *insert_for_query_spec(InsertNode *insert_node) {
         SelectResult *select_result = (SelectResult *)result->data;
 
         /* Insert into rows. */
-        ListCell *lc;
-        foreach (lc, select_result->rows) {
-            Row *insert_row = convert2_insert_row(lfirst(lc), table);
+        QueueCell *qc;
+        qforeach (qc, select_result->rows) {
+            Row *insert_row = convert2_insert_row((Row *) qfirst(qc), table);
             Refer *refer = insert_one_row(table, insert_row);
             append_list(list, refer);
             free_row(insert_row);

@@ -312,11 +312,11 @@ static void json_select_result(DBResult *result) {
         db_send(", \"data\": ");
         SelectResult *select_result = result->data;
         db_send("[");
-        ListCell *lc;
-        foreach (lc, select_result->rows) {
-            Row *row = lfirst(lc);
+        QueueCell *qc;
+        qforeach (qc, select_result->rows) {
+            Row *row = qfirst(qc);
             json_row(row);
-            if (last_cell(select_result->rows) != lc)
+            if (QueueTail(select_result->rows) != qc)
                 db_send(", ");
         }
         db_send("]");

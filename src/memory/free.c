@@ -10,6 +10,7 @@
 #include "xlog.h"
 #include "log.h"
 #include "list.h"
+#include "free.h"
 
 /* Free value */
 void free_value(void *value, DataType data_type) {
@@ -99,7 +100,7 @@ void free_select_result(SelectResult *select_result) {
 
         if (select_result->rows) 
             /* free rows. */
-            free_list_deep(select_result->rows);
+            FreeQueue(select_result->rows);
 
         if (select_result->derived)
             free_select_result(select_result->derived);
