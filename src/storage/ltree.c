@@ -2615,16 +2615,16 @@ static void *get_value_from_row(Row *row, MetaColumn *meta_column) {
 /* Serialize array value. 
  * Note: for array value cell, we will reserve LEAF_NODE_ARRAY_NUM_SIZE bytes length for store array number. */
 static void assign_row_array_value(void *destination, ArrayValue *array_value, MetaColumn *meta_column) {
+    uint32_t len, span;
 
-    uint32_t len = len_list(array_value->list);
+    len =len_list(array_value->list);
     /* User insert arrary values number integer multiple of array dim. */
     Assert(len % meta_column->array_dim == 0);
 
     /* Assign array number. */
     assign_array_number(destination, len);
-
     /* span: every value in array data lenght. */
-    uint32_t span = (meta_column->column_length - LEAF_NODE_ARRAY_NUM_SIZE - LEAF_NODE_CELL_NULL_FLAG_SIZE) / meta_column->array_cap;
+    span = (meta_column->column_length - LEAF_NODE_ARRAY_NUM_SIZE - LEAF_NODE_CELL_NULL_FLAG_SIZE) / meta_column->array_cap;
 
     uint32_t i = 0;
     ListCell *lc;
