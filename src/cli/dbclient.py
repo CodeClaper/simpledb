@@ -48,7 +48,7 @@ class DbClient:
                 if not data_resp_bytes:
                     raise Exception("not recive any data")
                 response = data_resp_bytes.decode("utf-8").strip("\x00")
-                if response.upper() == "OVER":
+                if response.upper() == "\r\n\r\n":
                     break
                 writer.write(response)
             resp = writer.getvalue()
@@ -77,7 +77,7 @@ class DbClient:
                 if not data_resp_bytes:
                     raise Exception("not recive any data")
                 response = data_resp_bytes.decode("utf-8").strip("\x00")
-                if response.upper() == "OVER":
+                if response.upper() == "\r\n\r\n":
                     break
                 writer.write(response)
             resp = writer.getvalue()

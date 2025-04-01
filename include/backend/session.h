@@ -9,7 +9,7 @@ typedef struct {
     volatile uint32_t pindex;   /* Current spool position index. */
 } Session;
 
-#define OVER_FLAG "OVER"  /* Over flag of message. */
+#define OVER_FLAG "\r\n\r\n"  /* Over flag of message. */
 #define LEFT_SPACE 4
 
 /* Generate new session. */
