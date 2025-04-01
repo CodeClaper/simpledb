@@ -8,7 +8,7 @@ SUBDIRS := $(srcdir)/backend  $(srcdir)/common $(srcdir)/lock \
 objects := $(patsubst %.cpp, %.o, $(wildcard *.cpp)) $(patsubst %.c, %.o, $(shell find $(SUBDIRS) -name "*.c"))
 
 CPPLDADD = -lgtest_main -lgtest
-CPPLDFLAGS= -pthread
+CPPLDFLAGS= -pthread -lz
 ifdef DEBUG
 	CPPFLAGS := -g -O0 -Wall -I/usr/src/googletest/googletest/include -I/usr/src/googletest/googletest \
 		   -I$(includedir)/lock -I$(includedir)/common  -I$(includedir)/utils -I$(includedir)/memory \
