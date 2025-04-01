@@ -50,15 +50,7 @@ inline static void clearn_up_spool() {
 static char *store_spool(char *message) {
     size_t len = strlen(message);
     size_t current = inner_session.pindex + len;
-    if (streq(OVER_FLAG, message)) {
-        if (inner_session.pindex == 0) {
-            memcpy(inner_session.spool, message, len); 
-            inner_session.pindex = current;
-            return NULL;
-        } else {
-            return message;
-        }
-    } else if (current < SPOOL_SIZE - LEFT_SPACE) {
+    if (current < SPOOL_SIZE - LEFT_SPACE) {
         memcpy(inner_session.spool + inner_session.pindex, message, len); 
         inner_session.pindex = current;
         return NULL;

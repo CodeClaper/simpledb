@@ -40,7 +40,8 @@ class DbClient:
                 if not data_resp_bytes:
                     raise Exception("not recive any data")
                 response = data_resp_bytes.decode("utf-8").strip("\x00")
-                if response.upper() == "\r\n\r\n":
+                if response.endswith("\r\n\r\n"):
+                    writer.write(response[:-4])
                     break
                 writer.write(response)
             resp = writer.getvalue()

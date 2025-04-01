@@ -45,7 +45,7 @@ def test_invalid_number():
     sql = "INSERT INTO A values('S001', 'jack', 1223232323erwswq, 2, 'M', 3.23, '13001542702', 'beijing');"
     ret = client.execute(sql)
     assert ret["success"] == False
-    assert ret["message"] == "syntax error, unexpected IDENTIFIER, expecting ')' or ',', that happened near [erwswq]."
+    assert ret["message"] == "syntax error, unexpected IDENTIFIER, expecting ')' or ',' at or near [erwswq]."
 
 ## test float overflow.
 def test_overflow_float():

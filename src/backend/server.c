@@ -93,9 +93,11 @@ static bool auth_request(intptr_t client) {
 /* For loop request. */
 static void loop_request(intptr_t client) {
     size_t chars_num;
+    struct timeval start_time, end_time;
     char buf[SPOOL_SIZE];
     bzero(buf, SPOOL_SIZE);
     db_log(INFO, "Client ID '%ld' connect successfully.", getpid());
+    gettimeofday(&start_time, NULL);
     while ((chars_num = recv(client, buf, SPOOL_SIZE, 0)) > 0) {
         buf[chars_num] = '\0';
         Execute(buf);
@@ -104,6 +106,9 @@ static void loop_request(intptr_t client) {
             break;
         MemoryContextReset(MASTER_MEMORY_CONTEXT);
         DestroyContextRecorders();
+        gettimeofday(&end_time, NULL);
+        db_log(INFO, "Loop duration: %lfs", time_span(end_time, start_time));
+        start_time = end_time;
     }
     db_log(INFO, "Client ID '%ld' disconnect.", getpid());
 }
