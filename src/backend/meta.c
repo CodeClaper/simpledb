@@ -621,6 +621,7 @@ Xid get_created_xid(void *destinct, MetaTable *meta_table) {
         MetaColumn *meta_column = meta_table->meta_column[i];
         if (meta_column->sys_reserved && streq(meta_column->column_name, CREATED_XID_COLUMN_NAME))
             return *(Xid *)(destinct + offset);
+        offset += meta_column->column_length;
     }
     return -1;
 }
@@ -633,10 +634,10 @@ Xid get_expired_xid(void *destinct, MetaTable *meta_table) {
         MetaColumn *meta_column = meta_table->meta_column[i];
         if (meta_column->sys_reserved && streq(meta_column->column_name, EXPIRED_XID_COLUMN_NAME))
             return *(Xid *)(destinct + offset);
+        offset += meta_column->column_length;
     }
     return -1;
 }
-
 
 /* Get the created xid. */
 uint32_t get_created_xid_offset(MetaTable *meta_table) {
@@ -646,6 +647,7 @@ uint32_t get_created_xid_offset(MetaTable *meta_table) {
         MetaColumn *meta_column = meta_table->meta_column[i];
         if (meta_column->sys_reserved && streq(meta_column->column_name, CREATED_XID_COLUMN_NAME))
             return offset;
+        offset += meta_column->column_length;
     }
     return -1;
 }
@@ -658,6 +660,7 @@ uint32_t get_expired_xid_offset(MetaTable *meta_table) {
         MetaColumn *meta_column = meta_table->meta_column[i];
         if (meta_column->sys_reserved && streq(meta_column->column_name, EXPIRED_XID_COLUMN_NAME))
             return offset;
+        offset += meta_column->column_length;
     }
     return -1;
 }
