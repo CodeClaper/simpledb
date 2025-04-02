@@ -59,7 +59,8 @@ static void AtomicRemovePid(RWLockEntry *lock_entry) {
 static bool HasExistIn(RWLockEntry *lock_entry, Pid curpid) {
     bool ret = false;
     acquire_spin_lock(&lock_entry->sync_lock);
-    ret = list_member_int(lock_entry->owner, curpid);
+    ret = len_list(lock_entry->owner) == 1 && 
+            list_member_int(lock_entry->owner, curpid);
     release_spin_lock(&lock_entry->sync_lock);
     return ret;
 }
@@ -153,9 +154,14 @@ static void AcquireRWLockInner(RWLockEntry *lock_entry, RWLockMode mode) {
 acquire_lock:
     acquire_spin_lock(&lock_entry->sync_lock);
     DecreaseWaiting(lock_entry, mode);
-    lock_entry->mode = mode;
-    if (reent)
+    if (reent) {
         lock_entry->content_lock = 1;
+        /* Reenter only allwoed increase the mode, 
+         * not allowd decrease the mode. */
+        if (mode > lock_entry->mode)
+            lock_entry->mode = mode;
+    } else 
+        lock_entry->mode = mode;
     AtomicAppendPid(lock_entry);
     release_spin_lock(&lock_entry->sync_lock);
 }

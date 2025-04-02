@@ -63,7 +63,7 @@ static BufferDesc *bDescTable;
 /*
  * Next Victim index.
  */
-static BufferIndex *bufferIndex;
+static volatile Index victimIndex;
 
 
 /* Create BufferDesc. */
@@ -81,10 +81,7 @@ void CreateBufferDescTable() {
     }
 
     /* Init VictimIndex. */
-    bufferIndex = instance(BufferIndex);
-    bufferIndex->victimIndex = 0;
-    init_spin_lock(&bufferIndex->lock);
-
+    victimIndex = 0;
     switch_local();
 }
 
@@ -116,13 +113,9 @@ void UnpinBuffer(BufferDesc *desc) {
 
 /* Next Victim index. */
 static inline Index NextVictimIndex() {
-    Index index;
-    acquire_spin_lock(&bufferIndex->lock);
-    if (bufferIndex->victimIndex >= BUFFER_SLOT_NUM) 
-        bufferIndex->victimIndex = 0;
-    index = (bufferIndex->victimIndex)++;
-    release_spin_lock(&bufferIndex->lock);
-    return index;
+    if (victimIndex >= BUFFER_SLOT_NUM) 
+        victimIndex = 0;
+    return __sync_fetch_and_add(&victimIndex, 1);
 }
 
 /* Get the BufferDesc. */
@@ -172,7 +165,7 @@ static BufferDesc *LoadNewBufferDesc(BufferTag *tag) {
     slot = GetBufferTableSlot(tag);
 
     /* Acquire the rwlock in exclusive mode. */
-    AcquireRWlock(&slot->lock, RW_WRITER);
+    acquire_spin_lock(&slot->lock);
 
     /* Loop the circle to find access buffer desc. */
     desc = LoopFindBufferDesc(tag);
@@ -188,7 +181,7 @@ static BufferDesc *LoadNewBufferDesc(BufferTag *tag) {
     InsertBufferTableEntry(tag, desc->buffer);
 
     /* Release the rwlock. */
-    ReleaseRWlock(&slot->lock);
+    release_spin_lock(&slot->lock);
 
     return desc;
 }

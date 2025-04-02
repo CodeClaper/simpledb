@@ -39,13 +39,6 @@ typedef struct BufferDesc {
     s_lock      io_lock;        /* IO lock.*/
 } BufferDesc;
 
-/* Buffer Index. */
-typedef struct BufferIndex {
-    volatile Index victimIndex;
-    s_lock lock;
-} BufferIndex;
-
-
 /* Return if both BufferTags equals. */
 static inline bool BufferTagEquals(BufferTag *tag1, BufferTag *tag2) {
     return (tag1->blockNum == tag2->blockNum) 

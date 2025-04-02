@@ -53,7 +53,7 @@ void CreateBufferTable() {
     BTable = dalloc(sizeof(BufferTableEntrySlot) * size);
     for (Index i = 0; i < size; i++) {
         BufferTableEntrySlot *header = GetBufferTableSlotByIndex(i);
-        InitRWlock(&header->lock);
+        init_spin_lock(&header->lock);
     }
     switch_local();
 }
@@ -72,7 +72,7 @@ Buffer LookupBufferTable(BufferTag *tag) {
     entry = slot->next;
 
     /* Acquire the rwlock in shared mode.*/
-    AcquireRWlock(&slot->lock, RW_READERS);
+    wait_for_spin_lock(&slot->lock);
 
     /* Loop up the entry table. */
     while (entry != NULL) {
@@ -83,8 +83,6 @@ Buffer LookupBufferTable(BufferTag *tag) {
         entry = entry->next;
     }
 
-    /* Release the rwlock. */
-    ReleaseRWlock(&slot->lock);
     return buffer;
 }
 
@@ -101,7 +99,7 @@ void InsertBufferTableEntry(BufferTag *tag, Buffer buffer) {
 
     slot = GetBufferTableSlot(tag);
     entry = slot->next;
-    Assert(slot->lock.mode == RW_WRITER);
+    Assert(slot->lock == SPIN_LOCKED_STATUS);
 
     if (entry == NULL) {
         slot->next = NewBufferTableEntry(tag, buffer);
@@ -126,7 +124,6 @@ void DeleteBufferTableEntry(BufferTag *tag) {
 
     slot = GetBufferTableSlot(tag);
     current = slot->next;
-    // Assert(slot->lock.mode == RW_WRITER);
 
     switch_shared();
     for (current = slot->next, pres = current; current != NULL; pres = current, current = current->next) {
@@ -149,6 +146,7 @@ void RemoveTableBuffer(char *table_name) {
     for (Index i = 0; i < BUFFER_SLOT_NUM; i++) {
         BufferTableEntrySlot *slot; 
         BufferTableEntry *pres, *current;
+
         slot = GetBufferTableSlotByIndex(i);
         current = slot->next;
         for (current = slot->next, pres = current; current != NULL; pres = current, current = current->next) {
