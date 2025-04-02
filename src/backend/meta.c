@@ -612,3 +612,52 @@ bool has_user_primary_key(MetaTable *meta_table) {
     }
     return false;
 }
+
+/* Get the created xid. */
+Xid get_created_xid(void *destinct, MetaTable *meta_table) {
+    uint32_t i, offset;
+    offset = 0;
+    for (i = 0; i < meta_table->all_column_size; i++) {
+        MetaColumn *meta_column = meta_table->meta_column[i];
+        if (meta_column->sys_reserved && streq(meta_column->column_name, CREATED_XID_COLUMN_NAME))
+            return *(Xid *)(destinct + offset);
+    }
+    return -1;
+}
+
+/* Get the expired xid. */
+Xid get_expired_xid(void *destinct, MetaTable *meta_table) {
+    uint32_t i, offset;
+    offset = 0;
+    for (i = 0; i < meta_table->all_column_size; i++) {
+        MetaColumn *meta_column = meta_table->meta_column[i];
+        if (meta_column->sys_reserved && streq(meta_column->column_name, EXPIRED_XID_COLUMN_NAME))
+            return *(Xid *)(destinct + offset);
+    }
+    return -1;
+}
+
+
+/* Get the created xid. */
+uint32_t get_created_xid_offset(MetaTable *meta_table) {
+    uint32_t i, offset;
+    offset = 0;
+    for (i = 0; i < meta_table->all_column_size; i++) {
+        MetaColumn *meta_column = meta_table->meta_column[i];
+        if (meta_column->sys_reserved && streq(meta_column->column_name, CREATED_XID_COLUMN_NAME))
+            return offset;
+    }
+    return -1;
+}
+
+/* Get the expired xid. */
+uint32_t get_expired_xid_offset(MetaTable *meta_table) {
+    uint32_t i, offset;
+    offset = 0;
+    for (i = 0; i < meta_table->all_column_size; i++) {
+        MetaColumn *meta_column = meta_table->meta_column[i];
+        if (meta_column->sys_reserved && streq(meta_column->column_name, EXPIRED_XID_COLUMN_NAME))
+            return offset;
+    }
+    return -1;
+}

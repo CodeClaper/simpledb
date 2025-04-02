@@ -1,4 +1,5 @@
 #include "data.h"
+#include <stdint.h>
 
 /* Default data length. */
 uint32_t default_data_len(DataType column_type);
@@ -88,3 +89,15 @@ uint32_t calc_raw_meta_column_len(MetaColumn *meta_column);
 
 /* Check if user has defined primary key.*/
 bool has_user_primary_key(MetaTable *meta_table);
+
+/* Get the created xid. */
+Xid get_created_xid(void *destinct, MetaTable *meta_table);
+
+/* Get the expired xid. */
+Xid get_expired_xid(void *destinct, MetaTable *meta_table);
+
+/* Get the created xid. */
+uint32_t get_created_xid_offset(MetaTable *meta_table);
+
+/* Get the expired xid. */
+uint32_t get_expired_xid_offset(MetaTable *meta_table);
