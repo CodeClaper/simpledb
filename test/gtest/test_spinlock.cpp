@@ -8,29 +8,43 @@ extern "C" {
 #include "spinlock.h"
 }
 
-static int num = 0;
-static s_lock lock = SPIN_UN_LOCKED_STATUS;
+static int *num;
+static s_lock *lock;
 #define COUNT_NUM 100000
 #define WORKER_NUM 100
 
-static void *work(void *arg) {
+static void *work() {
     int i;
     for (i = 0; i < COUNT_NUM; i++) {
-        acquire_spin_lock(&lock);
-        num++;
-        release_spin_lock(&lock);
+        acquire_spin_lock(lock);
+        (*num)++;
+        release_spin_lock(lock);
     }
     return NULL;
 }
 
 TEST(spinlock, test_concurrent) {
-    pthread_t workers[WORKER_NUM];
+    switch_shared();
+    num = instance(int);
+    *num = 0;
+    lock = instance(s_lock);
+    init_spin_lock(lock);
+    switch_local();
+
     int i;
     for (i = 0; i < WORKER_NUM; i++) {
-        pthread_create(&workers[i], NULL, work, NULL);
+        Pid pid  = fork();
+        if (pid < 0) {
+            perror("Bad fork");
+            exit(1);
+        } else if (pid == 0) {
+            work();
+            exit(0);
+        }
     }
+
     for (i = 0; i < WORKER_NUM; i++) {
-        pthread_join(workers[i], NULL);
+        wait(NULL);
     }
-    ASSERT_EQ(10000000, num);
+    ASSERT_EQ(10000000, *num);
 }
