@@ -74,7 +74,6 @@ TEST(qsort, string_sort) {
     ListCell *prev = NULL;
     ListCell *lc;
     foreach (lc, list) {
-        printf("current is: %s\n", (char *)lfirst(lc));
         if (prev != NULL)
             ASSERT_TRUE(strcmp((char *) lfirst(prev), (char *) lfirst(lc)));
         prev = (lc);
