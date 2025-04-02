@@ -3,10 +3,12 @@
 #include "buftable.h"
 #include "spinlock.h"
 #include "mmgr.h"
+#include "log.h"
 
 /* BTable is a hash table. */
 static BufferTableEntrySlot *BTable;
 
+/* HashCode. */
 typedef unsigned long Hash;
 
 /* Hash the BufferTag. */
@@ -48,12 +50,12 @@ static inline BufferTableEntrySlot *GetBufferTableSlotByIndex(Index idx) {
 
 /* Create the buffer table.*/
 void CreateBufferTable() {
-    Size size = BUFFER_SLOT_NUM;
     switch_shared();
-    BTable = dalloc(sizeof(BufferTableEntrySlot) * size);
-    for (Index i = 0; i < size; i++) {
+    BTable = dalloc(sizeof(BufferTableEntrySlot) * BUFFER_SLOT_NUM);
+    for (Index i = 0; i < BUFFER_SLOT_NUM; i++) {
         BufferTableEntrySlot *header = GetBufferTableSlotByIndex(i);
-        init_spin_lock(&header->lock);
+        header->lock = instance(RWLockEntry);
+        InitRWlock(header->lock);
     }
     switch_local();
 }
@@ -72,7 +74,8 @@ Buffer LookupBufferTable(BufferTag *tag) {
     entry = slot->next;
 
     /* Acquire the rwlock in shared mode.*/
-    wait_for_spin_lock(&slot->lock);
+    AcquireRWlock(slot->lock, RW_READERS);
+    db_log(INFO, "BlockNum: %d has read lock.", tag->blockNum);
 
     /* Loop up the entry table. */
     while (entry != NULL) {
@@ -82,6 +85,10 @@ Buffer LookupBufferTable(BufferTag *tag) {
         }
         entry = entry->next;
     }
+
+    /* Relase reader lock. */
+    ReleaseRWlock(slot->lock);
+    db_log(INFO, "BlockNum: %d release read lock.", tag->blockNum);
 
     return buffer;
 }
@@ -99,7 +106,7 @@ void InsertBufferTableEntry(BufferTag *tag, Buffer buffer) {
 
     slot = GetBufferTableSlot(tag);
     entry = slot->next;
-    Assert(slot->lock == SPIN_LOCKED_STATUS);
+    Assert(slot->lock->mode == RW_WRITER);
 
     if (entry == NULL) {
         slot->next = NewBufferTableEntry(tag, buffer);

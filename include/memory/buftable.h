@@ -1,9 +1,8 @@
 #include "bufmgr.h"
-#include "bufpool.h"
 #include "rwlock.h"
 
 typedef struct BufferTableEntrySlot {
-    s_lock lock;
+    RWLockEntry *lock;
     struct BufferTableEntry *next;
 } BufferTableEntrySlot;
 

@@ -54,6 +54,7 @@
 #include "c.h"
 #include "table.h"
 #include "pager.h"
+#include "log.h"
 
 /*
  * BufferDesc table. 
@@ -158,6 +159,7 @@ static BufferDesc *LoopFindBufferDesc(BufferTag *tag) {
  * The buffer missing in the buffer table.
  * */
 static BufferDesc *LoadNewBufferDesc(BufferTag *tag) {
+    Buffer buffer;
     BufferTableEntrySlot *slot;
     BufferDesc *desc;
 
@@ -165,7 +167,22 @@ static BufferDesc *LoadNewBufferDesc(BufferTag *tag) {
     slot = GetBufferTableSlot(tag);
 
     /* Acquire the rwlock in exclusive mode. */
-    acquire_spin_lock(&slot->lock);
+    AcquireRWlock(slot->lock, RW_WRITER);
+    db_log(INFO, "BlockNum: %d has write lock.", tag->blockNum);
+
+    /* Double check. */
+    buffer = LookupBufferTable(tag);
+    if (buffer >= 0) {
+        desc = GetBufferDesc(buffer);
+        /* Maybe the buffer desc has unpinned and reused, 
+         * neccessary to check the tag if still.*/
+        if (BufferTagEquals(tag, &desc->tag)) {
+            PinBuffer(desc);
+            ReleaseRWlock(slot->lock);
+            db_log(INFO, "BlockNum: %d release write lock.", tag->blockNum);
+            return desc;
+        }
+    }
 
     /* Loop the circle to find access buffer desc. */
     desc = LoopFindBufferDesc(tag);
@@ -181,7 +198,8 @@ static BufferDesc *LoadNewBufferDesc(BufferTag *tag) {
     InsertBufferTableEntry(tag, desc->buffer);
 
     /* Release the rwlock. */
-    release_spin_lock(&slot->lock);
+    ReleaseRWlock(slot->lock);
+    db_log(INFO, "BlockNum: %d release write lock.", tag->blockNum);
 
     return desc;
 }
