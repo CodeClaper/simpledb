@@ -483,6 +483,10 @@ static bool include_exec_leaf_node(SelectResult *select_result, Row *row, Condit
 
 /* Check if the key include the leaf node. */
 static bool include_leaf_node(SelectResult *select_result, Row *row, ConditionNode *condition_node) {
+    /* If not visible for current transaction, return false. */
+    if (!RowIsVisible(row))
+        return false;
+
     /* If without condition, of course the key include, so just return true. */
     if (condition_node == NULL) 
           return true;
@@ -968,9 +972,6 @@ void query_with_condition(ConditionNode *condition, SelectResult *select_result,
 /* Count number of row, used in the sql function count(1) */
 void count_row(Row *row, SelectResult *select_result, Table *table, 
                ROW_HANDLER_ARG_TYPE type,void *arg) {
-    /* Only select visible row. */
-    if (!RowIsVisible(row)) 
-        return;
 
     if (type == ARG_SELECT_PARAM && ((SelectParam *) arg)->limitClause != NULL) {
         SelectParam *selectParam = (SelectParam *) arg;
@@ -1005,9 +1006,6 @@ static void* purge_row(Row *row) {
 /* Select row data. */
 void select_row(Row *row, SelectResult *select_result, Table *table, 
                 ROW_HANDLER_ARG_TYPE type, void *arg) {
-    /* Only select visible row. */
-    if (!RowIsVisible(row)) 
-        return;
 
     /* If has limit clause. */
     if (type == ARG_SELECT_PARAM && ((SelectParam *) arg)->limitClause != NULL) {
