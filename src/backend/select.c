@@ -40,6 +40,7 @@
 #include "jsonwriter.h"
 #include "parall.h"
 #include "cache.h"
+#include "optimizer.h"
 
 typedef struct SelectFromInternalChildTaskArgs {
     SelectResult *select_result;
@@ -80,14 +81,9 @@ static KeyValue *query_plain_column_value(SelectResult *select_result, ColumnNod
 /* Check if LimitClauseNode is full. 
  * LimitClauseNode full means the poffset is greater or equal the offset.
  * */
-inline static bool limit_clause_full(LimitClauseNode *limit_clause) {
-    return non_null(limit_clause) && 
-        (limit_clause->poffset >= limit_clause->offset + limit_clause->rows);
-}
-
-/* Get LimitClauseNode. */
-inline static LimitClauseNode *get_limit_clause(SelectNode *select_node) {
-    return select_node->table_exp->limit_clause;
+inline static bool limit_clause_full(SelectParam *selectParam) {
+    return non_null(selectParam->limitClause) && 
+        (selectParam->offset >= selectParam->limitClause->offset + selectParam->limitClause->rows);
 }
 
 
@@ -662,16 +658,19 @@ static void select_from_leaf_node(SelectResult *select_result, ConditionNode *co
                                   uint32_t page_num, Table *table, 
                                   ROW_HANDLER row_handler, ROW_HANDLER_ARG_TYPE type, void *arg) {
 
+    /* Get cell number, key length and value lenght. */
+    uint32_t key_len, value_len, cell_num ;
+    Buffer buffer;
+    void *leaf_node;
+
     /* If LimitClauseNode full, not continue. */
-    if (type == ARG_LIMIT_CLAUSE_NODE && limit_clause_full(arg))
+    if (type == ARG_SELECT_PARAM && limit_clause_full(arg))
         return;
 
     /* Get leaf node buffer. */
-    Buffer buffer = ReadBuffer(table, page_num);
-    void *leaf_node = GetBufferPage(buffer);
+    buffer = ReadBuffer(table, page_num);
+    leaf_node = GetBufferPage(buffer);
 
-    /* Get cell number, key length and value lenght. */
-    uint32_t key_len, value_len, cell_num ;
     key_len = calc_primary_key_length(table);
     value_len = calc_table_row_length(table);
     cell_num = get_leaf_node_cell_num(leaf_node, value_len);
@@ -717,7 +716,7 @@ static void select_from_internal_node(SelectResult *select_result, ConditionNode
                                       ROW_HANDLER row_handler, ROW_HANDLER_ARG_TYPE type, void *arg) {
 
     /* If LimitClauseNode full, not continue. */
-    if (non_null(arg) && limit_clause_full(arg))
+    if (type == ARG_SELECT_PARAM && limit_clause_full(arg))
         return;
 
     /* Get the internal node buffer. */
@@ -972,20 +971,30 @@ void count_row(Row *row, SelectResult *select_result, Table *table,
     /* Only select visible row. */
     if (!RowIsVisible(row)) 
         return;
-    select_result->row_size++;
+
+    if (type == ARG_SELECT_PARAM && ((SelectParam *) arg)->limitClause != NULL) {
+        SelectParam *selectParam = (SelectParam *) arg;
+        LimitClauseNode *limit_clause = selectParam->limitClause;
+
+        /* If has limit clause, only append row whose pindex > offset and pindex < offset + rows. */
+        if (selectParam->offset >= limit_clause->offset && 
+                selectParam->offset < (limit_clause->offset + limit_clause->rows)) {
+            select_result->row_size++;
+            select_result->rows->size++;
+        }
+
+        selectParam->offset++;
+    } 
+    else {
+        select_result->row_size++;
+        select_result->rows->size++;
+    } 
 }
 
 static void* purge_row(Row *row) {
     List *list = row->data;
     /* At least, more 3 sys-reserved column. */
     Assert(list->size > 3);
-
-    /* Free KeyValue. */
-    //int32_t i;
-    //for (i = list->size - 1; i >= list->size - 3; i--) {
-    //    KeyValue *key_value = lfirst(list_nth_cell(list, i));
-    //    free_key_value(key_value);
-    //}
 
     /* Delete last 3 sys-reserved items. */
     list_delete_tail(list, 3);
@@ -1001,18 +1010,23 @@ void select_row(Row *row, SelectResult *select_result, Table *table,
         return;
 
     /* If has limit clause. */
-    if (type == ARG_LIMIT_CLAUSE_NODE && non_null(arg)) {
-        LimitClauseNode *limit_clause = (LimitClauseNode *) arg;
+    if (type == ARG_SELECT_PARAM && ((SelectParam *) arg)->limitClause != NULL) {
+        SelectParam *selectParam = (SelectParam *) arg;
+        LimitClauseNode *limit_clause = selectParam->limitClause;
 
         /* If has limit clause, only append row whose pindex > offset and pindex < offset + rows. */
-        if (limit_clause->poffset >= limit_clause->offset && 
-                limit_clause->poffset < (limit_clause->offset + limit_clause->rows))
-            AppendQueue(select_result->rows, purge_row(row));
+        if (selectParam->offset >= limit_clause->offset && 
+                selectParam->offset < (limit_clause->offset + limit_clause->rows)) {
 
-        limit_clause->poffset++;
-    } 
-    else 
+            AppendQueue(select_result->rows, purge_row(row));
+            select_result->row_size++;
+        }
+
+        selectParam->offset++;
+    } else {
         AppendQueue(select_result->rows, purge_row(row));
+        select_result->row_size++;
+    }
 }
 
 /* Calulate column sum value. */
@@ -1141,7 +1155,7 @@ static KeyValue *calc_column_min_value(ColumnNode *column, SelectResult *select_
 
 /* Query count function. */
 static KeyValue *query_count_function(FunctionValueNode *value, SelectResult *select_result) {
-    uint32_t row_size = select_result->rows->size;
+    uint32_t row_size = select_result->row_size;
     return new_key_value(dstrdup("count"), copy_value(&row_size, T_INT), T_INT);
 }
 
@@ -2184,15 +2198,19 @@ static ConditionNode *get_table_exp_condition(TableExpNode *table_exp) {
 
 /* Query with condition when multiple table. */
 static SelectResult *query_multi_table_with_condition(SelectNode *select_node) {
+    List *list;
+    SelectResult *result;
+    ConditionNode *condition;
+    SelectParam *selectParam;
 
     /* If no from clause, return an empty select result. */
     if (is_null(select_node->table_exp->from_clause)) 
         return new_select_result(SELECT_STMT, NULL);
 
-    List *list = select_node->table_exp->from_clause->from;
-    SelectResult *result = NULL;
-
+    list = select_node->table_exp->from_clause->from;
     Assert(len_list(list) > 0);
+    selectParam = optimizeSelect(select_node);
+    condition = get_table_exp_condition(select_node->table_exp);
 
     ListCell *lc;
     foreach (lc, list) {
@@ -2206,14 +2224,11 @@ static SelectResult *query_multi_table_with_condition(SelectNode *select_node) {
         current_result->derived = result;
         current_result->last_derived = (last_cell(list) == lc);
 
-        /* Select with condition to define which rows. */
-        ConditionNode *condition = get_table_exp_condition(select_node->table_exp);
-
         /* Query with condition to filter satisfied conditions rows. */
         query_with_condition(
             condition, current_result, 
-            select_row, ARG_LIMIT_CLAUSE_NODE, 
-            get_limit_clause(select_node)
+            selectParam->rowHanler, 
+            ARG_SELECT_PARAM, selectParam
         );
 
         result = current_result;

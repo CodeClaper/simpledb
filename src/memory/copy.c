@@ -476,7 +476,6 @@ LimitClauseNode *copy_limit_clause_node(LimitClauseNode *limit_clause_node) {
     LimitClauseNode *duplica = instance(LimitClauseNode);
     duplica->rows = limit_clause_node->rows;
     duplica->offset = limit_clause_node->offset;
-    duplica->poffset = limit_clause_node->poffset;
     return duplica;
 }
 

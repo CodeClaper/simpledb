@@ -425,7 +425,6 @@ typedef struct InNode {
 typedef struct LimitClauseNode {
     int32_t offset;
     int32_t rows;
-    int32_t poffset;        /* Not user assigned, use for record now offset.*/
 } LimitClauseNode;
 
 /* TableRefNode. */
@@ -649,6 +648,7 @@ typedef struct SelectResult {
     struct SelectResult *derived;   /* Derived select result, used for multi-table query. */
     bool last_derived;              /* Last derived flag. */
 } SelectResult;
+
 
 /* MEntry */
 typedef struct MEntry {
