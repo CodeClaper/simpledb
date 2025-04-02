@@ -130,7 +130,7 @@ static BufferDesc *LoopFindBufferDesc(BufferTag *tag) {
     BufferDesc *desc;
     
     /* Loop the circle to lookup the free table buffer. */
-    for (;;) {
+    forever {
         vindex = NextVictimIndex();
         desc = GetBufferDesc(vindex);
         if (desc->status == EMPTY) {

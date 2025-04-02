@@ -4,6 +4,8 @@
 #define INT64CONST(x)  (x##L)
 #define UINT64CONST(x) (x##UL)
 
+#define forever for(;;)
+
 /* Size 
  * Size of any memory resident object.
  */
