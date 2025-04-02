@@ -39,6 +39,6 @@ void InitRWlock(RWLockEntry *lock_entry);
 void AcquireRWlock(RWLockEntry *lock_entry, RWLockMode mode);
 
 /* Release the rwlock. */
-void ReleaseRWlock(RWLockEntry *lock_entry);
+void ReleaseRWlock(RWLockEntry *lock_entry, RWLockMode mode);
 
 #endif

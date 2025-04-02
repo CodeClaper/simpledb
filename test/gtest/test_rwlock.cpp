@@ -15,14 +15,14 @@ extern "C" {
 
 static int *num;
 #define COUNT_NUM 100000
-#define WORKER_NUM 10
+#define WORKER_NUM 20
 
 static void *work(RWLockEntry *lock) {
     int i;
     for (i = 0; i < COUNT_NUM; i++) {
         AcquireRWlock(lock, RW_WRITER);
         (*num)++;
-        ReleaseRWlock(lock);
+        ReleaseRWlock(lock, RW_WRITER);
     }
     return NULL;
 }
@@ -50,6 +50,6 @@ TEST(rwlock, test_rwlock_concurrent) {
     for (i = 0; i < WORKER_NUM; i++) {
         wait(NULL);
     }
-    ASSERT_EQ(1000000, *num);
+    ASSERT_EQ(2000000, *num);
 }
 

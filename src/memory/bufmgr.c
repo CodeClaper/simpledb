@@ -54,7 +54,6 @@
 #include "c.h"
 #include "table.h"
 #include "pager.h"
-#include "log.h"
 
 /*
  * BufferDesc table. 
@@ -168,7 +167,6 @@ static BufferDesc *LoadNewBufferDesc(BufferTag *tag) {
 
     /* Acquire the rwlock in exclusive mode. */
     AcquireRWlock(slot->lock, RW_WRITER);
-    db_log(INFO, "BlockNum: %d has write lock.", tag->blockNum);
 
     /* Double check. */
     buffer = LookupBufferTable(tag);
@@ -178,8 +176,7 @@ static BufferDesc *LoadNewBufferDesc(BufferTag *tag) {
          * neccessary to check the tag if still.*/
         if (BufferTagEquals(tag, &desc->tag)) {
             PinBuffer(desc);
-            ReleaseRWlock(slot->lock);
-            db_log(INFO, "BlockNum: %d release write lock.", tag->blockNum);
+            ReleaseRWlock(slot->lock, RW_WRITER);
             return desc;
         }
     }
@@ -198,8 +195,7 @@ static BufferDesc *LoadNewBufferDesc(BufferTag *tag) {
     InsertBufferTableEntry(tag, desc->buffer);
 
     /* Release the rwlock. */
-    ReleaseRWlock(slot->lock);
-    db_log(INFO, "BlockNum: %d release write lock.", tag->blockNum);
+    ReleaseRWlock(slot->lock, RW_WRITER);
 
     return desc;
 }
@@ -286,9 +282,9 @@ void LockBuffer(Buffer buffer, RWLockMode mode) {
 /* Unlock Buffer
  * Unlock the exclusive content lock in BufferDesc. 
  * */
-void UnlockBuffer(Buffer buffer) {
+void UnlockBuffer(Buffer buffer, RWLockMode mode) {
     Assert(buffer < BUFFER_SLOT_NUM);
     BufferDesc *desc = GetBufferDesc(buffer);
-    ReleaseRWlock(&desc->lock);
+    ReleaseRWlock(&desc->lock, RW_READERS);
 }
 

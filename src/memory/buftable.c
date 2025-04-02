@@ -3,7 +3,6 @@
 #include "buftable.h"
 #include "spinlock.h"
 #include "mmgr.h"
-#include "log.h"
 
 /* BTable is a hash table. */
 static BufferTableEntrySlot *BTable;
@@ -75,7 +74,6 @@ Buffer LookupBufferTable(BufferTag *tag) {
 
     /* Acquire the rwlock in shared mode.*/
     AcquireRWlock(slot->lock, RW_READERS);
-    db_log(INFO, "BlockNum: %d has read lock.", tag->blockNum);
 
     /* Loop up the entry table. */
     while (entry != NULL) {
@@ -87,8 +85,7 @@ Buffer LookupBufferTable(BufferTag *tag) {
     }
 
     /* Relase reader lock. */
-    ReleaseRWlock(slot->lock);
-    db_log(INFO, "BlockNum: %d release read lock.", tag->blockNum);
+    ReleaseRWlock(slot->lock, RW_READERS);
 
     return buffer;
 }

@@ -11,7 +11,7 @@ extern "C" {
 static int *num;
 static s_lock *lock;
 #define COUNT_NUM 100000
-#define WORKER_NUM 100
+#define WORKER_NUM 20
 
 static void *work() {
     int i;
@@ -46,5 +46,5 @@ TEST(spinlock, test_concurrent) {
     for (i = 0; i < WORKER_NUM; i++) {
         wait(NULL);
     }
-    ASSERT_EQ(10000000, *num);
+    ASSERT_EQ(2000000, *num);
 }

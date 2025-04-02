@@ -92,7 +92,7 @@ void LockBuffer(Buffer buffer, RWLockMode mode);
 /* Unlock Buffer
  * Unlock the exclusive content lock in BufferDesc.
  * */
-void UnlockBuffer(Buffer buffer);
+void UnlockBuffer(Buffer buffer, RWLockMode mode);
 
 /* Get Buffer page. */
 void *GetBufferPage(Buffer buffer);
