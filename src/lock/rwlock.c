@@ -106,11 +106,9 @@ static inline void IncreaseWaiting(RWLockEntry *lock_entry, RWLockMode mode) {
     switch (mode) {
         case RW_READERS:
             __sync_fetch_and_add(&lock_entry->waiting_reader, 1);
-            // lock_entry->waiting_reader++;
             break;
         case RW_WRITER:
             __sync_fetch_and_add(&lock_entry->waiting_writer, 1);
-            // lock_entry->waiting_writer++;
             break;
         default:
             ;
@@ -123,12 +121,10 @@ static inline void DecreaseWaiting(RWLockEntry *lock_entry, RWLockMode mode) {
         case RW_READERS:
             if (lock_entry->waiting_reader > 0)
                 __sync_fetch_and_sub(&lock_entry->waiting_reader, 1);
-                // lock_entry->waiting_reader--;
             break;
         case RW_WRITER:
             if (lock_entry->waiting_writer > 0)
                 __sync_fetch_and_sub(&lock_entry->waiting_writer, 1);
-                //lock_entry->waiting_writer--;
             break;
         default:
             ;
