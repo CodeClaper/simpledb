@@ -266,6 +266,7 @@ void ReleaseBuffer(Buffer buffer) {
 void ReleaseBufferInner(Buffer buffer) {
     Assert(buffer < BUFFER_SLOT_NUM);
     BufferDesc *desc = GetBufferDesc(buffer);
+    Assert(desc != NULL);
     UnpinBuffer(desc);
 }
 
@@ -276,7 +277,22 @@ void ReleaseBufferInner(Buffer buffer) {
 void LockBuffer(Buffer buffer, RWLockMode mode) {
     Assert(buffer < BUFFER_SLOT_NUM);
     BufferDesc *desc = GetBufferDesc(buffer);
+    Assert(desc != NULL);
     AcquireRWlock(&desc->lock, mode);
+}
+
+/* Upgrade Lock Buffer. */
+void UpgradeLockBuffer(Buffer buffer) {
+    BufferDesc *desc = GetBufferDesc(buffer);
+    Assert(desc != NULL);
+    UpgradeRWlock(&desc->lock);
+}
+
+/* Downgrade Lock Buffer. */
+void DowngradeLockBuffer(Buffer buffer) {
+    BufferDesc *desc = GetBufferDesc(buffer);
+    Assert(desc != NULL);
+    DowngradeRWlock(&desc->lock);
 }
 
 /* Unlock Buffer

@@ -84,6 +84,12 @@ void ReleaseBuffer(Buffer buffer);
  * */
 void ReleaseBufferInner(Buffer buffer);
 
+/* Upgrade Lock Buffer. */
+void UpgradeLockBuffer(Buffer buffer);
+
+/* Downgrade Lock Buffer. */
+void DowngradeLockBuffer(Buffer buffer);
+
 /* LocK Buffer. 
  * Try to acquire the exclusive content lock in BufferDesc.
  * */
