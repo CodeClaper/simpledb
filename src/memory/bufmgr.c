@@ -169,7 +169,7 @@ static BufferDesc *LoadNewBufferDesc(BufferTag *tag) {
     AcquireRWlock(slot->lock, RW_WRITER);
 
     /* Double check. */
-    buffer = LookupBufferTable(tag);
+    buffer = LookupBufferTableWithoutLock(tag);
     if (buffer >= 0) {
         desc = GetBufferDesc(buffer);
         /* Maybe the buffer desc has unpinned and reused, 

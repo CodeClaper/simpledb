@@ -1116,7 +1116,7 @@ static void insert_and_split_leaf_node(Cursor *cursor, Row *row) {
 
     /* Double check for concurrency. */
     if (!overflow_leaf_node(old_node, key_len, value_len, cell_num)) {
-        UnlockBuffer(old_buffer, RW_READERS);
+        UnlockBuffer(old_buffer, RW_WRITER);
         ReleaseBuffer(old_buffer);
         insert_leaf_node_new_cell(cursor, row);
         return;

@@ -34,41 +34,15 @@ static inline int GetCurrentPid() {
 /* Init the rwlock. */
 void InitRWlock(RWLockEntry *lock_entry) {
     lock_entry->mode = RW_INIT;
-    lock_entry->owner = create_list(NODE_INT);
+    lock_entry->writer = 0;
+    lock_entry->owner_num = 0;
     lock_entry->waiting_reader = 0;
     lock_entry->waiting_writer = 0;
+    lock_entry->upgrading = false;
     init_spin_lock(&lock_entry->content_lock);
     init_spin_lock(&lock_entry->sync_lock);
 }
 
-/* Atomically increase the readernum. */
-static void AtomicAppendPid(RWLockEntry *lock_entry) {
-    switch_shared();
-    append_list_int(lock_entry->owner, GetCurrentPid());
-    switch_local();
-}
-
-/* Atomically decrease the readernum. */
-static void AtomicRemovePid(RWLockEntry *lock_entry) {
-    switch_shared();
-    list_delete_int_first(lock_entry->owner, GetCurrentPid());
-    switch_local();
-}
-
-/* Has exists the current pid in onwer. */
-static bool HasExistIn(RWLockEntry *lock_entry, Pid curpid) {
-    bool ret = false;
-    acquire_spin_lock(&lock_entry->sync_lock);
-    ret = len_list(lock_entry->owner) == 1 && 
-            list_member_int(lock_entry->owner, curpid);
-    release_spin_lock(&lock_entry->sync_lock);
-    return ret;
-}
-
-/* The condition to release rwlock. .*/
-static inline bool ReleaseRWlockCondition(RWLockEntry *lock_entry) {
-    return list_empty(lock_entry->owner);
-}
 
 /* The condition to keep fair. 
  * The rwlock provides simple fairness mechanism to avoid starve.
@@ -93,13 +67,12 @@ static inline bool FairCondition(RWLockEntry *lock_entry, Pid curpid, RWLockMode
 
 /* The reenter condition.
  * Reenter condition includes:
- * (1) The current process has owned the rwlock.
- * (2) RWLock in RW_READERS mode, and the request mode also is RW_READERS. 
- *     Besides to keep the fairness, these must be no the waiting writer.
+ * (1) The current process is the only one who has owned the rwlock.
+ * (2) RWLock in RW_READERS mode, and the request mode also is RW_READERS, and the lock is not upgrading. 
  * */
 static inline bool ReenterCondition(RWLockEntry *lock_entry, Pid curpid, RWLockMode mode) {
-    return HasExistIn(lock_entry, curpid) || 
-            (lock_entry->mode == RW_READERS && mode == RW_READERS && lock_entry->waiting_writer == 0);
+    return (lock_entry->mode == RW_WRITER && lock_entry->writer == curpid) || 
+            (lock_entry->mode == RW_READERS && mode == RW_READERS && lock_entry->owner_num > 0 && !lock_entry->upgrading);
 }
 
 /* Increase Waiting. */
@@ -131,6 +104,18 @@ static inline void DecreaseWaiting(RWLockEntry *lock_entry, RWLockMode mode) {
             ;
     }
 }
+
+/* Increase owner. */
+static inline void IncreaseOwner(RWLockEntry *lock_entry) {
+    __sync_fetch_and_add(&lock_entry->owner_num, 1);
+}
+
+/* Increase owner. */
+static inline void DecreaseOwner(RWLockEntry *lock_entry) {
+    Assert(lock_entry->owner_num > 0);
+    __sync_fetch_and_sub(&lock_entry->owner_num, 1);
+}
+
  
 /* Try acquire the rwlock. 
  * Two ways to acquire the rwlock:
@@ -138,31 +123,38 @@ static inline void DecreaseWaiting(RWLockEntry *lock_entry, RWLockMode mode) {
  * (2) Not acquired directly the rwlock but satisfy the reenter condition and the fair condition.
  * */
 static void AcquireRWLockInner(RWLockEntry *lock_entry, RWLockMode mode) {
-    bool reent = false;
     Pid cur_pid = GetCurrentPid();
+    /* Add waiting count. */
     IncreaseWaiting(lock_entry, mode);
+retry_lab:
     while (__sync_lock_test_and_set(&lock_entry->content_lock, 1)) {
-        while (lock_entry->content_lock || !FairCondition(lock_entry, cur_pid, mode)) {
-            if (ReenterCondition(lock_entry, cur_pid, mode)) {
-                reent = true;
-                goto acquire_lock;
-            }
+        while (lock_entry->content_lock) {
+            if (ReenterCondition(lock_entry, cur_pid, mode)) 
+                goto acquire_lock_lab;
+
             if (lock_spin(DEFAULT_SPIN_INTERVAL))
                 lock_sleep(DEFAULT_SPIN_INTERVAL);
         }
     }
-acquire_lock:
+acquire_lock_lab:
     acquire_spin_lock(&lock_entry->sync_lock);
+    /* Avoid writer acquire the lock after a reder reenter. */
+    if (mode == RW_WRITER && lock_entry->mode == RW_READERS && lock_entry->owner_num > 0) {
+        release_spin_lock(&lock_entry->sync_lock);
+        goto retry_lab;
+    }
+    /* Avoid reader reenter adter a writer acquire the lock.  */
+    if (mode == RW_READERS && lock_entry->mode == RW_WRITER && lock_entry->writer != cur_pid) {
+        release_spin_lock(&lock_entry->sync_lock);
+        goto retry_lab;
+    }
+    lock_entry->content_lock = SPIN_LOCKED_STATUS;
     DecreaseWaiting(lock_entry, mode);
-    if (reent) {
-        lock_entry->content_lock = 1;
-        /* Reenter only allwoed increase the mode, 
-         * not allowd decrease the mode. */
-        if (mode > lock_entry->mode)
-            lock_entry->mode = mode;
-    } else 
+    if (mode == RW_WRITER)
+        lock_entry->writer = cur_pid;
+    IncreaseOwner(lock_entry);
+    if (mode > lock_entry->mode)
         lock_entry->mode = mode;
-    AtomicAppendPid(lock_entry);
     release_spin_lock(&lock_entry->sync_lock);
 }
 
@@ -180,6 +172,9 @@ static inline void ReleaseRWLockInner(RWLockEntry *lock_entry) {
      * that an assignment might be implemented with multiple store instructions. */
     __sync_lock_release(&lock_entry->content_lock);
 
+    lock_entry->mode = RW_INIT;
+    lock_entry->writer = 0;
+
     /* Notice block processor. */
     NOTICE();
 }
@@ -190,8 +185,37 @@ void AcquireRWlock(RWLockEntry *lock_entry, RWLockMode mode) {
     /* Not alloed same process acquire the writer lock again. */
     AssertFalse(lock_entry->mode == RW_WRITER && 
                     mode == RW_WRITER && 
-                         HasExistIn(lock_entry, GetCurrentPid()));
+                         lock_entry->writer == GetCurrentPid());
     AcquireRWLockInner(lock_entry, mode); 
+}
+
+/* Upgrade the rwlock. 
+ * -------------------
+ * Upgrade means the lock mode changes from RW_READERS to RW_WRITER. */
+void UpgradeRWlock(RWLockEntry *lock_entry) {
+    Assert(NOT_INIT_LOCK(lock_entry));
+    if (lock_entry->mode != RW_READERS)
+        return;
+    lock_entry->upgrading = true;
+    DecreaseOwner(lock_entry);
+    
+    /* Wating for all reader lock release. */
+    while (lock_entry->owner_num >= 0) {
+        lock_sleep(DEFAULT_SPIN_INTERVAL);
+    }
+    
+    /* Acuqire the write lock. */
+    lock_entry->mode = RW_WRITER;
+    lock_entry->owner_num = 1;
+    lock_entry->writer = GetCurrentPid();
+}
+
+
+/* Downgrade the rwlock. 
+ * -------------------
+ * Downgrade means the lock mode changes from RW_WRITER to RW_READERS. */
+void DowngradeRWlock(RWLockEntry *lock_entry) {
+
 }
 
 /* Release the rwlock. */
@@ -199,16 +223,9 @@ void ReleaseRWlock(RWLockEntry *lock_entry, RWLockMode mode) {
     /* There is occasional bug here. */
     Assert(NOT_INIT_LOCK(lock_entry));
     Assert(LOCKED(lock_entry->content_lock));
-    if (lock_entry->mode > mode)
-        return;
     acquire_spin_lock(&lock_entry->sync_lock);
-    AtomicRemovePid(lock_entry);
-    if (ReleaseRWlockCondition(lock_entry))
+    DecreaseOwner(lock_entry);
+    if (lock_entry->owner_num == 0)
         ReleaseRWLockInner(lock_entry);
-    /* RWLockMode allowed mode upgrade from RW_READERS to RW_WRITE. 
-     * So, when relasing lock, if owner is not empty, reset RW_READERS mode. */
-    lock_entry->mode = list_empty(lock_entry->owner) 
-                ? RW_INIT 
-                : RW_READERS;
     release_spin_lock(&lock_entry->sync_lock);
 }

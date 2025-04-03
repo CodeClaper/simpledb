@@ -55,6 +55,7 @@ void acquire_spin_lock(volatile s_lock *lock) {
 
 /* Release spin lock. */
 void release_spin_lock(volatile s_lock *lock) {
+    Assert(*lock == SPIN_LOCKED_STATUS);
     /* Tell the c compiler and the CPU to not move loads or stores
      * past this point, to ensure that all the stores in the critical
      * section are visible to other CPUs before the  lock is released,

@@ -15,12 +15,14 @@ typedef enum RWLockMode {
 
 /* Rwlock Entry. */
 typedef struct RWLockEntry {
-    List *owner;                        /* Content lock owner rocesses. */
+    Pid writer;                         /* Process owned the write lock. */
+    volatile int owner_num;             /* Owner num. */
     volatile RWLockMode mode;           /* Rwlock mode. */
     volatile s_lock content_lock;       /* Content spinlock. */
     volatile s_lock sync_lock;          /* Sync spinlock. */
     volatile int waiting_reader;        /* Waiting readers number. */
     volatile int waiting_writer;        /* Waiting writers number. */
+    bool upgrading;                     /* The flag if upgrading. */
 } RWLockEntry;
 
 #define NOT_INIT_LOCK(entry) \
@@ -37,6 +39,16 @@ void InitRWlock(RWLockEntry *lock_entry);
 
 /* Acuqire the rwlock. */
 void AcquireRWlock(RWLockEntry *lock_entry, RWLockMode mode);
+
+/* Upgrade the rwlock. 
+ * -------------------
+ * Upgrade means the lock mode changes from RW_READERS to RW_WRITER. */
+void UpgradeRWlock(RWLockEntry *lock_entry);
+
+/* Downgrade the rwlock. 
+ * -------------------
+ * Downgrade means the lock mode changes from RW_WRITER to RW_READERS. */
+void DowngradeRWlock(RWLockEntry *lock_entry);
 
 /* Release the rwlock. */
 void ReleaseRWlock(RWLockEntry *lock_entry, RWLockMode mode);

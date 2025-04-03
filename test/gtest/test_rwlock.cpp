@@ -51,5 +51,7 @@ TEST(rwlock, test_rwlock_concurrent) {
         wait(NULL);
     }
     ASSERT_EQ(2000000, *num);
+    ASSERT_EQ(0, lock->waiting_writer);
+    ASSERT_EQ(0, lock->waiting_reader);
 }
 

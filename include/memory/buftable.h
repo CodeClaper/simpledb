@@ -22,6 +22,11 @@ BufferTableEntrySlot *GetBufferTableSlot(BufferTag *tag);
  * and -1 if not found.*/
 Buffer LookupBufferTable(BufferTag *tag);
 
+/* Lookup for Buffer in entry table. 
+ * -------------------------
+ * Return the found buffer and -1 if not found. */
+Buffer LookupBufferTableWithoutLock(BufferTag *tag);
+
 /* Save new BufferTableEntry 
  * which link the BufferTag and Buffer. */
 void InsertBufferTableEntry(BufferTag *tag, Buffer buffer);

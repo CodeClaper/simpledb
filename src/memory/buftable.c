@@ -84,8 +84,31 @@ Buffer LookupBufferTable(BufferTag *tag) {
         entry = entry->next;
     }
 
-    /* Relase reader lock. */
     ReleaseRWlock(slot->lock, RW_READERS);
+
+    return buffer;
+}
+
+/* Lookup for Buffer in entry table. 
+ * -------------------------
+ * Return the found buffer and -1 if not found. */
+Buffer LookupBufferTableWithoutLock(BufferTag *tag) {
+    Buffer buffer;
+    BufferTableEntrySlot *slot;
+    BufferTableEntry *entry;
+
+    buffer = -1;
+    slot = GetBufferTableSlot(tag);
+    entry = slot->next;
+
+    /* Loop up the entry table. */
+    while (entry != NULL) {
+        if (BufferTagEquals(&entry->tag, tag)) {
+            buffer = entry->buffer;
+            break;
+        }
+        entry = entry->next;
+    }
 
     return buffer;
 }

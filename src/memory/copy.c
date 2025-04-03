@@ -237,18 +237,6 @@ MetaTable *copy_meta_table(MetaTable *meta_table) {
     return copy;
 }
 
-RWLockEntry *copy_rwlock_entry(RWLockEntry *lock_entry) {
-    if (lock_entry == NULL)
-        return NULL;
-
-    RWLockEntry *duplica = instance(RWLockEntry);
-    duplica->mode = lock_entry->mode;
-    duplica->owner = list_copy_deep(lock_entry->owner);
-    duplica->content_lock = lock_entry->content_lock;
-    duplica->sync_lock = lock_entry->sync_lock;
-    return duplica;
-}
-
 /* Copy BufferDesc. */
 BufferDesc *copy_buffer_desc(BufferDesc *buff_desc) {
     if (buff_desc == NULL)
@@ -256,21 +244,6 @@ BufferDesc *copy_buffer_desc(BufferDesc *buff_desc) {
 
     BufferDesc *duplica = instance(BufferDesc);
     memcpy(duplica, buff_desc, sizeof(BufferDesc));
-    return duplica;
-}
-
-/* Copy Pager. */
-Pager *copy_pager(Pager *pager) {
-    if (pager == NULL)
-        return NULL;
-
-    Pager *duplica = instance(Pager);
-    duplica->size = pager->size;
-    duplica->file_length = pager->file_length;
-    duplica->table_name = dstrdup(pager->table_name);
-    duplica->pages = list_copy_deep(pager->pages);
-    duplica->buffers = list_copy_deep(pager->buffers);
-
     return duplica;
 }
 
