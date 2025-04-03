@@ -193,6 +193,17 @@ void DeleteQueue(Queue *queue, void *item) {
     }
 }
 
+/* If the int item is the member of queue.  */
+bool QueueMemberInt(Queue *queue, int item) {
+    QueueCell *qc;
+    qforeach (qc, queue) {
+        if (qfirst_int(qc) == item) {
+            return true;
+        }
+    }
+    return false;
+}
+
 /* Free the queue. */
 void FreeQueue(Queue *queue) {
     dfree(queue);

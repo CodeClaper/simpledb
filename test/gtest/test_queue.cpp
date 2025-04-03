@@ -48,3 +48,22 @@ TEST(queue, DeleteQueue) {
 
     ASSERT_EQ(queue->size,  15);
 }
+
+/* Test QueueMemberInt. */
+TEST(queue, QueueMemberInt) {
+    Queue *queue = CreateQueue(NODE_INT);
+
+    int i;
+    for (i = 0; i < 30; i = i + 2) {
+        AppendQueue(queue, &i);
+    }
+
+    ASSERT_EQ(queue->size, 15);
+
+    for (i = 0; i < 30; i++) {
+        if (i % 2 == 0)
+         ASSERT_TRUE(QueueMemberInt(queue, i));
+        else
+         ASSERT_FALSE(QueueMemberInt(queue, i));
+    }
+}

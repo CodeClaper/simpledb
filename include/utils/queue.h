@@ -62,6 +62,9 @@ void AppendQueue(Queue *queue, void *item);
 /* Delete item from the Queue. */
 void DeleteQueue(Queue *queue, void *item);
 
+/* If the int item is the member of queue.  */
+bool QueueMemberInt(Queue *queue, int item);
+
 /* Free the Queue. */
 void FreeQueue(Queue *queue);
 
