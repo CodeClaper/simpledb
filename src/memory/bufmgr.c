@@ -176,7 +176,7 @@ static BufferDesc *LoadNewBufferDesc(BufferTag *tag) {
          * neccessary to check the tag if still.*/
         if (BufferTagEquals(tag, &desc->tag)) {
             PinBuffer(desc);
-            ReleaseRWlock(slot->lock, RW_WRITER);
+            ReleaseRWlock(slot->lock);
             return desc;
         }
     }
@@ -195,7 +195,7 @@ static BufferDesc *LoadNewBufferDesc(BufferTag *tag) {
     InsertBufferTableEntry(tag, desc->buffer);
 
     /* Release the rwlock. */
-    ReleaseRWlock(slot->lock, RW_WRITER);
+    ReleaseRWlock(slot->lock);
 
     return desc;
 }
@@ -282,9 +282,9 @@ void LockBuffer(Buffer buffer, RWLockMode mode) {
 /* Unlock Buffer
  * Unlock the exclusive content lock in BufferDesc. 
  * */
-void UnlockBuffer(Buffer buffer, RWLockMode mode) {
+void UnlockBuffer(Buffer buffer) {
     Assert(buffer < BUFFER_SLOT_NUM);
     BufferDesc *desc = GetBufferDesc(buffer);
-    ReleaseRWlock(&desc->lock, RW_READERS);
+    ReleaseRWlock(&desc->lock);
 }
 

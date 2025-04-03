@@ -1078,7 +1078,7 @@ void insert_internal_node_cell(Table *table, uint32_t page_num, uint32_t new_chi
         MakeBufferDirty(buffer);
 
         /* Unlock buffer. */
-        UnlockBuffer(buffer, RW_WRITER);
+        UnlockBuffer(buffer);
 
         /* Release right child buffer. */
         ReleaseBuffer(right_child_buffer);
@@ -1116,7 +1116,7 @@ static void insert_and_split_leaf_node(Cursor *cursor, Row *row) {
 
     /* Double check for concurrency. */
     if (!overflow_leaf_node(old_node, key_len, value_len, cell_num)) {
-        UnlockBuffer(old_buffer, RW_WRITER);
+        UnlockBuffer(old_buffer);
         ReleaseBuffer(old_buffer);
         insert_leaf_node_new_cell(cursor, row);
         return;
@@ -1218,7 +1218,7 @@ static void insert_and_split_leaf_node(Cursor *cursor, Row *row) {
         MakeBufferDirty(new_buffer);
     }
 
-    UnlockBuffer(old_buffer, RW_WRITER);
+    UnlockBuffer(old_buffer);
     /* Release new page buffer. */
     ReleaseBuffer(new_buffer);
     ReleaseBuffer(old_buffer);
@@ -1258,7 +1258,7 @@ static void insert_leaf_node_new_cell(Cursor *cursor, Row *row) {
         }
         
         /* Unlock buffer. */
-        UnlockBuffer(buffer, RW_WRITER);
+        UnlockBuffer(buffer);
     }
     
     /* Insert the new row. */

@@ -84,7 +84,7 @@ Buffer LookupBufferTable(BufferTag *tag) {
         entry = entry->next;
     }
 
-    ReleaseRWlock(slot->lock, RW_READERS);
+    ReleaseRWlock(slot->lock);
 
     return buffer;
 }

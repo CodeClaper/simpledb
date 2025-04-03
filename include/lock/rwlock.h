@@ -51,6 +51,6 @@ void UpgradeRWlock(RWLockEntry *lock_entry);
 void DowngradeRWlock(RWLockEntry *lock_entry);
 
 /* Release the rwlock. */
-void ReleaseRWlock(RWLockEntry *lock_entry, RWLockMode mode);
+void ReleaseRWlock(RWLockEntry *lock_entry);
 
 #endif

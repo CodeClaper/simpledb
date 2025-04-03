@@ -143,7 +143,8 @@ acquire_lock_lab:
         release_spin_lock(&lock_entry->sync_lock);
         goto retry_lab;
     }
-    /* Avoid reader reenter adter a writer acquire the lock.  */
+    /* Avoid reader reenter adter a writer acquire the lock.  
+     * Avoid reader reenter after before reader has upgraded. */
     if (mode == RW_READERS && lock_entry->mode == RW_WRITER && lock_entry->writer != cur_pid) {
         release_spin_lock(&lock_entry->sync_lock);
         goto retry_lab;
@@ -194,13 +195,18 @@ void AcquireRWlock(RWLockEntry *lock_entry, RWLockMode mode) {
  * Upgrade means the lock mode changes from RW_READERS to RW_WRITER. */
 void UpgradeRWlock(RWLockEntry *lock_entry) {
     Assert(NOT_INIT_LOCK(lock_entry));
-    if (lock_entry->mode != RW_READERS)
-        return;
-    lock_entry->upgrading = true;
+    Assert(lock_entry->mode == RW_READERS);
+    Assert(lock_entry->content_lock == SPIN_LOCKED_STATUS);
+    
     DecreaseOwner(lock_entry);
+
+    /* Lock sync_lock. */
+    acquire_spin_lock(&lock_entry->sync_lock);
+
+    lock_entry->upgrading = true;
     
     /* Wating for all reader lock release. */
-    while (lock_entry->owner_num >= 0) {
+    while (lock_entry->owner_num > 0) {
         lock_sleep(DEFAULT_SPIN_INTERVAL);
     }
     
@@ -208,6 +214,10 @@ void UpgradeRWlock(RWLockEntry *lock_entry) {
     lock_entry->mode = RW_WRITER;
     lock_entry->owner_num = 1;
     lock_entry->writer = GetCurrentPid();
+    lock_entry->upgrading = false;
+
+    /* Relase sync_lock. */
+    release_spin_lock(&lock_entry->sync_lock);
 }
 
 
@@ -215,16 +225,27 @@ void UpgradeRWlock(RWLockEntry *lock_entry) {
  * -------------------
  * Downgrade means the lock mode changes from RW_WRITER to RW_READERS. */
 void DowngradeRWlock(RWLockEntry *lock_entry) {
+    Assert(NOT_INIT_LOCK(lock_entry));
+    Assert(lock_entry->mode == RW_WRITER);
+    Assert(lock_entry->owner_num == 1);
+    Assert(lock_entry->writer == GetCurrentPid());
+    Assert(lock_entry->content_lock == SPIN_LOCKED_STATUS);
 
+    lock_entry->mode = RW_READERS;
 }
 
 /* Release the rwlock. */
-void ReleaseRWlock(RWLockEntry *lock_entry, RWLockMode mode) {
+void ReleaseRWlock(RWLockEntry *lock_entry) {
     /* There is occasional bug here. */
     Assert(NOT_INIT_LOCK(lock_entry));
     Assert(LOCKED(lock_entry->content_lock));
-    acquire_spin_lock(&lock_entry->sync_lock);
+
+    /* It`s import this DecreaseOwner caller out of the scope of sync_lock control. 
+     * DecreaseOwner has memory barrier, so sync lock is not necessary. 
+     * More important, when upgrade lock, we will wait for the owner_num decrease to zero. */
     DecreaseOwner(lock_entry);
+
+    acquire_spin_lock(&lock_entry->sync_lock);
     if (lock_entry->owner_num == 0)
         ReleaseRWLockInner(lock_entry);
     release_spin_lock(&lock_entry->sync_lock);
