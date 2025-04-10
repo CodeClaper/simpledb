@@ -94,11 +94,12 @@ static void update_row(Row *rawRow, SelectResult *select_result, Table *table,
     /* Get old refer, and lock update refer. */
     Refer *old_refer = define_refer(rawRow);
     add_refer_update_lock(old_refer);
+    Row *currentRow = define_row(old_refer);
 
     /* Delete row for update. */
-    delete_row_for_update(rawRow, table);
+    delete_row_for_update(currentRow, table);
 
-    Row* new_row = copy_row(rawRow);
+    Row* new_row = copy_row(currentRow);
 
     /* For update row funciton, the arg is the List of Assignment. */
     Assert(type == ARG_ASSIGNMENT_LIST);

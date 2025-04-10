@@ -89,7 +89,7 @@ def test_update_with_complex_condition():
     sql = "update B set name = 'bingo' where age > 13 or (a).id = '1' or name like '%02';";
     ret = client.execute(sql)
     assert ret["success"] == True
-    assert ret["rows"] == 1
+    assert ret["rows"] == 2
 
 ## test update indirect reference column. 
 def test_update_indirect_reference_column():

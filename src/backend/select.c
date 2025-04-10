@@ -675,7 +675,7 @@ static void select_from_leaf_node(SelectResult *select_result, ConditionNode *co
     buffer = ReadBuffer(table, page_num);
 
     LockBuffer(buffer, RW_READERS);
-    leaf_node = GetBufferPage(buffer);
+    leaf_node = GetBufferPageCopy(buffer);
     UnlockBuffer(buffer);
 
     key_len = calc_primary_key_length(table);
@@ -729,7 +729,7 @@ static void select_from_internal_node(SelectResult *select_result, ConditionNode
     /* Get the internal node buffer. */
     Buffer buffer = ReadBuffer(table, page_num);
     LockBuffer(buffer, RW_READERS);
-    void *internal_node = GetBufferPage(buffer);
+    void *internal_node = GetBufferPageCopy(buffer);
     UnlockBuffer(buffer);
 
     /* Get variables. */

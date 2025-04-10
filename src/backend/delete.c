@@ -29,20 +29,27 @@
 #include "instance.h"
 
 /* Delete row */
-static void delete_row(Row *row, SelectResult *select_result, Table *table, ROW_HANDLER_ARG_TYPE type, void *arg) {
+static void delete_row(Row *row, SelectResult *select_result, Table *table, 
+                       ROW_HANDLER_ARG_TYPE type, void *arg) {
+    Cursor *cursor;
+    Refer *refer;
+    Row *currentRow;
+
     /* Only deal with row that is visible for current transaction. */
     if (RowIsVisible(row)) {
         /* Define the cursor of the row. */
-        Cursor *cursor = define_cursor(table, row->key, true);
+        cursor = define_cursor(table, row->key, true);
+        /* Get refer and record xlog. */
+        refer = convert_refer(cursor);
+        /* Get the current newest row. */
+        currentRow = define_row(refer);
 
         /* Update transaction state. */
-        UpdateTransactionState(row, TR_DELETE);
+        UpdateTransactionState(currentRow, TR_DELETE);
 
         /* Sync row data */
-        update_row_data(row, cursor);
+        update_row_data(currentRow, cursor);
 
-        /* Get refer and record xlog. */
-        Refer *refer = convert_refer(cursor);
         RecordXlog(refer, HEAP_DELETE);
 
         select_result->row_size++;
