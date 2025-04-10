@@ -673,7 +673,10 @@ static void select_from_leaf_node(SelectResult *select_result, ConditionNode *co
 
     /* Get leaf node buffer. */
     buffer = ReadBuffer(table, page_num);
+
+    LockBuffer(buffer, RW_READERS);
     leaf_node = GetBufferPage(buffer);
+    UnlockBuffer(buffer);
 
     key_len = calc_primary_key_length(table);
     value_len = calc_table_row_length(table);
@@ -709,7 +712,7 @@ static void select_from_leaf_node(SelectResult *select_result, ConditionNode *co
         if (include_leaf_node(select_result, row, condition)) 
             row_handler(row, select_result, table, type, arg);
     }
-
+    
     /* Release the buffer. */
     ReleaseBuffer(buffer);
 }
@@ -725,7 +728,9 @@ static void select_from_internal_node(SelectResult *select_result, ConditionNode
 
     /* Get the internal node buffer. */
     Buffer buffer = ReadBuffer(table, page_num);
+    LockBuffer(buffer, RW_READERS);
     void *internal_node = GetBufferPage(buffer);
+    UnlockBuffer(buffer);
 
     /* Get variables. */
     uint32_t key_len, value_len;
@@ -801,7 +806,6 @@ static void select_from_internal_node(SelectResult *select_result, ConditionNode
             UNEXPECTED_VALUE(node_type);
             break;
     }
-
     /* Release buffers. */
     ReleaseBuffer(right_child_buffer);
     ReleaseBuffer(buffer);

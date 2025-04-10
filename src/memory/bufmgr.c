@@ -54,6 +54,7 @@
 #include "c.h"
 #include "table.h"
 #include "pager.h"
+#include "copy.h"
 
 /*
  * BufferDesc table. 
@@ -245,6 +246,12 @@ inline void *GetBufferPage(Buffer buffer) {
     return GetBufferBlock(buffer);
 }
 
+/* Get Buffer page copy. */
+inline void *GetBufferPageCopy(Buffer buffer) {
+    void *block = GetBufferBlock(buffer);
+    return copy_block(block, PAGE_SIZE);
+}
+
 /* Make Buffer dirty. */
 inline void MakeBufferDirty(Buffer buffer) {
     void *page = GetBufferPage(buffer);
@@ -278,6 +285,7 @@ void LockBuffer(Buffer buffer, RWLockMode mode) {
     Assert(buffer < BUFFER_SLOT_NUM);
     BufferDesc *desc = GetBufferDesc(buffer);
     Assert(desc != NULL);
+    /* Avoid repeatly lock. */
     AcquireRWlock(&desc->lock, mode);
 }
 
@@ -301,6 +309,14 @@ void DowngradeLockBuffer(Buffer buffer) {
 void UnlockBuffer(Buffer buffer) {
     Assert(buffer < BUFFER_SLOT_NUM);
     BufferDesc *desc = GetBufferDesc(buffer);
+    Assert(desc != NULL);
     ReleaseRWlock(&desc->lock);
+}
+
+/* Get Lock Mode. */
+RWLockMode GetLockModeBuffer(Buffer buffer) {
+    BufferDesc *desc = GetBufferDesc(buffer);
+    Assert(desc != NULL);
+    return desc->lock.content_lock;
 }
 

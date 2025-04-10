@@ -103,6 +103,9 @@ void UnlockBuffer(Buffer buffer);
 /* Get Buffer page. */
 void *GetBufferPage(Buffer buffer);
 
+/* Get Buffer page copy. */
+void *GetBufferPageCopy(Buffer buffer);
+
 /* Pin the buffer. */
 void PinBuffer(BufferDesc *desc);
 
@@ -111,5 +114,8 @@ void UnpinBuffer(BufferDesc *desc);
 
 /* Make Buffer dirty. */
 void MakeBufferDirty(Buffer buffer);
+
+/* Get Lock Mode. */
+RWLockMode GetLockModeBuffer(Buffer buffer);
 
 #endif

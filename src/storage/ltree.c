@@ -532,6 +532,7 @@ static void update_internal_node_key(Table *table, uint32_t page_num, void *old_
     void *max_key, *absolute_max_key;
 
     buffer = ReadBuffer(table, page_num);
+    LockBuffer(buffer, RW_READERS);
     internal_node = GetBufferPage(buffer);
     keys_num = get_internal_node_keys_num(internal_node, value_len);  
     Assert(keys_num > 0);
@@ -544,6 +545,7 @@ static void update_internal_node_key(Table *table, uint32_t page_num, void *old_
      * No need to change cells key. Otherwise, it means the key in the cells, 
      * need to be replaced with new one. */
     if (!greater(old_key, max_key, key_data_type)) {
+        UpgradeLockBuffer(buffer);
         uint32_t key_index = get_internal_node_key_index(internal_node, old_key, keys_num, key_len, value_len, key_data_type);
         void *key = get_internal_node_key(internal_node, key_index, key_len, value_len);
 
@@ -552,6 +554,7 @@ static void update_internal_node_key(Table *table, uint32_t page_num, void *old_
             Assert(equal(old_key, key, key_data_type));
         set_internal_node_key(internal_node, key_index, new_key, key_len, value_len);
         MakeBufferDirty(buffer);
+        DowngradeLockBuffer(buffer);
     }
     
     /* If internal has parent node, and change its absolute max key, 
@@ -563,7 +566,10 @@ static void update_internal_node_key(Table *table, uint32_t page_num, void *old_
         uint32_t parent_page_num = get_parent_pointer(internal_node);
         update_internal_node_key(table, parent_page_num, old_key, new_key, key_len, value_len, key_data_type);
     }
-
+        
+    /* Unlock Buffer. */
+    UnlockBuffer(buffer);
+    /* Relase Buffer. */
     ReleaseBuffer(buffer);
 }
 
@@ -999,6 +1005,8 @@ void insert_internal_node_cell(Table *table, uint32_t page_num, uint32_t new_chi
     /* Get buffer. */
     Buffer buffer = ReadBuffer(table, page_num);
     Buffer new_child_buffer = ReadBuffer(table, new_child_page_num);
+    LockBuffer(buffer, RW_READERS);
+    LockBuffer(new_child_buffer, RW_READERS);
     void *internal_node = GetBufferPage(buffer);
     void *new_child_node = GetBufferPage(new_child_buffer);
 
@@ -1006,14 +1014,14 @@ void insert_internal_node_cell(Table *table, uint32_t page_num, uint32_t new_chi
     MetaColumn *primary_key_meta_column = get_primary_key_meta_column(table->meta_table);
     uint32_t keys_num = get_internal_node_keys_num(internal_node, value_len);
 
+    /* Upgrade buffer lock to RW_WRITE. */
+    UpgradeLockBuffer(buffer);
+
     /* Check if overflow after inserting.*/
     if (overflow_internal_node(internal_node, keys_num, key_len, value_len)) 
         insert_and_split_internal_node(table, page_num, new_child_page_num);
     else 
     {
-        /* Lock page. */
-        LockBuffer(buffer, RW_WRITER);
-
         /* Get new child node max key and position in parent node. */
         void *new_child_max_key = get_max_key(table, new_child_node, key_len, value_len);
 
@@ -1077,13 +1085,14 @@ void insert_internal_node_cell(Table *table, uint32_t page_num, uint32_t new_chi
         /* Flush disk. */
         MakeBufferDirty(buffer);
 
-        /* Unlock buffer. */
-        UnlockBuffer(buffer);
-
         /* Release right child buffer. */
         ReleaseBuffer(right_child_buffer);
     }
-    
+
+    /* Unlock buffer. */
+    UnlockBuffer(new_child_buffer);
+    UnlockBuffer(buffer);
+
     /* Release buffer. */
     ReleaseBuffer(new_child_buffer);
     ReleaseBuffer(buffer);
@@ -1111,16 +1120,15 @@ static void insert_and_split_leaf_node(Cursor *cursor, Row *row) {
     /* Get the old leaf node cell count.*/
     uint32_t cell_num = get_leaf_node_cell_num(old_node, value_len);
 
-    /* Lock the current page buffer. */
-    LockBuffer(old_buffer, RW_WRITER);
-
     /* Double check for concurrency. */
     if (!overflow_leaf_node(old_node, key_len, value_len, cell_num)) {
-        UnlockBuffer(old_buffer);
         ReleaseBuffer(old_buffer);
         insert_leaf_node_new_cell(cursor, row);
         return;
     }
+
+    /* Upgrade old buffer lock to RW_WRITE. */
+    UpgradeLockBuffer(old_buffer);
 
     /* Get the old leaf node max key. */
     void *old_max_key = get_max_key(cursor->table, old_node, key_len, value_len);
@@ -1218,7 +1226,6 @@ static void insert_and_split_leaf_node(Cursor *cursor, Row *row) {
         MakeBufferDirty(new_buffer);
     }
 
-    UnlockBuffer(old_buffer);
     /* Release new page buffer. */
     ReleaseBuffer(new_buffer);
     ReleaseBuffer(old_buffer);
@@ -1241,8 +1248,8 @@ static void insert_leaf_node_new_cell(Cursor *cursor, Row *row) {
     char *table_name = cursor->table->meta_table->table_name;
 
     if (cursor->cell_num < cell_num) {
-        /* Lock buffer to move cells. */
-        LockBuffer(buffer, RW_WRITER);
+        /* Upgrade lock buffer to RW_WRITE. */
+        UpgradeLockBuffer(buffer);
 
         /* Make room for new cell. */
         int i;
@@ -1257,8 +1264,8 @@ static void insert_leaf_node_new_cell(Cursor *cursor, Row *row) {
             update_refer(table_name, cursor->page_num, i - 1, cursor->page_num, i);
         }
         
-        /* Unlock buffer. */
-        UnlockBuffer(buffer);
+        /* Downgrade lock to RW_READERS. */
+        DowngradeLockBuffer(buffer);
     }
     
     /* Insert the new row. */
@@ -1302,6 +1309,7 @@ void insert_leaf_node_cell(Cursor *cursor, Row *row) {
 
     /* Get the node buffer. */
     buffer = ReadBuffer(cursor->table, cursor->page_num); 
+    LockBuffer(buffer, RW_READERS);
     node = GetBufferPage(buffer); 
     
     /* Get data. */ 
@@ -1316,6 +1324,8 @@ void insert_leaf_node_cell(Cursor *cursor, Row *row) {
     else 
         insert_leaf_node_new_cell(cursor, row);
 
+    /* Unlock the buffer. */
+    UnlockBuffer(buffer);
     /* Release the buffer. */
     ReleaseBuffer(buffer);
 }
