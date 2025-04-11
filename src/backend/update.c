@@ -85,6 +85,9 @@ static void insert_row_for_update(Row *row, Table *table) {
  * It makes transaction roll back simpler. */
 static void update_row(Row *rawRow, SelectResult *select_result, Table *table, 
                        ROW_HANDLER_ARG_TYPE type, void *arg) {
+    Refer *oldRefer, *newRefer;
+    Row *currentRow, *new_row;
+
     /* Only update row that is visible for current transaction. */
     if (!RowIsVisible(rawRow)) 
         return;
@@ -92,14 +95,14 @@ static void update_row(Row *rawRow, SelectResult *select_result, Table *table,
     select_result->row_size++;
 
     /* Get old refer, and lock update refer. */
-    Refer *old_refer = define_refer(rawRow);
-    add_refer_update_lock(old_refer);
-    Row *currentRow = define_row(old_refer);
+    oldRefer = define_refer(rawRow);
+    add_refer_update_lock(oldRefer);
+    currentRow = define_row(oldRefer);
 
     /* Delete row for update. */
     delete_row_for_update(currentRow, table);
 
-    Row* new_row = copy_row(currentRow);
+    new_row = copy_row(currentRow);
 
     /* For update row funciton, the arg is the List of Assignment. */
     Assert(type == ARG_ASSIGNMENT_LIST);
@@ -121,14 +124,14 @@ static void update_row(Row *rawRow, SelectResult *select_result, Table *table,
     insert_row_for_update(new_row, table);
 
     /* Recalculate Refer, because afer insert, row refer may be changed. */
-    Refer *new_refer = define_refer(new_row);
+    newRefer = define_refer(new_row);
 
     /* Free Update refer lock. */
-    free_refer_update_lock(old_refer);
+    free_refer_update_lock(oldRefer);
     
     /* If Refer changed, update refer. */
-    if (!refer_equals(old_refer, new_refer)) {
-        ReferUpdateEntity *refer_update_entity = new_refer_update_entity(old_refer, new_refer);
+    if (!refer_equals(oldRefer, newRefer)) {
+        ReferUpdateEntity *refer_update_entity = new_refer_update_entity(oldRefer, newRefer);
         update_related_tables_refer(refer_update_entity);
         free_refer_update_entity(refer_update_entity);
     }
@@ -144,25 +147,28 @@ static ConditionNode *get_condition_from_where(WhereClauseNode *where_clause) {
 
 /* Execute update statment. */
 void exec_update_statment(UpdateNode *update_node, DBResult *result) {
+    Table *table;
+    SelectResult *select_result;
+    ConditionNode *condition_node;
 
+    table = open_table(update_node->table_name);
     /* Check table exists. */
-    Table *table = open_table(update_node->table_name);
-    if (table == NULL) {
+    if (table == NULL)
         db_log(ERROR, "Try to open table '%s' fail.", update_node->table_name);
-        return;
-    }
 
     /* Check out update node. */
     if (!check_update_node(update_node)) 
         return;
 
     /* Query with conditon, and update satisfied condition row. */
-    SelectResult *select_result = new_select_result(UPDATE_STMT, update_node->table_name);
-    ConditionNode *condition_node = get_condition_from_where(update_node->where_clause);
+    select_result = new_select_result(UPDATE_STMT, update_node->table_name);
+    condition_node = get_condition_from_where(update_node->where_clause);
 
     /* Query with update row operation. */
     query_with_condition(condition_node, select_result, update_row, 
                          ARG_ASSIGNMENT_LIST, update_node->assignment_list);
+    
+    /* Combine the result. */
     result->success = true;
     result->rows = select_result->row_size;
     result->message = format("Successfully updated %d row data.", result->rows);

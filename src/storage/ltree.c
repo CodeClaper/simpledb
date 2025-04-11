@@ -2305,18 +2305,21 @@ bool cursor_is_deleted(Cursor *cursor) {
 /* Update row system reserved columns. */
 void update_row_data(Row *row, Cursor *cursor) {
 
-    Table *table = cursor->table;
-
+    Table *table;
+    Buffer buffer;
+    void *leaf_node, *destination;
     uint32_t key_len, value_len;
+
+    table = cursor->table;
     key_len = calc_primary_key_length(table); 
     value_len = calc_table_row_length(table); 
     
     /* Get leaf node. */
-    Buffer buffer = ReadBuffer(table, cursor->page_num);
-    void *leaf_node = GetBufferPage(buffer);
+    buffer = ReadBuffer(table, cursor->page_num);
+    leaf_node = GetBufferPage(buffer);
 
     /* Serialize row. */
-    void *destination = serialize_row_data(row, cursor->table);
+    destination = serialize_row_data(row, cursor->table);
 
     /* Overcover leaf node. */
     memcpy(get_leaf_node_cell_value(leaf_node, key_len, value_len, cursor->cell_num), destination, value_len);
@@ -2332,12 +2335,15 @@ void update_row_data(Row *row, Cursor *cursor) {
 
 /* When root is empty to do. */
 static void make_empty_root_node(Table *table) {
-    /* Get root buffer. */
-    Buffer buffer = ReadBuffer(table, table->root_page_num); 
-    void *root = GetBufferPage(buffer);
-    Assert(get_node_type(root) == INTERNAL_NODE);
+    Buffer buffer;
+    void *root;
+    uint32_t value_len;
 
-    uint32_t value_len = calc_table_row_length(table);
+    buffer = ReadBuffer(table, table->root_page_num); 
+    root = GetBufferPage(buffer);
+    Assert(get_node_type(root) == INTERNAL_NODE);
+    value_len = calc_table_row_length(table);
+
     set_node_type(root, LEAF_NODE);
     set_leaf_node_cell_num(root, value_len, 0);
     set_leaf_node_next_leaf(root, value_len, 0);
@@ -2348,13 +2354,13 @@ static void make_empty_root_node(Table *table) {
 
 /* Delete internal node. */
 void delete_internal_node_cell(Table *table, uint32_t page_num, void *key, DataType key_data_type) {
-
     /* Get internal node. */
-    Buffer buffer = ReadBuffer(table, page_num);
-    void *internal_node = GetBufferPage(buffer);
-
-    /* Get key number, key length, cell lenght and position of key. */
+    Buffer buffer;
+    void *internal_node; 
     uint32_t key_num, key_len, cell_len, value_len, key_index;
+
+    buffer = ReadBuffer(table, page_num);
+    internal_node = GetBufferPage(buffer);
     key_len = calc_primary_key_length(table);
     value_len = calc_table_row_length(table);
     key_num = get_internal_node_keys_num(internal_node, value_len);
@@ -2462,24 +2468,26 @@ void delete_internal_node_cell(Table *table, uint32_t page_num, void *key, DataT
 
 /* Delete leaf node. */
 void delete_leaf_node_cell(Cursor *cursor, void *key) {
+    char *table_name;
+    Buffer buffer;
+    void *leaf_node, *obs_key;
+    uint32_t key_len, value_len, cell_length, cell_num;
+    MetaColumn *primary_key_meta_column;
 
-    uint32_t key_len, value_len, cell_length;
     key_len = calc_primary_key_length(cursor->table);
     value_len = calc_table_row_length(cursor->table);
     cell_length = value_len + key_len;
-
-    char *table_name = cursor->table->meta_table->table_name;
+    table_name = cursor->table->meta_table->table_name;
 
     /* Get leaf node and cell number. */
-    Buffer buffer = ReadBuffer(cursor->table, cursor->page_num);
-    void *leaf_node = GetBufferPage(buffer);
-    uint32_t cell_num = get_leaf_node_cell_num(leaf_node, value_len);
-    void *obs_key = get_leaf_node_cell_key(leaf_node, cursor->cell_num, key_len, value_len);
-    MetaColumn *primary_key_meta_column = get_primary_key_meta_column(cursor->table->meta_table);
+    buffer = ReadBuffer(cursor->table, cursor->page_num);
+    leaf_node = GetBufferPage(buffer);
+    cell_num = get_leaf_node_cell_num(leaf_node, value_len);
+    obs_key = get_leaf_node_cell_key(leaf_node, cursor->cell_num, key_len, value_len);
+    primary_key_meta_column = get_primary_key_meta_column(cursor->table->meta_table);
 
     /* Theoretically, key and obs_key should be equal. */
     Assert(equal(obs_key, key, primary_key_meta_column->column_type));
-
 
     /* Need to check if the last cell in the leaf node. */
     if (cursor->cell_num == cell_num - 1) {
