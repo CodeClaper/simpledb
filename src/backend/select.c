@@ -2217,6 +2217,7 @@ static SelectResult *query_multi_table_with_condition(SelectNode *select_node) {
 
     list = select_node->table_exp->from_clause->from;
     Assert(len_list(list) > 0);
+    result = NULL;
     selectParam = optimizeSelect(select_node);
     condition = get_table_exp_condition(select_node->table_exp);
 
