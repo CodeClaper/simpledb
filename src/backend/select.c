@@ -713,9 +713,6 @@ static void select_from_leaf_node(SelectResult *select_result, ConditionNode *co
             row_handler(row, select_result, table, type, arg);
     }
     
-    /* Free block. */
-    dfree(leaf_node);
-
     /* Release the buffer. */
     ReleaseBuffer(buffer);
 }
@@ -809,9 +806,6 @@ static void select_from_internal_node(SelectResult *select_result, ConditionNode
             UNEXPECTED_VALUE(node_type);
             break;
     }
-
-    /* Free block. */
-    dfree(internal_node);
 
     /* Release buffers. */
     ReleaseBuffer(right_child_buffer);
@@ -945,13 +939,18 @@ static bool execte_async_condition(SelectResult *select_result) {
 /* Query with condition. */
 void query_with_condition(ConditionNode *condition, SelectResult *select_result, 
                           ROW_HANDLER row_handler, ROW_HANDLER_ARG_TYPE type, void *arg) {
-
-    Table *table = open_table(select_result->table_name);
+    Table *table;
+    Buffer buffer;
+    void *root;
+    
+    /* Check if table exists. */
+    table = open_table(select_result->table_name);
     if (table == NULL)
         return;
 
-    Buffer buffer = ReadBuffer(table, table->root_page_num); 
-    void *root = GetBufferPage(buffer);
+    buffer = ReadBuffer(table, table->root_page_num); 
+    root = GetBufferPage(buffer);
+
     switch (get_node_type(root)) {
         case LEAF_NODE:
             select_from_leaf_node(
@@ -2120,13 +2119,13 @@ static Row *query_plain_row_selection(SelectResult *select_result, List *scalar_
     if (is_null(row)) 
         return NULL;
     
-    Table *table = open_table(row->table_name);
-    MetaColumn *key_meta_column = get_primary_key_meta_column(table->meta_table);
+    Table *table;
+    MetaColumn *key_meta_column;
+    Row *sub_row;
 
-    Row *sub_row = new_row(
-        copy_value(row->key, key_meta_column->column_type), 
-        row->table_name
-    );
+    table = open_table(row->table_name);
+    key_meta_column  = get_primary_key_meta_column(table->meta_table);
+    sub_row = new_row( copy_value(row->key, key_meta_column->column_type), row->table_name);
 
     ListCell *lc;
     foreach (lc, scalar_exp_list) {
