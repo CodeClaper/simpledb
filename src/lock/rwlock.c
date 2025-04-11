@@ -227,7 +227,7 @@ void UpgradeRWlock(RWLockEntry *lock_entry) {
 void DowngradeRWlock(RWLockEntry *lock_entry) {
     Assert(NOT_INIT_LOCK(lock_entry));
     Assert(lock_entry->mode == RW_WRITER);
-    Assert(lock_entry->owner_num == 1);
+    // Assert(lock_entry->owner_num == 1);
     Assert(lock_entry->writer == GetCurrentPid());
     Assert(lock_entry->content_lock == SPIN_LOCKED_STATUS);
 

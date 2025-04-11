@@ -713,6 +713,9 @@ static void select_from_leaf_node(SelectResult *select_result, ConditionNode *co
             row_handler(row, select_result, table, type, arg);
     }
     
+    /* Free block. */
+    dfree(leaf_node);
+
     /* Release the buffer. */
     ReleaseBuffer(buffer);
 }
@@ -806,6 +809,10 @@ static void select_from_internal_node(SelectResult *select_result, ConditionNode
             UNEXPECTED_VALUE(node_type);
             break;
     }
+
+    /* Free block. */
+    dfree(internal_node);
+
     /* Release buffers. */
     ReleaseBuffer(right_child_buffer);
     ReleaseBuffer(buffer);
