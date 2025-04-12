@@ -207,7 +207,8 @@ void UpgradeRWlock(RWLockEntry *lock_entry) {
     
     /* Wating for all reader lock release. */
     while (lock_entry->owner_num > 0) {
-        lock_sleep(DEFAULT_SPIN_INTERVAL);
+        if (lock_spin(DEFAULT_SPIN_INTERVAL))
+            lock_sleep(DEFAULT_SPIN_INTERVAL);
     }
     
     /* Acuqire the write lock. */
