@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
+#include "bufpool.h"
 #include "rwlock.h"
 #include "shmem.h"
 #include "utils.h"
@@ -38,6 +39,11 @@ typedef struct BufferDesc {
     RWLockEntry lock;           /* RW lock. */
     s_lock      io_lock;        /* IO lock.*/
 } BufferDesc;
+
+typedef struct VictimIndex {
+    volatile Index index;
+    s_lock lock;
+} VictimIndex;
 
 /* Return if both BufferTags equals. */
 static inline bool BufferTagEquals(BufferTag *tag1, BufferTag *tag2) {

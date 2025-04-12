@@ -64,8 +64,7 @@ static BufferDesc *bDescTable;
 /*
  * Next Victim index.
  */
-static volatile Index victimIndex;
-
+static VictimIndex *victimIndex;
 
 /* Create BufferDesc. */
 void CreateBufferDescTable() {
@@ -80,9 +79,12 @@ void CreateBufferDescTable() {
         InitRWlock(&desc->lock);
         init_spin_lock(&desc->io_lock);
     }
-
+    
     /* Init VictimIndex. */
-    victimIndex = 0;
+    victimIndex = instance(VictimIndex); 
+    victimIndex->index = 0;
+    init_spin_lock(&victimIndex->lock);
+
     switch_local();
 }
 
@@ -114,9 +116,14 @@ void UnpinBuffer(BufferDesc *desc) {
 
 /* Next Victim index. */
 static inline Index NextVictimIndex() {
-    if (victimIndex >= BUFFER_SLOT_NUM) 
-        victimIndex = 0;
-    return __sync_fetch_and_add(&victimIndex, 1);
+    acquire_spin_lock(&victimIndex->lock);
+    Index current = victimIndex->index;
+    if (victimIndex->index >= BUFFER_SLOT_NUM - 1) 
+        victimIndex->index = 0;
+    else
+        victimIndex->index++;
+    release_spin_lock(&victimIndex->lock);
+    return current;
 }
 
 /* Get the BufferDesc. */
@@ -137,8 +144,7 @@ static BufferDesc *LoopFindBufferDesc(BufferTag *tag) {
         if (desc->status == EMPTY) {
             PinBuffer(desc);
             break;
-        }
-        else if (desc->status == UNPINNED) {
+        } else if (desc->status == UNPINNED) {
             if (desc->usage_count == 0) {
                 PinBuffer(desc);
                 /* Write the old buffer to storage. */
