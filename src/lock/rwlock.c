@@ -212,6 +212,7 @@ void UpgradeRWlock(RWLockEntry *lock_entry) {
     }
     
     /* Acuqire the write lock. */
+    lock_entry->content_lock = SPIN_LOCKED_STATUS;
     lock_entry->mode = RW_WRITER;
     lock_entry->owner_num = 1;
     lock_entry->writer = GetCurrentPid();
