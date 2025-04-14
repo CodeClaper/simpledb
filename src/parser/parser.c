@@ -25,7 +25,7 @@ List *parse(char *sql) {
         return NULL;
 
     trim(sql); /* Remove space characters, includes '\f', '\n', '\r', '\t', '\v'*/
-    db_log(DEBUGER, "Execute sql: %s", sql);
+    db_log(INFO, "Execute sql: %s", sql);
 
     size_t size = strlen(sql);
     char buff[size + 1];
