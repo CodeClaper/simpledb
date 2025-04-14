@@ -127,7 +127,6 @@ static inline Index NextVictimIndex() {
         victimIndex->index = 0;
     else
         victimIndex->index++;
-    db_log(DEBUGER, "NextVictimIndex: %d/%d", current, BUFFER_SLOT_NUM);
     release_spin_lock(&victimIndex->lock);
     return current;
 }

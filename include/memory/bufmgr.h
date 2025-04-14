@@ -1,7 +1,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
-#include "bufpool.h"
 #include "rwlock.h"
 #include "shmem.h"
 #include "utils.h"

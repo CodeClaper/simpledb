@@ -3,14 +3,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include "parser.h"
-#include "mmgr.h"
-#include "data.h"
-#include "common.h"
 #include "utils.h"
 #include "log.h"
 #include "y.tab.h"
 #include "intpr.h"
-#include "asserts.h"
 
 typedef struct yy_buffer_state *YY_BUFFER_STATE;
 extern int yylex(void);
@@ -30,7 +26,8 @@ List *parse(char *sql) {
     size_t size = strlen(sql);
     char buff[size + 1];
     sprintf(buff, "%s%c", sql, '\n');
-    YY_BUFFER_STATE buffer = yy_scan_string(buff);
+    /* Scan. */
+    yy_scan_string(buff);
 
     List *states = create_list(NODE_STATEMENT);
 
