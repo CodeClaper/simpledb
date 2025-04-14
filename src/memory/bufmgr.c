@@ -42,6 +42,7 @@
  */
 
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 #include <strings.h>
 #include <unistd.h>
@@ -55,6 +56,7 @@
 #include "table.h"
 #include "pager.h"
 #include "copy.h"
+#include "log.h"
 
 /*
  * BufferDesc table. 
@@ -76,6 +78,9 @@ void CreateBufferDescTable() {
     for (Index i = 0; i < size; i++) {
         BufferDesc *desc = (BufferDesc *)(bDescTable + i);
         desc->buffer = i;
+        desc->status = EMPTY;
+        desc->refcount = 0;
+        desc->usage_count = 0;
         InitRWlock(&desc->lock);
         init_spin_lock(&desc->io_lock);
     }
@@ -122,6 +127,7 @@ static inline Index NextVictimIndex() {
         victimIndex->index = 0;
     else
         victimIndex->index++;
+    db_log(DEBUGER, "NextVictimIndex: %d/%d", current, BUFFER_SLOT_NUM);
     release_spin_lock(&victimIndex->lock);
     return current;
 }
@@ -239,6 +245,7 @@ Buffer ReadBufferInner(char *table_name, BlockNum blockNum) {
             PinBuffer(desc);
             return desc->buffer;
         }
+        panic("Should not reach there.");
     }
   
     /* Missing in the entry buffer, then load new buffer desc. */
