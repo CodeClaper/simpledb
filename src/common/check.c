@@ -34,6 +34,7 @@
 #include "list.h"
 #include "cache.h"
 #include "instance.h"
+#include "sys.h"
 
 static bool check_value_item_set_node(MetaTable *meta_table, char *column_name, List *value_list);
 static bool check_scalar_exp(ScalarExpNode *scalar_exp, AliasMap alias_map);
@@ -782,6 +783,15 @@ static bool check_assignment_set_node(UpdateNode *update_node) {
     return true;
 }
 
+/* Check if system reserved table. */
+static bool check_sys_reserved_table(char *table_name) {
+    if (if_table_reserved(table_name)) {
+        db_log(ERROR, "Table '%s' is system reserved, not allowd duplication.", table_name); 
+        return false;
+    }
+    return true;
+}
+
 /* Check if table alreay exist. */
 static bool check_duplicate_table(char *table_name) {
     if (check_table_exist(table_name)) {
@@ -1262,8 +1272,9 @@ bool check_delete_node(DeleteNode *delete_node) {
 
 /* Check for create table node. */
 bool check_create_table_node(CreateTableNode *create_table_node) {
-    return check_duplicate_table(create_table_node->table_name) && 
-                check_table_element_commalist(create_table_node->base_table_element_commalist);
+    return check_sys_reserved_table(create_table_node->table_name) &&
+                check_duplicate_table(create_table_node->table_name) && 
+                    check_table_element_commalist(create_table_node->base_table_element_commalist);
 }
 
 

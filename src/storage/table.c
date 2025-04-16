@@ -26,6 +26,7 @@
 #include "index.h"
 #include "fdesc.h"
 #include "compres.h"
+#include "sys.h"
 
 /* Get table list. */
 List *get_table_list() {
@@ -39,7 +40,10 @@ List *get_table_list() {
     } else {
         while((entry = readdir(dir)) != NULL) {
             if (entry->d_type == 8 && endwith(entry->d_name, ".dbt")) {
-                append_list(list, replace_once(entry->d_name, ".dbt", ""));
+                char *table_name = replace_once(entry->d_name, ".dbt", "");
+                /* Skip the system reserved table. */
+                if (!if_table_reserved(table_name))
+                    append_list(list, table_name);
             }
         }
         closedir(dir);
@@ -61,7 +65,7 @@ char *table_file_path(char *table_name) {
 
 /* Check table file if exist 
  * Return true if exist or false if not exist. */
-static bool table_file_exist(char *table_file_path) {
+bool table_file_exist(char *table_file_path) {
     struct stat buffer;
     return (stat(table_file_path, &buffer) == 0);
 }

@@ -244,7 +244,6 @@ Buffer ReadBufferInner(char *table_name, BlockNum blockNum) {
             PinBuffer(desc);
             return desc->buffer;
         }
-        panic("Should not reach there.");
     }
   
     /* Missing in the entry buffer, then load new buffer desc. */

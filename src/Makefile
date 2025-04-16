@@ -1,9 +1,9 @@
 includedir = ../include
-SUBDIRS := backend common lock memory parser storage trans utils
+SUBDIRS := backend common lock memory parser storage trans utils sys
 CC = gcc
 OBJS := $(patsubst %.c, %.o, $(shell find $(SUBDIRS) -name "*.c"))
 
-headerdirs = $(includedir)/common $(includedir)/lock $(includedir)/memory $(includedir)/parser \
+headerdirs = $(includedir)/common $(includedir)/lock $(includedir)/memory $(includedir)/parser $(includedir)/sys \
 			 $(includedir)/backend $(includedir)/storage $(includedir)/trans $(includedir)/utils
 
 headers := $(shell find $(headerdirs) -name "*.h")

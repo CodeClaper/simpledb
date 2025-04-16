@@ -136,6 +136,7 @@ void InsertBufferTableEntry(BufferTag *tag, Buffer buffer) {
     /* Find the tail. */
     while (entry->next) {
         entry = entry->next;
+        AssertFalse(BufferTagEquals(tag, &entry->tag));
     }
     entry->next = NewBufferTableEntry(tag, buffer);
 }

@@ -15,6 +15,11 @@ List *get_table_list();
 bool check_table_exist(char *table_name); 
 
 
+/* Check table file if exist 
+ * Return true if exist or false if not exist. */
+bool table_file_exist(char *table_file_path);
+
+
 /* Get table file path. */
 char *table_file_path(char *table_name);
 
