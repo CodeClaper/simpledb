@@ -53,12 +53,6 @@ def test_create_conflict_default_value():
     assert ret["success"] == False
     assert ret["message"] == "Invalid default value for 'name'"
 
-def test_create_system_reserved_table():
-    sql = "create table sys_string (id varchar(32), body varchar(1024));"
-    ret = client.execute(sql)
-    assert ret["success"] == False
-    assert ret["message"] == "Table 'sys_string' is system reserved, not allowd duplication."
-
 ## test drop table
 def test_drop_table():
     sql = "DROP TABLE A;\n"\

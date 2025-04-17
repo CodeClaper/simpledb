@@ -30,11 +30,11 @@
 
 /* Get table list. */
 List *get_table_list() {
-
-    List *list = create_list(NODE_STRING);
-
+    List *list;
     DIR *dir;
     struct dirent *entry;
+
+    list = create_list(NODE_STRING);
     if ((dir = opendir(conf->data_dir)) == NULL) {
         db_log(PANIC, "System error, not found directory: %s", conf->data_dir); 
     } else {

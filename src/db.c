@@ -34,7 +34,6 @@
 #include "pager.h"
 #include "bgwriter.h"
 #include "asctx.h"
-#include "strtab.h"
 
 /* 
  * Conf 
@@ -94,9 +93,6 @@ static void init_db() {
 
     /* Load configuration. */
     conf = load_conf();
-
-    /* Init String table.*/
-    InitSysStringTable();
 }
 
 /* Start bgwriter. */
