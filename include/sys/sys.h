@@ -1,6 +1,6 @@
+#include <stdbool.h>
 #include "strtab.h"
 #include "utils.h"
-#include <stdbool.h>
 
 #ifndef SYS_H
 #define SYS_H
