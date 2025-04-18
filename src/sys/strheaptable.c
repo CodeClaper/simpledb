@@ -1,42 +1,59 @@
 #include <fcntl.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
+#include "strheaptable.h"
 #include "data.h"
-#include "strtab.h"
 #include "table.h"
 #include "log.h"
 #include "mmgr.h"
 #include "refer.h"
 #include "bufmgr.h"
 
-/* Create table string table. */
-void CreateStrTable(char *table_name) {
+/* Create the string heap table. */
+bool CreateStrHeapTable(char *table_name) {
     int descr;
-    char str_table_name[MAX_TABLE_NAME_LEN];
-    char str_table_file[MAX_TABLE_NAME_LEN + 10];
-    sprintf(str_table_name, "%s_%s", table_name, STRING_TABLE_APPENDIX);
-    sprintf(str_table_file, "%s_%s", str_table_name, ".dbs");
+    Size w_size;
+    void *root_node;
+    Refer *root_refer;
+    char str_table_file[MAX_TABLE_NAME_LEN + 100];
+
+    memset(str_table_file, 0, MAX_TABLE_NAME_LEN + 10);
+    sprintf(str_table_file, "%s%s%s", conf->data_dir, table_name, ".dbs");
     
-    AssertFalse(table_file_exist(str_table_file));
+    /* Avoid repeatly create. */
+    if (table_file_exist(str_table_file))
+        return true;
+
     descr = open(str_table_file, O_CREAT | O_WRONLY, S_IWUSR | S_IRUSR);
-    if (descr == -1) 
+    if (descr == -1) {
         db_log(PANIC, "Open database file '%s' fail.\n", str_table_file);
+        return false;
+    }
     
 
-    void *root_node = dalloc(PAGE_SIZE);
-    Refer *root_refer = new_refer(str_table_name, 0, 1);
+    root_node = dalloc(PAGE_SIZE);
+    root_refer = new_refer(table_name, 0, 1);
     memcpy(root_node, root_refer, sizeof(Refer));
     
     /* Flush to disk. */
     lseek(descr, 0, SEEK_SET);
-    ssize_t w_size = write(descr, root_node, PAGE_SIZE);
-    if (w_size == -1) 
+    w_size = write(descr, root_node, PAGE_SIZE);
+    if (w_size == -1) {
         db_log(PANIC, "Write table meta info error and errno %d.\n", errno);
+        return false;
+    } 
     
+    /* Free memory. */
+    dfree(root_node);
+    dfree(root_refer);
+
     /* Close desription. */
     close(descr);
+
+    return true;
 }
 
 static Refer *GetRootRefer(void *root_node) {

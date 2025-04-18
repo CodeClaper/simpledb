@@ -1,5 +1,5 @@
 #include <stdbool.h>
-#include "strtab.h"
+#include "strheaptable.h"
 #include "utils.h"
 
 #ifndef SYS_H

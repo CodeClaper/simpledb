@@ -12,6 +12,7 @@
 #include <string.h>
 #include <time.h>
 #include "create.h"
+#include "strheaptable.h"
 #include "data.h"
 #include "const.h"
 #include "common.h"
@@ -271,7 +272,7 @@ void exec_create_table_statement(CreateTableNode *create_table_node, DBResult *r
         return;
 
     /* Create table. */
-    if (create_table(meta_table)) {
+    if (create_table(meta_table) && CreateStrHeapTable(meta_table->table_name)) {
         result->success = true;
         result->rows = 0;
         result->message = format("Table '%s' created successfully.", 
