@@ -21,3 +21,10 @@ ObjectEntity RefIdFindObject(Oid refId) {
 
     return entity;
 }
+
+
+/* Find next Oid. */
+Oid FindNextOid() {
+    Oid noid;
+    return noid;
+}

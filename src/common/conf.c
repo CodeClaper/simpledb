@@ -110,5 +110,6 @@ Conf *load_conf() {
     conf->auto_rollback = define_bool_value("transaction", "auto_rollback");
     conf->account = read_conf("auth", "account");
     conf->password = read_conf("auth", "password");
+    conf->first_user_oid = atoi(read_conf("file", "first_user_oid"));
     return conf;
 }

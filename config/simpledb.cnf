@@ -12,3 +12,5 @@ auto_rollback=true
 [auth]
 account=root
 password=Zc120130211
+[file]
+first_user_oid=16384

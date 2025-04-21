@@ -676,6 +676,7 @@ typedef struct {
     bool auto_rollback;                     /* If auto rollback. */
     char *account;                          /* Account. */
     char *password;                         /* password. */
+    uint32_t first_user_oid;                /* First user oid. */
 } Conf;
 
 /* Refer */
