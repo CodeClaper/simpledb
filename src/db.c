@@ -34,6 +34,7 @@
 #include "pager.h"
 #include "bgwriter.h"
 #include "asctx.h"
+#include "sysTable.h"
 
 /* 
  * Conf 
@@ -93,6 +94,10 @@ static void init_db() {
 
     /* Load configuration. */
     conf = load_conf();
+}
+
+static void create_sys_obj() {
+    CreateSysTable();
 }
 
 /* Start bgwriter. */
@@ -160,6 +165,7 @@ static void db_end() {
 int main(int argc, char* argv[]) {
     program_name = argv[0];
     init_db();
+    create_sys_obj();
     db_run();
     db_end();
 }
