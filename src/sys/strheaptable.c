@@ -22,8 +22,6 @@ bool CreateStrHeapTable(char *table_name) {
     Refer *rRefer;
     char str_table_file[MAX_TABLE_NAME_LEN + 100];
 
-    memset(str_table_file, 0, MAX_TABLE_NAME_LEN + 10);
-    sprintf(str_table_file, "%s%s%s", conf->data_dir, table_name, ".dbs");
     
     /* Avoid repeatly create. */
     if (table_file_exist(str_table_file))
@@ -36,7 +34,6 @@ bool CreateStrHeapTable(char *table_name) {
     }
     
     rblock = dalloc(PAGE_SIZE);
-    rRefer = new_refer(table_name, 0, 1);
     memcpy(rblock, rRefer, sizeof(Refer));
     
     /* Flush to disk. */
@@ -171,9 +168,7 @@ StrRefer *InsertStringValue(char *table_name, char *str_val) {
     void *root;
     Refer *rRefer;
     StrRefer *strRefer;
-    
     size = strlen(str_val) + 1;
-    rbuffer = ReadBufferInner(table_name, STRING_TABLE_ROOT_PAGE);
     LockBuffer(rbuffer, RW_WRITER);
     root = GetBufferPage(rbuffer);
     rRefer = GetRootRefer(root);
@@ -275,4 +270,23 @@ static char *QueryCrossPage(StrRefer *strRefer) {
 char *QueryStringValue(StrRefer *strRefer) {
     return OverflowPage(strRefer) 
         ? QueryNotCrossPage(strRefer) : QueryCrossPage(strRefer);
+}
+
+/* Drop the string heap table. */
+bool DropStrHeapTable(char *table_name) {
+    char str_table_file[MAX_TABLE_NAME_LEN + 100];
+
+    memset(str_table_file, 0, MAX_TABLE_NAME_LEN + 10);
+    sprintf(str_table_file, "%s%s%s", conf->data_dir, table_name, ".dbs");
+    
+    if (!table_file_exist(str_table_file))
+        return false;
+    
+    if (remove(str_table_file) == 0)
+        return true;
+
+    /* Not reach here logically. */
+    db_log(ERROR, "Table '%s' deleted fail, error : %d", table_name, errno);
+
+    return false;
 }
