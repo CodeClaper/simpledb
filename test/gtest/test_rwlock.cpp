@@ -73,6 +73,17 @@ static void writer_work(RWLockEntry *lock) {
     ReleaseRWlock(lock);
 }
 
+static void work_with_double_writelock(RWLockEntry *lock) {
+    int i;
+    for (i = 0; i < COUNT_NUM; i++) {
+        AcquireRWlock(lock, RW_WRITER);
+        AcquireRWlock(lock, RW_WRITER);
+        (*num)++;
+        ReleaseRWlock(lock);
+        ReleaseRWlock(lock);
+    }
+}
+
 TEST(rwlock, test_rwlock_concurrent) {
     switch_shared();
     num = instance(int);
@@ -188,6 +199,36 @@ TEST(rwlock, test_current) {
     }
 
     ASSERT_EQ(20, *num);
+    ASSERT_EQ(0, lock->waiting_writer);
+    ASSERT_EQ(0, lock->waiting_reader);
+}
+
+
+TEST(rwlock, test_double_writelock) {
+    switch_shared();
+    num = instance(int);
+    *num = 0;
+    RWLockEntry *lock = instance(RWLockEntry);
+    InitRWlock(lock);
+    switch_local();
+
+    int i;
+    for (i = 0; i < WORKER_NUM; i++) {
+        Pid pid  = fork();
+        if (pid < 0) {
+            perror("Bad fork");
+            exit(1);
+        } else if (pid == 0) {
+            work_with_double_writelock(lock);
+            exit(0);
+        }
+    }
+
+    for (i = 0; i < WORKER_NUM; i++) {
+        wait(NULL);
+    }
+
+    ASSERT_EQ(2000000, *num);
     ASSERT_EQ(0, lock->waiting_writer);
     ASSERT_EQ(0, lock->waiting_reader);
 }
