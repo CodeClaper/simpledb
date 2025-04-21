@@ -21,8 +21,10 @@ bool CreateStrHeapTable(char *table_name) {
     void *rblock;
     Refer *rRefer;
     char str_table_file[MAX_TABLE_NAME_LEN + 100];
-
     
+    memset(str_table_file, 0, MAX_TABLE_NAME_LEN + 100);
+    sprintf(str_table_file, "%s%s%s", conf->data_dir, table_name, ".dbs");
+
     /* Avoid repeatly create. */
     if (table_file_exist(str_table_file))
         return true;
@@ -34,6 +36,7 @@ bool CreateStrHeapTable(char *table_name) {
     }
     
     rblock = dalloc(PAGE_SIZE);
+    rRefer = new_refer(table_name, 0, 1);
     memcpy(rblock, rRefer, sizeof(Refer));
     
     /* Flush to disk. */
@@ -168,7 +171,9 @@ StrRefer *InsertStringValue(char *table_name, char *str_val) {
     void *root;
     Refer *rRefer;
     StrRefer *strRefer;
+
     size = strlen(str_val) + 1;
+    rbuffer = ReadBufferInner(table_name, STRING_TABLE_ROOT_PAGE);
     LockBuffer(rbuffer, RW_WRITER);
     root = GetBufferPage(rbuffer);
     rRefer = GetRootRefer(root);
@@ -279,8 +284,10 @@ bool DropStrHeapTable(char *table_name) {
     memset(str_table_file, 0, MAX_TABLE_NAME_LEN + 10);
     sprintf(str_table_file, "%s%s%s", conf->data_dir, table_name, ".dbs");
     
-    if (!table_file_exist(str_table_file))
+    if (!table_file_exist(str_table_file)) {
+        db_log(ERROR, "Table file '%s' not exists, error : %d", str_table_file, errno);
         return false;
+    }
     
     if (remove(str_table_file) == 0)
         return true;
