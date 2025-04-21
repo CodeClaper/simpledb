@@ -11,6 +11,20 @@
 #include "table.h"
 #include "log.h"
 
+/* System table meta column list. */
+MetaColumn SYS_TABLE_COLUMNS[] = {
+    { SYS_TABLE_OID_NAME, T_INT, SYS_TABLE_NAME, (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int32_t)), true, false, false, false, 0, 0},
+    { SYS_TABLE_RELNAME_NAME, T_VARCHAR, SYS_TABLE_NAME, (LEAF_NODE_CELL_NULL_FLAG_SIZE + MAX_COLUMN_SIZE), false, false, false, false, 0, 0},
+    { SYS_TABLE_RELTYPE_NAME, T_INT, SYS_TABLE_NAME, (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int32_t)), false, false, false, false, 0, 0}
+};
+
+/* System reserved columns. */
+MetaColumn SYS_RESERVED_COLUMNS[] = {
+    { SYS_RESERVED_ID_COLUMN_NAME, T_LONG, "", (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), false, false, false, true, 0, 0 },
+    { CREATED_XID_COLUMN_NAME, T_LONG, "", (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), false, false, false, true, 0, 0 },
+    { EXPIRED_XID_COLUMN_NAME, T_LONG, "", (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), false, false, false, true, 0, 0 }
+}; 
+
 /* If system table file already exists, 
  * return true. 
  * */
