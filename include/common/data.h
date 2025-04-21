@@ -8,6 +8,7 @@
 #include "c.h"
 #include "list.h"
 #include "queue.h"
+#include "sys.h"
 
 #ifndef DATA_H
 #define DATA_H
@@ -595,8 +596,9 @@ typedef struct MetaColumn {
 
 /* MetaTable */
 typedef struct MetaTable {
-    char *table_name;
-    MetaColumn **meta_column;
+    Oid refId;                  /* RefId. */
+    char *table_name;           /* Table name.*/
+    MetaColumn **meta_column;   /* Meta column array. */
     uint32_t column_size;       /* size of column, excluding system reserved columns. */
     uint32_t all_column_size;   /* sizo of column, including system reserved columns. */
 } MetaTable;

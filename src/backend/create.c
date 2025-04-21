@@ -26,16 +26,7 @@
 #include "copy.h"
 #include "free.h"
 #include "log.h"
-
-/* System reserved columns. */
-MetaColumn SYS_RESERVED_COLUMNS[] = {
-    { SYS_RESERVED_ID_COLUMN_NAME, T_LONG, "", (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), false, false, false, true, 0, 0 },
-    { CREATED_XID_COLUMN_NAME, T_LONG, "", (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), false, false, false, true, 0, 0 },
-    { EXPIRED_XID_COLUMN_NAME, T_LONG, "", (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), false, false, false, true, 0, 0 }
-}; 
-
-/* System reserved columns length. */
-#define SYS_RESERVED_COLUMNS_LENGTH sizeof(SYS_RESERVED_COLUMNS) / sizeof(SYS_RESERVED_COLUMNS[0])
+#include "sysTable.h"
 
 /* Get system reserved columns length. */
 uint32_t sys_reserved_column_count() {
@@ -271,7 +262,10 @@ void exec_create_table_statement(CreateTableNode *create_table_node, DBResult *r
     if (meta_table == NULL) 
         return;
 
-    /* Create table. */
+    /* Create table. 
+     * Besides the normal table itself, we alse create its string heap table.
+     * Although the table maybe not have any string column.
+     * */
     if (create_table(meta_table) && CreateStrHeapTable(meta_table->table_name)) {
         result->success = true;
         result->rows = 0;

@@ -1,5 +1,4 @@
 #include <stdbool.h>
-#include "strheaptable.h"
 #include "utils.h"
 
 #ifndef SYS_H
@@ -16,20 +15,21 @@ typedef unsigned int Oid;
  * normal table, view, index table and schema.
  * */
 typedef enum ObjectType {
-    TABLE,
-    VIEW,
-    INDEX,
-    SCHEMA
+    OTABLE,
+    OVIEW,
+    OINDEX,
+    OSCHEMA
 } ObjectType;
 
 /* Object Entity.
  * The entity include all what an Object need.
  * */
 typedef struct ObjectEntity {
-    Oid refId;
-    char relName[MAX_TABLE_NAME_LEN];
+    Oid oid;
+    char relName[30];
     ObjectType relType;
 } ObjectEntity;
+
 
 /* If table is system reserved. */
 static inline bool if_table_reserved(char *table_name) {

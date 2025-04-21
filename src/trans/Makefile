@@ -1,6 +1,6 @@
 
 includedir = ../../include
-headerdirs = $(includedir)/trans $(includedir)/common $(includedir)/memory \
+headerdirs = $(includedir)/trans $(includedir)/common $(includedir)/memory $(includedir)/sys \
 			 $(includedir)/utils $(includedir)/storage $(includedir)/backend $(includedir)/lock
 
 headers := $(shell find $(headerdirs) -name "*.h")
