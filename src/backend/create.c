@@ -26,7 +26,7 @@
 #include "copy.h"
 #include "free.h"
 #include "log.h"
-#include "sysTable.h"
+#include "systable.h"
 
 /* Get system reserved columns length. */
 uint32_t sys_reserved_column_count() {
@@ -217,7 +217,6 @@ void handler_user_none_priamry_key(MetaTable *meta_table) {
 static MetaTable *combine_meta_table(CreateTableNode *create_table_node) {
 
     MetaTable *meta_table = instance(MetaTable);
-
     meta_table->table_name = dstrdup(create_table_node->table_name);
     meta_table->column_size = get_column_def_size(create_table_node); 
     meta_table->all_column_size = meta_table->column_size + SYS_RESERVED_COLUMNS_LENGTH;
@@ -250,8 +249,16 @@ static MetaTable *combine_meta_table(CreateTableNode *create_table_node) {
     return meta_table;
 }
 
+/* Save table object. */
+static bool save_table_object(Oid oid, char *relname) {
+    Object entity = GenerateObjectInner(oid, relname, OTABLE);
+    return SaveObject(entity);
+}
+
 /* Execute create table statement. */
 void exec_create_table_statement(CreateTableNode *create_table_node, DBResult *result) {
+
+    Oid oid = FindNextOid();
 
     /* Check valid. */
     if (!check_create_table_node(create_table_node)) 
@@ -266,7 +273,9 @@ void exec_create_table_statement(CreateTableNode *create_table_node, DBResult *r
      * Besides the normal table itself, we alse create its string heap table.
      * Although the table maybe not have any string column.
      * */
-    if (create_table(meta_table) && CreateStrHeapTable(meta_table->table_name)) {
+    if (create_table(oid, meta_table) && 
+            save_table_object(oid, GET_METATABLE_NAME(meta_table)) && 
+                CreateStrHeapTable(meta_table->table_name)) {
         result->success = true;
         result->rows = 0;
         result->message = format("Table '%s' created successfully.", 

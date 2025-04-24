@@ -730,7 +730,7 @@ static bool check_assignment_set_node(UpdateNode *update_node) {
         if (is_null(meta_column)) {
             db_log(ERROR, "Not found column %s in table %s.", 
                    column_node->column_name, 
-                   get_table_name(table));
+                   GET_TABLE_NAME(table));
             return false;
         }
 

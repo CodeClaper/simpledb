@@ -13,6 +13,7 @@
 #include "mmgr.h"
 #include "refer.h"
 #include "bufmgr.h"
+#include "systable.h"
 
 /* Create the string heap table. */
 bool CreateStrHeapTable(char *table_name) {
@@ -21,9 +22,11 @@ bool CreateStrHeapTable(char *table_name) {
     void *rblock;
     Refer *rRefer;
     char str_table_file[MAX_TABLE_NAME_LEN + 100];
+    Object entity;
     
+    entity = GenerateObject(table_name, OSTRING_HEAP_TABLE);
     memset(str_table_file, 0, MAX_TABLE_NAME_LEN + 100);
-    sprintf(str_table_file, "%s%s%s", conf->data_dir, table_name, ".dbs");
+    sprintf(str_table_file, "%s%ld", conf->data_dir, entity.oid);
 
     /* Avoid repeatly create. */
     if (table_file_exist(str_table_file))
@@ -36,7 +39,7 @@ bool CreateStrHeapTable(char *table_name) {
     }
     
     rblock = dalloc(PAGE_SIZE);
-    rRefer = new_refer(table_name, 0, 1);
+    rRefer = new_refer(entity.oid, 0, 1);
     memcpy(rblock, rRefer, sizeof(Refer));
     
     /* Flush to disk. */
@@ -46,6 +49,9 @@ bool CreateStrHeapTable(char *table_name) {
         db_log(PANIC, "Write table meta info error and errno %d.\n", errno);
         return false;
     } 
+
+    /* Save the String table Object. */
+    Assert(SaveObject(entity));
     
     /* Free memory. */
     dfree(rblock);
@@ -71,7 +77,7 @@ static void InsertNotCrossPage(Refer *rRefer, char *strVal) {
     uint32_t useRowNum;
 
     size = strlen(strVal) + 1;
-    buffer = ReadBufferInner(rRefer->table_name, rRefer->page_num);
+    buffer = ReadBuffer(rRefer->oid, rRefer->page_num);
     LockBuffer(buffer, RW_WRITER);
     block = GetBufferBlock(buffer);
 
@@ -102,7 +108,7 @@ static void InsertCrossPage(Refer *rRefer, char *strVal) {
     size = strlen(strVal) + 1;
     leftRowNum = STRING_ROW_NUM - rRefer->cell_num;
     leftSize = leftRowNum * STRING_ROW_SIZE;
-    buffer = ReadBufferInner(rRefer->table_name, rRefer->page_num);
+    buffer = ReadBuffer(rRefer->oid, rRefer->page_num);
     LockBuffer(buffer, RW_WRITER);
     block = GetBufferBlock(buffer);
     pointer = block + rRefer->cell_num * STRING_ROW_SIZE;
@@ -119,7 +125,7 @@ static void InsertCrossPage(Refer *rRefer, char *strVal) {
         Buffer nbuffer;
         void *nblock;
 
-        nbuffer = ReadBufferInner(rRefer->table_name, ++(rRefer->page_num));
+        nbuffer = ReadBuffer(rRefer->oid, ++(rRefer->page_num));
         LockBuffer(nbuffer, RW_WRITER);
         nblock = GetBufferPage(nbuffer);
 
@@ -165,7 +171,7 @@ static void InsertStringValueInner(Refer *rRefer, char *strVal) {
 /* Insert new String value. 
  * Return the Refer value.
  * */
-StrRefer *InsertStringValue(char *table_name, char *str_val) {
+StrRefer *InsertStringValue(Oid oid, char *str_val) {
     Size size;
     Buffer rbuffer;
     void *root;
@@ -173,7 +179,7 @@ StrRefer *InsertStringValue(char *table_name, char *str_val) {
     StrRefer *strRefer;
 
     size = strlen(str_val) + 1;
-    rbuffer = ReadBufferInner(table_name, STRING_TABLE_ROOT_PAGE);
+    rbuffer = ReadBuffer(oid, STRING_TABLE_ROOT_PAGE);
     LockBuffer(rbuffer, RW_WRITER);
     root = GetBufferPage(rbuffer);
     rRefer = GetRootRefer(root);
@@ -208,7 +214,7 @@ static char *QueryNotCrossPage(StrRefer *strRefer) {
     void *block;
     
     rRefer = strRefer->refer;
-    buffer = ReadBufferInner(rRefer.table_name, rRefer.page_num);
+    buffer = ReadBuffer(rRefer.oid, rRefer.page_num);
     LockBuffer(buffer, RW_READERS);
     block = GetBufferPage(buffer);
 
@@ -237,7 +243,7 @@ static char *QueryCrossPage(StrRefer *strRefer) {
     strVal = dalloc(strRefer->size);
 
     /* Read current page. */
-    rbuffer = ReadBufferInner(rRefer.table_name, currentPageNum);
+    rbuffer = ReadBuffer(rRefer.oid, currentPageNum);
     LockBuffer(rbuffer, RW_READERS);
     rblock = GetBufferPage(rbuffer);
     memcpy(strVal + useSize, rblock + rRefer.cell_num * STRING_ROW_SIZE, leftSize);
@@ -250,7 +256,7 @@ static char *QueryCrossPage(StrRefer *strRefer) {
         Buffer nbuffer;
         void *nblock;
 
-        nbuffer = ReadBufferInner(rRefer.table_name, ++currentPageNum);
+        nbuffer = ReadBuffer(rRefer.oid, ++currentPageNum);
         LockBuffer(nbuffer, RW_READERS);
         nblock = GetBufferPage(nbuffer);
 
@@ -279,21 +285,27 @@ char *QueryStringValue(StrRefer *strRefer) {
 
 /* Drop the string heap table. */
 bool DropStrHeapTable(char *table_name) {
-    char str_table_file[MAX_TABLE_NAME_LEN + 100];
+    Oid oid;
+    char *str_table_file;
 
-    memset(str_table_file, 0, MAX_TABLE_NAME_LEN + 10);
-    sprintf(str_table_file, "%s%s%s", conf->data_dir, table_name, ".dbs");
-    
-    if (!table_file_exist(str_table_file)) {
-        db_log(ERROR, "Table file '%s' not exists, error : %d", str_table_file, errno);
+    oid = StrTableNameFindOid(table_name);
+    AssertFalse(ZERO_OID(oid));
+    str_table_file = table_file_path(oid);
+
+    if (!check_table_exist_direct(oid)) {
+        db_log(ERROR, "Table file '%s' not exists, error : %s", 
+               str_table_file, strerror(errno));
         return false;
     }
-    
-    if (remove(str_table_file) == 0)
+
+    /* Delete physically. */
+    if (remove(str_table_file) == 0 && RemoveObject(oid))
         return true;
 
     /* Not reach here logically. */
-    db_log(ERROR, "Table '%s' deleted fail, error : %d", table_name, errno);
+    db_log(ERROR, 
+           "String heap table '%s' deleted fail, error : %s", 
+           table_name, strerror(errno));
 
     return false;
 }

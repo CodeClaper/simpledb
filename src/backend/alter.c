@@ -23,34 +23,35 @@
 #include "free.h"
 #include "log.h"
 #include "tablereg.h"
+#include "systable.h"
 
 /* Try to catpture table.
  * If these other session on the table, wait and test. 
  * */
-static void try_capture_table(char *table_name) {
-    try_acquire_table(table_name);
+static void try_capture_table(Oid oid) {
+    try_acquire_table(oid);
     /* Wait until capture the table exclusively. */
-    while (if_shared_table(table_name)) {
+    while (if_shared_table(oid)) {
         usleep(100);
     }
 }
 
 /* Release Table. */
-static void release_table(char *table_name) {
-    remove_table_cache(table_name);
-    try_release_table(table_name);
+static void release_table(Oid oid) {
+    remove_table_cache(oid);
+    try_release_table(oid);
 }
 
 /* Add new Column. */
 static void add_new_column(AddColumnDef *add_column_def, char *table_name, DBResult *result) {
-
+    Oid oid = TableNameFindOid(table_name);
     MetaColumn *new_meta_column = combine_user_meta_column(add_column_def->column_def, table_name);        
 
     if (new_meta_column->is_primary)
         db_log(ERROR, "Not support add primary-key column through alter table.");
 
     /* Capture table exclusively. */
-    try_capture_table(table_name);
+    try_capture_table(oid);
 
     if (add_new_meta_column(table_name, new_meta_column, add_column_def->position_def)) {
         result->success = true;
@@ -65,14 +66,15 @@ static void add_new_column(AddColumnDef *add_column_def, char *table_name, DBRes
     free_meta_column(new_meta_column);
 
     /* Release table. */
-    release_table(table_name);
+    release_table(oid);
 }
 
 /* Drop old column. */
 static void drop_old_column(DropColumnDef *drop_column_def, char *table_name, DBResult *result) {
+    Oid oid = TableNameFindOid(table_name);
 
     /* Capture table exclusively. */
-    try_capture_table(table_name);
+    try_capture_table(oid);
 
     /* Drop column.*/
     if (drop_meta_column(table_name, drop_column_def->column_name)) {
@@ -86,7 +88,7 @@ static void drop_old_column(DropColumnDef *drop_column_def, char *table_name, DB
     }
 
     /* Release table. */
-    release_table(table_name);
+    release_table(oid);
 }
 
 /* Execute alter table statement. */

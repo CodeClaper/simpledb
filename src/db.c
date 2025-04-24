@@ -34,7 +34,7 @@
 #include "pager.h"
 #include "bgwriter.h"
 #include "asctx.h"
-#include "sysTable.h"
+#include "systable.h"
 
 /* 
  * Conf 

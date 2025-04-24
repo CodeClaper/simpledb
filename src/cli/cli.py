@@ -173,7 +173,7 @@ def login() -> bool:
     ret = client.execute(f"{account}/{password}")
     return ret["success"]
 
-def printLog():
+def printSlogan():
     print("  ____                            ____    ____          ")
     print(" /\\  _`\\   __                    /\\  _`\\ /\\  _`\\        ")
     print(" \\ \\,\\L\\_\\/\\_\\    ___ ___   _____\\ \\ \\/\\ \\ \\ \\L\\ \\      ")
@@ -191,14 +191,14 @@ def fetchTables():
     ret = client.execute("show tables;")
     assert ret["success"] == True
     for item in ret["data"]:
-        keywords.append(item["table_name"])
+        keywords.append(item["relname"])
 
 
 ## Main.
 if __name__ == "__main__":
     try:
         if login():
-            printLog()
+            printSlogan()
             fetchTables()
             while True:
                 cmd = readCmd()

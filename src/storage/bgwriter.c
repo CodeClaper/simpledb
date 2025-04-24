@@ -24,7 +24,10 @@ static void FlushDirtyPage() {
             void *node = GetBufferBlock(desc->buffer);
             if (get_node_state(node) == DIRTY_STATE) {
                 PinBuffer(desc);
-                BufferWriteBlock(desc->buffer);
+                /* If write success, make the buffer NORMAL 
+                 * to avoid scan it again. */
+                if (BufferWriteBlock(desc->buffer))
+                    MakeBufferNormal(desc->buffer);
                 UnpinBuffer(desc);
             }
         }
@@ -42,7 +45,7 @@ static void BgDelay() {
 /* Start the background writer. */
 void StartBgWriter() {
     StartMemoryContext();
-    for (;;) {
+    forever {
         FlushDirtyPage();
         BgDelay();
     }

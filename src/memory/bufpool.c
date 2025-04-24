@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -35,7 +36,7 @@ void BufferReadBlock(BufferTag *tag, Buffer buffer) {
     FDesc fdesc; 
     void *block; 
 
-    fdesc = get_file_desc(tag->tableName);
+    fdesc = get_file_desc(tag->oid);
     block = GetBufferBlock(buffer);
 
     lseek(fdesc, tag->blockNum * PAGE_SIZE, SEEK_SET);
@@ -46,8 +47,10 @@ void BufferReadBlock(BufferTag *tag, Buffer buffer) {
     }
 }
 
-/* Write Buffer Block. */
-void BufferWriteBlock(Buffer buffer) {
+/* Write Buffer Block. 
+ * If realy write to file, return true.
+ * */
+bool BufferWriteBlock(Buffer buffer) {
     FDesc fdesc;
     BufferTag tag;
     BufferDesc *desc;
@@ -59,19 +62,19 @@ void BufferWriteBlock(Buffer buffer) {
 
     /* Only flush dirty page. */
     if (get_node_state(block) != DIRTY_STATE)
-        return;
+        return false;
 
-    /* Maybe table has dropped, so necessary 
-     * to check if table still exists. */
-    if (!check_table_exist(tag.tableName))
-        return;
+    /* Maybe table has dropped before calling the function, 
+     * so necessary to check if table still exists. */
+    if (!check_table_exist_direct(tag.oid))
+        return false;
 
-    fdesc = get_file_desc(tag.tableName);
+    fdesc = get_file_desc(tag.oid);
 
     off_t offset = lseek(fdesc, PAGE_SIZE * tag.blockNum, SEEK_SET);
     if (offset == (off_t) -1) {
-        db_log(PANIC, "Error seek set: %s, which happen in %s and page num %d.", 
-               strerror(errno), tag.tableName, tag.blockNum);
+        db_log(PANIC, "Error seek set: %s, which happen in %ld and page num %d.", 
+               strerror(errno), tag.oid, tag.blockNum);
         exit(1);
     }
 
@@ -83,4 +86,6 @@ void BufferWriteBlock(Buffer buffer) {
     }
 
     fsync(fdesc);
+
+    return true;
 }

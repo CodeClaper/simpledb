@@ -29,7 +29,7 @@
 #include "instance.h"
 
 /* Delete row */
-static void delete_row(Row *row, SelectResult *select_result, Table *table, 
+void delete_row(Row *row, SelectResult *select_result, Table *table, 
                        ROW_HANDLER_ARG_TYPE type, void *arg) {
     Cursor *cursor;
     Refer *refer;
@@ -78,7 +78,10 @@ void exec_delete_statement(DeleteNode *delete_node, DBResult *result) {
     SelectResult *select_result = new_select_result(DELETE_STMT, delete_node->table_name);
 
     /* Query with condition and delete satisfied row. */
-    query_with_condition(delete_node->condition_node, select_result, delete_row, ARG_NULL, NULL);
+    query_with_condition(
+        delete_node->condition_node, select_result, 
+        delete_row, ARG_NULL, NULL
+    );
 
     /* Success Result . */
     result->success = true;

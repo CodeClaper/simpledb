@@ -27,6 +27,7 @@
 #include "check.h"
 #include "cache.h"
 #include "tablelock.h"
+#include "systable.h"
 
 #define DEFAULT_BOOL_LENGTH         2
 #define DEFAULT_STRING_LENGTH       48
@@ -474,16 +475,13 @@ MetaColumn *get_all_meta_column_by_name(MetaTable *meta_table, char *name) {
 }
 
 /* Generate table meta info. */
-MetaTable *gen_meta_table(Table *table, char *table_name) {
-    /* Check valid. */
-    Assert(table_name != NULL);
-
+MetaTable *gen_meta_table(Oid oid) {
     MetaTable *meta_table = instance(MetaTable);
-    Buffer buffer = ReadBufferInner(table_name, table->root_page_num);
+    Buffer buffer = ReadBuffer(oid, ROOT_PAGE_NUM);
     void *root_node = GetBufferPage(buffer);
     uint32_t column_size = get_column_size(root_node);
 
-    meta_table->table_name = dstrdup(table_name);
+    meta_table->table_name = IS_SYS_ROOT(oid) ? dstrdup(SYS_TABLE_NAME) : OidFindRelName(oid);
     meta_table->column_size = 0;
     meta_table->all_column_size = 0;
     meta_table->meta_column = dalloc(sizeof(MetaColumn *) * column_size);
@@ -503,7 +501,7 @@ MetaTable *gen_meta_table(Table *table, char *table_name) {
     Assert(meta_table->all_column_size == column_size);
 
     /* Release the buffer. */
-    ReleaseBufferInner(buffer);
+    ReleaseBuffer(buffer);
 
     return meta_table;
 }

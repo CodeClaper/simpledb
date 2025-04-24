@@ -42,7 +42,6 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 #include <strings.h>
 #include <unistd.h>
@@ -200,8 +199,8 @@ static BufferDesc *LoadNewBufferDesc(BufferTag *tag) {
     BufferReadBlock(tag, desc->buffer);
 
     /* Update the tag. */
+    desc->tag.oid = tag->oid;
     desc->tag.blockNum = tag->blockNum;
-    memcpy(desc->tag.tableName, tag->tableName, MAX_TABLE_NAME_LEN);
 
     /* Insert new Buffer Table Entry. */
     InsertBufferTableEntry(tag, desc->buffer);
@@ -212,26 +211,15 @@ static BufferDesc *LoadNewBufferDesc(BufferTag *tag) {
     return desc;
 }
 
-
 /* Read Buffer.
  * Get shared buffer data via Buffer value. */
-Buffer ReadBuffer(Table *table, BlockNum blockNum) {
-    return ReadBufferInner(
-        get_table_name(table), 
-        blockNum
-    );
-}
-
-/* Read Buffer.
- * Get shared buffer data via Buffer value. */
-Buffer ReadBufferInner(char *table_name, BlockNum blockNum) {
+Buffer ReadBuffer(Oid oid, BlockNum blockNum) {
     Buffer buffer;
     BufferTag tag;
     BufferDesc *desc;
     
     memset(&tag, 0, sizeof(BufferTag));
-    Assert(strlen(table_name) < MAX_TABLE_NAME_LEN);
-    memcpy(tag.tableName, table_name, strlen(table_name));
+    tag.oid = oid;
     tag.blockNum = blockNum;
 
     /* Lookup if tag exists in buffer table. */
@@ -269,19 +257,17 @@ inline void MakeBufferDirty(Buffer buffer) {
     set_node_state(page, DIRTY_STATE);
 }
 
+/* Make Buffer normal. */
+inline void MakeBufferNormal(Buffer buffer) {
+    void *page = GetBufferPage(buffer);
+    set_node_state(page, NORMAL_STATE);
+}
+
 /* Release Buffer.
  * -----------------
  * Release Buffer after using. 
  * And this function must be called aftert ReadBuffer. */
 void ReleaseBuffer(Buffer buffer) {
-    ReleaseBufferInner(buffer);
-}
-
-/* Release Buffer Inner.
- * Release Buffer after using. 
- * And the function is called aftert ReadBuffer. 
- * */
-void ReleaseBufferInner(Buffer buffer) {
     Assert(buffer < BUFFER_SLOT_NUM);
     BufferDesc *desc = GetBufferDesc(buffer);
     Assert(desc != NULL);

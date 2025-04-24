@@ -1,6 +1,9 @@
 #include "data.h"
 #include <stdint.h>
 
+#define GET_METATABLE_NAME(meta_table) \
+    meta_table->table_name
+
 /* Default data length. */
 uint32_t default_data_len(DataType column_type);
 
@@ -46,7 +49,7 @@ uint32_t calc_primary_key_length2(MetaTable *meta_table);
 
 
 /* Genrate table meta info. */
-MetaTable *gen_meta_table(Table *table, char *table_name);
+MetaTable *gen_meta_table(Oid oid);
 
 
 /* Get meta column info by column name. */

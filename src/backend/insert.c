@@ -118,7 +118,7 @@ static KeyValue *new_expired_xid_column() {
 }
 
 /* Supplement system reserved column. */
-static void supple_reserved_column(Row *row) {
+void supple_reserved_column(Row *row) {
 
     /* Append sys_id column key value. */
     KeyValue *sys_id_col = new_sys_id_column();
@@ -308,7 +308,7 @@ static Row *convert2_insert_row(Row *row, Table *table) {
 
     Row *insert_row = instance(Row);
 
-    strcpy(insert_row->table_name, get_table_name(table));
+    strcpy(insert_row->table_name, GET_TABLE_NAME(table));
     insert_row->data = create_list(NODE_KEY_VALUE);
 
     /* Copy data. */
@@ -327,9 +327,10 @@ static Row *convert2_insert_row(Row *row, Table *table) {
 }
 
 /* Insert one row. 
- * Return the row refer.
+ * Return the row refer, 
+ * Throw error by log if fail.
  * */
-static Refer *insert_one_row(Table *table, Row *row) {
+Refer *insert_one_row(Table *table, Row *row) {
     MetaColumn *primary_key_meta_column = get_primary_key_meta_column(table->meta_table);
     Assert(primary_key_meta_column);
 
@@ -341,7 +342,7 @@ static Refer *insert_one_row(Table *table, Row *row) {
             ERROR,
             "key '%s' in table '%s' already exists, not allow duplicate key.", 
             get_key_str(row->key, primary_key_meta_column->column_type), 
-            get_table_name(table)
+            GET_TABLE_NAME(table)
         );
         return NULL;
     }

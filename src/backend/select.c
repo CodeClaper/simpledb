@@ -17,7 +17,9 @@
 #define _XOPEN_SOURCE
 #define __USE_XOPEN
 #include <time.h>
+#include "select.h"
 #include "check.h"
+#include "systable.h"
 #include "common.h"
 #include "copy.h"
 #include "free.h"
@@ -27,7 +29,6 @@
 #include "meta.h"
 #include "ltree.h"
 #include "pager.h"
-#include "select.h"
 #include "table.h"
 #include "asserts.h"
 #include "session.h"
@@ -584,7 +585,8 @@ Row *define_row(Refer *refer) {
     Assert(refer != NULL);
 
     /* Check table exists. */
-    Table *table = open_table(refer->table_name);
+    Object entity = OidFindObject(refer->oid);
+    Table *table = open_table(entity.relname);
     if (table == NULL)
         return NULL;
 
@@ -597,7 +599,7 @@ Row *define_row(Refer *refer) {
     key_len = calc_primary_key_length(table);
 
     /* Get the leaf node buffer. */
-    Buffer buffer = ReadBuffer(table, refer->page_num);
+    Buffer buffer = ReadBuffer(GET_TABLE_OID(table), refer->page_num);
     void *leaf_node = GetBufferPage(buffer);
     void *destinct = get_leaf_node_cell_value(leaf_node, key_len, value_len, refer->cell_num);
     Row *row = generate_row(destinct, table->meta_table);
@@ -672,7 +674,7 @@ static void select_from_leaf_node(SelectResult *select_result, ConditionNode *co
         return;
 
     /* Get leaf node buffer. */
-    buffer = ReadBuffer(table, page_num);
+    buffer = ReadBuffer(GET_TABLE_OID(table), page_num);
 
     LockBuffer(buffer, RW_READERS);
     leaf_node = GetBufferPageCopy(buffer);
@@ -727,7 +729,7 @@ static void select_from_internal_node(SelectResult *select_result, ConditionNode
         return;
 
     /* Get the internal node buffer. */
-    Buffer buffer = ReadBuffer(table, page_num);
+    Buffer buffer = ReadBuffer(GET_TABLE_OID(table), page_num);
     LockBuffer(buffer, RW_READERS);
     void *internal_node = GetBufferPageCopy(buffer);
     UnlockBuffer(buffer);
@@ -757,7 +759,7 @@ static void select_from_internal_node(SelectResult *select_result, ConditionNode
         /* Check other non-key column */
         uint32_t child_page_num = get_internal_node_child(internal_node, i, key_len, value_len);
         Assert(child_page_num != 0);
-        Buffer child_buffer = ReadBuffer(table, child_page_num);
+        Buffer child_buffer = ReadBuffer(GET_TABLE_OID(table), child_page_num);
         void *node = GetBufferPage(child_buffer);
         switch (get_node_type(node)) {
             case LEAF_NODE:
@@ -784,7 +786,7 @@ static void select_from_internal_node(SelectResult *select_result, ConditionNode
     /* Don`t forget the right child. */
     /* Fetch right child. */
     uint32_t right_child_page_num = get_internal_node_right_child(internal_node, value_len);
-    Buffer right_child_buffer = ReadBuffer(table, right_child_page_num);
+    Buffer right_child_buffer = ReadBuffer(GET_TABLE_OID(table), right_child_page_num);
     void *right_child = GetBufferPage(right_child_buffer);
     NodeType node_type = get_node_type(right_child);
     switch (node_type) {
@@ -825,7 +827,7 @@ static void select_from_internal_node_child_task(void *taskArg) {
     ROW_HANDLER_ARG_TYPE type = args->type;
     void *arg = args->arg;
 
-    Buffer child_buffer = ReadBuffer(table, child_page_num);
+    Buffer child_buffer = ReadBuffer(GET_TABLE_OID(table), child_page_num);
     void *node = GetBufferPage(child_buffer);
     switch (get_node_type(node)) {
         case LEAF_NODE:
@@ -859,7 +861,7 @@ static void select_from_internal_node_async(SelectResult *select_result, Conditi
         return;
 
     /* Get the internal node buffer. */
-    Buffer buffer = ReadBuffer(table, page_num);
+    Buffer buffer = ReadBuffer(GET_TABLE_OID(table), page_num);
     void *internal_node = GetBufferPage(buffer);
 
     /* Get variables. */
@@ -936,19 +938,20 @@ static bool execte_async_condition(SelectResult *select_result) {
     //        exist_table_in_cache(select_result->table_name);
 }
 
-/* Query with condition. */
-void query_with_condition(ConditionNode *condition, SelectResult *select_result, 
+/* Query with condition inner. */
+void query_with_condition_inner(Oid oid, ConditionNode *condition, SelectResult *select_result, 
                           ROW_HANDLER row_handler, ROW_HANDLER_ARG_TYPE type, void *arg) {
+
     Table *table;
     Buffer buffer;
     void *root;
     
     /* Check if table exists. */
-    table = open_table(select_result->table_name);
+    table = open_table_inner(oid);
     if (table == NULL)
         return;
 
-    buffer = ReadBuffer(table, table->root_page_num); 
+    buffer = ReadBuffer(GET_TABLE_OID(table), table->root_page_num); 
     root = GetBufferPage(buffer);
 
     switch (get_node_type(root)) {
@@ -977,6 +980,16 @@ void query_with_condition(ConditionNode *condition, SelectResult *select_result,
 
     /* Release the root node buffer. */
     ReleaseBuffer(buffer);
+}
+
+/* Query with condition. */
+void query_with_condition(ConditionNode *condition, SelectResult *select_result, 
+                          ROW_HANDLER row_handler, ROW_HANDLER_ARG_TYPE type, void *arg) {
+    /* Check if table exists. */
+    Oid oid = TableNameFindOid(select_result->table_name);
+    if (ZERO_OID(oid))
+        return;
+    query_with_condition_inner(oid, condition, select_result, row_handler, type, arg);
 }
 
 /* Count number of row, used in the sql function count(1) */

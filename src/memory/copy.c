@@ -200,12 +200,11 @@ Row *copy_row_without_reserved(Row *row) {
 /* Copy refer. */
 Refer *copy_refer(Refer *refer) {
     if (refer == NULL) return NULL;
-    Refer *copy_refer = instance(Refer);
-    memset(copy_refer, 0, sizeof(Refer));
-    strcpy(copy_refer->table_name, refer->table_name);
-    copy_refer->page_num = refer->page_num;
-    copy_refer->cell_num = refer->cell_num;
-    return copy_refer;
+    Refer *duplica = instance(Refer);
+    duplica->oid = refer->oid;
+    duplica->page_num = refer->page_num;
+    duplica->cell_num = refer->cell_num;
+    return duplica;
 }
 
 /* Copy meta column. */
@@ -253,6 +252,7 @@ Table *copy_table(Table *table) {
         return NULL;
 
     Table *duplica = instance(Table);
+    duplica->oid = table->oid;
     duplica->root_page_num = table->root_page_num;
     duplica->meta_table = copy_meta_table(table->meta_table);
     duplica->creator = table->creator;

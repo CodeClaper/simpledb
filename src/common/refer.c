@@ -31,6 +31,7 @@
 #include "table.h"
 #include "log.h"
 #include "instance.h"
+#include "systable.h"
 
 typedef struct {
     uint32_t size;
@@ -51,7 +52,8 @@ void init_refer() {
 
 /* Get table name in ReferUpdateEntity. */
 static inline char* get_refer_table_name(ReferUpdateEntity *refer_update_entity) {
-    return refer_update_entity->old_refer->table_name;
+    Oid oid = refer_update_entity->old_refer->oid;
+    return OidFindRelName(oid);
 }
 
 /* Add Refer to UpdateReferLockContent. */
@@ -97,9 +99,9 @@ static bool include_update_refer_lock(Refer *refer) {
 
 /* Generate new Refer. 
  * Note: if page_num is -1 and cell_num is -1 which means refer null. */
-Refer *new_refer(char *table_name, int32_t page_num, int32_t cell_num) {
+Refer *new_refer(Oid oid, int32_t page_num, int32_t cell_num) {
     Refer *refer = instance(Refer);
-    strcpy(refer->table_name, table_name);
+    refer->oid = oid;
     refer->page_num = page_num;
     refer->cell_num = cell_num;
     return refer;
@@ -145,7 +147,7 @@ static Cursor *define_cursor_internal_node(Table *table, void *internal_node, vo
     Assert(child_page_num != -1);
 
     /* Get the child node buffer. */
-    Buffer buffer = ReadBuffer(table, child_page_num);
+    Buffer buffer = ReadBuffer(GET_TABLE_OID(table), child_page_num);
     void *child_node = GetBufferPage(buffer);
     NodeType node_type = get_node_type(child_node);
     switch(node_type) {
@@ -174,7 +176,7 @@ Cursor *define_cursor(Table *table, void *key, bool if_exsits) {
     Assert(key != NULL);
 
     /* Get root node buffer. */
-    Buffer buffer = ReadBuffer(table, table->root_page_num);
+    Buffer buffer = ReadBuffer(GET_TABLE_OID(table), table->root_page_num);
     void *root_node = GetBufferPage(buffer);
     NodeType node_type = get_node_type(root_node);
     switch(node_type) {
@@ -261,7 +263,7 @@ Refer *convert_refer(Cursor *cursor) {
 
     /* Generate new refer. */
     Refer *refer = instance(Refer);
-    strcpy(refer->table_name, cursor->table->meta_table->table_name);
+    refer->oid = GET_TABLE_OID(cursor->table);
     refer->page_num = cursor->page_num;
     refer->cell_num = cursor->cell_num;
 
@@ -272,7 +274,8 @@ Refer *convert_refer(Cursor *cursor) {
 Cursor *convert_cursor(Refer *refer) {
     if (refer == NULL)
         return NULL;
-    Table *table = open_table(refer->table_name);
+    Object entity = OidFindObject(refer->oid);
+    Table *table = open_table(entity.relname);
 
     return new_cursor(table, refer->page_num, refer->cell_num);
 }
@@ -294,14 +297,14 @@ static bool if_related_table(MetaTable *meta_table, char *refer_table_name) {
 
 /* Check if refer equals. */
 bool refer_equals(Refer *refer1, Refer *refer2) {
-    return streq(refer1->table_name, refer2->table_name) && 
+    return refer1->oid == refer2->oid && 
                 refer1->page_num == refer2->page_num && 
-                refer1->cell_num == refer2->cell_num;
+                    refer1->cell_num == refer2->cell_num;
 }
 
 /* Check if cursor equals. */
 bool cursor_equals(Cursor *cursor1, Cursor * cursor2) {
-    return streq(cursor1->table->meta_table->table_name, cursor2->table->meta_table->table_name) && 
+    return GET_TABLE_OID(cursor1->table) == GET_TABLE_OID(cursor2->table) && 
                 cursor1->page_num == cursor2->page_num && 
                 cursor1->cell_num == cursor2->cell_num;
 }
@@ -434,11 +437,11 @@ void update_related_tables_refer(ReferUpdateEntity *refer_update_entity) {
 /* Update Refer 
  * When referenct target be changed (updated or deleted), 
  * must to update row reference value which pointer to it. */
-void update_refer(char *table_name, int32_t old_page_num, int32_t old_cell_num, 
+void update_refer(Oid oid, int32_t old_page_num, int32_t old_cell_num, 
                   int32_t new_page_num, int32_t new_cell_num) {
    
-    Refer *old_one = new_refer(table_name, old_page_num, old_cell_num);
-    Refer *new_one = new_refer(table_name, new_page_num, new_cell_num);
+    Refer *old_one = new_refer(oid, old_page_num, old_cell_num);
+    Refer *new_one = new_refer(oid, new_page_num, new_cell_num);
     ReferUpdateEntity *refer_update_entity = new_refer_update_entity(old_one, new_one);
    
     /* Update related tables. */

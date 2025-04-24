@@ -1,6 +1,5 @@
 #include <stdbool.h>
 #include <stdint.h>
-#include <string.h>
 #include "rwlock.h"
 #include "shmem.h"
 #include "utils.h"
@@ -17,7 +16,7 @@ typedef int64_t Buffer;
 
 /* Buffer tag. */
 typedef struct BufferTag {
-    char tableName[MAX_TABLE_NAME_LEN];
+    Oid oid;
     BlockNum blockNum;
 } BufferTag;
 
@@ -47,18 +46,7 @@ typedef struct VictimIndex {
 /* Return if both BufferTags equals. */
 static inline bool BufferTagEquals(BufferTag *tag1, BufferTag *tag2) {
     return (tag1->blockNum == tag2->blockNum) 
-                && streq(tag1->tableName, tag2->tableName);
-}
-
-/* Return if the BufferTag is empty. */
-static inline bool BufferTagEmpty(BufferTag tag) {
-    return is_null(tag.tableName) && tag.blockNum == 0;
-}
-
-/* Make the BufferTag empty. */
-static inline void MakeBufferTagEmpty(BufferTag *tag) {
-    tag->blockNum = 0;
-    memset(tag->tableName, 0, MAX_TABLE_NAME_LEN);
+                && (tag1->oid == tag2->oid);
 }
 
 /* Init BufMgr. */
@@ -67,27 +55,11 @@ void InitBufMgr();
 /* Get the BufferDesc. */
 BufferDesc *GetBufferDesc(Buffer buffer);
 
-/* Read Buffer.
- * Get shared buffer data via Buffer value. 
- * */
-Buffer ReadBuffer(Table *table, BlockNum blockNum);
+/* Read Buffer. */
+Buffer ReadBuffer(Oid oid, BlockNum blockNum);
 
-/* Read Buffer Inner.
- * Get shared buffer data via Buffer value. 
- * */
-Buffer ReadBufferInner(char *table_name, BlockNum blockNum);
-
-/* Release Buffer.
- * Release Buffer after using. 
- * And the function is called aftert ReadBuffer. 
- * */
+/* Release Buffer. */
 void ReleaseBuffer(Buffer buffer);
-
-/* Release Buffer Inner.
- * Release Buffer after using. 
- * And the function is called aftert ReadBuffer. 
- * */
-void ReleaseBufferInner(Buffer buffer);
 
 /* Upgrade Lock Buffer. */
 void UpgradeLockBuffer(Buffer buffer);
@@ -119,6 +91,9 @@ void UnpinBuffer(BufferDesc *desc);
 
 /* Make Buffer dirty. */
 void MakeBufferDirty(Buffer buffer);
+
+/* Make Buffer normal. */
+void MakeBufferNormal(Buffer buffer);
 
 /* Get Lock Mode. */
 RWLockMode GetLockModeBuffer(Buffer buffer);

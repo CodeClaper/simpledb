@@ -31,10 +31,10 @@ void InitPager() {
 }
 
 /* Get the page size. */
-Size GetPageSize(char *table_name) {
+Size GetPageSize(Oid oid) {
     FDesc fdesc;
     off_t file_length;
-    fdesc = get_file_desc(table_name);
+    fdesc = get_file_desc(oid);
 
     file_length = lseek(fdesc, 0, SEEK_END);
     if (file_length == -1) {

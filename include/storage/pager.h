@@ -6,7 +6,7 @@
 void InitPager();
 
 /* Get the page size. */
-Size GetPageSize(char *table_name);
+Size GetPageSize(Oid oid);
 
 /* Get next unused page num. */
 uint32_t GetNextUnusedPageNum(Table *table);

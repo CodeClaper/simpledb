@@ -8,10 +8,7 @@
  */
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <dirent.h>
-#include <stdlib.h>
-#include <string.h>
 #include <sys/stat.h>
 #include "show.h"
 #include "mmgr.h"
@@ -26,6 +23,8 @@
 #include "instance.h"
 #include "log.h"
 #include "timer.h"
+#include "systable.h"
+
 
 #define KB_THRESHOLD 1024
 #define MB_THRESHOLD 1024 * KB_THRESHOLD
@@ -34,47 +33,34 @@
 /*Gen table map list.*/
 static List *gen_table_map_list() {
     List *list = create_list(NODE_LIST);
+    List *object_list = FindAllObject(); 
 
-    DIR *dir;
-    struct dirent *entry;
-    if ((dir = opendir(conf->data_dir)) ==NULL) 
-        db_log(PANIC, "System error, not found directory: ", conf->data_dir); 
-    else {
-        while((entry = readdir(dir)) != NULL) {
-            if (entry->d_type == 8 && endwith(entry->d_name, ".dbt")) {
-                /* map */
-                List *child_list = create_list(NODE_KEY_VALUE);
+    ListCell *lc;
+    foreach(lc, object_list) {
+        Object *entity = (Object *) lfirst(lc);
 
-                struct stat info;
-                char full_path[BUFF_SIZE];
-                sprintf(full_path,"%s%s", conf->data_dir, entry->d_name);
-                assert_true(stat(full_path, &info) == 0, "Try to get file '%s' info fail.", full_path);
+        /* map */
+        List *child_list = create_list(NODE_KEY_VALUE);
 
-                /* name */
-                append_list(
-                    child_list, 
-                    new_key_value(dstrdup("table_name"), replace_once(entry->d_name, ".dbt", ""), T_STRING)
-                );
+        /* oid */
+        append_list(
+            child_list, 
+            new_key_value(dstrdup(SYS_TABLE_OID_NAME ), &entity->oid, T_LONG)
+        );
 
-                /* size */
-                append_list(
-                    child_list,
-                    new_key_value(dstrdup("table_size"), copy_value(&info.st_size, T_INT), T_INT));
+        /* relname */
+        append_list(
+            child_list, 
+            new_key_value(dstrdup(SYS_TABLE_RELNAME_NAME), entity->relname, T_STRING)
+        );
 
-                /* blk_size */
-                append_list(
-                    child_list, 
-                    new_key_value(dstrdup("blk_size"), copy_value(&info.st_blksize, T_INT), T_INT));
+        /* object type */
+        append_list(
+            child_list, 
+            new_key_value(dstrdup(SYS_TABLE_RELTYPE_NAME), GetObjectTypeName(entity->reltype), T_STRING)
+        );
 
-                /* create_time */
-                append_list(
-                    child_list, 
-                    new_key_value(dstrdup("create_time"), format_time("%Y-%m-%d", info.st_ctim.tv_sec), T_STRING));
-
-                append_list(list, child_list);
-            }
-        }
-        closedir(dir);
+        append_list(list, child_list);
     }
     return list;
 }

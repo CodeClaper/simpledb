@@ -29,38 +29,42 @@ void init_table_lock() {
 
 /* Find TableLockEntity in list.
  * Return NULL if not found. */
-static TableLockEntity *find_lock_entry(char *table_name) {
+static TableLockEntity *find_lock_entry(Oid oid) {
     ListCell *lc;
     foreach (lc, lock_list) {
         TableLockEntity *current = lfirst(lc);
-        if (streq(current->table_name, table_name))
+        if (oid == current->oid)
             return current;
     }
     return NULL;
 }
 
 /* Register TableLockEntity. */
-static void register_lock_entry(char *table_name) {
+static TableLockEntity *register_lock_entry(Oid oid) {
+    TableLockEntity *lock_entry;
+
     switch_shared();
 
-    TableLockEntity *new_one = instance(TableLockEntity);
-    strcpy(new_one->table_name, table_name);
-    new_one->entry_lock = instance(ExLockEntry);
-    init_exlock(new_one->entry_lock);
-    acquire_exlock(new_one->entry_lock);
-    append_list(lock_list, new_one);
+    lock_entry = instance(TableLockEntity);
+    lock_entry->oid = oid;
+    lock_entry->entry_lock = instance(ExLockEntry);
+    init_exlock(lock_entry->entry_lock);
+    append_list(lock_list, lock_entry);
 
     switch_local();
+
+    return lock_entry;
 }
 
 /* Check table if locked. 
+ * ---------------------
  * Firstly, find TableLockEntity in list and check if exist. 
  * If there is not TableLockEntity, just return, 
  * otherwise, try to acqurie the lock. 
  * */
-void check_table_locked(char *table_name) {
-    Assert(!is_empty(table_name));
-    TableLockEntity *lock_entry = find_lock_entry(table_name);
+void check_table_locked(Oid oid) {
+    AssertFalse(ZERO_OID(oid));
+    TableLockEntity *lock_entry = find_lock_entry(oid);
     if (lock_entry) {
         /* Try to check exlock if unlolocked, maybe block here when locked. */
         wait_for_exlock(lock_entry->entry_lock);   
@@ -68,16 +72,16 @@ void check_table_locked(char *table_name) {
 }
 
 /* Try to acquire the table. 
+ * -------------------------
  * First, find TableLockEntity and if not exists, register one.
  * Second, try to acquire the table lock.
  * After acquired the lock, wait unitl there is no other threads manipulating the table. 
  * At the end, acquire the table successfully and exclusively.
  * */
-void try_acquire_table(char *table_name) {
-    TableLockEntity *lock_entry = find_lock_entry(table_name);
+void try_acquire_table(Oid oid) {
+    TableLockEntity *lock_entry = find_lock_entry(oid);
     if (is_null(lock_entry)) {
-        register_lock_entry(table_name);
-        lock_entry = find_lock_entry(table_name);
+       lock_entry = register_lock_entry(oid);
     }
     
     /* Make sure TableLockEntity exists. */
@@ -88,12 +92,12 @@ void try_acquire_table(char *table_name) {
 }
 
 /* Try to release the table. */
-void try_release_table(char *table_name) {
+void try_release_table(Oid oid) {
 
-    TableLockEntity *lock_entry = find_lock_entry(table_name);
+    TableLockEntity *lock_entry = find_lock_entry(oid);
 
     /* Make sure exists. */
-    assert_not_null(lock_entry, "Not found lock entry.");
+    Assert(lock_entry);
 
     /* Release lock. */
     release_exlock(lock_entry->entry_lock);

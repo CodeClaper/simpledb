@@ -177,7 +177,7 @@ static void HeapDeleteXLog(Refer *refer, TransEntry *transaction) {
     
     /* Repositioning. */
     Cursor *new_cur = define_cursor(
-        open_table(refer->table_name), 
+        open_table_inner(refer->oid), 
         newRow->key, false
     );
 
@@ -201,7 +201,7 @@ static void HeadUpdateDeleteXlog(Refer *refer, TransEntry *transaction) {
 
     /* Repositioning. */
     Cursor *new_cur = define_cursor(
-        open_table(refer->table_name), 
+        open_table_inner(refer->oid), 
         newRow->key, false
     );
     Refer *new_ref = convert_refer(new_cur);

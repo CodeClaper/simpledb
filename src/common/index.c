@@ -13,6 +13,7 @@
 #include "common.h"
 #include "log.h"
 #include "bufmgr.h"
+#include "table.h"
 
 /* Check if key already exists  */
  bool check_duplicate_key(Cursor *cursor, void *key) {
@@ -20,15 +21,16 @@
     void *node, *target;
     uint32_t key_len, value_len;
     MetaColumn *primary_key_meta_column;
+    Table *table = cursor->table;
 
     /* Get the buffer. */
-    buffer = ReadBuffer(cursor->table, cursor->page_num); 
+    buffer = ReadBuffer(GET_TABLE_OID(table), cursor->page_num); 
     node = GetBufferPage(buffer);
 
-    value_len = calc_table_row_length(cursor->table);
-    key_len = calc_primary_key_length(cursor->table);
+    value_len = calc_table_row_length(table);
+    key_len = calc_primary_key_length(table);
 
-    primary_key_meta_column = get_primary_key_meta_column(cursor->table->meta_table);
+    primary_key_meta_column = get_primary_key_meta_column(table->meta_table);
     target = get_leaf_node_cell_key(node, cursor->cell_num, key_len, value_len);
 
     /* Release the buffer. */

@@ -11,6 +11,8 @@
 #include <errno.h>
 #include <fcntl.h>
 #include "table.h"
+#include "sys.h"
+#include "systable.h"
 #include "mmgr.h"
 #include "free.h"
 #include "cache.h"
@@ -26,7 +28,6 @@
 #include "index.h"
 #include "fdesc.h"
 #include "compres.h"
-#include "sys.h"
 
 /* Get table list. */
 List *get_table_list() {
@@ -52,14 +53,12 @@ List *get_table_list() {
 }
 
 /* Get table file path. */
-char *table_file_path(char *table_name) {
-    if (table_name == NULL) {
-        fprintf(stderr, "Inner error, table name can`t be NULL.\n");
-        exit(EXIT_FAILURE);
-    }
-    int len = strlen(conf->data_dir) + strlen(table_name) + strlen(".dbt") + 1;
-    char *file_path = dalloc(len);
-    sprintf(file_path, "%s%s%s", conf->data_dir, table_name, ".dbt");
+char *table_file_path(Oid oid) {
+    char *file_path;
+
+    file_path = dalloc(100);
+    sprintf(file_path, "%s%ld", conf->data_dir, oid);
+
     return file_path;
 }
 
@@ -70,36 +69,45 @@ bool table_file_exist(char *table_file_path) {
     return (stat(table_file_path, &buffer) == 0);
 }
 
+/* Check if table exist directly. */
+bool check_table_exist_direct(Oid oid) {
+    char *file_path = table_file_path(oid);
+    return table_file_exist(file_path);
+}
+
 /* Check if table exists. */
 bool check_table_exist(char *table_name) {
-    char *file_path = table_file_path(table_name);
-    bool ret = table_file_exist(file_path);
-    dfree(file_path);
-    return ret;
+    Oid oid = TableNameFindOid(table_name);
+    return check_table_exist_direct(oid);
 }
 
 /* Create a new table. */
-bool create_table(MetaTable *meta_table) {
+bool create_table(Oid oid, MetaTable *meta_table) {
+    char *file_path;
+    int descr;
+    void *root_node;
+    uint32_t default_value_len;
 
+    AssertFalse(ZERO_OID(oid));
     Assert(meta_table);
 
-    char *file_path = table_file_path(meta_table->table_name);
+    file_path = table_file_path(oid);
     if (table_file_exist(file_path)) {
-        db_log(ERROR, "Table '%s' already exists. \n", meta_table->table_name);
+        db_log(ERROR, "Table '%s' already exists.", meta_table->table_name);
         dfree(file_path);
         return false;
     }
 
-    int descr = open(file_path, O_CREAT | O_WRONLY, S_IWUSR | S_IRUSR);
+    descr = open(file_path, O_CREAT | O_WRONLY, S_IWUSR | S_IRUSR);
     if (descr == -1) {
-        db_log(ERROR, "Open database file '%s' fail.\n", file_path);
+        db_log(ERROR, "Open database file '%s' fail.", file_path);
         dfree(file_path);
         return false;
     }
 
-    void *root_node = dalloc(PAGE_SIZE);
+    root_node = dalloc(PAGE_SIZE);
 
-    uint32_t default_value_len = calc_table_row_length2(meta_table);
+    default_value_len = calc_table_row_length2(meta_table);
 
     /* Initialize root node */
     initial_leaf_node(root_node, default_value_len, true);
@@ -111,10 +119,9 @@ bool create_table(MetaTable *meta_table) {
     void *default_value_dest = get_default_value_cell(root_node);
 
     /* Serialize */
-    uint32_t offset = 0;
-    uint32_t i;
+    uint32_t i, offset = 0;
     for (i = 0; i < meta_table->all_column_size; i++) {
-        MetaColumn *meta_column = (MetaColumn *)(meta_table->meta_column[i]);
+        MetaColumn *meta_column = (MetaColumn *) (meta_table->meta_column[i]);
         void *destination = serialize_meta_column(meta_column);
         set_meta_column(root_node, destination, i);
         if (meta_column->default_value_type == DEFAULT_VALUE)
@@ -133,7 +140,7 @@ bool create_table(MetaTable *meta_table) {
         dfree(root_node);
         return false;
     }
-    
+
     /* Close desription. */
     close(descr);
 
@@ -191,35 +198,36 @@ bool drop_meta_column(char *table_name, char *column_name) {
     return true;
 }
 
-/* Open a table file. 
- * Return Table or NULL if not exists. */
-Table *open_table(char *table_name) {
-    Assert(table_name);
+/* Open a table object. 
+ * ---------------------
+ * Return the found table or NULL if missing. 
+ * */
+Table *open_table_inner(Oid oid) {
 
-    /* Check table if locked. Block here until acquire the table if locked. */
-    check_table_locked(table_name);
+    /* Check table if locked. 
+     * Block here until acquire the table if locked. */
+    check_table_locked(oid);
 
     /* Firstly, try to find in buffer. */
-    Table *mtable = find_table_cache(table_name);
+    Table *mtable = find_table_cache(oid);
     if (mtable != NULL)
         return mtable;
 
-    try_acquire_table(table_name);
+    try_acquire_table(oid);
     
-    /* Double check. */
-    mtable = find_table_cache(table_name);
+    /* Double check to avoid other transaction save 
+     * table cache before current transaction acquire the table lock. */
+    mtable = find_table_cache(oid);
     if (mtable != NULL) {
-        try_release_table(table_name);
+        try_release_table(oid);
         return mtable;
     }
 
-    db_log(DEBUGER, "Will load table %s from disk.", table_name);
+    db_log(DEBUGER, "Will load object %ld from disk.", oid);
 
     /* Memory missing, get from disk. */
-    char *file_path = table_file_path(table_name);
-    if (!table_file_exist(file_path)) {
-        dfree(file_path);
-        try_release_table(table_name);
+    if (!check_table_exist_direct(oid)) {
+        try_release_table(oid);
         return NULL;
     }
     
@@ -227,63 +235,80 @@ Table *open_table(char *table_name) {
     Table *table = instance(Table);
 
     /* Define root page is first page. */
-    table->root_page_num = 0; 
+    table->oid = oid;
+    table->root_page_num = ROOT_PAGE_NUM; 
     table->creator = getpid();
-    table->meta_table = gen_meta_table(table, table_name);
-    table->page_size = GetPageSize(table_name);
+    table->meta_table = gen_meta_table(oid);
+    table->page_size = GetPageSize(oid);
 
     /* Save table cache. */
     save_table_cache(table);
     
-    /* Free memory. */
-    dfree(file_path);
+    /* Release table lock. */
+    try_release_table(oid);
 
-    try_release_table(table_name);
+    db_log(DEBUGER, "Has loaded table %ld from disk.", oid);
 
-    db_log(DEBUGER, "Has loaded table %s from disk.", table_name);
+    /* Only return buffer table to keep the same table pointer 
+     * in the same transaction. */
+    return find_table_cache(oid);
+}
 
-    /* Only return buffer table to keep same table pointer in the same transaction. */
-    return find_table_cache(table_name);
+/* Open a table object. 
+ * -----------------------
+ * Return the found table or NULL if missing. */
+Table *open_table(char *table_name) {
+    Assert(table_name);
+    Oid oid = TableNameFindOid(table_name);
+    if (ZERO_OID(oid))
+        return NULL;
+    return open_table_inner(oid);
 }
 
 
 /* Drop an existed table. */
 bool drop_table(char *table_name) {
+
     /* Check if exist the table. */
-    char *file_path = table_file_path(table_name);
+    Oid oid = TableNameFindOid(table_name);
+    char *file_path = table_file_path(oid);
     if (!table_file_exist(file_path)) {
         dfree(file_path);
         return false;
     }
 
     /* Try to acquire the table lock. */
-    try_acquire_table(table_name);
+    try_acquire_table(oid);
 
     /* Get file descriptor. */
-    FDesc fdesc = get_file_desc(table_name);
+    FDesc fdesc = get_file_desc(oid);
 
     /* Close file descriptor. */
     close(fdesc);
 
     /* Unregister fdesc. */
-    unregister_fdesc(table_name);
+    unregister_fdesc(oid);
 
     /* Disk remove. */
     if (remove(file_path) == 0) {
         /* Remove table cache. */
-        remove_table_cache(table_name);
+        remove_table_cache(oid);
         /* Remove table buffer. */
-        RemoveTableBuffer(table_name);
+        RemoveTableBuffer(oid);
         /* Release the table lock. */
-        try_release_table(table_name);
+        try_release_table(oid);
         return true;
     }
 
+    /* Remove the table object. */
+    RemoveObject(oid);
+
     /* Release the table lock. */
-    try_release_table(table_name);
+    try_release_table(oid);
     
     /* Not reach here logically. */
-    db_log(ERROR, "Table '%s' deleted fail, error : %d", table_name, errno);
+    db_log(ERROR, "Table '%s' deleted fail, error: %s", 
+           table_name, strerror(errno));
 
     return false;
 }

@@ -152,6 +152,7 @@ static void ExecuteDescribeStmt(Statement *statement, DBResult *result) {
 /*Show tables Statment*/
 static void ExecuteShowStmt(Statement *statement, DBResult *result) {
     Assert(statement->statement_type == SHOW_STMT);
+    AutoBeginTransaction();
     exec_show_statement(statement->show_node, result);
 }
 

@@ -46,6 +46,8 @@
 #define MAX_DEFAULT_VALUE_LENGTH 64
 #define MAX_COMMENT_STRING_LENGTH 64
 
+#define ROOT_PAGE_NUM 0
+
 #define SYS_RESERVED_ID_COLUMN_NAME  "sys_id"
 #define CREATED_XID_COLUMN_NAME  "created_xid"
 #define EXPIRED_XID_COLUMN_NAME  "expired_xid"
@@ -98,7 +100,7 @@ typedef enum {
 typedef enum { TR_SELECT, TR_INSERT, TR_DELETE, TR_UPDATE } TransOpType;
 
 /* NodeState. */
-typedef enum { INUSE_STATE, OBSOLETE_STATE, DIRTY_STATE } NodeState;
+typedef enum { NORMAL_STATE, OBSOLETE_STATE, DIRTY_STATE } NodeState;
 
 /* NodeType */
 typedef enum { UNKNOWN_NODE, LEAF_NODE, INTERNAL_NODE } NodeType;
@@ -596,7 +598,6 @@ typedef struct MetaColumn {
 
 /* MetaTable */
 typedef struct MetaTable {
-    Oid refId;                  /* RefId. */
     char *table_name;           /* Table name.*/
     MetaColumn **meta_column;   /* Meta column array. */
     uint32_t column_size;       /* size of column, excluding system reserved columns. */
@@ -605,6 +606,7 @@ typedef struct MetaTable {
 
 /* Table */
 typedef struct Table {
+    Oid oid;                    /* Oid. */
     uint32_t root_page_num;     /* Root page num. */
     MetaTable *meta_table;      /* Meta table info. */
     Pid creator;                /* The creator pid. */
@@ -683,7 +685,7 @@ typedef struct {
 
 /* Refer */
 typedef struct Refer {
-    char table_name[MAX_TABLE_NAME_LEN];
+    Oid oid;
     int32_t page_num;
     int32_t cell_num;
 } Refer;

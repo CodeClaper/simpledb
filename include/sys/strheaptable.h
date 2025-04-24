@@ -19,7 +19,7 @@ bool CreateStrHeapTable(char *table_name);
 /* Insert new String value. 
  * Return the Refer value.
  * */
-StrRefer *InsertStringValue(char *table_name, char *str_val);
+StrRefer *InsertStringValue(Oid oid, char *str_val);
 
 
 /* Query string value. */

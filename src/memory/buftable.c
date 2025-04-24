@@ -3,33 +3,18 @@
 #include "buftable.h"
 #include "spinlock.h"
 #include "mmgr.h"
+#include "hash.h"
 
 /* BTable is a hash table. */
 static BufferTableEntrySlot *BTable;
-
-/* HashCode. */
-typedef unsigned long Hash;
-
-/* Hash the BufferTag. */
-static Hash HashBufferTag(BufferTag *tag, Size size) {
-    /* Use DJB2 hash alg. */
-    unsigned long hash = 5381;
-    hash = ((hash << 5) + hash) + tag->blockNum;
-    const char *tableName = tag->tableName;
-    int c;
-    while ((c = *tableName++)) {
-        hash = ((hash << 5) + hash) + c;
-    }
-    return hash % size;
-}
 
 /* Geneate new BufferTableEntry. */
 static BufferTableEntry *NewBufferTableEntry(BufferTag *tag, Buffer buffer) {
     switch_shared();
     BufferTableEntry *entry = instance(BufferTableEntry);
     entry->buffer = buffer;
+    entry->tag.oid = tag->oid;
     entry->tag.blockNum = tag->blockNum;
-    memcpy(entry->tag.tableName, tag->tableName, MAX_TABLE_NAME_LEN);
     entry->next = NULL;
     switch_local();
     return entry;
@@ -37,7 +22,7 @@ static BufferTableEntry *NewBufferTableEntry(BufferTag *tag, Buffer buffer) {
 
 /* Get Buffer Table slot. */
 inline BufferTableEntrySlot *GetBufferTableSlot(BufferTag *tag) {
-    Hash hash = HashBufferTag(tag, BUFFER_SLOT_NUM);
+    Hash hash = OidHash(tag->oid, BUFFER_SLOT_NUM);
     return (BufferTableEntrySlot *)(BTable + hash);
 }
 
@@ -169,7 +154,7 @@ void DeleteBufferTableEntry(BufferTag *tag) {
 }
 
 /* Remove all the table-relative buffer entry. */
-void RemoveTableBuffer(char *table_name) {
+void RemoveTableBuffer(Oid oid) {
     switch_shared();
     for (Index i = 0; i < BUFFER_SLOT_NUM; i++) {
         BufferTableEntrySlot *slot; 
@@ -179,7 +164,7 @@ void RemoveTableBuffer(char *table_name) {
         current = slot->next;
         for (current = slot->next, pres = current; current != NULL; pres = current, current = current->next) {
             BufferTag tag = current->tag;
-            if (streq(tag.tableName, table_name)) {
+            if (tag.oid == oid) {
                 if (current == slot->next) 
                     slot->next = current->next;
                 else 

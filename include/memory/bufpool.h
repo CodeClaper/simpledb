@@ -2,6 +2,7 @@
 #define BUFPOOL_H
 
 #include "bufmgr.h"
+#include <stdbool.h>
 
 /* Create the Buffer Pool. */
 void CreateBufferPool();
@@ -14,7 +15,9 @@ void *GetBufferBlock(Buffer buffer);
 void BufferReadBlock(BufferTag *tag, Buffer buffer);
 
 
-/* Write Buffer Block. */
-void BufferWriteBlock(Buffer buffer);
+/* Write Buffer Block. 
+ * If realy write to file, return true.
+ * */
+bool BufferWriteBlock(Buffer buffer);
 
 #endif
