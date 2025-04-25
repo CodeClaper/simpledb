@@ -98,7 +98,10 @@ void CreateSysTable() {
 }
 
 
-/* Convert Oid to a condition.*/
+/* Convert Oid to a condition.
+ * -------------------------
+ * Generate a condition which filtered by the oid.
+ * */
 static ConditionNode *OidConvertCondition(Oid oid) {
     ConditionNode *condition = instance(ConditionNode);
     condition->conn_type = C_NONE;
@@ -121,7 +124,10 @@ static ConditionNode *OidConvertCondition(Oid oid) {
 }
 
 
-/* Convert relname to a condition.*/
+/* Convert relname and reltype to a condition.
+ * -------------------------
+ * Generate a condition which filtered by relname and reltype.
+ * */
 static ConditionNode *RelnameTypeConvertCondition(char *relname, ObjectType type) {
     ConditionNode *condition = instance(ConditionNode);
     condition->conn_type = C_AND;
@@ -392,10 +398,15 @@ static Row *ObjectConvertRow(Object entity) {
 
 /* Save Object. */
 bool SaveObject(Object entity) {
-    Row *row = ObjectConvertRow(entity);
-    Table *sysTable = open_table_inner(SYS_ROOT_OID); 
+    Row *row;
+    Refer *refer;
+    Table *sysTable;
+
+    row = ObjectConvertRow(entity);
+    sysTable = open_table_inner(SYS_ROOT_OID); 
     Assert(sysTable);
-    Refer *refer = insert_one_row(sysTable, row);
+    refer = insert_one_row(sysTable, row);
+
     dfree(row);
     return refer != NULL;
 }

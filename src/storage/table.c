@@ -29,29 +29,6 @@
 #include "fdesc.h"
 #include "compres.h"
 
-/* Get table list. */
-List *get_table_list() {
-    List *list;
-    DIR *dir;
-    struct dirent *entry;
-
-    list = create_list(NODE_STRING);
-    if ((dir = opendir(conf->data_dir)) == NULL) {
-        db_log(PANIC, "System error, not found directory: %s", conf->data_dir); 
-    } else {
-        while((entry = readdir(dir)) != NULL) {
-            if (entry->d_type == 8 && endwith(entry->d_name, ".dbt")) {
-                char *table_name = replace_once(entry->d_name, ".dbt", "");
-                /* Skip the system reserved table. */
-                if (!if_table_reserved(table_name))
-                    append_list(list, table_name);
-            }
-        }
-        closedir(dir);
-    }
-    return list;
-}
-
 /* Get table file path. */
 char *table_file_path(Oid oid) {
     char *file_path;
@@ -290,18 +267,16 @@ bool drop_table(char *table_name) {
     unregister_fdesc(oid);
 
     /* Disk remove. */
-    if (remove(file_path) == 0) {
+    if (remove(file_path) == 0 && RemoveObject(oid)) {
         /* Remove table cache. */
         remove_table_cache(oid);
         /* Remove table buffer. */
         RemoveTableBuffer(oid);
         /* Release the table lock. */
         try_release_table(oid);
+
         return true;
     }
-
-    /* Remove the table object. */
-    RemoveObject(oid);
 
     /* Release the table lock. */
     try_release_table(oid);

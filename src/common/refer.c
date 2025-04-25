@@ -56,6 +56,10 @@ static inline char* get_refer_table_name(ReferUpdateEntity *refer_update_entity)
     return OidFindRelName(oid);
 }
 
+static inline Oid get_refer_oid(ReferUpdateEntity *refer_update_entity) {
+    return refer_update_entity->old_refer->oid;
+}
+
 /* Add Refer to UpdateReferLockContent. */
 void add_refer_update_lock(Refer *refer) {
     if (!include_update_refer_lock(refer)) {
@@ -236,8 +240,7 @@ Refer *fetch_refer(MetaColumn *meta_column, ConditionNode *condition_node) {
 /* Check if refer null. 
  * If page number is -1 and cell number is -1, it means refer null. */
 bool refer_null(Refer *refer) {
-    return refer->page_num == -1 
-        && refer->cell_num == -1;
+    return refer->page_num == -1 && refer->cell_num == -1;
 }
 
 /* Make a NULL Refer. */
@@ -282,8 +285,8 @@ Cursor *convert_cursor(Refer *refer) {
 
 /* Check if table has column refer to. */
 static bool if_related_table(MetaTable *meta_table, char *refer_table_name) {
-    Assert(meta_table);
 
+    Assert(meta_table);
     int i;
     for(i = 0; i < meta_table->column_size; i++) {
         MetaColumn *current_meta_column = meta_table->meta_column[i];
@@ -410,27 +413,30 @@ static void update_table_refer(MetaTable *meta_table, ReferUpdateEntity *refer_u
 
 /* Update releated tables reference. */
 void update_related_tables_refer(ReferUpdateEntity *refer_update_entity) {
+    Oid self_oid;
+    char *self_table_name;
+    List *obj_list;
 
     /* Get self name. */
-    char *self_table_name = get_refer_table_name(refer_update_entity);
+    self_oid = get_refer_oid(refer_update_entity);
+    self_table_name = OidFindRelName(self_oid);
+    obj_list = FindAllObject();
 
-    List *table_list = get_table_list();
     /* Update table refer. */
     ListCell *lc;
-    foreach (lc, table_list) {
-        char *table_name = lfirst(lc);
-        /* Skip itself. */
-        if (streq(table_name, self_table_name)) 
+    foreach (lc, obj_list) {
+        Object *entity = (Object *)lfirst(lc);
+
+        /* Skip non table, view, skip itself. */
+        if (!TABLE_OR_VIEW(entity->reltype) || self_oid == entity->oid) 
             continue;
         
         /* Check other tables. */
-        Table *table = open_table(table_name);
+        Table *table = open_table_inner(entity->oid);
         MetaTable *meta_table = table->meta_table;
         if (if_related_table(meta_table, self_table_name)) 
             update_table_refer(meta_table, refer_update_entity);
     }
-
-    free_list_deep(table_list);
 }
 
 

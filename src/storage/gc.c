@@ -21,6 +21,7 @@
 #include "select.h"
 #include "asserts.h"
 #include "instance.h"
+#include "systable.h"
 
 #define DEFAULT_GC_INTERVAL 10
 
@@ -43,14 +44,14 @@ void loop_gc() {
         AutoBeginTransaction();
 
         /* loop each of tables to gc. */
-        List *table_list = get_table_list();
+        List *obj_list = FindAllObject();
 
         ListCell *lc;
-        foreach (lc, table_list) {
-            gc_table(lfirst(lc)); 
+        foreach (lc, obj_list) {
+            Object *entity = (Object *)lfirst(lc);
+            if (TABLE_OR_VIEW(entity->reltype))
+                gc_table(entity->relname); 
         }
-
-        free_list_deep(table_list);
 
         /* Commit transction manually. */
         AutoCommitTransaction();

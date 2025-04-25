@@ -39,6 +39,10 @@ static List *gen_table_map_list() {
     foreach(lc, object_list) {
         Object *entity = (Object *) lfirst(lc);
 
+        /* Only display table object and view object. */
+        if (!TABLE_OR_VIEW(entity->reltype))
+            continue;
+
         /* map */
         List *child_list = create_list(NODE_KEY_VALUE);
 

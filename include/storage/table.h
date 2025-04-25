@@ -11,9 +11,6 @@
 #define GET_TABLE_OID(table)\
     table->oid
 
-/* Get table list. */
-List *get_table_list();
-
 /* Check if table exist directly. */
 bool check_table_exist_direct(Oid oid);
 

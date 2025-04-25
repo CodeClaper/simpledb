@@ -33,6 +33,10 @@ typedef enum ObjectType {
     OSTRING_HEAP_TABLE
 } ObjectType;
 
+/* Object type is table or view. */
+#define TABLE_OR_VIEW(type) \
+        (type == OTABLE || type == OVIEW)
+
 static char *ObjectTypeNameList[] = {
     "TABLE",
     "VIEW",

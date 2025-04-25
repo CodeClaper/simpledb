@@ -585,8 +585,7 @@ Row *define_row(Refer *refer) {
     Assert(refer != NULL);
 
     /* Check table exists. */
-    Object entity = OidFindObject(refer->oid);
-    Table *table = open_table(entity.relname);
+    Table *table = open_table_inner(refer->oid);
     if (table == NULL)
         return NULL;
 
