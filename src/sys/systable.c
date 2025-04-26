@@ -17,6 +17,8 @@
 #include "select.h"
 #include "delete.h"
 
+static List *ObjCache;
+
 /* System table meta column list. */
 MetaColumn SYS_TABLE_COLUMNS[] = {
     { SYS_TABLE_OID_NAME, T_LONG, SYS_TABLE_NAME, (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), true, false, false, false, 0, 0},
@@ -95,6 +97,57 @@ void CreateSysTable() {
     MetaTable *sysMetaTable = CreateSysMetaTable();
     if (!create_table(SYS_ROOT_OID, sysMetaTable))
         panic("Create system table fail");
+
+    ObjCache = create_list(NODE_VOID);
+}
+
+/* Find object in cache by relname. 
+ * -------------------------------
+ * Return the found object or null of missing.
+ * */
+static Object *RelNameTypeFindObjectInCache(char *relname, ObjectType reltype) {
+    ListCell *lc;
+    foreach (lc, ObjCache) {
+        Object *entity = (Object *)lfirst(lc);
+        if (streq(relname, entity->relname) && reltype == entity->reltype)
+            return entity;
+    }
+    return NULL;
+}
+
+/* Find object in cache by relname. 
+ * -------------------------------
+ * Return the found object or null of missing.
+ * */
+static Object *OidFindObjectInCache(Oid oid) {
+    ListCell *lc;
+    foreach (lc, ObjCache) {
+        Object *entity = (Object *)lfirst(lc);
+        if (oid == entity->oid)
+            return entity;
+    }
+    return NULL;
+}
+
+/* Save Object in cache. */
+static void SaveObjectInCache(Object object) {
+    /* Switch to CACHE_MEMORY_CONTEXT. */
+    MemoryContext oldcontext = CURRENT_MEMORY_CONTEXT;
+    MemoryContextSwitchTo(CACHE_MEMORY_CONTEXT);
+
+    Object *entity = instance(Object);
+    memcpy(entity, &object, sizeof(Object));
+    append_list(ObjCache, entity);
+
+    /* Recover the MemoryContext. */
+    MemoryContextSwitchTo(oldcontext);
+}
+
+/* Remove object in cache. */
+static void RemoveObjectInCache(Oid oid) {
+    Object *entity = OidFindObjectInCache(oid);
+    if (entity != NULL)
+        list_delete(ObjCache, entity);
 }
 
 
@@ -172,10 +225,10 @@ static ConditionNode *RelnameTypeConvertCondition(char *relname, ObjectType type
  * The interface which find object by oid.
  * Panic if not found or found more than one.
  * */
-static Object OidFindObjectInner(Oid oid) {
+static Object OidFindObjectInnerInDish(Oid oid) {
+    Row *row;
     ConditionNode *condition;
     SelectResult *result;
-    Row *row;
 
     condition = OidConvertCondition(oid);
     result = new_select_result(SELECT_STMT, NULL);
@@ -197,6 +250,24 @@ static Object OidFindObjectInner(Oid oid) {
     return RowConvertObject(row);
 }
 
+
+/* Find Object by oid
+ * ------------------
+ * The interface which find object by oid.
+ * Panic if not found or found more than one.
+ * */
+static Object OidFindObjectInner(Oid oid) {
+    Object entity;
+    Object *found = OidFindObjectInCache(oid);
+    if (found) {
+        memcpy(&entity, found, sizeof(Object));
+        return entity;
+    }
+    entity = OidFindObjectInnerInDish(oid);
+    SaveObjectInCache(entity);
+    return entity;
+}
+
 /* Find Object by oid */
 Object OidFindObject(Oid oid) {
     Object entity;
@@ -216,7 +287,7 @@ Object OidFindObject(Oid oid) {
  * Return the oid of the found object.
  * Return OID_ZERO if missing.
  * */
-static Oid RelnameAndReltypeFindOid(char *relname, ObjectType reltype) {
+static Oid RelnameAndReltypeFindOidInDisk(char *relname, ObjectType reltype) {
     Object entity;
     ConditionNode *condition;
     SelectResult *result;
@@ -244,7 +315,23 @@ static Oid RelnameAndReltypeFindOid(char *relname, ObjectType reltype) {
 
     entity = RowConvertObject(row);
 
+    /* Save in cache. */
+    SaveObjectInCache(entity);
+
     return entity.oid;
+}
+
+/* Find refId by relname and reltype. 
+ * ------------------------
+ * Firstly, found in cache, 
+ * if missing, found in disk,
+ * if missing, return OID_ZERO.
+ * */
+static Oid RelnameAndReltypeFindOid(char *relname, ObjectType reltype) {
+    Object *entity = RelNameTypeFindObjectInCache(relname, reltype);
+    if (entity != NULL) 
+        return entity->oid;
+    return RelnameAndReltypeFindOidInDisk(relname, reltype);
 }
 
 /* Find oid of normal table by table name. 
@@ -424,6 +511,9 @@ bool RemoveObject(Oid oid) {
         SYS_ROOT_OID, condition, result, 
         delete_row, ARG_NULL, NULL
     );
+    
+    /* Remove cache object. */
+    RemoveObjectInCache(oid);
 
     return result->row_size > 0;
 }

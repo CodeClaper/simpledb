@@ -277,9 +277,7 @@ Refer *convert_refer(Cursor *cursor) {
 Cursor *convert_cursor(Refer *refer) {
     if (refer == NULL)
         return NULL;
-    Object entity = OidFindObject(refer->oid);
-    Table *table = open_table(entity.relname);
-
+    Table *table = open_table_inner(refer->oid);
     return new_cursor(table, refer->page_num, refer->cell_num);
 }
 

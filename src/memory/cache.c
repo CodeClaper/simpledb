@@ -12,8 +12,10 @@
 #include "log.h"
 #include "table.h"
 
-#define MAX_TABLE_CACHE_SIZE 100
-
+/*
+ * TableCache, 
+ * which store the table in cache. 
+ */
 static List *TableCache;
 
 /*
@@ -61,7 +63,6 @@ bool exist_table_in_cache(Oid oid) {
     return found;
 }
  
-
 /* Find cache table by name, return null if not exist. */
 Table *find_table_cache(Oid oid) {
     Table *found = NULL;
