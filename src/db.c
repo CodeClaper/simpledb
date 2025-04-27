@@ -35,6 +35,7 @@
 #include "bgwriter.h"
 #include "asctx.h"
 #include "systable.h"
+#include "sysstate.h"
 
 /* 
  * Conf 
@@ -58,6 +59,8 @@ static inline void sigchild() {
 
 /* DB Start. */
 static void init_db() {
+
+    MakeSysState(SYS_READY);
 
     /* MemoryContext init.*/
     MemoryContextInit();
@@ -106,8 +109,10 @@ static void start_bgwriter() {
     pid_t pid = fork();
     if (pid < 0) 
         db_log(PANIC, "Create new child process fail.");
-    else if (pid == 0)
+    else if (pid == 0) {
         StartBgWriter();
+        exit(EXECUTE_SUCCESS);
+    }
     else 
         db_log(SUCCESS, "Start up background writer successfully.");
 }
@@ -128,8 +133,10 @@ static void start_backend(int server_socket, struct sockaddr_in *client_name, so
         pid_t pid = fork();
         if (pid < 0) 
             db_log(PANIC, "Create new child process fail.");
-        else if (pid == 0)
+        else if (pid == 0) {
             accept_request((intptr_t)client_secket);
+            exit(EXECUTE_SUCCESS);
+        }
         else
             close(client_secket);
     }
@@ -146,6 +153,8 @@ static void db_run() {
     /* Start up server. */
     server_socket = startup(conf->port);
     db_log(INFO, "Simpledb server start up successfully and listen port %d.", conf->port);
+
+    MakeSysState(SYS_RUNNING);
 
     /* Start up bgwriter.*/
     start_bgwriter();

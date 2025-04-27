@@ -11,6 +11,7 @@
 #include "table.h"
 #include "utils.h"
 #include "log.h"
+#include "sysstate.h"
 
 /* FDescEntry cache. */
 static List *F_DESC_LIST = NIL;
@@ -40,11 +41,14 @@ static FDesc find_fdesc(Oid oid) {
 /* Register fdesc. */
 static void register_fdesc(Oid oid, FDesc desc) {
     Assert(F_DESC_LIST != NIL);
+    
+    /* If sys not running, not register the fdesc. */
+    if (SYS_IS_READY) 
+        return;
 
     /* Switch to CACHE_MEMORY_CONTEXT. */
     MemoryContext oldcontext = CURRENT_MEMORY_CONTEXT;
-    if (!IS_SYS_ROOT(oid)) 
-        MemoryContextSwitchTo(CACHE_MEMORY_CONTEXT);
+    MemoryContextSwitchTo(CACHE_MEMORY_CONTEXT);
 
     FDescEntry *entry = instance(FDescEntry);
     entry->desc = desc;
@@ -103,7 +107,6 @@ FDesc get_file_desc(Oid oid) {
         desc = load_file_desc(file_path);
         register_fdesc(oid, desc);
     }
-
     return desc;
 }
 

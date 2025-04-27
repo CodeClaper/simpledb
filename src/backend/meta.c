@@ -341,7 +341,10 @@ static void *get_value_from_atom(AtomNode *atom_node, MetaColumn *meta_column) {
 }
 
 /* Get value from value item node. 
- * Return pointer that needs be free`d manually. */
+ * -------------------------------
+ * Return pointer that needs be free`d by caller. 
+ * And return null for V_NULL type ValueItemNode.
+ * */
 void *get_value_from_value_item_node(ValueItemNode *value_item_node, MetaColumn *meta_column) {
     /* For array, return value set. */
     switch (value_item_node->type) {

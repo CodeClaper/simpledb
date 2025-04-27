@@ -1281,6 +1281,8 @@ bool check_create_table_node(CreateTableNode *create_table_node) {
 
 /* Check allowed to drop table. */
 bool check_drop_table(char *table_name) {
+    bool ret = true;
+
     /* Check table exists. */
     if (!check_table_exist(table_name)) {
         db_log(ERROR, "Table '%s' not exists.", table_name);
@@ -1288,18 +1290,11 @@ bool check_drop_table(char *table_name) {
     }
     
     /* Check table refered by others. */
-    List *obj_list = FindAllObject();
+    List *table_list = GetAllTableCache();
 
-    bool ret = true;
     ListCell *lc;
-    foreach (lc, obj_list) {
-        Object *entity = (Object *) lfirst(lc);
-        
-        /* Skip non table or view. */
-        if (!TABLE_OR_VIEW(entity->reltype))
-            continue;
-
-        Table *table = open_table_inner(entity->oid);
+    foreach (lc, table_list) {
+        Table *table = (Table *) lfirst(lc);
         if (if_table_used_refer(table, table_name))  {
             ret = false;
             break;

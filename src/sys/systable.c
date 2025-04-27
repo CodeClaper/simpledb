@@ -16,6 +16,8 @@
 #include "insert.h"
 #include "select.h"
 #include "delete.h"
+#include "trans.h"
+#include "sysstate.h"
 
 static List *ObjCache;
 
@@ -32,7 +34,6 @@ MetaColumn SYS_RESERVED_COLUMNS[] = {
     { CREATED_XID_COLUMN_NAME, T_LONG, "", (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), false, false, false, true, 0, 0 },
     { EXPIRED_XID_COLUMN_NAME, T_LONG, "", (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), false, false, false, true, 0, 0 }
 }; 
-
 
 static Object RowConvertObject(Row *row);
 
@@ -89,16 +90,17 @@ static MetaTable *CreateSysMetaTable() {
  * Panic if fail.
  * */
 void InitSysTable() {
+    
+    /* Create object cache. */
+    ObjCache = create_list(NODE_VOID);
 
     /* Avoid repeat create system table. */
-    if (SysTableFileExists())
+    if (SysTableFileExists()) 
         return;
 
     MetaTable *sysMetaTable = CreateSysMetaTable();
     if (!create_table(SYS_ROOT_OID, sysMetaTable))
         panic("Create system table fail");
-
-    ObjCache = create_list(NODE_VOID);
 }
 
 /* Find object in cache by relname. 
@@ -133,7 +135,7 @@ static Object *OidFindObjectInCache(Oid oid) {
 static void SaveObjectInCache(Object object) {
     /* Switch to CACHE_MEMORY_CONTEXT. */
     MemoryContext oldcontext = CURRENT_MEMORY_CONTEXT;
-    MemoryContextSwitchTo(CACHE_MEMORY_CONTEXT);
+    MemoryContextSwitchTo(SYS_IS_READY ? oldcontext : CACHE_MEMORY_CONTEXT);
 
     Object *entity = instance(Object);
     memcpy(entity, &object, sizeof(Object));
@@ -379,6 +381,7 @@ static List *RowsConvertObjectList(Queue *qRow) {
 
     return list;
 }
+
 
 /* Find all object list. */
 List *FindAllObject() {

@@ -138,11 +138,14 @@ void accept_request(intptr_t client) {
     set_signal_handler();
 
     memory_context_start();
+
     /* Auth login message. */
     if (auth_request(client)) 
         loop_request(client);
     close(client);
+
     memory_context_end();
+
     /* Quite */
     exit(0);
 }

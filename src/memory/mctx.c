@@ -188,6 +188,8 @@ void MemoryContextDelete(MemoryContext context) {
 
 /* Switch to MemoryContext. */
 void *MemoryContextSwitchTo(MemoryContext currentConext) {
+    /* Not allowd null. */
+    Assert(currentConext != NULL);
     /* Not allowed parallel compute there. */
     Assert(GetComputeMode() != PARALLEL_COMPUTE);
     MemoryContext old = currentConext;
