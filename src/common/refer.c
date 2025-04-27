@@ -31,7 +31,6 @@
 #include "log.h"
 #include "instance.h"
 #include "tablecache.h"
-#include "systable.h"
 
 typedef struct {
     uint32_t size;
@@ -48,12 +47,6 @@ void init_refer() {
     update_refer_lock_content = instance(UpdateReferLockContent);
     update_refer_lock_content->list = dalloc(0);
     update_refer_lock_content->size = 0;
-}
-
-/* Get table name in ReferUpdateEntity. */
-static inline char* get_refer_table_name(ReferUpdateEntity *refer_update_entity) {
-    Oid oid = refer_update_entity->old_refer->oid;
-    return OidFindRelName(oid);
 }
 
 static inline Oid get_refer_oid(ReferUpdateEntity *refer_update_entity) {
@@ -282,14 +275,18 @@ Cursor *convert_cursor(Refer *refer) {
 }
 
 /* Check if table has column refer to. */
-static bool if_related_table(MetaTable *meta_table, char *refer_table_name) {
+static bool if_related_table(MetaTable *meta_table, Oid refer_oid) {
+    Table *refer_table;
+
+    refer_table = open_table_inner(refer_oid);
+    Assert(refer_table);
 
     Assert(meta_table);
     int i;
     for(i = 0; i < meta_table->column_size; i++) {
         MetaColumn *current_meta_column = meta_table->meta_column[i];
         if (current_meta_column->column_type == T_REFERENCE && 
-                strcmp(current_meta_column->table_name, refer_table_name) == 0)
+                strcmp(current_meta_column->table_name, GET_TABLE_NAME(refer_table)) == 0)
             return true;
     }
 
@@ -364,15 +361,13 @@ static void update_key_value_refer(Row *row, MetaColumn *meta_column,
 /* Update row refer. */
 static void update_row_refer(Row *row, SelectResult *select_result, Table *table, 
                              ROW_HANDLER_ARG_TYPE type, void *arg) {
-
     Assert(arg);
-
     /* ReferUpdateEntity */
     Assert(type == ARG_REFER_UPDATE_ENTITY);
     ReferUpdateEntity *refer_update_entity = (ReferUpdateEntity *) arg;
- 
-    /* Get self table name. */
-    char *self_table_name = get_refer_table_name(refer_update_entity);
+    Oid oid = refer_update_entity->old_refer->oid;
+    Table *ref_table = open_table_inner(oid);
+    Assert(ref_table);
 
     /* Curosr */
     Cursor *cursor = define_cursor(table, row->key, true);
@@ -384,7 +379,7 @@ static void update_row_refer(Row *row, SelectResult *select_result, Table *table
     for (i = 0; i < meta_table->column_size; i++) {
         MetaColumn *meta_column = meta_table->meta_column[i];
         if (meta_column->column_type == T_REFERENCE && 
-                streq(meta_column->table_name, self_table_name)) 
+                streq(meta_column->table_name, GET_TABLE_NAME(ref_table))) 
             update_key_value_refer(row, meta_column, cursor, refer_update_entity);
     }
 }
@@ -412,21 +407,19 @@ static void update_table_refer(MetaTable *meta_table, ReferUpdateEntity *refer_u
 /* Update releated tables reference. */
 void update_related_tables_refer(ReferUpdateEntity *refer_update_entity) {
     Oid self_oid;
-    char *self_table_name;
     List *table_list;
 
     /* Get self name. */
     self_oid = get_refer_oid(refer_update_entity);
-    self_table_name = OidFindRelName(self_oid);
     table_list = GetAllTableCache();
 
     /* Update table refer. */
     ListCell *lc;
     foreach (lc, table_list) {
         /* Check other tables. */
-        Table *table = (Table *)lfirst(lc);
+        Table *table = (Table *) lfirst(lc);
         MetaTable *meta_table = table->meta_table;
-        if (if_related_table(meta_table, self_table_name)) 
+        if (if_related_table(meta_table, self_oid)) 
             update_table_refer(meta_table, refer_update_entity);
     }
 }

@@ -95,11 +95,12 @@ static void init_db() {
     /* Load configuration. */
     conf = load_conf();
 
+    /* Initialise table cache. */
+    InitTableCache();
+
     /* Init system table. */
     InitSysTable();
 
-    /* Initialise table cache. */
-    InitTableCache();
 }
 
 /* Start bgwriter. */

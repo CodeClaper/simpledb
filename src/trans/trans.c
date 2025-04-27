@@ -360,6 +360,7 @@ bool IsVisible(Xid created_xid, Xid expired_xid) {
 
 /* 
  * Check if row is visible for current transaction. 
+ * ------------------------------------------------
  * Visible row must satisfy any of the follows conditions:
  * (1) the current transaction create the row, and the row is not deleted.
  * (2) other transaction creates the row, and transaction is committed and the row is not deleted.

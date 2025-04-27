@@ -200,8 +200,6 @@ Table *open_table_inner(Oid oid) {
         return mtable;
     }
 
-    db_log(DEBUGER, "Will load object %ld from disk.", oid);
-
     /* Memory missing, get from disk. */
     if (!check_table_exist_direct(oid)) {
         try_release_table(oid);
@@ -223,8 +221,6 @@ Table *open_table_inner(Oid oid) {
     
     /* Release table lock. */
     try_release_table(oid);
-
-    db_log(DEBUGER, "Has loaded table %ld from disk.", oid);
 
     /* Only return buffer table to keep the same table pointer 
      * in the same transaction. */

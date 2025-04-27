@@ -183,6 +183,8 @@ static void HeapDeleteXLog(Refer *refer, TransEntry *transaction) {
 
     /* Re-insert. */
     insert_leaf_node_cell(new_cur, newRow);
+
+    free_row(newRow);
 }
 
 /* Reverse update delete transaction. */
