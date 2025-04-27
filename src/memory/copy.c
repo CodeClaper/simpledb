@@ -215,6 +215,8 @@ static void *copy_default_value(MetaColumn *meta_column) {
         case DEFAULT_VALUE_NONE:
         case DEFAULT_VALUE_NULL:
             return NULL;
+        default:
+            UNEXPECTED_VALUE(meta_column->default_value);
     }
 }
 

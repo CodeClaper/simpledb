@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 #include "create.h"
 #include "strheaptable.h"
 #include "data.h"
@@ -26,6 +27,7 @@
 #include "copy.h"
 #include "free.h"
 #include "log.h"
+#include "tablecache.h"
 #include "systable.h"
 
 /* Get system reserved columns length. */
@@ -249,6 +251,19 @@ static MetaTable *combine_meta_table(CreateTableNode *create_table_node) {
     return meta_table;
 }
 
+/* Save to table cache. */
+static bool save_table_cache(Oid oid, MetaTable *meta_table) {
+    /* Save to table cache. */
+    Table *table = instance(Table);
+    table->oid = oid;
+    table->meta_table = meta_table;
+    table->root_page_num = ROOT_PAGE_NUM;
+    table->creator = getpid();
+    table->page_size = 1;
+    SaveTableCache(table);
+    return true;
+}
+
 /* Save table object. */
 static bool save_table_object(Oid oid, char *relname) {
     Object entity = GenerateObjectInner(oid, relname, OTABLE);
@@ -273,9 +288,12 @@ void exec_create_table_statement(CreateTableNode *create_table_node, DBResult *r
      * Besides the normal table itself, we alse create its string heap table.
      * Although the table maybe not have any string column.
      * */
-    if (create_table(oid, meta_table) && 
-            save_table_object(oid, GET_METATABLE_NAME(meta_table)) && 
-                CreateStrHeapTable(meta_table->table_name)) {
+    if (
+        create_table(oid, meta_table) && 
+        save_table_cache(oid, meta_table) &&
+        save_table_object(oid, GET_METATABLE_NAME(meta_table)) && 
+        CreateStrHeapTable(meta_table->table_name)
+    ) {
         result->success = true;
         result->rows = 0;
         result->message = format("Table '%s' created successfully.", 

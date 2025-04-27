@@ -92,15 +92,14 @@ static void init_db() {
     /* Init pager. */
     InitPager();
 
-    /* Initialise table cache. */
-    InitTableCache();
-
     /* Load configuration. */
     conf = load_conf();
 
     /* Init system table. */
     InitSysTable();
 
+    /* Initialise table cache. */
+    InitTableCache();
 }
 
 /* Start bgwriter. */

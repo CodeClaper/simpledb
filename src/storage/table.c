@@ -118,15 +118,6 @@ bool create_table(Oid oid, MetaTable *meta_table) {
         return false;
     }
 
-    /* Save to table cache. */
-    Table *table = instance(Table);
-    table->oid = oid;
-    table->meta_table = meta_table;
-    table->root_page_num = ROOT_PAGE_NUM;
-    table->creator = getpid();
-    table->page_size = 1;
-    SaveTableCache(table);
-
     /* Close desription. */
     close(descr);
 
