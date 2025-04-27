@@ -42,10 +42,8 @@
 
 /* Get value in insert node to assign column at index. */
 static void *get_insert_value(List *value_item_list, uint32_t index, MetaColumn *meta_column) {
-    
     /* Not out of boundary. */
     Assert(index < len_list(value_item_list));
-
     /* Get value item node at index. */
     ValueItemNode* value_item_node = lfirst(list_nth_cell(value_item_list, index));
 
@@ -209,7 +207,8 @@ static List *generate_insert_row_for_all(InsertNode *insert_node) {
 
 
 /* Generate insert row for part columns.
- * Return Row.
+ * -------------------------------------
+ * Return a Row which need to be freed by caller.
  * */
 static Row *generate_insert_row_for_part2(MetaTable *meta_table, List *column_list, List *value_item_list) {
 

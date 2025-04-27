@@ -80,9 +80,6 @@ static void init_db() {
     /* Initialise bufmgr. */
     InitBufMgr();
 
-    /* Initialise table cache. */
-    InitTableCache();
-
     /* Initialise refer. */
     init_refer();
 
@@ -92,12 +89,15 @@ static void init_db() {
     /* Init pager. */
     InitPager();
 
+    /* Initialise table cache. */
+    InitTableCache();
+
     /* Load configuration. */
     conf = load_conf();
-}
 
-static void create_sys_obj() {
-    CreateSysTable();
+    /* Init system table. */
+    InitSysTable();
+
 }
 
 /* Start bgwriter. */
@@ -165,7 +165,6 @@ static void db_end() {
 int main(int argc, char* argv[]) {
     program_name = argv[0];
     init_db();
-    create_sys_obj();
     db_run();
     db_end();
 }

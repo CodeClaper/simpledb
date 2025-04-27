@@ -88,7 +88,7 @@ static MetaTable *CreateSysMetaTable() {
  * Skip if already exists, otherwiese, create the sys table. 
  * Panic if fail.
  * */
-void CreateSysTable() {
+void InitSysTable() {
 
     /* Avoid repeat create system table. */
     if (SysTableFileExists())

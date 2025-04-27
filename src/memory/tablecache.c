@@ -32,6 +32,12 @@ void InitTableCache() {
     switch_local();
 }
 
+/* Get all table cache. */
+inline List *GetAllTableCache() {
+    Assert(TableCache != NULL);
+    return TableCache;
+}
+
 /* Save table cache. */
 void SaveTableCache(Table *table) {
     /* Not allowed repeated. */
@@ -63,7 +69,10 @@ bool TableExistsInCache(Oid oid) {
     return found;
 }
  
-/* Find cache table by name, return null if not exist. */
+/* Find table cache by oid, 
+ * ------------------------
+ * Return the found table cache, 
+ * return null if not exist. */
 Table *FindTableCache(Oid oid) {
     Table *found = NULL;
     acquire_spin_lock(tlock);
@@ -80,6 +89,22 @@ Table *FindTableCache(Oid oid) {
     return found;
 }
 
+/* Find table cahce by table name. */
+Table *NameFindTableCache(char *tableName) {
+    Table *found = NULL;
+    acquire_spin_lock(tlock);
+    ListCell *lc;
+    foreach (lc, TableCache) {
+        Table *cur_table = (Table *) lfirst(lc);
+        Assert(cur_table);
+        if (streq(tableName, GET_TABLE_NAME(cur_table))) {
+            found = cur_table;
+            break;
+        }
+    }
+    release_spin_lock(tlock);
+    return found;
+}
 
 /* Remove table cache. */
 void RemoveTableCache(Oid oid) {

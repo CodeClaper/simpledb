@@ -118,6 +118,15 @@ bool create_table(Oid oid, MetaTable *meta_table) {
         return false;
     }
 
+    /* Save to table cache. */
+    Table *table = instance(Table);
+    table->oid = oid;
+    table->meta_table = meta_table;
+    table->root_page_num = ROOT_PAGE_NUM;
+    table->creator = getpid();
+    table->page_size = 1;
+    SaveTableCache(table);
+
     /* Close desription. */
     close(descr);
 
@@ -233,9 +242,20 @@ Table *open_table_inner(Oid oid) {
 
 /* Open a table object. 
  * -----------------------
- * Return the found table or NULL if missing. */
+ * Firstly, find int table cache, 
+ * if missing, find in dish.
+ * return null if all missing. 
+ * */
 Table *open_table(char *table_name) {
     Assert(table_name);
+    Table *table;
+    
+    /* Find in table cache. */
+    table = NameFindTableCache(table_name);
+    if (table != NULL)
+        return table;
+    
+    /* Find in disk. */
     Oid oid = TableNameFindOid(table_name);
     if (ZERO_OID(oid))
         return NULL;

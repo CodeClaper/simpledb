@@ -207,14 +207,26 @@ Refer *copy_refer(Refer *refer) {
     return duplica;
 }
 
+/* Copy default value. */
+static void *copy_default_value(MetaColumn *meta_column) {
+    switch (meta_column->default_value_type) {
+        case DEFAULT_VALUE:
+            return copy_value(meta_column->default_value, meta_column->column_type);
+        case DEFAULT_VALUE_NONE:
+        case DEFAULT_VALUE_NULL:
+            return NULL;
+    }
+}
+
 /* Copy meta column. */
 MetaColumn *copy_meta_column(MetaColumn *meta_column) {
     if (meta_column == NULL)
         return NULL;
 
-    MetaColumn *meta_column_copy = instance(MetaColumn);
-    memcpy(meta_column_copy, meta_column, sizeof(MetaColumn));
-    return meta_column_copy;
+    MetaColumn *duplica = instance(MetaColumn);
+    memcpy(duplica, meta_column, sizeof(MetaColumn));
+    duplica->default_value = copy_default_value(meta_column);
+    return duplica;
 }
 
 /* Copy MetaTable.*/

@@ -2611,8 +2611,10 @@ void *get_array_value(void *destination, uint32_t i, uint32_t span) {
 }
 
 /* Get row value. 
- * Note: firstly, find values in user-passed row,
- * if missing, rturn the default values.
+ * -------------------
+ * Note: Firstly, find values in user-passed row,
+ * If missing, return the default values.
+ * If not define default values, return null.
  * */
 static void *get_value_from_row(Row *row, MetaColumn *meta_column) {
     char *column_name = meta_column->column_name;
@@ -2636,7 +2638,9 @@ static void *get_value_from_row(Row *row, MetaColumn *meta_column) {
 }
 
 /* Serialize array value. 
- * Note: for array value cell, we will reserve LEAF_NODE_ARRAY_NUM_SIZE bytes length for store array number. */
+ * ----------------------------
+ * Note: for array value cell, we will reserve 
+ * LEAF_NODE_ARRAY_NUM_SIZE bytes length for store array number. */
 static void assign_row_array_value(void *destination, ArrayValue *array_value, MetaColumn *meta_column) {
     uint32_t len, span;
 

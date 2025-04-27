@@ -23,8 +23,8 @@ extern MetaColumn SYS_RESERVED_COLUMNS[];
 
 #define IS_SYS_ROOT(oid) (oid == SYS_ROOT_OID)
 
-/* Create the sys table. */
-void CreateSysTable();
+/* Init the sys table. */
+void InitSysTable();
 
 /* Find next Oid. */
 Oid FindNextOid();

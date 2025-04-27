@@ -30,6 +30,7 @@
 #include "table.h"
 #include "log.h"
 #include "instance.h"
+#include "tablecache.h"
 #include "systable.h"
 
 typedef struct {
@@ -412,24 +413,18 @@ static void update_table_refer(MetaTable *meta_table, ReferUpdateEntity *refer_u
 void update_related_tables_refer(ReferUpdateEntity *refer_update_entity) {
     Oid self_oid;
     char *self_table_name;
-    List *obj_list;
+    List *table_list;
 
     /* Get self name. */
     self_oid = get_refer_oid(refer_update_entity);
     self_table_name = OidFindRelName(self_oid);
-    obj_list = FindAllObject();
+    table_list = GetAllTableCache();
 
     /* Update table refer. */
     ListCell *lc;
-    foreach (lc, obj_list) {
-        Object *entity = (Object *)lfirst(lc);
-
-        /* Skip non table, view, skip itself. */
-        if (!TABLE_OR_VIEW(entity->reltype) || self_oid == entity->oid) 
-            continue;
-        
+    foreach (lc, table_list) {
         /* Check other tables. */
-        Table *table = open_table_inner(entity->oid);
+        Table *table = (Table *)lfirst(lc);
         MetaTable *meta_table = table->meta_table;
         if (if_related_table(meta_table, self_table_name)) 
             update_table_refer(meta_table, refer_update_entity);

@@ -1294,6 +1294,11 @@ bool check_drop_table(char *table_name) {
     ListCell *lc;
     foreach (lc, obj_list) {
         Object *entity = (Object *) lfirst(lc);
+        
+        /* Skip non table or view. */
+        if (!TABLE_OR_VIEW(entity->reltype))
+            continue;
+
         Table *table = open_table_inner(entity->oid);
         if (if_table_used_refer(table, table_name))  {
             ret = false;
