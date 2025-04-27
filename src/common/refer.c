@@ -27,7 +27,6 @@
 #include "pager.h"
 #include "utils.h"
 #include "asserts.h"
-#include "cache.h"
 #include "table.h"
 #include "log.h"
 #include "instance.h"

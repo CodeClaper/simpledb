@@ -40,7 +40,6 @@
 #include "instance.h"
 #include "jsonwriter.h"
 #include "parall.h"
-#include "cache.h"
 #include "optimizer.h"
 
 typedef struct SelectFromInternalChildTaskArgs {

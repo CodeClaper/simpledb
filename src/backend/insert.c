@@ -29,7 +29,6 @@
 #include "create.h"
 #include "select.h"
 #include "check.h"
-#include "cache.h"
 #include "copy.h"
 #include "free.h"
 #include "refer.h"

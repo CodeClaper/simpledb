@@ -10,7 +10,7 @@ extern "C" {
 #include "session.h"
 #include "trans.h"
 #include "xlog.h"
-#include "cache.h"
+#include "tablecache.h"
 #include "conf.h"
 #include "refer.h"
 #include "mctx.h"

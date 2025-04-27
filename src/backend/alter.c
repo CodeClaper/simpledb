@@ -16,7 +16,7 @@
 #include "mmgr.h"
 #include "check.h"
 #include "table.h"
-#include "cache.h"
+#include "tablecache.h"
 #include "create.h"
 #include "tablelock.h"
 #include "utils.h"
@@ -38,7 +38,7 @@ static void try_capture_table(Oid oid) {
 
 /* Release Table. */
 static void release_table(Oid oid) {
-    remove_table_cache(oid);
+    RemoveTableCache(oid);
     try_release_table(oid);
 }
 

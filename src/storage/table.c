@@ -15,7 +15,7 @@
 #include "systable.h"
 #include "mmgr.h"
 #include "free.h"
-#include "cache.h"
+#include "tablecache.h"
 #include "buftable.h"
 #include "common.h"
 #include "asserts.h"
@@ -186,7 +186,7 @@ Table *open_table_inner(Oid oid) {
     check_table_locked(oid);
 
     /* Firstly, try to find in buffer. */
-    Table *mtable = find_table_cache(oid);
+    Table *mtable = FindTableCache(oid);
     if (mtable != NULL)
         return mtable;
 
@@ -194,7 +194,7 @@ Table *open_table_inner(Oid oid) {
     
     /* Double check to avoid other transaction save 
      * table cache before current transaction acquire the table lock. */
-    mtable = find_table_cache(oid);
+    mtable = FindTableCache(oid);
     if (mtable != NULL) {
         try_release_table(oid);
         return mtable;
@@ -219,7 +219,7 @@ Table *open_table_inner(Oid oid) {
     table->page_size = GetPageSize(oid);
 
     /* Save table cache. */
-    save_table_cache(table);
+    SaveTableCache(table);
     
     /* Release table lock. */
     try_release_table(oid);
@@ -228,7 +228,7 @@ Table *open_table_inner(Oid oid) {
 
     /* Only return buffer table to keep the same table pointer 
      * in the same transaction. */
-    return find_table_cache(oid);
+    return FindTableCache(oid);
 }
 
 /* Open a table object. 
@@ -269,7 +269,7 @@ bool drop_table(char *table_name) {
     /* Disk remove. */
     if (remove(file_path) == 0 && RemoveObject(oid)) {
         /* Remove table cache. */
-        remove_table_cache(oid);
+        RemoveTableCache(oid);
         /* Remove table buffer. */
         RemoveTableBuffer(oid);
         /* Release the table lock. */

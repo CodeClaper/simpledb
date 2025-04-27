@@ -23,7 +23,7 @@
 #include "conf.h"
 #include "gc.h"
 #include "refer.h"
-#include "cache.h"
+#include "tablecache.h"
 #include "fdesc.h"
 #include "tablelock.h"
 #include "log.h"
@@ -81,7 +81,7 @@ static void init_db() {
     InitBufMgr();
 
     /* Initialise table cache. */
-    init_table_cache();
+    InitTableCache();
 
     /* Initialise refer. */
     init_refer();

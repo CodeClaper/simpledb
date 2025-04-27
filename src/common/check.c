@@ -32,9 +32,9 @@
 #include "select.h"
 #include "refer.h"
 #include "list.h"
-#include "cache.h"
 #include "instance.h"
 #include "sys.h"
+#include "tablecache.h"
 #include "systable.h"
 
 static bool check_value_item_set_node(MetaTable *meta_table, char *column_name, List *value_list);

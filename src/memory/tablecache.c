@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
-#include "cache.h"
+#include "tablecache.h"
 #include "spinlock.h"
 #include "utils.h"
 #include "mmgr.h"
@@ -24,7 +24,7 @@ static List *TableCache;
 static s_lock *tlock;
 
 /* Initialise table cache. */
-void init_table_cache() {
+void InitTableCache() {
     switch_shared();
     TableCache = create_list(NODE_TABLE);
     tlock = instance(s_lock);
@@ -33,9 +33,9 @@ void init_table_cache() {
 }
 
 /* Save table cache. */
-void save_table_cache(Table *table) {
+void SaveTableCache(Table *table) {
     /* Not allowed repeated. */
-    AssertFalse(exist_table_in_cache(GET_TABLE_OID(table)));
+    AssertFalse(TableExistsInCache(GET_TABLE_OID(table)));
 
     acquire_spin_lock(tlock);
     switch_shared();
@@ -47,8 +47,8 @@ void save_table_cache(Table *table) {
     release_spin_lock(tlock);
 }
 
-/* find out if exists table in caceh. */
-bool exist_table_in_cache(Oid oid) {
+/* Find out if exists table in caceh. */
+bool TableExistsInCache(Oid oid) {
     bool found = false;
     acquire_spin_lock(tlock);
     ListCell *lc;
@@ -64,7 +64,7 @@ bool exist_table_in_cache(Oid oid) {
 }
  
 /* Find cache table by name, return null if not exist. */
-Table *find_table_cache(Oid oid) {
+Table *FindTableCache(Oid oid) {
     Table *found = NULL;
     acquire_spin_lock(tlock);
     ListCell *lc;
@@ -82,7 +82,7 @@ Table *find_table_cache(Oid oid) {
 
 
 /* Remove table cache. */
-void remove_table_cache(Oid oid) {
+void RemoveTableCache(Oid oid) {
     acquire_spin_lock(tlock);
     ListCell *lc;
     foreach (lc, TableCache) {

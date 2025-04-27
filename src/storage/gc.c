@@ -17,7 +17,7 @@
 #include "table.h"
 #include "ltree.h"
 #include "refer.h"
-#include "cache.h"
+#include "tablecache.h"
 #include "select.h"
 #include "asserts.h"
 #include "instance.h"

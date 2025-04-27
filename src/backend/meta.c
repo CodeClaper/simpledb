@@ -25,7 +25,6 @@
 #include "pager.h"
 #include "refer.h"
 #include "check.h"
-#include "cache.h"
 #include "tablelock.h"
 #include "systable.h"
 
