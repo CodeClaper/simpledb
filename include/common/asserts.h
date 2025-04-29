@@ -1,14 +1,14 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include "assert.h"
 
 #ifdef DEBUG
-#include "assert.h"
 #define Assert(condition) assert(condition)
 #define AssertFalse(condition) assert(!(condition))
 #else
 #define Assert(condition) ((void)true)
-#define AssertFalse(condition) ((void)true)
+#define AssertFalse(condition) ((void)false)
 #endif
 
 #define UNEXPECTED_VALUE(EXPR) do {                    \

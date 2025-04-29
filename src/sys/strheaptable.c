@@ -51,7 +51,7 @@ bool CreateStrHeapTable(char *table_name) {
     } 
 
     /* Save the String table Object. */
-    Assert(SaveObject(entity));
+    SaveObject(entity);
     
     /* Free memory. */
     dfree(rblock);
