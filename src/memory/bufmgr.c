@@ -177,7 +177,7 @@ static BufferDesc *LoadNewBufferDesc(BufferTag *tag) {
     slot = GetBufferTableSlot(tag);
 
     /* Acquire the rwlock in exclusive mode. */
-    AcquireRWlock(slot->lock, RW_WRITER);
+    acquire_spin_lock(slot->lock);
 
     /* Double check. */
     buffer = LookupBufferTableWithoutLock(tag);
@@ -187,7 +187,7 @@ static BufferDesc *LoadNewBufferDesc(BufferTag *tag) {
          * neccessary to check the tag if still.*/
         if (BufferTagEquals(tag, &desc->tag)) {
             PinBuffer(desc);
-            ReleaseRWlock(slot->lock);
+            release_spin_lock(slot->lock);
             return desc;
         }
     }
@@ -206,7 +206,7 @@ static BufferDesc *LoadNewBufferDesc(BufferTag *tag) {
     InsertBufferTableEntry(tag, desc->buffer);
 
     /* Release the rwlock. */
-    ReleaseRWlock(slot->lock);
+    release_spin_lock(slot->lock);
 
     return desc;
 }

@@ -38,8 +38,8 @@ void CreateBufferTable() {
     BTable = dalloc(sizeof(BufferTableEntrySlot) * BUFFER_SLOT_NUM);
     for (Index i = 0; i < BUFFER_SLOT_NUM; i++) {
         BufferTableEntrySlot *header = GetBufferTableSlotByIndex(i);
-        header->lock = instance(RWLockEntry);
-        InitRWlock(header->lock);
+        header->lock = instance(s_lock);
+        init_spin_lock(header->lock);
     }
     switch_local();
 }
@@ -57,8 +57,10 @@ Buffer LookupBufferTable(BufferTag *tag) {
     slot = GetBufferTableSlot(tag);
     entry = slot->next;
 
-    /* Acquire the rwlock in shared mode.*/
-    AcquireRWlock(slot->lock, RW_READERS);
+    /* Wait for lock relase.
+     * Note: this mechanism maybe not safe when insert after read.
+     * */
+    wait_for_spin_lock(slot->lock);
 
     /* Loop up the entry table. */
     while (entry != NULL) {
@@ -68,8 +70,6 @@ Buffer LookupBufferTable(BufferTag *tag) {
         }
         entry = entry->next;
     }
-
-    ReleaseRWlock(slot->lock);
 
     return buffer;
 }
@@ -100,7 +100,7 @@ Buffer LookupBufferTableWithoutLock(BufferTag *tag) {
 
 
 /* Save new BufferTableEntry 
- * ---------------
+ * -------------------------
  * BufferTableEntry link the BufferTag and Buffer. 
  * Note: This <InsertBufferTableEntry> need acquire the rwlock in exclusive mode. 
  * But not acquire itself, and by the caller.
@@ -111,7 +111,7 @@ void InsertBufferTableEntry(BufferTag *tag, Buffer buffer) {
 
     slot = GetBufferTableSlot(tag);
     entry = slot->next;
-    Assert(slot->lock->mode == RW_WRITER);
+    Assert(LOCKED(*slot->lock));
 
     if (entry == NULL) {
         slot->next = NewBufferTableEntry(tag, buffer);

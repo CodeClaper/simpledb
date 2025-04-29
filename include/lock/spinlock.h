@@ -23,9 +23,9 @@ typedef int s_lock;
 #endif
 
 #define LOCKED(lock) \
-    lock == SPIN_LOCKED_STATUS 
+    (lock == SPIN_LOCKED_STATUS)
 #define UN_LOCKED(lock) \
-    lock == SPIN_UN_LOCKED_STATUS 
+    (lock == SPIN_UN_LOCKED_STATUS) 
 
 
 /* Lock spin. */

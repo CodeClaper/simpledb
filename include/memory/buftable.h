@@ -2,7 +2,7 @@
 #include "rwlock.h"
 
 typedef struct BufferTableEntrySlot {
-    RWLockEntry *lock;
+    s_lock *lock;
     struct BufferTableEntry *next;
 } BufferTableEntrySlot;
 
