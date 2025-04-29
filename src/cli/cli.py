@@ -203,6 +203,8 @@ if __name__ == "__main__":
             while True:
                 cmd = readCmd()
                 exec_cmd(cmd)
+        else:
+            print("The account or passowrd is wrong.")
     except KeyboardInterrupt:
         exit()
     except socket.timeout:
