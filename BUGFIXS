@@ -1,17 +1,1 @@
-1. Batch delete (more than 1000 rows) may cause system crash.
--- The main reason is that the system lacking processing about large batch data deleting.
--- To be precise, only support one page (root node) data deleting and lack extention.
--- Maybe caused by concurrency. I have added the mutux lock at meme and it works well. 
--- But it may impact performance which is future consideration.
-3. Concurrent DML operation cause system crash, lacking Concurrent lock.
-4. Not free Memory after insert operation.
-5. Insert into an empty table, when key is 0, throw duplicate key error.
-6. When executing insert internal node cell, internal node splits, and update old internal key, system throw error that the pass old key and the queried old key are not equal.
--- Always remember that the internal node cell key is the max key of child node. If child is leaf, the last cell key is the max key. 
--- If child is internal, the max key exists in right chid node. When child max key has changed, the cell key in parent internal node must also be changed.
--- There four circumstances that may impact parent cell key:
--- The first, insert a new leaf node cell which greater than max key in its parent node.
--- The second, leaf node is full and split into two parts.
--- The third, insert internal node cell which greater than max key in its parent node. 
--- The forth, internal node is full and split int two parts.
-7. Batch insert statement, duplicate key check not work.
+1. Sometimes, the old key is not equeal to the current key in <update_internal_node_key>.
