@@ -19,7 +19,6 @@
 #include <time.h>
 #include "select.h"
 #include "check.h"
-#include "systable.h"
 #include "common.h"
 #include "copy.h"
 #include "free.h"
@@ -984,10 +983,12 @@ void query_with_condition_inner(Oid oid, ConditionNode *condition, SelectResult 
 void query_with_condition(ConditionNode *condition, SelectResult *select_result, 
                           ROW_HANDLER row_handler, ROW_HANDLER_ARG_TYPE type, void *arg) {
     /* Check if table exists. */
-    Oid oid = TableNameFindOid(select_result->table_name);
-    if (ZERO_OID(oid))
+    Table *table = open_table(select_result->table_name);
+    if (table == NULL) {
+        db_log(ERROR, "Table %s not exist.", select_result->table_name);
         return;
-    query_with_condition_inner(oid, condition, select_result, row_handler, type, arg);
+    }
+    query_with_condition_inner(GET_TABLE_OID(table), condition, select_result, row_handler, type, arg);
 }
 
 /* Count number of row, used in the sql function count(1) */

@@ -35,7 +35,6 @@
 #include "instance.h"
 #include "sys.h"
 #include "tablecache.h"
-#include "systable.h"
 
 static bool check_value_item_set_node(MetaTable *meta_table, char *column_name, List *value_list);
 static bool check_scalar_exp(ScalarExpNode *scalar_exp, AliasMap alias_map);
@@ -1290,17 +1289,11 @@ bool check_drop_table(char *table_name) {
     }
     
     /* Check table refered by others. */
-    List *obj_list = FindAllObject();
+    List *table_list = GetAllTableCache();
 
     ListCell *lc;
-    foreach (lc, obj_list) {
-        Object *entity = (Object *) lfirst(lc);
-
-        /* Skip non table or view. */
-        if (!TABLE_OR_VIEW(entity->reltype))
-            continue;
-
-        Table *table = open_table_inner(entity->oid);
+    foreach (lc, table_list) {
+        Table *table = (Table *) lfirst(lc);
         if (if_table_used_refer(table, table_name))  {
             ret = false;
             break;

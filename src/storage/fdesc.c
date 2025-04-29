@@ -7,7 +7,6 @@
 #include "fdesc.h"
 #include "data.h"
 #include "mmgr.h"
-#include "systable.h"
 #include "table.h"
 #include "utils.h"
 #include "log.h"
@@ -64,8 +63,7 @@ void unregister_fdesc(Oid oid) {
 
     /* Switch to CACHE_MEMORY_CONTEXT. */
     MemoryContext oldcontext = CURRENT_MEMORY_CONTEXT;
-    if (!IS_SYS_ROOT(oid)) 
-        MemoryContextSwitchTo(CACHE_MEMORY_CONTEXT);
+    MemoryContextSwitchTo(CACHE_MEMORY_CONTEXT);
 
     ListCell *lc;
     foreach(lc, F_DESC_LIST) {
