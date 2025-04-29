@@ -35,7 +35,7 @@ static void db_start() {
     InitTrans();
 
     /* Initialise table cache. */
-    init_table_cache();
+    InitTableCache();
 
     /* Initialise refer. */
     init_refer();
