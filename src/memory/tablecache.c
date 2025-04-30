@@ -46,6 +46,11 @@ static void CreateTableCache() {
 
 /* Load object and push to table cache. */
 static void LoadObjectToTableCache() {
+
+    /* Swith to SIDE_MEMORY_CONTEXT. */
+    MemoryContext oldcontext = CURRENT_MEMORY_CONTEXT;
+    MemoryContextSwitchTo(SIDE_MEMORY_CONTEXT);
+
     List *obj_list = FindAllObject();
 
     ListCell *lc;
@@ -56,6 +61,10 @@ static void LoadObjectToTableCache() {
             SaveTableCache(table);
         }
     }
+
+    /* Recover the MemoryContext. */
+    MemoryContextSwitchTo(oldcontext);
+    MemoryContextDelete(SIDE_MEMORY_CONTEXT);
 }
 
 /* Get all table cache. */

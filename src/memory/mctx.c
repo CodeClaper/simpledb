@@ -26,17 +26,22 @@ MemoryContext CURRENT_MEMORY_CONTEXT = NULL;
 MemoryContext TOP_MEMORY_CONTEXT = NULL;
 
 /* 
- * Store Poster master info.
+ * Store start-up load object info.
+ */
+MemoryContext SIDE_MEMORY_CONTEXT = NULL;
+
+/* 
+ * Store Post master info.
  */
 MemoryContext MASTER_MEMORY_CONTEXT = NULL;
 
 /* 
- * Store table buffer, pager of table buffer, xlog info. 
+ * Store fdesc ,xlog info. 
  */
 MemoryContext CACHE_MEMORY_CONTEXT = NULL;
 
 /*
- * Message.
+ * Stolre message.
  */
 MemoryContext MESSAGE_MEMORY_CONTEXT = NULL;
 
@@ -57,6 +62,7 @@ static MemoryContextMethods mctx_methods[] = {
  * Start up the memory-context subsystem. */
 void MemoryContextInit(void) {
     TOP_MEMORY_CONTEXT = AllocSetMemoryContextCreate(NULL, "TopMemoryContext", DEFAULT_MAX_BLOCK_SIZE);
+    SIDE_MEMORY_CONTEXT = AllocSetMemoryContextCreate(TOP_MEMORY_CONTEXT, "SideMemoryContext", DEFAULT_MAX_BLOCK_SIZE);
     MemoryContextSwitchTo(TOP_MEMORY_CONTEXT);
 }
 
