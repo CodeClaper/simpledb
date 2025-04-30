@@ -3,14 +3,17 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 #include "tablecache.h"
+#include "systable.h"
 #include "spinlock.h"
 #include "utils.h"
 #include "mmgr.h"
 #include "copy.h"
 #include "free.h"
-#include "log.h"
+#include "trans.h"
 #include "table.h"
+#include "log.h"
 
 /*
  * TableCache, 
@@ -23,13 +26,36 @@ static List *TableCache;
  */
 static s_lock *tlock;
 
+static void CreateTableCache();
+static void LoadObjectToTableCache();
+
 /* Initialise table cache. */
 void InitTableCache() {
+    CreateTableCache();
+    LoadObjectToTableCache();
+}
+
+/* Create the TableCache. */
+static void CreateTableCache() {
     switch_shared();
     TableCache = create_list(NODE_TABLE);
     tlock = instance(s_lock);
     init_spin_lock(tlock);
     switch_local();
+}
+
+/* Load object and push to table cache. */
+static void LoadObjectToTableCache() {
+    List *obj_list = FindAllObject();
+
+    ListCell *lc;
+    foreach(lc, obj_list) {
+        Object *entity = (Object *) lfirst(lc);
+        if (entity->reltype == OTABLE) {
+            Table *table = load_table(entity->oid);
+            SaveTableCache(table);
+        }
+    }
 }
 
 /* Get all table cache. */

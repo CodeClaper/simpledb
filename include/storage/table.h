@@ -27,6 +27,10 @@ bool table_file_exist(char *table_file_path);
 char *table_file_path(Oid refId);
 
 
+/* Load Table from disk. */
+Table *load_table(Oid oid);
+
+
 /* Open a table object. */
 Table *open_table_inner(Oid oid);
 

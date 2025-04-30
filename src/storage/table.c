@@ -175,6 +175,21 @@ bool drop_meta_column(char *table_name, char *column_name) {
     return true;
 }
 
+/* Load Table from disk. */
+Table *load_table(Oid oid) {
+    /* New table. */
+    Table *table = instance(Table);
+
+    /* Define root page is first page. */
+    table->oid = oid;
+    table->root_page_num = ROOT_PAGE_NUM; 
+    table->creator = getpid();
+    table->meta_table = gen_meta_table(oid);
+    table->page_size = GetPageSize(oid);
+    
+    return table;
+}
+
 /* Open a table object. 
  * ---------------------
  * Return the found table or NULL if missing. 
@@ -205,17 +220,10 @@ Table *open_table_inner(Oid oid) {
         try_release_table(oid);
         return NULL;
     }
+
+    /* Load table from disk. */
+    Table *table = load_table(oid);
     
-    /* New table. */
-    Table *table = instance(Table);
-
-    /* Define root page is first page. */
-    table->oid = oid;
-    table->root_page_num = ROOT_PAGE_NUM; 
-    table->creator = getpid();
-    table->meta_table = gen_meta_table(oid);
-    table->page_size = GetPageSize(oid);
-
     /* Save table cache. */
     SaveTableCache(table);
     

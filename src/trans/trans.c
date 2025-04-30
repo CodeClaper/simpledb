@@ -78,6 +78,7 @@
 #include "asserts.h"
 #include "instance.h"
 #include "spinlock.h"
+#include "sysstate.h"
 
 /* 
  * The trans chain stores active transactions. 
@@ -367,15 +368,20 @@ bool IsVisible(Xid created_xid, Xid expired_xid) {
  * (3) the row is deleted by another uncommitted transaction (which not creates the row)
  * */
 bool RowIsVisible(Row *row) {
-    /* Get current transaction. */
-    TransEntry *entry = FindTransaction();
-    Assert(entry != NULL);
 
     /* Get row created_xid and expired_xid. */
     KeyValue *created_xid_col = lfirst(second_last_cell(row->data));
     KeyValue *expired_xid_col = lfirst(last_cell(row->data));
     Xid row_created_xid = *(Xid *)created_xid_col->value;
     Xid row_expired_xid = *(Xid *)expired_xid_col->value;
+
+    /* When system ready, simple check. */
+    if (SYS_IS_READY) 
+        return (row_created_xid != 0 && row_expired_xid == 0);
+
+    /* Get current transaction. */
+    TransEntry *entry = FindTransaction();
+    Assert(entry != NULL);
 
     /* If satisfy above three conditions, 
      * row is visible for current transaction. */
