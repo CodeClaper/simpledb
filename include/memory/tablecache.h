@@ -10,8 +10,11 @@ List *GetAllTableCache();
 /* Save table cache. */
 void SaveTableCache(Table *table);
 
-/* find out if exists table in caceh. */
+/* Find out if exists table in caceh. */
 bool TableExistsInCache(Oid oid);
+
+/* Find out if exists table in caceh. */
+bool TableNameExistsInCache(char *tableName);
 
 /* Find cache table by name, retrurn null if not exist. */
 Table *FindTableCache(Oid oid);

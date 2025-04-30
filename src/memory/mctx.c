@@ -177,7 +177,7 @@ void MemoryContextDelete(MemoryContext context) {
     MemoryContext curcontext;
     
     curcontext = context;
-    for (;;) {
+    forever {
         MemoryContext parentcontext;
         while (curcontext->firstChild != NULL)
             curcontext = curcontext->firstChild;
@@ -197,7 +197,7 @@ void *MemoryContextSwitchTo(MemoryContext currentConext) {
     /* Not allowd null. */
     Assert(currentConext != NULL);
     /* Not allowed parallel compute there. */
-    Assert(GetComputeMode() != PARALLEL_COMPUTE);
+    // Assert(GetComputeMode() != PARALLEL_COMPUTE);
     MemoryContext old = CURRENT_MEMORY_CONTEXT;
     CURRENT_MEMORY_CONTEXT = currentConext;
     return old;

@@ -40,6 +40,7 @@
 #include "jsonwriter.h"
 #include "parall.h"
 #include "optimizer.h"
+#include "tablecache.h"
 
 typedef struct SelectFromInternalChildTaskArgs {
     SelectResult *select_result;
@@ -636,6 +637,7 @@ static void merge_select_result(SelectResult *result1, SelectResult *result2) {
     qforeach (qc, result2->rows) {
         AppendQueue(result1->rows, qfirst(qc));
     }
+    result1->row_size += result2->row_size;
 }
 
 /* Search table via alias name in SelectResult. 
@@ -658,8 +660,8 @@ static char *search_table_via_alias(SelectResult *select_result, char *range_var
 
 /* Select through leaf node. */
 static void select_from_leaf_node(SelectResult *select_result, ConditionNode *condition, 
-                                  uint32_t page_num, Table *table, 
-                                  ROW_HANDLER row_handler, ROW_HANDLER_ARG_TYPE type, void *arg) {
+                                  uint32_t page_num, Table *table, ROW_HANDLER row_handler, 
+                                  ROW_HANDLER_ARG_TYPE type, void *arg) {
 
     /* Get cell number, key length and value lenght. */
     uint32_t key_len, value_len, cell_num ;
@@ -823,10 +825,15 @@ static void select_from_internal_node_child_task(void *taskArg) {
     ROW_HANDLER row_handler = args->row_handler;
     ROW_HANDLER_ARG_TYPE type = args->type;
     void *arg = args->arg;
+    Buffer child_buffer;
+    void *child_node;
 
-    Buffer child_buffer = ReadBuffer(GET_TABLE_OID(table), child_page_num);
-    void *node = GetBufferPage(child_buffer);
-    switch (get_node_type(node)) {
+    child_buffer = ReadBuffer(GET_TABLE_OID(table), child_page_num);
+    LockBuffer(child_buffer, RW_READERS);
+    child_node = GetBufferPageCopy(child_buffer);
+    UnlockBuffer(child_buffer);
+
+    switch (get_node_type(child_node)) {
         case LEAF_NODE:
             select_from_leaf_node(
                 select_result, condition, child_page_num, 
@@ -921,7 +928,8 @@ static void select_from_internal_node_async(SelectResult *select_result, Conditi
 }
 
 /* The condition of executing async. 
- * Now, two condtions: 
+ * --------------------------------
+ * Must satisfy two condtions: 
  * (1) SELECT_STMT.
  * (2) Already in cache.
  * Note: why it must be in cache. Because, IO operation is slow, 
@@ -930,9 +938,9 @@ static void select_from_internal_node_async(SelectResult *select_result, Conditi
  * will affects the performance.
  * */
 static bool execte_async_condition(SelectResult *select_result) {
-    return false;
-    // return select_result->stype == SELECT_STMT && 
-    //        exist_table_in_cache(select_result->table_name);
+    // return false;
+    return select_result->stype == SELECT_STMT && 
+                TableNameExistsInCache(select_result->table_name);
 }
 
 /* Query with condition inner. */

@@ -1,2 +1,3 @@
 1. Lack long value type for big int number input.
 2. Add strheaptable for string value type.
+3. Implement the parall computing.

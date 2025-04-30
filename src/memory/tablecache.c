@@ -108,6 +108,22 @@ bool TableExistsInCache(Oid oid) {
     release_spin_lock(tlock);
     return found;
 }
+
+/* Find out if exists table in caceh. */
+bool TableNameExistsInCache(char *tableName) {
+    bool found = false;
+    acquire_spin_lock(tlock);
+    ListCell *lc;
+    foreach (lc, TableCache) {
+        Table *cur_table = (Table *) lfirst(lc);
+        if (streq(tableName, GET_TABLE_NAME(cur_table))) {
+            found = true;
+            break;
+        }
+    }
+    release_spin_lock(tlock);
+    return found;
+}
  
 /* Find table cache by oid, 
  * ------------------------
