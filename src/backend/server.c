@@ -142,6 +142,7 @@ void accept_request(intptr_t client) {
     /* Auth login message. */
     if (auth_request(client)) 
         loop_request(client);
+
     close(client);
 
     memory_context_end();
