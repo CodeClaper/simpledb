@@ -44,7 +44,12 @@ static void CreateTableCache() {
     switch_local();
 }
 
-/* Load object and push to table cache. */
+/* Load object and push to table cache. 
+ * ----------------------------------
+ * Note: Use SIDE_MEMORY_CONTEXT as the memory context 
+ * when loading object. And delete the SIDE_MEMORY_CONTEXT
+ * after loading.
+ * */
 static void LoadObjectToTableCache() {
 
     /* Swith to SIDE_MEMORY_CONTEXT. */
