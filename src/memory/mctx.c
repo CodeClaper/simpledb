@@ -198,7 +198,7 @@ void *MemoryContextSwitchTo(MemoryContext currentConext) {
     Assert(currentConext != NULL);
     /* Not allowed parallel compute there. */
     Assert(GetComputeMode() != PARALLEL_COMPUTE);
-    MemoryContext old = currentConext;
+    MemoryContext old = CURRENT_MEMORY_CONTEXT;
     CURRENT_MEMORY_CONTEXT = currentConext;
     return old;
 }
