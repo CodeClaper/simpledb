@@ -2238,7 +2238,7 @@ static SelectResult *query_multi_table_with_condition(SelectNode *select_node) {
         TableRefNode *table_ref = lfirst(lc);
         SelectResult *current_result = new_select_result(SELECT_STMT, table_ref->table);
 
-        /* If use not define tale alias name, use table name as range variable automatically. */
+        /* If not define tale alias name, use table name as range variable automatically. */
         current_result->range_variable = table_ref->range_variable 
                                         ? dstrdup(table_ref->range_variable) 
                                         : dstrdup(table_ref->table);

@@ -154,6 +154,8 @@ static void db_run() {
     server_socket = startup(conf->port);
     db_log(INFO, "Simpledb server start up successfully and listen port %d.", conf->port);
 
+    /* Means the system start up successfully, 
+     * and accept the request of backend. */
     MakeSysState(SYS_RUNNING);
 
     /* Start up bgwriter.*/
