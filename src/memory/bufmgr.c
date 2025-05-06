@@ -94,7 +94,6 @@ void CreateBufferDescTable() {
     switch_local();
 }
 
-
 /* Init BufMgr. */
 void InitBufMgr() {
     CreateBufferTable();
@@ -121,6 +120,7 @@ void UnpinBuffer(BufferDesc *desc) {
 }
 
 /* Use `Clock Sweep` algorithm to get next victim. 
+ * Return the next victim index.
  * -----------------------------------
  * Use atomic operation rather than lock to ensure 
  * concurrent security. When index need wrapped, use
@@ -140,9 +140,11 @@ static inline Index ClockSweepTick() {
             bool success = false;
 
             expected = orginValue + 1;
-
+            
+            /* Use CAS to wrap the index. */
             while (!success) {
                 wrapped = expected % BUFFER_SLOT_NUM;
+                /* Note: the atmomic_compare_swap_uint32 will automatically updated the expected value. */
                 success = atmomic_compare_swap_uint32(&victimController->index, &expected, wrapped);
             }
             db_log(DEBUGER, "Victim wrapped success.");

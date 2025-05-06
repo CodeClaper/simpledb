@@ -19,7 +19,7 @@ static MemType type = MEM_LOCAL;
 /*
  * Recorder which use in parallel compute mode.
  */
-static MemTypeRecord recorders[100];
+static MemTypeRecord recorders[MAX_WORKER_NUM];
 
 /*
  * Workers Size.
@@ -50,7 +50,7 @@ void RegisterWorkers(pthread_t workers[], int workerNum) {
 }
 
 static MemTypeRecord *FindRecord() {
-    Assert(GetComputeMode() == PARALLEL_COMPUTE);
+    Assert(COMPUTE_IN_PARALL);
     for (int i = 0; i < workerSize; i++) {
         MemTypeRecord *recorder = &recorders[i];
         if (*recorder->worker == pthread_self())

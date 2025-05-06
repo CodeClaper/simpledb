@@ -84,7 +84,7 @@ void DestroyContextRecorders() {
 }
 
 MemContextRecorder *FindMemContextReorder() {
-    Assert(GetComputeMode() == PARALLEL_COMPUTE);
+    Assert(COMPUTE_IN_PARALL);
     for (int i = 0; i < recorderSize; i++) {
         MemContextRecorder *recorder = &contextRecorders[i];
         if (*recorder->worker == pthread_self())

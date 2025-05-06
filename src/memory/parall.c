@@ -10,23 +10,31 @@
 #include "log.h"
 #include "spinlock.h"
 
-static ComputeMode mode = NORMAL_COMPUTE;
+/* 
+ * ComputeMode, 
+ * default is NORMAL_COMPUTE. 
+ */
+static ComputeMode currentMode = NORMAL_COMPUTE;
 
+/*
+ * Tassk queue.
+ */
 static TaskEntry *taskQueue;
 
+/* 
+ * Queue lock. 
+ */
 static s_lock qLock = SPIN_UN_LOCKED_STATUS;
 
 /* Get current ComputeMode. */
-ComputeMode GetComputeMode() {
-    return mode;
+inline ComputeMode GetComputeMode() {
+    return currentMode;
 }
 
-void SwitchToParallelCompute() {
-    mode = PARALLEL_COMPUTE;
-}
-
-void SwitchToNormalCompute() {
-    mode = NORMAL_COMPUTE;
+static inline ComputeMode SwitchComputeMode(ComputeMode newMode) {
+    ComputeMode old = currentMode;
+    currentMode = newMode;
+    return old;
 }
 
 static TaskEntry *GetTaskQueueTail() {
@@ -73,6 +81,7 @@ static void TaskProxy() {
 
 /* Parallel computing. */
 void ParallelCompute(int workerNum, int taskNum, PARALLEL_TASK task, void *taskArgs[]) {
+    Assert(workerNum <= MAX_WORKER_NUM);
     
     db_log(DEBUGER, "Start parall computing, %d workers with %d tasks.", 
            workerNum, taskNum);
@@ -87,8 +96,8 @@ void ParallelCompute(int workerNum, int taskNum, PARALLEL_TASK task, void *taskA
     RegisterWorkers(workers, workerNum);
     RegisterContextRecorders(workerNum,  workers);
 
-
-    SwitchToParallelCompute();
+    /* Switch to PARALLEL_COMPUTE mode. */
+    ComputeMode oldMode = SwitchComputeMode(PARALLEL_COMPUTE);
 
     /* Assign the task. */
     for (int i = 0; i < workerNum; i++) {
@@ -100,7 +109,7 @@ void ParallelCompute(int workerNum, int taskNum, PARALLEL_TASK task, void *taskA
         pthread_join(workers[i], NULL);
     }
     
-    SwitchToNormalCompute();
+    SwitchComputeMode(oldMode);
 
     db_log(DEBUGER, "End parall computing.");
 }
