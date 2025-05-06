@@ -65,9 +65,9 @@
 static BufferDesc *bDescTable;
 
 /*
- * Next Victim index.
+ * Victim Controller.
  */
-static VictimIndex *victimIndex;
+static VictimController *victimController;
 
 /* Create BufferDesc. */
 void CreateBufferDescTable() {
@@ -86,10 +86,10 @@ void CreateBufferDescTable() {
         init_spin_lock(&desc->io_lock);
     }
     
-    /* Init VictimIndex. */
-    victimIndex = instance(VictimIndex); 
-    victimIndex->index = 0;
-    init_spin_lock(&victimIndex->lock);
+    /* Init VictimController. */
+    victimController = instance(VictimController); 
+    victimController->index = 0;
+    init_spin_lock(&victimController->lock);
 
     switch_local();
 }
@@ -120,22 +120,16 @@ void UnpinBuffer(BufferDesc *desc) {
     release_spin_lock(&desc->io_lock);
 }
 
-/* Next Victim index. */
-static inline Index NextVictimIndex() {
-    acquire_spin_lock(&victimIndex->lock);
-    Index current = victimIndex->index;
-    if (victimIndex->index >= BUFFER_SLOT_NUM - 1) 
-        victimIndex->index = 0;
-    else
-        victimIndex->index++;
-    release_spin_lock(&victimIndex->lock);
-    return current;
-}
-
+/* Use `Clock Sweep` algorithm to get next victim. 
+ * -----------------------------------
+ * Use atomic operation rather than lock to ensure 
+ * concurrent security. When index need wrapped, use
+ * CAS to release it.
+ * */
 static inline Index ClockSweepTick() {
     Index victim;
 
-    victim = atmomic_fetch_add_uint32(&victimIndex->index, 1);
+    victim = atmomic_fetch_add_uint32(&victimController->index, 1);
     
     if (victim >= BUFFER_SLOT_NUM) {
         Index orginValue = victim;
@@ -149,7 +143,7 @@ static inline Index ClockSweepTick() {
 
             while (!success) {
                 wrapped = expected % BUFFER_SLOT_NUM;
-                success = atmomic_compare_swap_uint32(&victimIndex->index, &expected, wrapped);
+                success = atmomic_compare_swap_uint32(&victimController->index, &expected, wrapped);
             }
             db_log(DEBUGER, "Victim wrapped success.");
         }

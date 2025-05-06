@@ -38,10 +38,10 @@ typedef struct BufferDesc {
     s_lock      io_lock;        /* IO lock.*/
 } BufferDesc;
 
-typedef struct VictimIndex {
+typedef struct VictimController {
     volatile Index index;
     s_lock lock;
-} VictimIndex;
+} VictimController;
 
 /* Return if both BufferTags equals. */
 static inline bool BufferTagEquals(BufferTag *tag1, BufferTag *tag2) {
