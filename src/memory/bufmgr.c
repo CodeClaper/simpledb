@@ -151,6 +151,7 @@ static inline Index ClockSweepTick() {
                 wrapped = expected % BUFFER_SLOT_NUM;
                 success = atmomic_compare_swap_uint32(&victimIndex->index, &expected, wrapped);
             }
+            db_log(DEBUGER, "Victim wrapped success.");
         }
     }
 

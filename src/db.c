@@ -22,6 +22,7 @@
 #include "session.h"
 #include "conf.h"
 #include "gc.h"
+#include "banner.h"
 #include "refer.h"
 #include "tablecache.h"
 #include "fdesc.h"
@@ -152,6 +153,10 @@ static void db_run() {
 
     /* Start up server. */
     server_socket = startup(conf->port);
+
+    /* Print out banner. */
+    puts(BANNER);
+
     db_log(INFO, "Simpledb server start up successfully and listen port %d.", conf->port);
 
     /* Means the system start up successfully, 
