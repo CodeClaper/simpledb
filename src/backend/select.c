@@ -937,8 +937,8 @@ static void select_from_internal_node_async(SelectResult *select_result, Conditi
  * improve the performance. On the contrary, the frequent switch of context
  * will affects the performance.
  * */
-static bool execte_async_condition(SelectResult *select_result) {
-    // return false;
+static bool async_condition(SelectResult *select_result) {
+    /*return false;*/
     return select_result->stype == SELECT_STMT && 
                 TableNameExistsInCache(select_result->table_name);
 }
@@ -967,7 +967,7 @@ void query_with_condition_inner(Oid oid, ConditionNode *condition, SelectResult 
             );
             break;
         case INTERNAL_NODE: {
-            if (execte_async_condition(select_result)) 
+            if (async_condition(select_result)) 
                 select_from_internal_node_async(
                     select_result, condition, table->root_page_num,
                     table, row_handler, type, arg

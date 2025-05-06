@@ -41,6 +41,7 @@
  ************************************************************************************************************
  */
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
 #include <strings.h>
@@ -56,6 +57,7 @@
 #include "pager.h"
 #include "copy.h"
 #include "log.h"
+#include "atomic.h"
 
 /*
  * BufferDesc table. 
@@ -130,6 +132,31 @@ static inline Index NextVictimIndex() {
     return current;
 }
 
+static inline Index ClockSweepTick() {
+    Index victim;
+
+    victim = atmomic_fetch_add_uint32(&victimIndex->index, 1);
+    
+    if (victim >= BUFFER_SLOT_NUM) {
+        Index orginValue = victim;
+        victim = victim % BUFFER_SLOT_NUM;
+
+        if (victim == 0) {
+            Index expected, wrapped;
+            bool success = false;
+
+            expected = orginValue + 1;
+
+            while (!success) {
+                wrapped = expected % BUFFER_SLOT_NUM;
+                success = atmomic_compare_swap_uint32(&victimIndex->index, &expected, wrapped);
+            }
+        }
+    }
+
+    return victim;
+}
+
 /* Get the BufferDesc. */
 inline BufferDesc *GetBufferDesc(Buffer buffer) {
     Assert(buffer < BUFFER_SLOT_NUM);
@@ -143,7 +170,7 @@ static BufferDesc *LoopFindBufferDesc(BufferTag *tag) {
     
     /* Loop the circle to lookup the free table buffer. */
     forever {
-        vindex = NextVictimIndex();
+        vindex = ClockSweepTick();
         desc = GetBufferDesc(vindex);
         if (desc->status == EMPTY) {
             PinBuffer(desc);
