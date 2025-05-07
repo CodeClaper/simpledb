@@ -14,6 +14,10 @@ extern "C" {
 #include "conf.h"
 #include "refer.h"
 #include "mctx.h"
+#include "bufmgr.h"
+#include "tablelock.h"
+#include "systable.h"
+#include "fdesc.h"
 }
 Conf *conf; /* Conf */
 jmp_buf errEnv; /* jmp_buf for error. */
@@ -31,17 +35,30 @@ static void db_start() {
     /* Initialise memory manger. */
     init_mem();
 
+    /* Initialise fesc.*/
+    init_fdesc();
+
+
     /* Initialise transaction. */
     InitTrans();
 
-    /* Initialise table cache. */
-    InitTableCache();
+    /* Initialise bufmgr. */
+    InitBufMgr();
 
     /* Initialise refer. */
     init_refer();
 
+    /* Initialise table lock. */
+    init_table_lock();
+
     /* Load configuration. */
     conf = load_conf();
+
+    /* Initialise table cache. */
+    InitTableCache();
+
+    /* Init system table. */
+    InitSysTable();
 }
 
 int main(int argc, char **argv) {
