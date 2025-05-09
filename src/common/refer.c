@@ -114,10 +114,8 @@ Cursor *new_cursor(Table *table, uint32_t page_num, uint32_t cell_num) {
     return cursor;
 }
 
-
 /* Define cursor when meet leaf node. */
 static Cursor *define_cursor_leaf_node(Table *table, void *leaf_node, uint32_t page_num, void *key) {
-
     Cursor *cursor = instance(Cursor);
     MetaColumn *primary_meta_column = get_primary_key_meta_column(table->meta_table);
     uint32_t key_len = calc_primary_key_length(table);

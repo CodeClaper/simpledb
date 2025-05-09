@@ -19,6 +19,7 @@
 #include "compare.h"
 #include "refer.h"
 #include "log.h"
+#include "strheaptable.h"
 
 /*Equal operation (=).*/
 bool equal(void *source, void *target, DataType data_type) {
@@ -37,7 +38,8 @@ bool equal(void *source, void *target, DataType data_type) {
             return *(int32_t *)source == *(int32_t *)target;
         case T_LONG:
             return *(int64_t *)source == *(int64_t *)target;
-        case T_STRING:
+        case T_STRING: 
+            return CompareStrRefer(source, target) == 0;
         case T_VARCHAR:
             return strcmp((char *)source, (char *)target) == 0;
         case T_DOUBLE:
@@ -75,6 +77,7 @@ bool not_equal(void *source, void *target, DataType data_type) {
         case T_LONG:
             return *(int64_t *)source !=  *(int64_t *)target;
         case T_STRING:
+            return CompareStrRefer(source, target) != 0;
         case T_VARCHAR:
             return strcmp((char *)source, (char *)target) != 0;
         case T_DOUBLE:
@@ -110,6 +113,7 @@ bool greater(void *source, void *target, DataType data_type) {
         case T_LONG:
             return *(int64_t *)source >  *(int64_t *)target;
         case T_STRING:
+            return CompareStrRefer(source, target) > 0;
         case T_VARCHAR:
             return strcmp((char *)source, (char *)target) > 0;
         case T_DOUBLE:
@@ -147,7 +151,8 @@ bool greater_equal(void *source, void *target, DataType data_type) {
             return *(int32_t *)source >= *(int32_t *)target;
         case T_LONG:
             return *(int64_t *)source >=  *(int64_t *)target;
-        case T_STRING:
+        case T_STRING: 
+            return CompareStrRefer(source, target) >= 0;
         case T_VARCHAR:
             return strcmp((char *)source, (char *)target) >= 0;
         case T_DOUBLE:
@@ -186,6 +191,7 @@ bool less(void *source, void *target, DataType data_type) {
         case T_LONG:
             return *(int64_t *)source <  *(int64_t *)target;
         case T_STRING:
+            return CompareStrRefer(source, target) < 0;
         case T_VARCHAR:
             return strcmp((char *)source, (char *)target) < 0;
         case T_DOUBLE:
@@ -224,6 +230,7 @@ bool less_equal(void *source, void *target, DataType data_type) {
         case T_LONG:
             return *(int64_t *)source <= *(int64_t *)target;
         case T_STRING:
+            return CompareStrRefer(source, target) <= 0;
         case T_VARCHAR:
             return strcmp((char *)source, (char *)target) <= 0;
         case T_DOUBLE:

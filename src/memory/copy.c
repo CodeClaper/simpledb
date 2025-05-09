@@ -14,6 +14,9 @@
 #include "common.h"
 #include "mmgr.h"
 #include "utils.h"
+#include "strheaptable.h"
+
+static StrRefer *copy_strrefer(StrRefer *strRefer);
 
 /* Copy value. */
 void *copy_value(void *value, DataType data_type) {
@@ -53,9 +56,10 @@ void *copy_value(void *value, DataType data_type) {
             return new_val;
         }
         case T_CHAR:
-        case T_STRING: 
         case T_VARCHAR:
             return dstrdup((char *)value);
+        case T_STRING: 
+            return copy_strrefer((StrRefer *) value);
         case T_REFERENCE: 
             return copy_refer(value);
         default: {
@@ -64,7 +68,6 @@ void *copy_value(void *value, DataType data_type) {
         }
     }    
 }
-
 
 /* Copy value. */
 void *copy_value2(void *value, MetaColumn *meta_column) {
@@ -99,11 +102,12 @@ void *copy_value2(void *value, MetaColumn *meta_column) {
             return new_val;
         }
         case T_CHAR:
-        case T_STRING: 
         case T_VARCHAR: {
             memcpy(new_val, value, strlen(value));
             return new_val;
         }
+        case T_STRING: 
+            return copy_strrefer((StrRefer *) value);
         case T_REFERENCE: 
             return copy_refer(value);
         default: {
@@ -112,6 +116,7 @@ void *copy_value2(void *value, MetaColumn *meta_column) {
         }
     }    
 }
+
 
 /* Copy Key value pair. */
 KeyValue *copy_key_value(KeyValue *key_value) {
@@ -463,6 +468,13 @@ LimitClauseNode *copy_limit_clause_node(LimitClauseNode *limit_clause_node) {
     LimitClauseNode *duplica = instance(LimitClauseNode);
     duplica->rows = limit_clause_node->rows;
     duplica->offset = limit_clause_node->offset;
+    return duplica;
+}
+
+/* Copy StrRefer. */
+static StrRefer *copy_strrefer(StrRefer *strRefer) {
+    StrRefer *duplica = instance(StrRefer);
+    memcpy(duplica, strRefer, sizeof(StrRefer));
     return duplica;
 }
 

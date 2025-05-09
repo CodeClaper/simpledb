@@ -43,19 +43,19 @@ static List *gen_describe_result(MetaTable *meta_table) {
         /* filed */
         append_list(
             child_list, 
-            new_key_value(dstrdup("field"), dstrdup(meta_column->column_name), T_STRING)
+            new_key_value(dstrdup("field"), dstrdup(meta_column->column_name), T_VARCHAR)
         );
     
         /* key */
         append_list(
             child_list, 
-            new_key_value(dstrdup("key"), dstrdup(key_type_name(meta_column)), T_STRING)
+            new_key_value(dstrdup("key"), dstrdup(key_type_name(meta_column)), T_VARCHAR)
         );
 
         /* type */
         append_list(
             child_list, 
-            new_key_value(dstrdup("type"), dstrdup(data_type_name(meta_column->column_type)), T_STRING)
+            new_key_value(dstrdup("type"), dstrdup(data_type_name(meta_column->column_type)), T_VARCHAR)
         );
 
         /* length */
@@ -104,7 +104,7 @@ static List *gen_describe_result(MetaTable *meta_table) {
         if (meta_column->has_comment) {
             append_list(
                 child_list, 
-                new_key_value(dstrdup("comment"), dstrdup(meta_column->comment), T_STRING)
+                new_key_value(dstrdup("comment"), dstrdup(meta_column->comment), T_VARCHAR)
             );
         }
 

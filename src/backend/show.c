@@ -54,13 +54,13 @@ static List *gen_table_map_list() {
         /* relname */
         append_list(
             child_list, 
-            new_key_value(dstrdup(SYS_TABLE_RELNAME_NAME), entity->relname, T_STRING)
+            new_key_value(dstrdup(SYS_TABLE_RELNAME_NAME), entity->relname, T_VARCHAR)
         );
 
         /* object type */
         append_list(
             child_list, 
-            new_key_value(dstrdup(SYS_TABLE_RELTYPE_NAME), GetObjectTypeName(entity->reltype), T_STRING)
+            new_key_value(dstrdup(SYS_TABLE_RELTYPE_NAME), GetObjectTypeName(entity->reltype), T_VARCHAR)
         );
 
         append_list(list, child_list);

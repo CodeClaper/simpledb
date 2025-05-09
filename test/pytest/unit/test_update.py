@@ -8,7 +8,7 @@ client.login("root", "Zc120130211")
 ## create mock table;
 def test_create_mock_table():
     sql = "create table A (id string, name string, sex char, primary key(id));\n" \
-          "create table B (id string, name string, age int, a A, primary key(id));"
+          "create table B (id string, name string unique, age int, a A, primary key(id));"
     ret = client.execute(sql)
     assert ret[0]["success"] == True
     assert ret[1]["success"] == True
@@ -84,12 +84,13 @@ def test_loop_update():
         assert ret[1]["success"] == True
         assert ret[1]["data"][0] == { "a": { "id": "2", "name": "change", "sex": "F"}}
 
+
 ## test update with complex condition.
 def test_update_with_complex_condition():
     sql = "update B set name = 'bingo' where age > 13 or (a).id = '1' or name like '%02';";
     ret = client.execute(sql)
-    assert ret["success"] == True
-    assert ret["rows"] == 2
+    assert ret["success"] == False
+    assert ret["message"] == "Column 'name' is unique, not allowd duplicate."
 
 ## test update indirect reference column. 
 def test_update_indirect_reference_column():

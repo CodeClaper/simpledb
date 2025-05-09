@@ -45,6 +45,8 @@ static void update_cell(Row *row, AssignmentNode *assign_node, MetaColumn *meta_
         if (streq(key_value->key, assign_node->column->column_name)) {
             ValueItemNode *value_item = assign_node->value;
             key_value->value = assign_value_from_value_item_node(value_item, meta_column);
+            if (meta_column->is_primary)
+                row->key = key_value->value;
         }
     } 
 }
@@ -114,10 +116,6 @@ static void update_row(Row *rawRow, SelectResult *select_result, Table *table,
         AssignmentNode *assign_node = lfirst(lc);
         MetaColumn *meta_column = get_meta_column_by_name(table->meta_table, assign_node->column->column_name);
         update_cell(new_row, assign_node, meta_column);
-        if (meta_column->is_primary) { 
-            /* If primary key changed, reassign new value. */
-            new_row->key = get_value_from_value_item_node(assign_node->value, meta_column);
-        }
     }
    
     /* Insert row for update. */

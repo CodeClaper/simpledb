@@ -39,6 +39,7 @@
 #include "utils.h"
 #include "jsonwriter.h"
 #include "instance.h"
+#include "strheaptable.h"
 
 /* Get value in insert node to assign column at index. */
 static void *get_insert_value(List *value_item_list, uint32_t index, MetaColumn *meta_column) {
@@ -300,7 +301,7 @@ static List *generate_insert_row(InsertNode *insert_node) {
 }
 
 /* Convert to insert row. */
-static Row *convert2_insert_row(Row *row, Table *table) {
+static Row *convert_insert_row(Row *row, Table *table) {
 
     MetaColumn *primary_meta_column = get_primary_key_meta_column(table->meta_table);
 
@@ -336,12 +337,11 @@ Refer *insert_one_row(Table *table, Row *row) {
     if (has_user_primary_key(table->meta_table) && 
             check_duplicate_key(cursor, row->key) && 
                 !cursor_is_deleted(cursor)) {
-        db_log(
-            ERROR,
-            "key '%s' in table '%s' already exists, not allow duplicate key.", 
-            get_key_str(row->key, primary_key_meta_column->column_type), 
-            GET_TABLE_NAME(table)
-        );
+        char *keyStr = primary_key_meta_column->column_type == T_STRING
+                ? QueryStringValue(row->key)
+                : get_key_str(row->key, primary_key_meta_column->column_type);
+        db_log(ERROR, "key '%s' in table '%s' already exists, not allow duplicate key.", 
+               keyStr, GET_TABLE_NAME(table));
         return NULL;
     }
 
@@ -417,7 +417,7 @@ static List *insert_for_query_spec(InsertNode *insert_node) {
         /* Insert into rows. */
         QueueCell *qc;
         qforeach (qc, select_result->rows) {
-            Row *insert_row = convert2_insert_row((Row *) qfirst(qc), table);
+            Row *insert_row = convert_insert_row((Row *) qfirst(qc), table);
             Refer *refer = insert_one_row(table, insert_row);
             append_list(list, refer);
             free_row(insert_row);

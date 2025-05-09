@@ -27,6 +27,7 @@
 #include "check.h"
 #include "tablelock.h"
 #include "systable.h"
+#include "strheaptable.h"
 
 #define DEFAULT_BOOL_LENGTH         2
 #define DEFAULT_STRING_LENGTH       48
@@ -71,8 +72,9 @@ uint32_t default_data_len(DataType column_type) {
             return sizeof(double);
         case T_FLOAT:
             return sizeof(float);
+        /* For String type, use StrRefer to store the refer info. */
         case T_STRING:
-            return DEFAULT_STRING_LENGTH;
+            return sizeof(StrRefer);
         case T_DATE:
             return DEFAULT_DATE_LENGTH;
         case T_TIMESTAMP:
@@ -163,7 +165,6 @@ static void *assign_value_from_atom(AtomNode *atom_node, MetaColumn *meta_column
             return copy_value2(&val, meta_column);
         }
         case T_CHAR:
-        case T_STRING: 
         case T_VARCHAR: 
             return copy_value2(atom_node->value.strval, meta_column);
         case T_DATE: {
@@ -183,6 +184,15 @@ static void *assign_value_from_atom(AtomNode *atom_node, MetaColumn *meta_column
             time_t tmp = mktime(&tmp_time);
             return copy_value2(&tmp, meta_column);
         }
+        /* Note: for STRING type, it will insert into the target strheaptable
+         * and return the strRefer. */
+        case T_STRING: {
+            Oid oid = StrTableNameFindOid(meta_column->table_name);
+            AssertFalse(ZERO_OID(oid));
+            return InsertStringValue(oid, atom_node->value.strval);
+        } 
+        /* Note: for REFERENCE type, it will insert into the referd target table 
+         * and return the refer. */
         case T_REFERENCE: {
             ReferValue *refer_value = atom_node->value.referval;
             switch (refer_value->type) {
@@ -270,10 +280,10 @@ static void *get_value_from_atom(AtomNode *atom_node, MetaColumn *meta_column) {
             float val = 0;
             switch (atom_node->type) {
                 case A_INT:
-                    val = (float)atom_node->value.intval;
+                    val = (double)atom_node->value.intval;
                     break;
                 case A_FLOAT:
-                    val = (float)atom_node->value.floatval;
+                    val = (double)atom_node->value.floatval;
                     break;
                 default:
                     db_log(ERROR, "Can`t convert to data type [%s] for column '%s'", 
@@ -362,6 +372,46 @@ void *get_value_from_value_item_node(ValueItemNode *value_item_node, MetaColumn 
             UNEXPECTED_VALUE(value_item_node->type);
     }
 }
+
+/* Combine AtomNode by column and value. */
+AtomNode *combine_atom_node(MetaColumn *meta_column, void *value) {
+    AtomNode *atom_node = instance(AtomNode);
+    switch (meta_column->column_type) {
+        case T_BOOL: {
+            atom_node->type = A_BOOL;
+            atom_node->value.boolval =  *(bool *)value;  
+            break;
+        }
+        case T_CHAR: 
+        case T_STRING:
+        case T_DATE:
+        case T_TIMESTAMP:
+        case T_VARCHAR: {
+            atom_node->type = A_STRING;
+            atom_node->value.strval = value;  
+            break;
+        }
+        case T_INT: 
+        case T_LONG: {
+            atom_node->type = A_INT;
+            atom_node->value.intval = *(int64_t *) value;  
+            break;
+        }
+        case T_DOUBLE:
+        case T_FLOAT: {
+            atom_node->type = A_INT;
+            atom_node->value.floatval = *(double *) value;  
+            break;
+        }
+        case T_REFERENCE:
+        case T_ROW:
+        case T_UNKNOWN:
+            panic("Cant convert type to AtomNode.");
+        break;
+    }   
+    return atom_node;
+}
+
 
 /* Calculate the length of table row. */
 uint32_t calc_table_row_length(Table *table) {

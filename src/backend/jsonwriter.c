@@ -28,7 +28,8 @@
 #include "select.h"
 #include "asserts.h"
 #include "session.h"
-#include "banner.h"
+#include "strheaptable.h"
+
 
 
 /* Handle duplicate Key. */
@@ -182,7 +183,6 @@ static void json_array_key_value(KeyValue *key_value) {
                     json_row(subrow);
                     if (last_cell(array_value->list) != lc)
                         db_send(",");
-                    free_row(subrow);
                 }
 
                 db_send("]");
@@ -215,7 +215,6 @@ static void json_single_key_value(KeyValue *key_value) {
                 db_send("\"%s\": %" PRIu64, key, value ? *(int64_t *)value : 0);
                 break;
             case T_CHAR: 
-            case T_STRING:
             case T_VARCHAR: 
                 db_send("\"%s\": \"%s\"", key, value ? (char *)value: "null");
                 break;
@@ -249,6 +248,11 @@ static void json_single_key_value(KeyValue *key_value) {
                     db_send("\"%s\": \"%s\"", key, "null");
                 break;
             }
+            case T_STRING: {
+                char *strVal = QueryStringValue((StrRefer *)value);
+                db_send("\"%s\": \"%s\"", key, strVal ? strVal : "null");
+                break;
+            }
             /* Specially deal with T_REFERENCE data. */
             case T_REFERENCE: {
                 db_send("\"%s\": ", key);
@@ -256,7 +260,6 @@ static void json_single_key_value(KeyValue *key_value) {
                 assert_not_null(refer, "Try to get Reference type value fail.\n");
                 Row *subrow = define_visible_row(refer);
                 json_row(subrow);
-                free_row(subrow);
                 break;
             }
             case T_ROW: {

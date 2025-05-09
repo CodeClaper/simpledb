@@ -30,18 +30,14 @@
 #include "tablecache.h"
 #include "systable.h"
 
-/* Get system reserved columns length. */
-uint32_t sys_reserved_column_count() {
-    return SYS_RESERVED_COLUMNS_LENGTH;
-}
-
 /* Calculate meta column length. 
+ * -----------------------------
  * If define data len, use defined data length, note that, T_STRING & T_VARCHAR data length will increase 1 for '\0' as end.
  * Otherwise, use system default data length.
  * Note: when array cap more than zere, it means column is array, 
  * column length = data type length * array cap + reserved array number length (sizeof(uint32_t));
  * */
-uint32_t calc_column_len(ColumnDefNode *column_def, uint32_t array_cap) {
+static uint32_t calc_column_len(ColumnDefNode *column_def, uint32_t array_cap) {
     DataTypeNode *data_type = column_def->data_type;
     uint32_t column_length = 0;
     switch (data_type->type) {
@@ -51,8 +47,7 @@ uint32_t calc_column_len(ColumnDefNode *column_def, uint32_t array_cap) {
             column_length++;
             break;
         }
-        case T_CHAR:
-        case T_STRING: {
+        case T_CHAR: {
             column_length = default_data_len(data_type->type);
             /* Increase for reserving a char of '\0' as end of string. */
             column_length++;
@@ -84,8 +79,9 @@ static void operate_column(MetaColumn *meta_column, List *column_def_opt_list) {
             case OPT_UNIQUE:
                 meta_column->is_unique = true;
                 break;
-            case OPT_PRIMARY_KEY:
+            case OPT_PRIMARY_KEY: 
                 meta_column->is_primary = true;
+                meta_column->is_unique = true;
                 meta_column->not_null = true;
                 break;
             case OPT_DEFAULT_VALUE:
@@ -125,13 +121,18 @@ MetaColumn *combine_user_meta_column(ColumnDefNode *column_def, char *table_name
     meta_column->default_value_type = DEFAULT_VALUE_NONE;
     meta_column->default_value = NULL;
 
-    /* Special handling Reference. */
+    /* Special handling Reference, record the refer table name. */
     if (column_def->data_type->type == T_REFERENCE) {
         Table *sub_table = open_table(column_def->data_type->table_name);
         if (sub_table) 
-            strcpy(meta_column->table_name, column_def->data_type->table_name);
+            memcpy(meta_column->table_name, column_def->data_type->table_name, strlen(column_def->data_type->table_name) + 1);
         else 
             db_log(ERROR, "Table '%s' not exists.", column_def->data_type->table_name);
+    }
+
+    /* Special handling STRING, record the strheaptable name. */
+    if (column_def->data_type->type == T_STRING) {
+        memcpy(meta_column->table_name, table_name, strlen(table_name) + 1);
     }
 
     /* Operate column. */
@@ -179,6 +180,8 @@ static void operate_table_primary_key(MetaTable *meta_table, List *commalist) {
         ColumnDefName *column_def_name = lfirst(lc);
         MetaColumn *meta_column = get_meta_column_by_name(meta_table, column_def_name->column);
         meta_column->is_primary = true;
+        meta_column->is_unique = true;
+        meta_column->not_null = true;
         break; /* Not support mult-columns as primary key. */
     }
 }

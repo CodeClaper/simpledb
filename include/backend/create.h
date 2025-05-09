@@ -1,8 +1,5 @@
 #include "data.h"
 
-/* Get system reserved columns length. */
-uint32_t sys_reserved_column_count();
-
 /* Combine user-level column. */
 MetaColumn *combine_user_meta_column(ColumnDefNode *column_def, char *table_name);
 

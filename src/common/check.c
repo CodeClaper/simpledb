@@ -304,6 +304,7 @@ bool check_value_valid(MetaColumn *meta_column, AtomNode *atom_node) {
         case T_LONG:
         case T_DOUBLE:
         case T_REFERENCE: 
+        case T_STRING:
             return true;
         case T_INT: {
             if (atom_node->value.intval > INT_MAX || atom_node->value.intval < INT_MIN)
@@ -328,8 +329,7 @@ bool check_value_valid(MetaColumn *meta_column, AtomNode *atom_node) {
                        (char *) value);
             return len == 1;
         }
-        case T_VARCHAR:
-        case T_STRING: {
+        case T_VARCHAR:{
             if (value == NULL)
                 return false;
             size_t size = strlen(value);
@@ -704,26 +704,48 @@ static bool check_table_exp(TableExpNode *table_exp, AliasMap alias_map) {
                     check_limit_clause(table_exp->limit_clause);
 }
 
+/* Check update unique column. */
+static bool check_unique_column(Table *table, MetaColumn *meta_column, void *value, UpdateNode *update_node) {
+    Assert(meta_column->is_unique);
+    /* Although this cehck update node, but new select result is SELECT_STMT. */
+    SelectResult *select_result = new_select_result(SELECT_STMT, update_node->table_name);
+    ConditionNode *condition_node = get_condition_from_where_clause(update_node->where_clause);
+    query_with_condition(condition_node, select_result, select_row, ARG_NULL, NULL);
+    /* If selected rows more than one, 
+     * which means at least two rows has same value.*/
+    if (select_result->row_size > 1) {
+        db_log(ERROR, "Column '%s' is unique, not allowd duplicate.", 
+               meta_column->column_name);
+        return false;
+    } else if (select_result->row_size == 1) {
+        MetaColumn *primary_column = get_primary_key_meta_column(table->meta_table);
+        Row *selected_row = qfirst(select_result->rows->head);
+        SelectResult *result = select_with_column_value(GET_TABLE_OID(table), meta_column, value);
+        QueueCell *qc;
+        qforeach(qc, result->rows) {
+            Row *row = (Row *) qfirst(qc);
+            if (!equal(row->key, selected_row->key, primary_column->column_type)) {
+                db_log(ERROR, "Key '%s' already exists, not allowd duplicate key. ",
+                       get_key_str(value, meta_column->column_type));
+                return false;
+            } 
+        }
+    }
+    return true;
+}
 
 /* Check assignment set node */
 static bool check_assignment_set_node(UpdateNode *update_node) { 
 
     Table *table = open_table(update_node->table_name);
     List *assignment_list = update_node->assignment_list;
-    /* Although this cehck update node, but new select result is SELECT_STMT. */
-    SelectResult *select_result = new_select_result(SELECT_STMT, update_node->table_name);
-    ConditionNode *condition_node = get_condition_from_where_clause(update_node->where_clause);
-    query_with_condition(condition_node, select_result, count_row, ARG_NULL, NULL);
-
-    bool change_priamry = false;
-    void *new_key = NULL;
-    MetaColumn *primary_meta_column = NULL;
 
     ListCell *lc;
     foreach (lc, assignment_list) {
         AssignmentNode *assignment_node = lfirst(lc);
         ColumnNode *column_node = assignment_node->column;
         ValueItemNode *value_node = assignment_node->value;
+        void *assign_value = NULL;
         Assert(column_node != NULL);
 
         MetaColumn *meta_column = get_meta_column_by_name(table->meta_table, column_node->column_name);
@@ -733,53 +755,20 @@ static bool check_assignment_set_node(UpdateNode *update_node) {
                    GET_TABLE_NAME(table));
             return false;
         }
-
-        if (meta_column->is_primary) {
-            change_priamry = true;
-            new_key = get_value_from_value_item_node(value_node, meta_column);
-            primary_meta_column = meta_column;
-        }
+        assign_value = get_value_from_value_item_node(value_node, meta_column);
 
         /* Check column, check type, check if value valid. */
         if (!(check_column_node(column_node, table->meta_table) && 
-                check_value_item_node(table->meta_table, meta_column->column_name, value_node))) {
-                free_select_result(select_result);
-                if (change_priamry)
-                    free_value(new_key, primary_meta_column->column_type);
+                check_value_item_node(table->meta_table, meta_column->column_name, value_node))) 
+                return false;
+
+        /* Check duplicate column value if current column is unque.*/
+        if (meta_column->is_unique) {
+            if (!check_unique_column(table, meta_column, assign_value, update_node))
                 return false;
         }
     }
 
-    if (change_priamry) {
-        if (select_result->row_size > 1) {
-            select_result->row_size = 0;
-            db_log(ERROR, "Duplicate key not allowd. ");
-            return false;
-        }
-        
-        Assert(new_key);
-        Assert(primary_meta_column);
-        if (select_result->row_size == 1) {
-            Cursor *new_cursor = define_cursor(table, new_key, true);
-            Refer *new_refer = convert_refer(new_cursor);
-            Row *default_row = define_row(new_refer);
-            free_cursor(new_cursor);
-            free_refer(new_refer);
-            if (!RowIsDeleted(default_row) && 
-                equal(default_row->key, new_key, primary_meta_column->column_type)) {
-                    select_result->row_size = 0;
-                    db_log(ERROR, "Key '%s' already exists, not allowd duplicate key. ",
-                           get_key_str(new_key, primary_meta_column->column_type));
-                    free_value(new_key, primary_meta_column->column_type);
-                    return false;
-            }
-        }
-    }
-
-    select_result->row_size = 0;
-    free_select_result(select_result);
-    if (change_priamry)
-        free_value(new_key, primary_meta_column->column_type);
     return true;
 }
 

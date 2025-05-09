@@ -15,6 +15,18 @@
 #include "bufmgr.h"
 #include "systable.h"
 
+/* Compare two StrRefers. */
+int CompareStrRefer(StrRefer *source, StrRefer *target) {
+    if (ZERO_OID(source->refer.oid) && ZERO_OID(target->refer.oid))
+        return 0;
+    else if (ZERO_OID(source->refer.oid))
+        return -1;
+    else if (ZERO_OID(target->refer.oid))
+        return 1;
+    else
+        return strcmp(QueryStringValue(source), QueryStringValue(target));
+}
+
 /* Create the string heap table. */
 bool CreateStrHeapTable(char *table_name) {
     int descr;
@@ -40,13 +52,13 @@ bool CreateStrHeapTable(char *table_name) {
     
     rblock = dalloc(PAGE_SIZE);
     rRefer = new_refer(entity.oid, 0, 1);
-    memcpy(rblock, rRefer, sizeof(Refer));
+    memcpy(rblock + NODE_STATE_SIZE, rRefer, sizeof(Refer));
     
     /* Flush to disk. */
     lseek(descr, 0, SEEK_SET);
     w_size = write(descr, rblock, PAGE_SIZE);
     if (w_size == -1) {
-        db_log(PANIC, "Write table meta info error and errno %d.\n", errno);
+        db_log(PANIC, "Write table meta info error and errno %d.", errno);
         return false;
     } 
 
@@ -63,10 +75,8 @@ bool CreateStrHeapTable(char *table_name) {
     return true;
 }
 
-static Refer *GetRootRefer(void *root_node) {
-    Refer *root_refer = instance(Refer);
-    memcpy(root_refer, root_node, sizeof(Refer));
-    return root_node;
+static inline Refer *GetRootRefer(void *root_node) {
+    return (Refer *) (root_node + NODE_STATE_SIZE);
 }
 
 /* Insert without cross page. */
@@ -91,6 +101,11 @@ static void InsertNotCrossPage(Refer *rRefer, char *strVal) {
 
     /* Update row refer. */
     rRefer->cell_num += useRowNum;
+    /* If current page is full, move to next page and first cell. */
+    if (rRefer->cell_num == STRING_ROW_NUM) {
+        rRefer->page_num++;
+        rRefer->cell_num = STRING_FIRST_CELL_NUM;
+    }
 
     MakeBufferDirty(buffer);
 
@@ -118,6 +133,7 @@ static void InsertCrossPage(Refer *rRefer, char *strVal) {
     MakeBufferDirty(buffer);
     UnlockBuffer(buffer);
     ReleaseBuffer(buffer);
+    rRefer->cell_num = STRING_ROW_NUM;
     
     /* Store the string value to next page. */
     useSize = leftSize;
@@ -130,16 +146,25 @@ static void InsertCrossPage(Refer *rRefer, char *strVal) {
         nblock = GetBufferPage(nbuffer);
 
         leftSize = size - useSize;
-        if (leftSize <= PAGE_SIZE) {
+        /* Check if next page can store the left string data completely. 
+         * Note: not the whole page to store rather than the remaining part after 
+         * exclusing the first STRING_ROW_SIZE part.*/
+        if (leftSize <= PAGE_STRING_DATA_SIZE) {
             leftRowNum = leftSize / STRING_ROW_SIZE;
             if (leftSize % STRING_ROW_SIZE != 0)
                 leftRowNum++;
-            memcpy(nblock, strVal + useSize, leftSize);
-            rRefer->cell_num = leftRowNum;
+            memcpy((nblock + PAGE_STRING_META_SIZE), strVal + useSize, leftSize);
+            rRefer->cell_num = leftRowNum + 1;
             useSize = size;
         } else {
-            memcpy(nblock, strVal + useSize, PAGE_SIZE);
+            memcpy(nblock + PAGE_STRING_META_SIZE, strVal + useSize, PAGE_STRING_DATA_SIZE);
             useSize += PAGE_SIZE;
+        }
+
+        /* If current page is full, move to next page and first cell. */
+        if (rRefer->cell_num == STRING_ROW_NUM) {
+            rRefer->page_num++;
+            rRefer->cell_num = STRING_FIRST_CELL_NUM;
         }
 
         MakeBufferDirty(nbuffer);
@@ -169,7 +194,7 @@ static void InsertStringValueInner(Refer *rRefer, char *strVal) {
 
 
 /* Insert new String value. 
- * Return the Refer value.
+ * Return the Refer value and need freed by caller.
  * */
 StrRefer *InsertStringValue(Oid oid, char *str_val) {
     Size size;
@@ -183,6 +208,7 @@ StrRefer *InsertStringValue(Oid oid, char *str_val) {
     LockBuffer(rbuffer, RW_WRITER);
     root = GetBufferPage(rbuffer);
     rRefer = GetRootRefer(root);
+    Assert(rRefer->oid == oid);
     
     /* Get StrRefer. */
     strRefer = instance(StrRefer);
@@ -191,10 +217,9 @@ StrRefer *InsertStringValue(Oid oid, char *str_val) {
 
     /* Insert String value. */
     InsertStringValueInner(rRefer, str_val);
-
+    
     MakeBufferDirty(rbuffer);
         
-    dfree(rRefer);
     UnlockBuffer(rbuffer);
     ReleaseBuffer(rbuffer);
 
@@ -202,8 +227,8 @@ StrRefer *InsertStringValue(Oid oid, char *str_val) {
 }
 
 /* Overflow the page. */
-static inline bool OverflowPage(StrRefer *strRefer) {
-    return strRefer->refer.cell_num * STRING_ROW_SIZE + strRefer->size <= PAGE_SIZE;
+static inline bool OverflowStringPage(StrRefer *strRefer) {
+    return (strRefer->refer.cell_num * STRING_ROW_SIZE + strRefer->size) <= PAGE_SIZE;
 }
 
 /* Query not cross page. */
@@ -261,11 +286,11 @@ static char *QueryCrossPage(StrRefer *strRefer) {
         nblock = GetBufferPage(nbuffer);
 
         leftSize = strRefer->size - useSize;
-        if (leftSize <= PAGE_SIZE) {
-            memcpy(strVal + useSize, nblock, leftSize);
+        if (leftSize <= PAGE_STRING_DATA_SIZE) {
+            memcpy(strVal + useSize, (nblock + PAGE_STRING_META_SIZE), leftSize);
             useSize = strRefer->size;
         } else {
-            memcpy(strVal + useSize, nblock, PAGE_SIZE);
+            memcpy(strVal + useSize, (nblock + PAGE_STRING_META_SIZE), PAGE_STRING_DATA_SIZE);
             useSize += PAGE_SIZE;
         }
 
@@ -279,7 +304,7 @@ static char *QueryCrossPage(StrRefer *strRefer) {
 
 /* Query string value. */
 char *QueryStringValue(StrRefer *strRefer) {
-    return OverflowPage(strRefer) 
+    return OverflowStringPage(strRefer) 
         ? QueryNotCrossPage(strRefer) : QueryCrossPage(strRefer);
 }
 

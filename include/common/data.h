@@ -582,7 +582,8 @@ typedef enum DefaultValueType {
 typedef struct MetaColumn {
     char column_name[MAX_COLUMN_NAME_LEN];      /* Column Name. */
     DataType column_type;                       /* Column data type. */
-    char table_name[MAX_TABLE_NAME_LEN];        /* Owned table Name */
+    char table_name[MAX_TABLE_NAME_LEN];        /* Table Name, for REFERENCE type, the table name is refered table name, 
+                                                   for STRING type, the table name is the strheaptable name. */
     uint32_t column_length;                     /* Column data length. Not allowed exceed the length limit. */
     bool is_primary;                            /* Primary-key column. */
     bool not_null;                              /* Not-null column. */

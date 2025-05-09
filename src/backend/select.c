@@ -41,6 +41,7 @@
 #include "parall.h"
 #include "optimizer.h"
 #include "tablecache.h"
+#include "strheaptable.h"
 
 typedef struct SelectFromInternalChildTaskArgs {
     SelectResult *select_result;
@@ -75,6 +76,7 @@ static KeyValue *query_value_item(ValueItemNode *value_item, Row *row);
 static KeyValue *query_row_value(SelectResult *select_result, ScalarExpNode *scalar_exp, Row *row);
 static Row *query_plain_row_selection(SelectResult *select_result, List *scalar_exp_set, Row *row);
 static Row *generate_row(void *destinct, MetaTable *meta_table);
+static void* purge_row(Row *row);
 static char *search_table_via_alias(SelectResult *select_result, char *range_variable);
 static KeyValue *query_plain_column_value(SelectResult *select_result, ColumnNode *column, Row *row);
 
@@ -299,7 +301,11 @@ static bool check_row_predicate_column(SelectResult *select_result, Row *row, vo
 static bool check_row_predicate_value(SelectResult *select_result, void *value, 
                                       ValueItemNode *value_item, CompareType type, MetaColumn *meta_column) {
     void *target = get_value_from_value_item_node(value_item, meta_column);
-    return eval(type, value, target, meta_column->column_type);
+    if (meta_column->column_type == T_STRING) {
+        char *strVal = QueryStringValue((StrRefer *)value);
+        return eval(type, strVal, target, T_VARCHAR);
+    } else
+        return eval(type, value, target, meta_column->column_type);
 }
 
 /* Check the row predicate. */
@@ -328,6 +334,7 @@ static bool check_row_predicate(SelectResult *select_result, Row *row,
                 db_log(ERROR, "Not found column '%s'. ", column->column_name);
                 return false;
             }
+
             if (column->has_sub_column && column->sub_column) {
                 /* Just check, if column has sub column, it must be Reference type. */
                 Assert(meta_column->column_type == T_REFERENCE);
@@ -340,7 +347,6 @@ static bool check_row_predicate(SelectResult *select_result, Row *row,
                     column->sub_column, 
                     comparison
                 ); 
-                free_row(sub_row);
                 return ret;
             } else if (column->has_sub_column && column->scalar_exp_list) {
                 db_log(ERROR, "Not support support sub column for pridicate.");
@@ -358,7 +364,8 @@ static bool check_row_predicate(SelectResult *select_result, Row *row,
                         );    
                     case SCALAR_VALUE: 
                         return check_row_predicate_value(
-                            select_result, key_value->value,
+                            select_result, 
+                            key_value->value,
                             comparison_value->value,
                             comparison->type, 
                             meta_column
@@ -392,7 +399,12 @@ static bool check_in_value_item_set(List *value_list, void *value, MetaColumn *m
     ListCell *lc;
     foreach (lc, value_list) {
         void *target = get_value_from_value_item_node(lfirst(lc), meta_column);
-        if (equal(value, target, meta_column->column_type))
+        if (meta_column->column_type == T_STRING) {
+            char *strVal = QueryStringValue((StrRefer *)value);
+            if (streq(strVal, target))
+                return true;
+        } 
+        else if (equal(value, target, meta_column->column_type))
             return true;
     }
     return false;
@@ -451,6 +463,10 @@ static bool include_leaf_like_predicate(Row *row, LikeNode *like_node) {
         if (streq(key_value->key, like_node->column->column_name)) {
             MetaColumn *meta_column = get_meta_column_by_name(table->meta_table, key_value->key);
             void *target_value = get_value_from_value_item_node(like_node->value, meta_column);
+            if (key_value->data_type == T_STRING) {
+                char *strVal = QueryStringValue(key_value->value);
+                return check_like_string_value(strVal, target_value);
+            }
             return check_like_string_value(key_value->value, target_value);
         }
     }
@@ -547,6 +563,7 @@ static void *assign_row_value(void *destination, MetaColumn *meta_column) {
             : get_row_array_value(destination, meta_column); 
 }
 
+
 /* Generate select row. */
 static Row *generate_row(void *destination, MetaTable *meta_table) {
     /* Instance new row. */
@@ -578,7 +595,9 @@ static Row *generate_row(void *destination, MetaTable *meta_table) {
 }
 
 /* Define row by refer. 
- * Return row not matter if it is deleted.
+ * -------------------
+ * Return row not matter if it is deleted, caller check the row if deleted.
+ * The row is raw, can`t be freed by caller.
  * */
 Row *define_row(Refer *refer) {
     Assert(refer != NULL);
@@ -598,11 +617,13 @@ Row *define_row(Refer *refer) {
 
     /* Get the leaf node buffer. */
     Buffer buffer = ReadBuffer(GET_TABLE_OID(table), refer->page_num);
+    LockBuffer(buffer, RW_READERS);
     void *leaf_node = GetBufferPage(buffer);
+
     void *destinct = get_leaf_node_cell_value(leaf_node, key_len, value_len, refer->cell_num);
     Row *row = generate_row(destinct, table->meta_table);
     
-    /* Release the buffer. */
+    UnlockBuffer(buffer);
     ReleaseBuffer(buffer);
     return row;
 }
@@ -612,14 +633,9 @@ Row *define_row(Refer *refer) {
  * */
 Row *define_visible_row(Refer *refer) {
     Row *row = define_row(refer);
-    if (RowIsDeleted(row)) {
-        // free_row(row);
-        return NULL;
-    } else {
-        Row *filter_row = copy_row_without_reserved(row);
-        // free_row(row);
-        return filter_row;
-    }
+    return (RowIsDeleted(row))
+        ? NULL
+        : purge_row(row);
 }
 
 /* Merge the second row data into the first one. */
@@ -676,6 +692,7 @@ static void select_from_leaf_node(SelectResult *select_result, ConditionNode *co
     buffer = ReadBuffer(GET_TABLE_OID(table), page_num);
 
     LockBuffer(buffer, RW_READERS);
+
     leaf_node = GetBufferPageCopy(buffer);
     UnlockBuffer(buffer);
 
@@ -999,6 +1016,41 @@ void query_with_condition(ConditionNode *condition, SelectResult *select_result,
     query_with_condition_inner(GET_TABLE_OID(table), condition, select_result, row_handler, type, arg);
 }
 
+static ConditionNode *ColumnValueConvertCondition(MetaColumn *meta_column, void *value) {
+    ConditionNode *condition = instance(ConditionNode);
+    condition->conn_type = C_NONE;
+    condition->left = NULL;
+    condition->right = NULL;
+    condition->predicate = instance(PredicateNode);
+    condition->predicate->type = PRE_COMPARISON;
+    condition->predicate->comparison = instance(ComparisonNode);
+    condition->predicate->comparison->type = O_EQ;
+    condition->predicate->comparison->column = instance(ColumnNode);
+    condition->predicate->comparison->column->column_name = dstrdup(meta_column->column_name);
+    condition->predicate->comparison->value = instance(ScalarExpNode);
+    condition->predicate->comparison->value->type = SCALAR_VALUE;
+    condition->predicate->comparison->value->value = instance(ValueItemNode);
+    condition->predicate->comparison->value->value->type = V_ATOM;
+    condition->predicate->comparison->value->value->value.atom = combine_atom_node(meta_column, value);
+    return condition;
+}
+
+
+/* Query with column and value. 
+ * ---------------------------
+ * This function will query table with column-value condition.
+ * And return the SelectResult which freed by caller. 
+ * */
+SelectResult *select_with_column_value(Oid oid, MetaColumn *meta_column, void *value) {
+    /* Check if table exists. */
+    Table *table = open_table_inner(oid);
+    Assert(table != NULL);
+    ConditionNode *condtion = ColumnValueConvertCondition(meta_column, value);
+    SelectResult *result = new_select_result(SELECT_STMT, GET_TABLE_NAME(table));
+    query_with_condition_inner(oid, condtion, result, select_row, ARG_NULL, NULL);
+    return result;
+}
+
 /* Count number of row, used in the sql function count(1) */
 void count_row(Row *row, SelectResult *select_result, Table *table, 
                ROW_HANDLER_ARG_TYPE type,void *arg) {
@@ -1091,8 +1143,6 @@ static KeyValue *calc_column_sum_value(ColumnNode *column, SelectResult *select_
                 break;
             }
         }
-
-        free_key_value(key_value);
     }
     return new_key_value(dstrdup(SUM_NAME), copy_value(&sum, T_DOUBLE), T_DOUBLE);
 }
@@ -1133,7 +1183,6 @@ static KeyValue *calc_column_avg_value(ColumnNode *column, SelectResult *select_
                 break;
             }
         }
-        free_key_value(key_value);
     }
     avg = sum / (select_result->rows->size);
     return new_key_value(dstrdup(AVG_NAME), copy_value(&avg, T_DOUBLE), T_DOUBLE);
@@ -1155,7 +1204,6 @@ static KeyValue *calc_column_max_value(ColumnNode *column, SelectResult *select_
                 free_value(max_value, data_type);
             max_value = copy_value(current_value, data_type);
         }
-        free_key_value(current);
     }
     return new_key_value(dstrdup(MAX_NAME), max_value, data_type);
 }
@@ -1175,7 +1223,6 @@ static KeyValue *calc_column_min_value(ColumnNode *column, SelectResult *select_
                 free_value(min_value, data_type);
             min_value = copy_value(current_value, data_type);
         }
-        free_key_value(current);
     }
     return new_key_value(dstrdup(MIN_NAME), min_value, data_type);
 }
@@ -1290,13 +1337,8 @@ static KeyValue *query_function_column_value(FunctionNode *function, SelectResul
 /* Query column value. */
 static KeyValue *query_plain_column_value(SelectResult *select_result, ColumnNode *column, Row *row) {
 
-    if (row == NULL) {
-        return new_key_value(
-            dstrdup(column->column_name), 
-            NULL, 
-            T_ROW
-        );
-    }
+    if (row == NULL) 
+        return new_key_value(dstrdup(column->column_name), NULL, T_ROW);
 
     /* Get table name via alias name. */
     char *table_name = search_table_via_alias(select_result, column->range_variable);
@@ -1317,11 +1359,9 @@ static KeyValue *query_plain_column_value(SelectResult *select_result, ColumnNod
                 Row *sub_row = define_visible_row(refer);
                 if (column->has_sub_column && column->sub_column) {
                     KeyValue *sub_key_value = query_plain_column_value(select_result, column->sub_column, sub_row);
-                    free_row(sub_row);
                     return sub_key_value;
                 } else if (column->has_sub_column && column->scalar_exp_list) {
                     Row *filtered_subrow = query_plain_row_selection(select_result, column->scalar_exp_list, sub_row);
-                    free_row(sub_row);
                     return new_key_value(
                         dstrdup(column->column_name), 
                         filtered_subrow, 
@@ -1339,7 +1379,7 @@ static KeyValue *query_plain_column_value(SelectResult *select_result, ColumnNod
                 db_log(ERROR, "Column '%s' is not Reference type, no sub column found.", 
                        column->column_name);
             else
-                return copy_key_value(key_value);
+                return (key_value);
         }
     }
     db_log(ERROR, "Not found column '%s'. ", column->column_name);
@@ -1982,10 +2022,6 @@ static KeyValue *query_function_calculate_column_value(CalculateNode *calculate,
             UNEXPECTED_VALUE(calculate->type);
             break;
     }
-
-    free_key_value(left);
-    free_key_value(right);
-
     return result;
 }
 
@@ -2076,11 +2112,6 @@ static KeyValue *query_all_columns_calculate_column_value(SelectResult *select_r
             result = calulate_division(left, right);
             break;
     }
-    
-    /* Free memory.*/
-    free_key_value(left);
-    free_key_value(right);
-
     return result;
 }
 
@@ -2144,8 +2175,8 @@ static Row *query_plain_row_selection(SelectResult *select_result, List *scalar_
     Row *sub_row;
 
     table = open_table(row->table_name);
-    key_meta_column  = get_primary_key_meta_column(table->meta_table);
-    sub_row = new_row( copy_value(row->key, key_meta_column->column_type), row->table_name);
+    key_meta_column = get_primary_key_meta_column(table->meta_table);
+    sub_row = new_row(copy_value(row->key, key_meta_column->column_type), row->table_name);
 
     ListCell *lc;
     foreach (lc, scalar_exp_list) {
@@ -2153,7 +2184,6 @@ static Row *query_plain_row_selection(SelectResult *select_result, List *scalar_
         KeyValue *key_value = query_row_value(select_result, scalar_exp, row);
         if (scalar_exp->alias) {
             /* Rename as alias. */
-            free_value(key_value->key, T_STRING);
             key_value->key = dstrdup(scalar_exp->alias);
         }
         append_list(sub_row->data, key_value);

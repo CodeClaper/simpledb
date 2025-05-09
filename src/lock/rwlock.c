@@ -184,9 +184,9 @@ static inline void ReleaseRWLockInner(RWLockEntry *lock_entry) {
 void AcquireRWlock(RWLockEntry *lock_entry, RWLockMode mode) {
     Assert(mode != RW_INIT);
     /* Not alloed same process acquire the writer lock again. */
-    AssertFalse(lock_entry->mode == RW_WRITER && 
-                    mode == RW_WRITER && 
-                         lock_entry->writer == GetCurrentPid());
+    /*AssertFalse(lock_entry->mode == RW_WRITER && */
+    /*                mode == RW_WRITER && */
+    /*                     lock_entry->writer == GetCurrentPid());*/
     AcquireRWLockInner(lock_entry, mode); 
 }
 

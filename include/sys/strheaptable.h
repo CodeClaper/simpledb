@@ -5,6 +5,9 @@
 #define STRING_ROW_NUM  64
 #define STRING_ROW_SIZE (PAGE_SIZE / STRING_ROW_NUM)
 #define STRING_TABLE_ROOT_PAGE 0
+#define PAGE_STRING_META_SIZE STRING_ROW_SIZE
+#define PAGE_STRING_DATA_SIZE (PAGE_SIZE - STRING_ROW_SIZE)
+#define STRING_FIRST_CELL_NUM 1
 
 /* StrRefer*/
 typedef struct StrRefer {
@@ -12,9 +15,11 @@ typedef struct StrRefer {
     Size size;
 } StrRefer;
 
+/* Compare two StrRefers. */
+int CompareStrRefer(StrRefer *source, StrRefer *target);
+
 /* Create the string heap table. */
 bool CreateStrHeapTable(char *table_name);
-
 
 /* Insert new String value. 
  * Return the Refer value.

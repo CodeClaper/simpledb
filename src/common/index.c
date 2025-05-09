@@ -14,6 +14,7 @@
 #include "log.h"
 #include "bufmgr.h"
 #include "table.h"
+#include "strheaptable.h"
 
 /* Check if key already exists  */
  bool check_duplicate_key(Cursor *cursor, void *key) {
@@ -47,8 +48,8 @@ char *get_key_str(void *key, DataType data_type) {
         case T_BOOL: 
             return *(bool *)key ? "true" : "false";
         case T_CHAR:
-        case T_STRING:
         case T_VARCHAR:
+        case T_STRING: 
             return (char *)key;
         case T_INT: {
             char *str = dalloc(50);
