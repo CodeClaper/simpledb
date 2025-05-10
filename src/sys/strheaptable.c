@@ -46,12 +46,12 @@ bool CreateStrHeapTable(char *table_name) {
 
     descr = open(str_table_file, O_CREAT | O_WRONLY, S_IWUSR | S_IRUSR);
     if (descr == -1) {
-        db_log(PANIC, "Open database file '%s' fail.\n", str_table_file);
+        db_log(PANIC, "Open database file '%s' fail.", str_table_file);
         return false;
     }
     
     rblock = dalloc(PAGE_SIZE);
-    rRefer = new_refer(entity.oid, 0, 1);
+    rRefer = new_refer(entity.oid, STRING_TABLE_ROOT_PAGE, STRING_FIRST_CELL_NUM);
     memcpy(rblock + NODE_STATE_SIZE, rRefer, sizeof(Refer));
     
     /* Flush to disk. */
@@ -148,7 +148,7 @@ static void InsertCrossPage(Refer *rRefer, char *strVal) {
         leftSize = size - useSize;
         /* Check if next page can store the left string data completely. 
          * Note: not the whole page to store rather than the remaining part after 
-         * exclusing the first STRING_ROW_SIZE part.*/
+         * exclusing the first STRING_ROW_SIZE part. */
         if (leftSize <= PAGE_STRING_DATA_SIZE) {
             leftRowNum = leftSize / STRING_ROW_SIZE;
             if (leftSize % STRING_ROW_SIZE != 0)
@@ -304,6 +304,10 @@ static char *QueryCrossPage(StrRefer *strRefer) {
 
 /* Query string value. */
 char *QueryStringValue(StrRefer *strRefer) {
+    if (strRefer == NULL)
+        return NULL;
+    if (EmptyStrRefer(strRefer))
+        return NULL;
     return OverflowStringPage(strRefer) 
         ? QueryNotCrossPage(strRefer) : QueryCrossPage(strRefer);
 }

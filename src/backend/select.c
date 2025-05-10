@@ -301,11 +301,7 @@ static bool check_row_predicate_column(SelectResult *select_result, Row *row, vo
 static bool check_row_predicate_value(SelectResult *select_result, void *value, 
                                       ValueItemNode *value_item, CompareType type, MetaColumn *meta_column) {
     void *target = get_value_from_value_item_node(value_item, meta_column);
-    if (meta_column->column_type == T_STRING) {
-        char *strVal = QueryStringValue((StrRefer *)value);
-        return eval(type, strVal, target, T_VARCHAR);
-    } else
-        return eval(type, value, target, meta_column->column_type);
+    return eval(type, value, target, meta_column->column_type);
 }
 
 /* Check the row predicate. */
@@ -357,7 +353,7 @@ static bool check_row_predicate(SelectResult *select_result, Row *row,
                     case SCALAR_COLUMN:
                         return check_row_predicate_column(
                             select_result, row, 
-                            key_value->value, 
+                            get_real_value(key_value->value, meta_column->column_type), 
                             comparison_value->column, 
                             comparison->type, 
                             meta_column
@@ -365,7 +361,7 @@ static bool check_row_predicate(SelectResult *select_result, Row *row,
                     case SCALAR_VALUE: 
                         return check_row_predicate_value(
                             select_result, 
-                            key_value->value,
+                            get_real_value(key_value->value, meta_column->column_type),
                             comparison_value->value,
                             comparison->type, 
                             meta_column
@@ -399,12 +395,7 @@ static bool check_in_value_item_set(List *value_list, void *value, MetaColumn *m
     ListCell *lc;
     foreach (lc, value_list) {
         void *target = get_value_from_value_item_node(lfirst(lc), meta_column);
-        if (meta_column->column_type == T_STRING) {
-            char *strVal = QueryStringValue((StrRefer *)value);
-            if (streq(strVal, target))
-                return true;
-        } 
-        else if (equal(value, target, meta_column->column_type))
+        if (equal(value, target, meta_column->column_type))
             return true;
     }
     return false;
@@ -420,7 +411,11 @@ static bool include_leaf_in_predicate(Row *row, InNode *in_node) {
         /* Define the column. */
         if (streq(key_value->key, in_node->column->column_name)) {
             MetaColumn *meta_column = get_meta_column_by_name(table->meta_table , key_value->key);
-            return check_in_value_item_set(in_node->value_list, key_value->value, meta_column);
+            return check_in_value_item_set(
+                in_node->value_list, 
+                get_real_value(key_value->value, meta_column->column_type), 
+                meta_column
+            );
         }
     }
     return false;
@@ -463,11 +458,7 @@ static bool include_leaf_like_predicate(Row *row, LikeNode *like_node) {
         if (streq(key_value->key, like_node->column->column_name)) {
             MetaColumn *meta_column = get_meta_column_by_name(table->meta_table, key_value->key);
             void *target_value = get_value_from_value_item_node(like_node->value, meta_column);
-            if (key_value->data_type == T_STRING) {
-                char *strVal = QueryStringValue(key_value->value);
-                return check_like_string_value(strVal, target_value);
-            }
-            return check_like_string_value(key_value->value, target_value);
+            return check_like_string_value(get_real_value(key_value->value, meta_column->column_type), target_value);
         }
     }
 
@@ -755,6 +746,8 @@ static void select_from_internal_node(SelectResult *select_result, ConditionNode
     key_len = calc_primary_key_length(table);
     value_len = calc_table_row_length(table);
 
+    DataType primary_key_type = get_primary_key_type(table->meta_table);
+
     /* Loop each interanl node cell to check if satisfy condition. 
      * Note that: get the internal node keys number in each loop.
      * It`s important for reading when inserting in the concurrency scenario.
@@ -764,10 +757,10 @@ static void select_from_internal_node(SelectResult *select_result, ConditionNode
         /* Check if index column, use index to avoid full text scanning. */
         {
             /* Current internal node cell key as max key, previous cell key as min key. */
-            void *max_key = get_internal_node_key(internal_node, i, key_len, value_len); 
+            void *max_key = get_real_value(get_internal_node_key(internal_node, i, key_len, value_len), primary_key_type); 
             void *min_key = (i == 0) 
                         ? NULL 
-                        : get_internal_node_key(internal_node, i - 1, key_len, value_len);
+                        : get_real_value(get_internal_node_key(internal_node, i - 1, key_len, value_len), primary_key_type);
             if (!include_internal_node(select_result, min_key, max_key, condition, table->meta_table))
                 continue;
         }
@@ -891,6 +884,8 @@ static void select_from_internal_node_async(SelectResult *select_result, Conditi
     value_len = calc_table_row_length(table);
     keys_num = get_internal_node_keys_num(internal_node, value_len);
 
+    DataType primary_key_type = get_primary_key_type(table->meta_table);
+
     /* Prepare the parallel computing task args. */
     uint32_t taskNum = 0;
     SelectFromInternalChildTaskArgs *taskArgs[keys_num + 1];
@@ -898,12 +893,12 @@ static void select_from_internal_node_async(SelectResult *select_result, Conditi
 
     uint32_t i;
     for (i = 0; i < keys_num; i++) {
-        void *max_key = get_internal_node_key(internal_node, i, key_len, value_len); 
+        void *max_key = get_real_value(get_internal_node_key(internal_node, i, key_len, value_len), primary_key_type); 
         void *min_key = (i == 0) 
                     ? NULL 
-                    : get_internal_node_key(internal_node, i - 1, key_len, value_len);
+                    : get_real_value(get_internal_node_key(internal_node, i - 1, key_len, value_len), primary_key_type);
         if (!include_internal_node(select_result, min_key, max_key, condition, table->meta_table))
-            return;
+            continue;
         
         uint32_t child_page_num = get_internal_node_child(internal_node, i, key_len, value_len);
         selectResults[taskNum] = new_select_result(SELECT_STMT, table->meta_table->table_name);
@@ -1197,9 +1192,13 @@ static KeyValue *calc_column_max_value(ColumnNode *column, SelectResult *select_
     qforeach (qc, select_result->rows) {
         Row *row = qfirst(qc);
         KeyValue *current = query_plain_column_value(select_result, column, row);
+        data_type = current->data_type;
         void *current_value = current->value;
-        if (!max_value || greater(current_value, max_value, current->data_type)) {
-            data_type = current->data_type;
+        if (!max_value || greater(
+                get_real_value(current_value, data_type), 
+                get_real_value(max_value, data_type), 
+                data_type)) 
+        {
             if (max_value)
                 free_value(max_value, data_type);
             max_value = copy_value(current_value, data_type);
@@ -1216,9 +1215,13 @@ static KeyValue *calc_column_min_value(ColumnNode *column, SelectResult *select_
     qforeach (qc, select_result->rows) {
         Row *row = qfirst(qc);
         KeyValue *current = query_plain_column_value(select_result, column, row);
+        data_type = current->data_type;
         void *current_value = current->value;
-        if (min_value == NULL || less(current_value, min_value, current->data_type)) {
-            data_type = current->data_type;
+        if (min_value == NULL || less(
+                get_real_value(current_value, data_type), 
+                get_real_value(min_value, data_type), 
+                data_type)) 
+        {
             if (min_value)
                 free_value(min_value, data_type);
             min_value = copy_value(current_value, data_type);

@@ -24,10 +24,7 @@ static void FlushDirtyPage() {
             void *node = GetBufferBlock(desc->buffer);
             if (get_node_state(node) == DIRTY_STATE) {
                 PinBuffer(desc);
-                /* If write success, make the buffer NORMAL 
-                 * to avoid scan it again. */
-                if (BufferWriteBlock(desc->buffer))
-                    MakeBufferNormal(desc->buffer);
+                BufferWriteBlock(desc->buffer);
                 UnpinBuffer(desc);
             }
         }

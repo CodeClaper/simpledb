@@ -64,6 +64,9 @@ void *get_meta_column_pointer(void *root_node, uint32_t index);
 /* Set index meta column. */
 void set_meta_column(void *root_node, void *destination, uint32_t index);
 
+/* Check if leaf node page overflow. */
+bool overflow_leaf_node(void *leaf_node, uint32_t key_len, uint32_t value_len, uint32_t cell_num);
+
 /* Get meta column size. */
 uint32_t get_root_node_meta_column_size();
 

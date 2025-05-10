@@ -405,7 +405,7 @@ uint32_t get_internal_node_key_index(void *node, void *key, uint32_t keys_num, u
     while (min_index != max_index) {
         uint32_t index = (max_index + min_index) / 2;
         void* index_key = get_internal_node_key(node, index, key_len, default_value_len);
-        if (greater_equal(index_key, key, key_data_type)) {
+        if (greater_equal(get_real_value(index_key, key_data_type), get_real_value(key, key_data_type), key_data_type)) {
             max_index = index;
         } else {
             min_index = index + 1;
@@ -421,12 +421,12 @@ uint32_t get_internal_node_cell_child_page_num(void *node, void *key,
     /* Binary search */
     uint32_t min_index = 0;
     uint32_t max_index = keys_num;
-    while(min_index != max_index) {
+    while (min_index != max_index) {
         uint32_t index = (max_index + min_index) / 2;
         void *index_key = get_internal_node_key(node, index, key_len, default_value_len);
         /* Notice: Greate Equal opreator is really import for store data, 
          * when keep the prince: always keep visible row lie at the forefront of same key cells. */
-        if (greater_equal(index_key, key, key_data_type)) 
+        if (greater_equal(get_real_value(index_key, key_data_type), get_real_value(key, key_data_type), key_data_type)) 
             max_index = index;
         else 
             min_index = index + 1;
@@ -456,7 +456,7 @@ uint32_t get_leaf_node_cell_index(void *node, void *key,
         void *key_at_index = get_leaf_node_cell_key(node, index, key_len, value_len);
         /* Notice: Greate Equal opreator is really import for store data, 
          * when keep the prince: always keep visible row lie at the forefront of same key cells. */
-        if (greater_equal(key_at_index, key, key_data_type)) {
+        if (greater_equal(get_real_value(key_at_index, key_data_type), get_real_value(key, key_data_type), key_data_type)) {
             max_index = index;
         } else {
             min_index = index + 1; 
@@ -545,14 +545,13 @@ static void update_internal_node_key(Table *table, uint32_t page_num, void *old_
     /* If old key greater than the max key, it means it exist in the right child node. 
      * No need to change cells key. Otherwise, it means the key in the cells, 
      * need to be replaced with new one. */
-    if (!greater(old_key, max_key, key_data_type)) {
+    if (!greater(get_real_value(old_key, key_data_type), get_real_value(max_key, key_data_type), key_data_type)) {
         UpgradeLockBuffer(buffer);
         uint32_t key_index = get_internal_node_key_index(internal_node, old_key, keys_num, key_len, value_len, key_data_type);
         void *key = get_internal_node_key(internal_node, key_index, key_len, value_len);
 
         /* Theoretically equal, just for check.*/
-        if (!equal(old_key, key, key_data_type))
-            Assert(equal(old_key, key, key_data_type));
+        Assert(equal(get_real_value(old_key, key_data_type), get_real_value(key, key_data_type), key_data_type));
         set_internal_node_key(internal_node, key_index, new_key, key_len, value_len);
         MakeBufferDirty(buffer);
         DowngradeLockBuffer(buffer);
@@ -561,8 +560,8 @@ static void update_internal_node_key(Table *table, uint32_t page_num, void *old_
     /* If internal has parent node, and change its absolute max key, 
      * also need to change its parent key. */
     if (!is_root_node(internal_node) && 
-            (equal(old_key, absolute_max_key, key_data_type) || 
-                equal(new_key, absolute_max_key, key_data_type))) { 
+            (equal(get_real_value(old_key, key_data_type), get_real_value(absolute_max_key, key_data_type), key_data_type) || 
+                equal(get_real_value(new_key, key_data_type), get_real_value(absolute_max_key, key_data_type), key_data_type))) { 
         /* Get parent node buffer and lock it. */
         uint32_t parent_page_num = get_parent_pointer(internal_node);
         update_internal_node_key(table, parent_page_num, old_key, new_key, key_len, value_len, key_data_type);
@@ -575,8 +574,7 @@ static void update_internal_node_key(Table *table, uint32_t page_num, void *old_
 }
 
 /* Check if leaf node page overflow. */
-static bool overflow_leaf_node(void *leaf_node, uint32_t key_len, 
-                               uint32_t value_len, uint32_t cell_num) {
+bool overflow_leaf_node(void *leaf_node, uint32_t key_len, uint32_t value_len, uint32_t cell_num) {
     uint32_t cell_len = key_len + value_len;
     if (is_root_node(leaf_node)) {
         uint32_t column_size = get_column_size(leaf_node);
@@ -643,7 +641,7 @@ static bool check_internal_node_cells_mass(void *internal_node, uint32_t keys_nu
     for (uint32_t i = 0; i < keys_num; i++) {
         void *key = get_internal_node_key(internal_node, i, key_len, value_len);
         if (before) {
-            if (greater(before, key, data_type))
+            if (greater(get_real_value(before, data_type), get_real_value(key, data_type), data_type))
                 return true;
         }
         before = key;
@@ -894,7 +892,10 @@ static void insert_and_split_internal_node(Table *table, uint32_t old_internal_p
     void *right_node_max_key = get_max_key(table, right_node, key_len, value_len);
 
     /* Maybe the new child is greater than max key, need to compare. */
-    if (greater(new_child_max_key, right_node_max_key, primary_key_meta_column->column_type)) {
+    if (greater(get_real_value(new_child_max_key, primary_key_meta_column->column_type), 
+                get_real_value(right_node_max_key, primary_key_meta_column->column_type), 
+                primary_key_meta_column->column_type)) 
+    {
         /* If yes, replace the new child with the origin old right child. */ 
         set_internal_node_right_child(old_internal_node, value_len, new_child_page_num);
         if (!is_root_node(old_internal_node)) {
@@ -1033,7 +1034,10 @@ void insert_internal_node_cell(Table *table, uint32_t page_num, uint32_t new_chi
         void *right_child_max_key = get_max_key(table, right_child, key_len, value_len);
 
         /* Right child always is the node which has the maximum key. */
-        if (greater_equal(new_child_max_key, right_child_max_key, primary_key_meta_column->column_type)) {
+        if (greater_equal(get_real_value(new_child_max_key, primary_key_meta_column->column_type), 
+                          get_real_value(right_child_max_key, primary_key_meta_column->column_type), 
+                          primary_key_meta_column->column_type)) 
+        {
             /* Replace old right child */
             set_internal_node_child(internal_node, keys_num, right_child_page_num, key_len, value_len);
             set_internal_node_key(internal_node, keys_num, right_child_max_key, key_len, value_len);
@@ -1055,7 +1059,10 @@ void insert_internal_node_cell(Table *table, uint32_t page_num, uint32_t new_chi
 
             /* Check the default key if equals the inserting one. */
             void *default_key = get_internal_node_key(internal_node, new_child_max_key_index, key_len, value_len);
-            if (equal(default_key, new_child_max_key, primary_key_meta_column->column_type)) {
+            if (equal(get_real_value(default_key, primary_key_meta_column->column_type), 
+                      get_real_value(new_child_max_key, primary_key_meta_column->column_type), 
+                      primary_key_meta_column->column_type)) 
+            {
                 /* Move the right cells and make space for the new one. */
                 int i;
                 for (i = keys_num; i > new_child_max_key_index + 1; i--) {
@@ -1281,7 +1288,9 @@ static void insert_leaf_node_new_cell(Cursor *cursor, Row *row) {
         void *old_max_key = get_leaf_node_cell_key(node, cell_num - 1, key_len, value_len);
         MetaColumn *primary_key_meta_column = get_primary_key_meta_column(cursor->table->meta_table);
         /* Logic check.*/
-        Assert(greater_equal(row->key, old_max_key, primary_key_meta_column->column_type));
+        Assert(greater_equal(get_real_value(row->key, primary_key_meta_column->column_type), 
+                             get_real_value(old_max_key, primary_key_meta_column->column_type), 
+                             primary_key_meta_column->column_type));
 
         /* Update internal node key. */
         update_internal_node_key(
@@ -2377,7 +2386,10 @@ void delete_internal_node_cell(Table *table, uint32_t page_num, void *key, DataT
                 : get_internal_node_key(internal_node, key_num - 1, key_len, value_len);
 
     /* If the key greater than max key, it means it is in right child node. */
-    if (greater(key, max_key, key_data_type)) {
+    if (greater(get_real_value(key, key_data_type), 
+                get_real_value(max_key, key_data_type), 
+                key_data_type)) 
+    {
         /* If key number is one, no need to keep right node, delete it. 
          * If key number is zero, only left right node. After deleting it, check if root, empty root node or delete parent node cell.
          * If key number more than one, replace max key cell as right child node. */
@@ -2492,7 +2504,9 @@ void delete_leaf_node_cell(Cursor *cursor, void *key) {
     primary_key_meta_column = get_primary_key_meta_column(table->meta_table);
 
     /* Theoretically, key and obs_key should be equal. */
-    Assert(equal(obs_key, key, primary_key_meta_column->column_type));
+    Assert(equal(get_real_value(obs_key, primary_key_meta_column->column_type), 
+                 get_real_value(key, primary_key_meta_column->column_type), 
+                 primary_key_meta_column->column_type));
 
     /* Need to check if the last cell in the leaf node. */
     if (cursor->cell_num == cell_num - 1) {

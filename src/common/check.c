@@ -724,7 +724,10 @@ static bool check_unique_column(Table *table, MetaColumn *meta_column, void *val
         QueueCell *qc;
         qforeach(qc, result->rows) {
             Row *row = (Row *) qfirst(qc);
-            if (!equal(row->key, selected_row->key, primary_column->column_type)) {
+            if (!equal(get_real_value(row->key, primary_column->column_type), 
+                       get_real_value(selected_row->key, primary_column->column_type), 
+                       primary_column->column_type)) 
+            {
                 db_log(ERROR, "Key '%s' already exists, not allowd duplicate key. ",
                        get_key_str(value, meta_column->column_type));
                 return false;

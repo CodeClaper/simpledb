@@ -14,7 +14,6 @@
 #include "copy.h"
 #include "free.h"
 #include "log.h"
-#include "refer.h"
 #include "insert.h"
 #include "utils.h"
 #include "common.h"
@@ -23,10 +22,10 @@
 #include "list.h"
 #include "asserts.h"
 #include "pager.h"
-#include "refer.h"
 #include "check.h"
 #include "tablelock.h"
 #include "systable.h"
+#include "select.h"
 #include "strheaptable.h"
 
 #define DEFAULT_BOOL_LENGTH         2
@@ -373,6 +372,20 @@ void *get_value_from_value_item_node(ValueItemNode *value_item_node, MetaColumn 
     }
 }
 
+/* Get Really value. */
+void *get_real_value(void *value, DataType type) {
+    if (value == NULL)
+        return NULL;
+    switch (type) {
+        case T_STRING:
+            return QueryStringValue((StrRefer *) value);
+        case T_REFERENCE:
+            return define_row((Refer *) value);
+        default:
+            return value;
+    }
+} 
+
 /* Combine AtomNode by column and value. */
 AtomNode *combine_atom_node(MetaColumn *meta_column, void *value) {
     AtomNode *atom_node = instance(AtomNode);
@@ -510,6 +523,13 @@ MetaColumn *get_primary_key_meta_column(MetaTable *meta_table) {
             return meta_column;
     }
     return NULL; 
+}
+
+/* Get meta column of primary key type. */
+DataType get_primary_key_type(MetaTable *meta_table) {
+    MetaColumn *primary_meta_column = get_primary_key_meta_column(meta_table);
+    Assert(primary_meta_column);
+    return primary_meta_column->column_type;
 }
 
 

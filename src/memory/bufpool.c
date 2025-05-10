@@ -87,5 +87,9 @@ bool BufferWriteBlock(Buffer buffer) {
 
     fsync(fdesc);
 
+    /* If write success, make the buffer NORMAL 
+     * to avoid scan it again. */
+    MakeBufferNormal(desc->buffer);
+
     return true;
 }

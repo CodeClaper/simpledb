@@ -47,7 +47,6 @@ static void *get_insert_value(List *value_item_list, uint32_t index, MetaColumn 
     Assert(index < len_list(value_item_list));
     /* Get value item node at index. */
     ValueItemNode* value_item_node = lfirst(list_nth_cell(value_item_list, index));
-
     return assign_value_from_value_item_node(value_item_node, meta_column);
 }
 
@@ -94,9 +93,7 @@ static KeyValue *new_sys_id_column() {
 static KeyValue *new_created_xid_column() {
     /* Get current transaction. */
     TransEntry *current_trans = FindTransaction();
-    
     Assert(current_trans);
-
     return new_key_value(
         dstrdup(CREATED_XID_COLUMN_NAME), 
         copy_value(&current_trans->xid, T_LONG), 

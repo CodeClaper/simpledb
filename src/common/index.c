@@ -31,14 +31,23 @@
     value_len = calc_table_row_length(table);
     key_len = calc_primary_key_length(table);
 
+    /* If overflow after the new tuple inserting, it not duplcate of course. */
+    if (overflow_leaf_node(node, key_len, value_len, cursor->cell_num))
+        return false;
+
     primary_key_meta_column = get_primary_key_meta_column(table->meta_table);
     target = get_leaf_node_cell_key(node, cursor->cell_num, key_len, value_len);
+    Assert(target < (void *) ((char *) node + PAGE_SIZE));
 
     /* Release the buffer. */
     ReleaseBuffer(buffer);
 
     /* Get result. */
-    return (target < node + PAGE_SIZE) && equal(target, key, primary_key_meta_column->column_type);
+    return (target < node + PAGE_SIZE) && equal(
+        get_real_value(target, primary_key_meta_column->column_type), 
+        get_real_value(key, primary_key_meta_column->column_type), 
+        primary_key_meta_column->column_type
+    );
 }
 
 
