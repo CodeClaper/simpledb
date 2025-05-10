@@ -4,7 +4,7 @@
 #ifndef SHMEM_H
 #define SHMEM_H
 
-#define SHMEM_SIZE 1024 * 1024 * 1024 * 3L  // shared memory 2GB. 
+#define SHMEM_SIZE 1024 * 1024 * 1024 * 3L  // shared memory 3GB. 
 
 typedef struct ShmemHeader {
     size_t total_size;

@@ -681,9 +681,7 @@ static void select_from_leaf_node(SelectResult *select_result, ConditionNode *co
 
     /* Get leaf node buffer. */
     buffer = ReadBuffer(GET_TABLE_OID(table), page_num);
-
     LockBuffer(buffer, RW_READERS);
-
     leaf_node = GetBufferPageCopy(buffer);
     UnlockBuffer(buffer);
 
@@ -712,6 +710,8 @@ static void select_from_leaf_node(SelectResult *select_result, ConditionNode *co
                  * check if the row data satisfy the condition. */
                 if (include_leaf_node(select_result, derived_row, condition)) 
                     row_handler(derived_row, select_result, table, type, arg);
+                else
+                    dfree(derived_row);
             }
             continue;
         }
@@ -720,7 +720,11 @@ static void select_from_leaf_node(SelectResult *select_result, ConditionNode *co
          * check if the row data satisfy the condition. */
         if (include_leaf_node(select_result, row, condition)) 
             row_handler(row, select_result, table, type, arg);
+        else
+            dfree(row);
     }
+
+    free_block(leaf_node);
     
     /* Release the buffer. */
     ReleaseBuffer(buffer);
@@ -742,9 +746,10 @@ static void select_from_internal_node(SelectResult *select_result, ConditionNode
     UnlockBuffer(buffer);
 
     /* Get variables. */
-    uint32_t key_len, value_len;
+    uint32_t key_len, value_len, keys_num;
     key_len = calc_primary_key_length(table);
     value_len = calc_table_row_length(table);
+    keys_num = get_internal_node_keys_num(internal_node, value_len);
 
     DataType primary_key_type = get_primary_key_type(table->meta_table);
 
@@ -753,7 +758,7 @@ static void select_from_internal_node(SelectResult *select_result, ConditionNode
      * It`s important for reading when inserting in the concurrency scenario.
      * */
     uint32_t i;
-    for (i = 0; i < get_internal_node_keys_num(internal_node, value_len); i++) {
+    for (i = 0; i < keys_num; i++) {
         /* Check if index column, use index to avoid full text scanning. */
         {
             /* Current internal node cell key as max key, previous cell key as min key. */
@@ -782,6 +787,7 @@ static void select_from_internal_node(SelectResult *select_result, ConditionNode
                     select_result, condition, child_page_num, 
                     table, row_handler, type, arg
                 );
+                db_log(DEBUGER, "Fetch rows %d at i = %d", select_result->row_size, i);
                 break;
             default:
                 db_log(PANIC, "Unknown node type.");
@@ -796,7 +802,9 @@ static void select_from_internal_node(SelectResult *select_result, ConditionNode
     /* Fetch right child. */
     uint32_t right_child_page_num = get_internal_node_right_child(internal_node, value_len);
     Buffer right_child_buffer = ReadBuffer(GET_TABLE_OID(table), right_child_page_num);
-    void *right_child = GetBufferPage(right_child_buffer);
+    LockBuffer(right_child_buffer, RW_READERS);
+    void *right_child = GetBufferPageCopy(right_child_buffer);
+    UnlockBuffer(right_child_buffer);
     NodeType node_type = get_node_type(right_child);
     switch (node_type) {
         case LEAF_NODE:
@@ -817,6 +825,9 @@ static void select_from_internal_node(SelectResult *select_result, ConditionNode
             UNEXPECTED_VALUE(node_type);
             break;
     }
+ 
+    free_block(internal_node); 
+    free_block(right_child);
 
     /* Release buffers. */
     ReleaseBuffer(right_child_buffer);
@@ -861,6 +872,7 @@ static void select_from_internal_node_child_task(void *taskArg) {
             break;
     }
 
+    free_block(child_node);
     /* Release the child buffer. */
     ReleaseBuffer(child_buffer);
 }
@@ -1066,7 +1078,10 @@ void count_row(Row *row, SelectResult *select_result, Table *table,
     else {
         select_result->row_size++;
         select_result->rows->size++;
-    } 
+    }
+
+    /* Not use row info, free it. */
+    dfree(row);
 }
 
 static void* purge_row(Row *row) {
@@ -2038,7 +2053,7 @@ static KeyValue *query_function_value(ScalarExpNode *scalar_exp, SelectResult *s
             MetaColumn *meta_column = get_meta_column_by_name(table->meta_table, column->column_name);
             if (QueueIsEmpty(select_result->rows)) {
                 return new_key_value(
-                    dstrdup(column->column_name), 
+                    column->column_name, 
                     NULL, 
                     meta_column->column_type
                 );
