@@ -1,4 +1,5 @@
 #include "data.h"
+#include <stdbool.h>
 #ifndef SELECT_H
 #define SELECT_H
 
@@ -14,6 +15,7 @@ typedef enum ROW_HANDLER_ARG_TYPE {
 typedef void (*ROW_HANDLER)(Row *, SelectResult *select_result, Table *table, ROW_HANDLER_ARG_TYPE type,void *arg);
 
 typedef struct SelectParam {
+    bool onlyAll;                   /* Only select all. */
     bool onlyCount;                 /* Only count int select statement. */
     int32_t offset;                 /* Current offset. */
     LimitClauseNode *limitClause;   /* LimitClauseNode. */
@@ -25,6 +27,9 @@ void count_row(Row *row, SelectResult *select_result, Table *table, ROW_HANDLER_
 
 /* Select row data. */
 void select_row(Row *row, SelectResult *select_result, Table *table, ROW_HANDLER_ARG_TYPE type, void *arg);
+
+/* Query row data. */
+void query_row(Row *row, SelectResult *select_result, Table *table, ROW_HANDLER_ARG_TYPE type, void *arg);
 
 
 /* Define row by refer. 

@@ -17,6 +17,8 @@ void free_data_type_node(DataTypeNode *data_type);
 /* Free row. */
 void free_row(Row *row);
 
+void free_common_row(Row *row);
+
 /* Free select result. */
 void free_select_result(SelectResult *select_result);
 

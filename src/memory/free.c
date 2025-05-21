@@ -88,6 +88,19 @@ void free_row(Row *row) {
     }
 }
 
+void free_common_row(Row *row) {
+    if (row) {
+        if (row->data) {
+            ListCell *lc;
+            foreach (lc, row->data) {
+                dfree(lfirst(lc));
+            }
+            dfree(row->data);
+        }
+        dfree(row);
+    }
+}
+
 /* Free SelectResult. */
 void free_select_result(SelectResult *select_result) {
     if (select_result) {

@@ -30,13 +30,8 @@
 #include "session.h"
 #include "strheaptable.h"
 
-
-
 /* Handle duplicate Key. */
 static void handle_dulicate_key(Row *row);
-
-/* Send out row. */
-static void json_row(Row *row);
 
 /* Json array-value key value. */
 static void json_array_key_value(KeyValue *key_value) {
@@ -284,7 +279,7 @@ static void json_key_value(KeyValue *key_value) {
 }
 
 /* Json row. */
-static void json_row(Row *row) {
+void json_row(Row *row) {
     if (!row) 
         db_send("null");
     else {
@@ -471,12 +466,4 @@ void json_list(List *list) {
             UNEXPECTED_VALUE(list->type);
             break;
     }
-}
-
-/* Banner. */
-void banner() {
-    DBResult result;
-    result.success = true;
-    result.message = "Welcome to simpledb.";
-    json_db_result(&result);
 }

@@ -3,22 +3,38 @@
 #include "select.h"
 #include "mmgr.h"
 
+static bool OnlySelectAllInSelection(SelectNode *selectNode);
 static bool OnlyCountInSelection(SelectNode *selectNode);
 static LimitClauseNode *GetLimitClause(SelectNode *selectNode);
+static ROW_HANDLER DefineRowHandler(SelectParam *selectParam);
 
 /* Optimize Select Statment. */
 SelectParam *optimizeSelect(SelectNode *selectNode) {
     SelectParam *selectParam = instance(SelectParam);
+    selectParam->onlyAll = OnlySelectAllInSelection(selectNode);
     selectParam->onlyCount = OnlyCountInSelection(selectNode);
     selectParam->limitClause = GetLimitClause(selectNode);
     selectParam->offset = 0;
-    selectParam->rowHanler = selectParam->onlyCount ? count_row : select_row;
+    selectParam->rowHanler = DefineRowHandler(selectParam);
     return selectParam;
 }
 
+/* Only select all in selection.
+ * Must satisfy:
+ * (1) Only one scalarExp.
+ * (2) The only one scalarExp is All column.
+ * */
+static bool OnlySelectAllInSelection(SelectNode *selectNode) {
+    SelectionNode *selection;
+
+    selection = selectNode->selection;
+    Assert(selection != NULL);
+
+    return selection->all_column;
+}
 
 /* Only Count function in the selection. 
- * Must safisfy:
+ * Must satisfy:
  * (1) Only one scalarExp.
  * (2) The only one scalarExp is Count function.
  * */
@@ -49,4 +65,15 @@ static LimitClauseNode *GetLimitClause(SelectNode *selectNode) {
     if (selectNode->table_exp != NULL)
         return selectNode->table_exp->limit_clause;
     return NULL;
+}
+
+/* Define which ROW_HANDLER. 
+ * (1) if only all column, use query_row.
+ * (2) if only count, use count_row.
+ * (3) otherwise, use select_row as default.
+ * */
+static ROW_HANDLER DefineRowHandler(SelectParam *selectParam) {
+   return selectParam->onlyAll 
+            ? select_row
+            : selectParam->onlyCount ? count_row : select_row;
 }

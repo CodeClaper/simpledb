@@ -705,13 +705,14 @@ static void select_from_leaf_node(SelectResult *select_result, ConditionNode *co
                 /* Merge derived-row. */
                 Row *derived_row = qfirst(qc);
                 merge_row(derived_row, row);
+                free_common_row(row);
 
                 /* Check if the row data include,in another word, 
                  * check if the row data satisfy the condition. */
                 if (include_leaf_node(select_result, derived_row, condition)) 
                     row_handler(derived_row, select_result, table, type, arg);
                 else
-                    dfree(derived_row);
+                    free_common_row(derived_row);
             }
             continue;
         }
@@ -721,11 +722,9 @@ static void select_from_leaf_node(SelectResult *select_result, ConditionNode *co
         if (include_leaf_node(select_result, row, condition)) 
             row_handler(row, select_result, table, type, arg);
         else
-            dfree(row);
+            free_common_row(row);
     }
 
-    free_block(leaf_node);
-    
     /* Release the buffer. */
     ReleaseBuffer(buffer);
 }
@@ -774,7 +773,10 @@ static void select_from_internal_node(SelectResult *select_result, ConditionNode
         uint32_t child_page_num = get_internal_node_child(internal_node, i, key_len, value_len);
         Assert(child_page_num != 0);
         Buffer child_buffer = ReadBuffer(GET_TABLE_OID(table), child_page_num);
-        void *node = GetBufferPage(child_buffer);
+        LockBuffer(child_buffer, RW_READERS);
+        void *node = GetBufferPageCopy(child_buffer);
+        UnlockBuffer(child_buffer);
+
         switch (get_node_type(node)) {
             case LEAF_NODE:
                 select_from_leaf_node(
@@ -787,13 +789,13 @@ static void select_from_internal_node(SelectResult *select_result, ConditionNode
                     select_result, condition, child_page_num, 
                     table, row_handler, type, arg
                 );
-                db_log(DEBUGER, "Fetch rows %d at i = %d", select_result->row_size, i);
                 break;
             default:
                 db_log(PANIC, "Unknown node type.");
                 break;
         }
-
+        
+        free_block(node);
         /* Release the child buffer. */
         ReleaseBuffer(child_buffer);
     }
@@ -962,7 +964,6 @@ static void select_from_internal_node_async(SelectResult *select_result, Conditi
  * will affects the performance.
  * */
 static bool async_condition(SelectResult *select_result) {
-    /*return false;*/
     return select_result->stype == SELECT_STMT && 
                 TableNameExistsInCache(select_result->table_name);
 }
@@ -1081,9 +1082,12 @@ void count_row(Row *row, SelectResult *select_result, Table *table,
     }
 
     /* Not use row info, free it. */
-    dfree(row);
+    free_common_row(row);
 }
 
+/* Purge row. 
+ * Pruge means to remove the sys-reserved column.
+ * */
 static void* purge_row(Row *row) {
     List *list = row->data;
     /* At least, more 3 sys-reserved column. */
@@ -1118,6 +1122,35 @@ void select_row(Row *row, SelectResult *select_result, Table *table,
         select_result->row_size++;
     }
 }
+
+/* Query row data. 
+ * --------------
+ * Defferent with select_row, query_row will output the row 
+ * data immediately and then free memory, not store the row 
+ * data until selection. It works for query-rows operation.
+ * */
+void query_row(Row *row, SelectResult *select_result, Table *table, 
+               ROW_HANDLER_ARG_TYPE type, void *arg) {
+
+    /* If has limit clause. */
+    if (type == ARG_SELECT_PARAM && ((SelectParam *) arg)->limitClause != NULL) {
+        SelectParam *selectParam = (SelectParam *) arg;
+        LimitClauseNode *limit_clause = selectParam->limitClause;
+
+        /* If has limit clause, only append row whose pindex > offset and pindex < offset + rows. */
+        if (selectParam->offset >= limit_clause->offset && 
+                selectParam->offset < (limit_clause->offset + limit_clause->rows)) {
+            
+            json_row(purge_row(row));
+            select_result->row_size++;
+        }
+        selectParam->offset++;
+    } else {
+        json_row(purge_row(row));
+        select_result->row_size++;
+    }
+}
+
 
 /* Calulate column sum value. */
 static KeyValue *calc_column_sum_value(ColumnNode *column, SelectResult *select_result) {
@@ -2264,12 +2297,24 @@ static void query_with_selection(SelectionNode *selection, SelectResult *select_
  * If exists where clause, return its condition.
  * Else, return NULL.
  * */
-static ConditionNode *get_table_exp_condition(TableExpNode *table_exp) {
+static inline ConditionNode *get_table_exp_condition(TableExpNode *table_exp) {
     WhereClauseNode *where_clause = table_exp->where_clause;
     if (where_clause)
         return where_clause->condition;
     else 
         return NULL;
+}
+
+static void before_query_condition(SelectParam *selectParam) {
+    if (selectParam->onlyAll) {
+        db_send("[");
+    }
+}
+
+static void after_query_condition(SelectParam *selectParam) {
+    if (selectParam->onlyAll) {
+        db_send("]");
+    }
 }
 
 /* Query with condition when multiple table. */
@@ -2300,7 +2345,7 @@ static SelectResult *query_multi_table_with_condition(SelectNode *select_node) {
                                         : dstrdup(table_ref->table);
         current_result->derived = result;
         current_result->last_derived = (last_cell(list) == lc);
-
+        
         /* Query with condition to filter satisfied conditions rows. */
         query_with_condition(
             condition, current_result, 
