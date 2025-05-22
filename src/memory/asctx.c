@@ -54,6 +54,10 @@ MemoryContext AllocSetMemoryContextCreate(MemoryContext parent, char *name, uint
     Assert(in_local_memory());
     /* Alloc from system. */
     set = (AllocSet) malloc(size);
+    if (set == NULL) {
+        perror("Malloc fail.");
+        exit(1);
+    }
     Assert(!shmem_addr_valid(set));
 
     /* Assignment. */
@@ -121,6 +125,10 @@ static void *AllocSetAllocLarge(MemoryContext context, Size size) {
     
     blk_size = MAXALIGN(size + ALLOC_BLOCK_SIZE + ALLOC_CHUNK_SIZE);
     block = (AllocBlock) malloc(blk_size);
+    if (block == NULL) {
+        perror("Malloc fail.");
+        exit(1);
+    }
 
     context->allocated_size += blk_size;
     block->set = set;
@@ -200,6 +208,10 @@ void *AllocSetAllocNewBlock(MemoryContext context, Size chksize) {
 
     blk_size = set->next_block_size;
     AllocBlock block = (AllocBlock) malloc(blk_size);
+    if (block) {
+        perror("Malloc fail.");
+        exit(1);
+    }
 
     block->freeptr = ((char *) block) + ALLOC_BLOCK_SIZE;
     block->endptr = ((char *) block) + blk_size;
