@@ -1060,8 +1060,7 @@ SelectResult *select_with_column_value(Oid oid, MetaColumn *meta_column, void *v
 }
 
 /* Count number of row, used in the sql function count(1) */
-void count_row(Row *row, SelectResult *select_result, Table *table, 
-               ROW_HANDLER_ARG_TYPE type,void *arg) {
+void count_row(Row *row, SelectResult *select_result, Table *table, ROW_HANDLER_ARG_TYPE type, void *arg) {
 
     if (type == ARG_SELECT_PARAM && ((SelectParam *) arg)->limitClause != NULL) {
         SelectParam *selectParam = (SelectParam *) arg;
@@ -1070,11 +1069,18 @@ void count_row(Row *row, SelectResult *select_result, Table *table,
         /* If has limit clause, only append row whose pindex > offset and pindex < offset + rows. */
         if (selectParam->offset >= limit_clause->offset && 
                 selectParam->offset < (limit_clause->offset + limit_clause->rows)) {
-            select_result->row_size++;
-            select_result->rows->size++;
+
+            acquire_spin_lock(&selectParam->slock);
+            /* Double check for concurrency. */
+            if (selectParam->offset >= limit_clause->offset && 
+                    selectParam->offset < (limit_clause->offset + limit_clause->rows)) {
+                select_result->row_size++;
+                select_result->rows->size++;
+            } 
+            release_spin_lock(&selectParam->slock);
         }
 
-        selectParam->offset++;
+        __sync_fetch_and_add(&selectParam->offset, 1);
     } 
     else {
         select_result->row_size++;
@@ -1112,11 +1118,17 @@ void select_row(Row *row, SelectResult *select_result, Table *table,
         if (selectParam->offset >= limit_clause->offset && 
                 selectParam->offset < (limit_clause->offset + limit_clause->rows)) {
 
-            AppendQueue(select_result->rows, purge_row(row));
-            select_result->row_size++;
+            acquire_spin_lock(&selectParam->slock);
+            /* Double check for concurrency. */
+            if (selectParam->offset >= limit_clause->offset && 
+                    selectParam->offset < (limit_clause->offset + limit_clause->rows)) {
+                AppendQueue(select_result->rows, purge_row(row));
+                select_result->row_size++;
+            }
+            release_spin_lock(&selectParam->slock);
         }
 
-        selectParam->offset++;
+        __sync_fetch_and_add(&selectParam->offset, 1);
     } else {
         AppendQueue(select_result->rows, purge_row(row));
         select_result->row_size++;

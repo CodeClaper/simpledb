@@ -1,5 +1,6 @@
-#include "data.h"
 #include <stdbool.h>
+#include "data.h"
+#include "spinlock.h"
 #ifndef SELECT_H
 #define SELECT_H
 
@@ -17,9 +18,10 @@ typedef void (*ROW_HANDLER)(Row *, SelectResult *select_result, Table *table, RO
 typedef struct SelectParam {
     bool onlyAll;                   /* Only select all. */
     bool onlyCount;                 /* Only count int select statement. */
-    int32_t offset;                 /* Current offset. */
+    volatile int32_t offset;        /* Current offset. Need volatile in parall calculating.*/
     LimitClauseNode *limitClause;   /* LimitClauseNode. */
     ROW_HANDLER rowHanler;          /* Row Handler implements.*/
+    s_lock slock;                   /* Sync lock.*/
 } SelectParam;
 
 /* Count number of row, used in the sql function count() */

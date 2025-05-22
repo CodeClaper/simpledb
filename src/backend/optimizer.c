@@ -16,6 +16,7 @@ SelectParam *optimizeSelect(SelectNode *selectNode) {
     selectParam->limitClause = GetLimitClause(selectNode);
     selectParam->offset = 0;
     selectParam->rowHanler = DefineRowHandler(selectParam);
+    init_spin_lock(&selectParam->slock);
     return selectParam;
 }
 
