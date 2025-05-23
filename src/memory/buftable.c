@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 #include "buftable.h"
 #include "spinlock.h"
@@ -22,7 +23,7 @@ static BufferTableEntry *NewBufferTableEntry(BufferTag *tag, Buffer buffer) {
 
 /* Get Buffer Table slot. */
 inline BufferTableEntrySlot *GetBufferTableSlot(BufferTag *tag) {
-    Hash hash = OidHash(tag->oid, BUFFER_SLOT_NUM);
+    Hash hash = OidHash((tag->oid + tag->blockNum), BUFFER_SLOT_NUM);
     return (BufferTableEntrySlot *)(BTable + hash);
 }
 
@@ -175,4 +176,18 @@ void RemoveTableBuffer(Oid oid) {
         }
     }
     switch_local();
+}
+
+static void PrintBufTable(int k) {
+    for (Index i = (0 * k * 1000); i < (k + 1) *1000; i++) {
+        int deep;
+        BufferTableEntrySlot *slot ;
+        BufferTableEntry *current;
+        
+        slot = GetBufferTableSlotByIndex(i);
+        for (current = slot->next, deep = 0; 
+                current != NULL; 
+                    current = current->next, deep++);
+        printf("%d\t", deep);
+    }
 }
