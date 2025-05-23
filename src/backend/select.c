@@ -724,7 +724,7 @@ static void select_from_leaf_node(SelectResult *select_result, ConditionNode *co
         else
             free_common_row(row);
     }
-
+    
     /* Release the buffer. */
     ReleaseBuffer(buffer);
 }
@@ -964,8 +964,9 @@ static void select_from_internal_node_async(SelectResult *select_result, Conditi
  * will affects the performance.
  * */
 static bool async_condition(SelectResult *select_result) {
-    return select_result->stype == SELECT_STMT && 
-                TableNameExistsInCache(select_result->table_name);
+    return false;
+    /*return select_result->stype == SELECT_STMT && */
+    /*            TableNameExistsInCache(select_result->table_name);*/
 }
 
 /* Query with condition inner. */

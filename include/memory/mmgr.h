@@ -35,6 +35,8 @@ typedef struct MemMethods {
 
 #define MAXALIGN(LEN)			TYPEALIGN(MAXIMUM_ALIGNOF, (LEN))
 
+#define MAX_MALLOC_SIZE (1024 * 1024 * 1024 * 2L)
+
 
 void RegisterWorkers(pthread_t workers[], int workerNum);
 

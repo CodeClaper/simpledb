@@ -208,7 +208,7 @@ void *AllocSetAllocNewBlock(MemoryContext context, Size chksize) {
 
     blk_size = set->next_block_size;
     AllocBlock block = (AllocBlock) malloc(blk_size);
-    if (block) {
+    if (block == NULL) {
         perror("Malloc fail.");
         exit(1);
     }
