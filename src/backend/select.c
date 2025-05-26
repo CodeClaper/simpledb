@@ -638,15 +638,6 @@ static void merge_row(Row *row1, Row *row2) {
     }
 }
 
-/* Merge two SelectResult. */
-static void merge_select_result(SelectResult *result1, SelectResult *result2) {
-    QueueCell *qc;
-    qforeach (qc, result2->rows) {
-        AppendQueue(result1->rows, qfirst(qc));
-    }
-    result1->row_size += result2->row_size;
-}
-
 /* Search table via alias name in SelectResult. 
  * Note: range variable may be table name or table alias name.
  * */
@@ -707,7 +698,7 @@ static void select_from_leaf_node(SelectResult *select_result, ConditionNode *co
                 merge_row(derived_row, row);
                 free_common_row(row);
 
-                /* Check if the row data include,in another word, 
+                /* Check if the row data include. In another word, 
                  * check if the row data satisfy the condition. */
                 if (include_leaf_node(select_result, derived_row, condition)) 
                     row_handler(derived_row, select_result, table, type, arg);
@@ -836,7 +827,7 @@ static void select_from_internal_node(SelectResult *select_result, ConditionNode
     ReleaseBuffer(buffer);
 }
 
-
+/* The task for select internal node in async. */
 static void select_from_internal_node_child_task(void *taskArg) {
     Assert(taskArg != NULL);
 
@@ -945,9 +936,12 @@ static void select_from_internal_node_async(SelectResult *select_result, Conditi
     /* Parallel compute. */
     ParallelCompute(8, taskNum, select_from_internal_node_child_task, (void **)taskArgs);
 
-    /* Merge select result. */
+    /* Summary select result. */
     for (i = 0; i < taskNum; i++) {
-        merge_select_result(select_result, selectResults[i]);
+        SelectResult *result = selectResults[i];
+        printf("%d\t", result->row_size);
+        ConcatQueue(select_result->rows, result->rows);
+        select_result->row_size += result->row_size;
     }
 
     ReleaseBuffer(buffer);
@@ -972,7 +966,6 @@ static bool async_condition(SelectResult *select_result) {
 /* Query with condition inner. */
 void query_with_condition_inner(Oid oid, ConditionNode *condition, SelectResult *select_result, 
                           ROW_HANDLER row_handler, ROW_HANDLER_ARG_TYPE type, void *arg) {
-
     Table *table;
     Buffer buffer;
     void *root;

@@ -104,6 +104,16 @@ void AppendQueue(Queue *queue, void *item) {
     }
 }
 
+/* Concat two Queues. */
+void ConcatQueue(Queue *q1, Queue *q2) {
+    if (q1->tail)
+        q1->tail->next = q2->head;
+    if (q2->head)
+        q2->head->pres = q1->tail;
+    q1->tail = q2->tail;
+    q1->size += q2->size;
+}
+
 /* Delete QueueCell from the Queue. */
 static void DeleteQueueCell(Queue *queue, QueueCell *qc) {
     if (queue->head == qc) 

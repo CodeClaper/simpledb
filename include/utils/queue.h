@@ -59,6 +59,9 @@ Queue *CreateQueue(NodeTag tag);
 /* Append item to the Queue. */
 void AppendQueue(Queue *queue, void *item);
 
+/* Concat two Queues. */
+void ConcatQueue(Queue *queue1, Queue *queue2);
+
 /* Delete item from the Queue. */
 void DeleteQueue(Queue *queue, void *item);
 

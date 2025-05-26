@@ -41,6 +41,8 @@ typedef struct BufferDesc {
 typedef struct VictimController {
     volatile Index index;
     s_lock lock;
+    uint32_t total;
+    uint32_t hint;
 } VictimController;
 
 /* Return if both BufferTags equals. */

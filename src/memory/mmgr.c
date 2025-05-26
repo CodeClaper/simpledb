@@ -126,7 +126,6 @@ bool in_local_memory() {
 
 /* Allocate memory. */
 inline void *dalloc(size_t size) {
-    Assert(size <= MAX_MALLOC_SIZE);
     return mem_methods[FindType()].dalloc(size);
 }
 

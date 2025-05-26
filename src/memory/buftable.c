@@ -21,16 +21,16 @@ static BufferTableEntry *NewBufferTableEntry(BufferTag *tag, Buffer buffer) {
     return entry;
 }
 
+/* Get Buffer Table slot by index. */
+static inline BufferTableEntrySlot *GetBufferTableSlotByIndex(Index idx) {
+    Assert(idx < BUFFER_SLOT_NUM);
+    return (BufferTableEntrySlot *)(BTable + idx);
+}
+
 /* Get Buffer Table slot. */
 inline BufferTableEntrySlot *GetBufferTableSlot(BufferTag *tag) {
     Hash hash = OidHash((tag->oid + tag->blockNum), BUFFER_SLOT_NUM);
-    return (BufferTableEntrySlot *)(BTable + hash);
-}
-
-
-/* Get Buffer Table slot by index. */
-static inline BufferTableEntrySlot *GetBufferTableSlotByIndex(Index idx) {
-     return (BufferTableEntrySlot *)(BTable + idx);
+    return GetBufferTableSlotByIndex(hash);
 }
 
 /* Create the buffer table.*/
@@ -137,7 +137,6 @@ void DeleteBufferTableEntry(BufferTag *tag) {
     BufferTableEntry *pres, *current;
 
     slot = GetBufferTableSlot(tag);
-    current = slot->next;
 
     switch_shared();
     for (current = slot->next, pres = current; current != NULL; pres = current, current = current->next) {
@@ -179,7 +178,7 @@ void RemoveTableBuffer(Oid oid) {
 }
 
 static void PrintBufTable(int k) {
-    for (Index i = (0 * k * 1000); i < (k + 1) *1000; i++) {
+    for (Index i = (k * 1000); i < (k + 1) *1000; i++) {
         int deep;
         BufferTableEntrySlot *slot ;
         BufferTableEntry *current;
