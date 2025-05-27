@@ -16,7 +16,8 @@ typedef uint64_t Oid;
  * */
 #define OID_ZERO 0
 
-#define ZERO_OID(oid) oid == OID_ZERO
+#define ZERO_OID(oid) (oid == OID_ZERO)
+#define NON_ZERO_OID(oid) (oid != OID_ZERO)
 
 /* Max object relname length. */
 #define MAX_RELNAME_LEN 30

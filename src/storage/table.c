@@ -260,9 +260,15 @@ Table *open_table(char *table_name) {
 
 /* Drop an existed table. */
 bool drop_table(char *table_name) {
+    Oid oid, soid;
 
     /* Check if exist the table. */
-    Oid oid = TableNameFindOid(table_name);
+    oid = TableNameFindOid(table_name);
+    soid = StrTableNameFindOid(table_name);
+
+    Assert(NON_ZERO_OID(oid));
+    Assert(NON_ZERO_OID(soid));
+
     char *file_path = table_file_path(oid);
     if (!table_file_exist(file_path)) {
         dfree(file_path);
@@ -272,14 +278,9 @@ bool drop_table(char *table_name) {
     /* Try to acquire the table lock. */
     try_acquire_table(oid);
 
-    /* Get file descriptor. */
-    FDesc fdesc = get_file_desc(oid);
-
-    /* Close file descriptor. */
-    close(fdesc);
-
     /* Unregister fdesc. */
     unregister_fdesc(oid);
+    unregister_fdesc(soid);
 
     /* Disk remove. */
     if (remove(file_path) == 0 && RemoveObject(oid)) {

@@ -87,8 +87,8 @@ void unregister_fdesc(Oid oid) {
     foreach(lc, F_DESC_LIST) {
         FDescEntry *entry = lfirst(lc);
         if (entry->oid == oid) {
-            list_delete(F_DESC_LIST, entry);
             close_file_desc(entry->desc);
+            list_delete(F_DESC_LIST, entry);
             break;
         }
     }

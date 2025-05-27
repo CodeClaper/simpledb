@@ -64,6 +64,7 @@ char *read_conf(char *title, char *key) {
         trim(p);
         /* skip '=' */
         p += 1;
+        fclose(file);
         return strdup(trim(p));
     }
     fprintf(stderr, "Not found [%s].[%s] in configuration file.\n", title, key);
