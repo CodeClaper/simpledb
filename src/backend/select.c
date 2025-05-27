@@ -971,7 +971,7 @@ static bool async_condition(SelectResult *select_result) {
 
 /* Query with condition inner. */
 void query_with_condition_inner(Oid oid, ConditionNode *condition, SelectResult *select_result, 
-                          ROW_HANDLER row_handler, ROW_HANDLER_ARG_TYPE type, void *arg) {
+                                ROW_HANDLER row_handler, ROW_HANDLER_ARG_TYPE type, void *arg) {
     Table *table;
     Buffer buffer;
     void *root;

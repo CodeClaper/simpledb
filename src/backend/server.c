@@ -29,7 +29,7 @@
 #include "jsonwriter.h"
 
 /* Start up the server. */
-int startup(u_short port) {
+int Startup(u_short port) {
     int httpd = 0;
     int on = 1;
     size_t buff_size = SPOOL_SIZE;
@@ -67,7 +67,7 @@ int startup(u_short port) {
 
 
 /* Auth client. */
-static bool auth_request(intptr_t client) {
+static bool AuthRequest(intptr_t client) {
     DBResult *result;
     char *login;
 
@@ -91,7 +91,7 @@ static bool auth_request(intptr_t client) {
 
 
 /* For loop request. */
-static void loop_request(intptr_t client) {
+static void RequestHandler(intptr_t client) {
     size_t chars_num;
     struct timeval start_time, end_time;
     char buf[SPOOL_SIZE];
@@ -114,7 +114,7 @@ static void loop_request(intptr_t client) {
 }
 
 /* At the MemoryContext start. */
-static void memory_context_start() {
+static void MemoryContextStart() {
     /* Create the TOP_MEMORY_CONTEXT. */
     MASTER_MEMORY_CONTEXT = AllocSetMemoryContextCreate(TOP_MEMORY_CONTEXT, "MasterMemoryContext", DEFAULT_MAX_BLOCK_SIZE);
     CACHE_MEMORY_CONTEXT = AllocSetMemoryContextCreate(MASTER_MEMORY_CONTEXT, "CacheMemoryContext", DEFAULT_MAX_BLOCK_SIZE);
@@ -122,30 +122,30 @@ static void memory_context_start() {
 }
 
 /* At the MemoryContext end. */
-static void memory_context_end() {
+static void MemoryContextEnd() {
     /* Delete the TOP_MEMORY_CONTEXT. */
     MemoryContextDelete(MASTER_MEMORY_CONTEXT);
 }
 
 
 /* Accept request.*/
-void accept_request(intptr_t client) {
+void AcceptRequest(intptr_t client) {
 
-    // Start new session.
+    /* Start new session. */
     new_session(client);
 
     /* Set signal handler. */
     set_signal_handler();
 
-    memory_context_start();
+    MemoryContextStart();
 
     /* Auth login message. */
-    if (auth_request(client)) 
-        loop_request(client);
+    if (AuthRequest(client)) 
+        RequestHandler(client);
 
     close(client);
 
-    memory_context_end();
+    MemoryContextEnd();
 
     /* Quite */
     exit(0);

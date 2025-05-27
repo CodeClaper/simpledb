@@ -136,7 +136,7 @@ static void start_backend(int server_socket, struct sockaddr_in *client_name, so
         if (pid < 0) 
             db_log(PANIC, "Create new child process fail.");
         else if (pid == 0) {
-            accept_request((intptr_t)client_secket);
+            AcceptRequest((intptr_t)client_secket);
             exit(EXECUTE_SUCCESS);
         }
         else
@@ -153,7 +153,7 @@ static void db_run() {
     socklen_t client_name_len = sizeof(*client_name);
 
     /* Start up server. */
-    server_socket = startup(conf->port);
+    server_socket = Startup(conf->port);
 
     /* Print out banner. */
     puts(BANNER);

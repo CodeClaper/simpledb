@@ -1,7 +1,7 @@
 #include "data.h"
 
-/*start up the server.*/
-int startup(u_short port);
+/* Start up the server.*/
+int Startup(u_short port);
 
-/*Accept request.*/
-void accept_request(intptr_t client);
+/* Accept request.*/
+void AcceptRequest(intptr_t client);

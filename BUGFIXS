@@ -1,3 +1,2 @@
 1. Sometimes, the old key is not equeal to the current key in <update_internal_node_key>.
-2. The performance will slow down when parallel comnputing in concurrency.
-3. Still has some bugs in parallel comnputing in concurrency.
+2. Still has some bugs in parallel comnputing in concurrency.
