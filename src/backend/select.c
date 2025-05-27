@@ -764,9 +764,7 @@ static void select_from_internal_node(SelectResult *select_result, ConditionNode
         uint32_t child_page_num = get_internal_node_child(internal_node, i, key_len, value_len);
         Assert(child_page_num != 0);
         Buffer child_buffer = ReadBuffer(GET_TABLE_OID(table), child_page_num);
-        LockBuffer(child_buffer, RW_READERS);
-        void *node = GetBufferPageCopy(child_buffer);
-        UnlockBuffer(child_buffer);
+        void *node = GetBufferPage(child_buffer);
 
         switch (get_node_type(node)) {
             case LEAF_NODE:
@@ -786,7 +784,6 @@ static void select_from_internal_node(SelectResult *select_result, ConditionNode
                 break;
         }
         
-        free_block(node);
         /* Release the child buffer. */
         ReleaseBuffer(child_buffer);
     }
@@ -795,11 +792,8 @@ static void select_from_internal_node(SelectResult *select_result, ConditionNode
     /* Fetch right child. */
     uint32_t right_child_page_num = get_internal_node_right_child(internal_node, value_len);
     Buffer right_child_buffer = ReadBuffer(GET_TABLE_OID(table), right_child_page_num);
-    LockBuffer(right_child_buffer, RW_READERS);
-    void *right_child = GetBufferPageCopy(right_child_buffer);
-    UnlockBuffer(right_child_buffer);
-    NodeType node_type = get_node_type(right_child);
-    switch (node_type) {
+    void *right_child = GetBufferPage(right_child_buffer);
+    switch (get_node_type(right_child)) {
         case LEAF_NODE:
             select_from_leaf_node(
                 select_result, 
@@ -815,12 +809,11 @@ static void select_from_internal_node(SelectResult *select_result, ConditionNode
             );
             break;
         default:
-            UNEXPECTED_VALUE(node_type);
+            db_log(PANIC, "Unknown node type.");
             break;
     }
  
     free_block(internal_node); 
-    free_block(right_child);
 
     /* Release buffers. */
     ReleaseBuffer(right_child_buffer);
@@ -843,9 +836,7 @@ static void select_from_internal_node_child_task(void *taskArg) {
     void *child_node;
 
     child_buffer = ReadBuffer(GET_TABLE_OID(table), child_page_num);
-    LockBuffer(child_buffer, RW_READERS);
-    child_node = GetBufferPageCopy(child_buffer);
-    UnlockBuffer(child_buffer);
+    child_node = GetBufferPage(child_buffer);
 
     switch (get_node_type(child_node)) {
         case LEAF_NODE:
@@ -865,7 +856,6 @@ static void select_from_internal_node_child_task(void *taskArg) {
             break;
     }
 
-    free_block(child_node);
     /* Release the child buffer. */
     ReleaseBuffer(child_buffer);
 }
