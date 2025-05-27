@@ -36,6 +36,24 @@ static FDesc find_fdesc(Oid oid) {
     return -1;
 }
 
+/* Load file descriptor. 
+ * Notice, if file desc not register, need close it manually.
+ * */
+static FDesc load_file_desc(char *file_path) {
+    FDesc desc= open(file_path, O_RDWR, S_IRUSR | S_IWUSR);
+    if (desc == -1) 
+        db_log(PANIC, "Open table file %s fail: %s.", 
+               file_path, 
+               strerror(errno));
+    return desc;
+}
+
+/* Close the file descriptor. */
+static void close_file_desc(FDesc fdesc) {
+    if (close(fdesc) == -1) {
+        db_log(PANIC, "Close table file fail: %s.", strerror(errno));
+    }
+}
 
 /* Register fdesc. */
 static void register_fdesc(Oid oid, FDesc desc) {
@@ -70,6 +88,7 @@ void unregister_fdesc(Oid oid) {
         FDescEntry *entry = lfirst(lc);
         if (entry->oid == oid) {
             list_delete(F_DESC_LIST, entry);
+            close_file_desc(entry->desc);
             break;
         }
     }
@@ -78,18 +97,6 @@ void unregister_fdesc(Oid oid) {
     MemoryContextSwitchTo(oldcontext);
 }
 
-
-/* Load file descriptor. 
- * Notice, if file desc not register, need close it manually.
- * */
-static FDesc load_file_desc(char *file_path) {
-    FDesc desc= open(file_path, O_RDWR, S_IRUSR | S_IWUSR);
-    if (desc == -1) 
-        db_log(PANIC, "Open table file %s fail: %s.", 
-               file_path, 
-               strerror(errno));
-    return desc;
-}
 
 /* Get file descriptor. 
  * --------------------
