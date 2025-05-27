@@ -57,7 +57,6 @@
 #include "table.h"
 #include "pager.h"
 #include "copy.h"
-#include "log.h"
 #include "atomic.h"
 
 /*
@@ -92,8 +91,6 @@ void CreateBufferDescTable() {
     /* Init VictimController. */
     victimController = instance(VictimController); 
     victimController->index = 0;
-    victimController->total = 0;
-    victimController->hint = 0;
     init_spin_lock(&victimController->lock);
 
     switch_local();
@@ -152,7 +149,6 @@ static inline Index ClockSweepTick() {
                 /* Note: the atmomic_compare_swap_uint32 will automatically updated the expected value. */
                 success = atmomic_compare_swap_uint32(&victimController->index, &expected, wrapped);
             }
-            db_log(DEBUGER, "Victim wrapped success.");
         }
     }
 
@@ -165,16 +161,6 @@ inline BufferDesc *GetBufferDesc(Buffer buffer) {
     return (BufferDesc *)(bDescTable + buffer);
 }
 
-static void PrintDesc(int k) {
-    for (Index i = (k * 1000); i < (k + 1) *1000; i++) {
-        BufferDesc *desc = GetBufferDesc(i);
-        printf("%ld:%d:%d\t", desc->buffer, desc->usage_count, desc->status);
-    }
-}
-
-static void PrintHint() {
-    printf("%d%%\n", (victimController->hint * 100) / victimController->total);
-}
 
 /* Loop Find BufferDesc when missing in BDescTable. */
 static BufferDesc *LoopFindBufferDesc(BufferTag *tag) {
@@ -258,7 +244,6 @@ Buffer ReadBuffer(Oid oid, BlockNum blockNum) {
     BufferTag tag;
     BufferDesc *desc;
     
-    victimController->total++;
     memset(&tag, 0, sizeof(BufferTag));
     tag.oid = oid;
     tag.blockNum = blockNum;
@@ -270,7 +255,6 @@ Buffer ReadBuffer(Oid oid, BlockNum blockNum) {
         /* Maybe the buffer desc has unpinned and reused, 
          * necessary to check the tag if still.*/
         if (BufferTagEquals(&tag, &desc->tag)) {
-            victimController->hint++;
             PinBuffer(desc);
             return desc->buffer;
         }
