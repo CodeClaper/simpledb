@@ -447,7 +447,7 @@ static void json_db_result_list(List *list) {
             db_send(", ");
     }
 
-    db_send(len_list(list) > 1 ? "]\n" : "\n");
+    db_send(len_list(list) > 1 ? "]" : "");
 }
 
 /* Json list. */
