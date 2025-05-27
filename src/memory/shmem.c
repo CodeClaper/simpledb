@@ -16,8 +16,6 @@
 #include "shmem.h"
 #include "spinlock.h"
 #include "utils.h"
-#include "log.h"
-
 
 static ShmemHeader *shmrd;
 static s_lock* lock;

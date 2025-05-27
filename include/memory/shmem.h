@@ -1,10 +1,13 @@
 #include <stdlib.h>
 #include <stdbool.h>
+#include "defs.h"
 
 #ifndef SHMEM_H
 #define SHMEM_H
 
-#define SHMEM_SIZE (1024 * 1024 * 1024 * 3L)  // shared memory 3GB. 
+/* Default share size. 
+ * If use not define size of share memory, use this value. */
+#define SHMEM_SIZE (1024 * 1024 * 1024 * 1L * (conf->share_memory_size)) 
 
 typedef struct ShmemHeader {
     size_t total_size;

@@ -36,19 +36,42 @@ void init_mem() {
     }
 }
 
-/* Alloc for share. */
+/* Alloc large memory for share. */
+void *shdalloc_large(size_t size) {
+    void *ptr;
+
+    void *nptr = shmem_alloc(size + SHM_OFFSET);
+    ShMemFreeEntry entry = { 
+        .size = size,
+        .next = NULL
+    };
+    memcpy(nptr, &entry, SHM_OFFSET);
+    ptr = nptr + SHM_OFFSET;
+
+    return ptr;
+}
+
+/* Alloc for share. 
+ * ----------------
+ * If allocate large memory, call the shdalloc_large.
+ * If allocate normal memory, it will record in the sh_free_list.
+ * */
 void *shdalloc(size_t size) {
     int fdx;
     void *ptr;
     ShMemFreeEntry *entry;
 
     Assert(size > 0);
-    // Assert(size < SHM_ALLOC_LIMIT);
+    if (size > SHM_ALLOC_LIMIT)
+        return shdalloc_large(size);
+
+    Assert(size < SHM_ALLOC_LIMIT);
 
     /* First reuse in free list, 
      * if missing, allocate new one.*/
     acquire_spin_lock(shlock);
     fdx = ShFreeIndex(size);
+    Assert(fdx <= SHM_FREELISTS_NUM);
     entry = sh_free_list[fdx];
     if (size < SHM_ALLOC_LIMIT && entry != NULL) {
         if (size > entry->size)
@@ -82,6 +105,7 @@ void shdfree(void *ptr) {
     acquire_spin_lock(shlock);
     ShMemFreeEntry *entry = GET_FREE_ENTRY(ptr);
     Assert(entry != NULL);
+    Assert(entry->size <= SHM_ALLOC_LIMIT);
 
     fdx = ShFreeIndex(entry->size);
     entry->next = sh_free_list[fdx];

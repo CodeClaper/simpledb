@@ -17,7 +17,6 @@
 #include "data.h"
 #include "asserts.h"
 #include "conf.h"
-#include "mmgr.h"
 #include "utils.h"
 
 #define DEFAULT_CONF_FILE "/etc/simpledb.cnf"
@@ -35,7 +34,10 @@ char *read_conf(char *title, char *key) {
     bool inBlock = false;
     while(!feof(file)) {
         char *ret = fgets(buff, BUFF_SIZE, file);
-        assert_not_null(ret, "Read conf file error.");
+        if (ret == NULL) {
+            perror("Read conf file error.");
+            exit(1);
+        }
         char *line = trim(buff);
         /* Check if commenter line. */
         if (startwith(line, "//") || startwith(line, "#"))
@@ -54,12 +56,15 @@ char *read_conf(char *title, char *key) {
         if (!startwith(line, key))
             continue;
         p = strstr(line, key);
-        assert_not_null(p, "Read configuration error.");
+        if (p == NULL) {
+            perror("Read configuration error.");
+            exit(1);
+        }
         p += strlen(key);
         trim(p);
         /* skip '=' */
         p += 1;
-        return dstrdup(trim(p));
+        return strdup(trim(p));
     }
     fprintf(stderr, "Not found [%s].[%s] in configuration file.\n", title, key);
     exit(EXECUTE_FAIL);
@@ -87,7 +92,7 @@ static char* append_dir_end(char *dir) {
     if (dir[size - 1] == '/')
         return dir;
     else {
-        char *append = dalloc(size + 1);
+        char *append = malloc(size + 1);
         sprintf(append, "%s/", dir);
         return append;
     }
@@ -102,9 +107,10 @@ static bool define_bool_value(char *title, char *key) {
 
 /* Load configuration. */
 Conf *load_conf() {
-    Conf *conf = instance(Conf);
+    Conf *conf = malloc(sizeof(Conf));
     conf->data_dir = append_dir_end(read_conf("data", "dir"));
     conf->port = (ushort)atoi(read_conf("base", "port"));
+    conf->share_memory_size = atoi(read_conf("base", "share_memory_size"));
     conf->log_dir = append_dir_end(read_conf("log", "dir"));
     conf->log_level = define_log_level(read_conf("log", "level"));
     conf->auto_rollback = define_bool_value("transaction", "auto_rollback");

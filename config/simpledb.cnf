@@ -2,6 +2,8 @@
 dir=/home/zc/data/
 [base]
 port=4083
+## Share memory size (GB)
+share_memory_size=3
 [log]
 dir=/home/zc/logs/simpledb/
 level=DEBUG

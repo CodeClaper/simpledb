@@ -675,6 +675,7 @@ typedef struct {
 typedef struct {
     char *data_dir;                         /* Database file directory. */
     ushort port;                            /* Server listening port. */
+    int share_memory_size;                  /* Size for share memory. */
     char *log_dir;                          /* Log directory */
     LogLevel log_level;                     /* Log level */
     TransIsolationLevel trans_iso_level;    /* Transaction Isolation level.*/
@@ -718,7 +719,6 @@ typedef struct TransEntry {
     struct TransEntry *next;    /* next */
 } TransEntry;
 
-
 /* AliasEntry */
 typedef struct AliasEntry {
     char *name;
@@ -737,6 +737,5 @@ typedef struct InternalNodeCellEntry {
     DataType key_type;
     uint32_t value;
 } InternalNodeCellEntry;
-
 
 #endif

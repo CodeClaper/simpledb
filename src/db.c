@@ -61,6 +61,9 @@ static inline void sigchild() {
 /* DB Start. */
 static void init_db() {
 
+    /* Load configuration. */
+    conf = load_conf();
+
     MakeSysState(SYS_READY);
 
     /* MemoryContext init.*/
@@ -93,8 +96,6 @@ static void init_db() {
     /* Init pager. */
     InitPager();
 
-    /* Load configuration. */
-    conf = load_conf();
 
     /* Initialise table cache. */
     InitTableCache();
