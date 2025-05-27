@@ -86,6 +86,9 @@ void *GetBufferPageCopy(Buffer buffer);
 /* Pin the buffer. */
 void PinBuffer(BufferDesc *desc);
 
+/* Pin the buffer inner. */
+void PinBufferInner(BufferDesc *desc);
+
 /* Unpin the buffer. */
 void UnpinBuffer(BufferDesc *desc);
 

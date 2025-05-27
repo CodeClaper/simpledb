@@ -110,6 +110,18 @@ void PinBuffer(BufferDesc *desc) {
     release_spin_lock(&desc->io_lock);
 }
 
+/* Pin the buffer inner. 
+ * -------------------
+ * This function will called by 
+ * the system ieself like bgwriter.
+ * */
+void PinBufferInner(BufferDesc *desc) {
+    acquire_spin_lock(&desc->io_lock);
+    desc->status = PINNED;
+    desc->refcount++;
+    release_spin_lock(&desc->io_lock);
+}
+
 /* Unpin the buffer. */
 void UnpinBuffer(BufferDesc *desc) {
     acquire_spin_lock(&desc->io_lock);

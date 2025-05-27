@@ -23,7 +23,7 @@ static void FlushDirtyPage() {
         if (desc->status == UNPINNED) {
             void *node = GetBufferBlock(desc->buffer);
             if (get_node_state(node) == DIRTY_STATE) {
-                PinBuffer(desc);
+                PinBufferInner(desc);
                 BufferWriteBlock(desc->buffer);
                 UnpinBuffer(desc);
             }
