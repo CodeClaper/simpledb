@@ -656,6 +656,20 @@ static char *search_table_via_alias(SelectResult *select_result, char *range_var
     return NULL;
 }
 
+/* Allow to read raw page data. 
+ * --------------------------
+ * Two condtions:
+ * (1) ROW_HANDLER_ARG_TYPE type.
+ * (2) only count.
+ * */
+static bool allow_read_raw_page(ROW_HANDLER_ARG_TYPE type, void *arg) {
+    if (type == ARG_SELECT_PARAM) {
+        SelectParam *selectParam = (SelectParam *) arg;
+        return selectParam->onlyCount;
+    }
+    return false;
+}
+
 /* Select through leaf node. */
 static void select_from_leaf_node(SelectResult *select_result, ConditionNode *condition, 
                                   uint32_t page_num, Table *table, ROW_HANDLER row_handler, 
@@ -673,7 +687,9 @@ static void select_from_leaf_node(SelectResult *select_result, ConditionNode *co
     /* Get leaf node buffer. */
     buffer = ReadBuffer(GET_TABLE_OID(table), page_num);
     LockBuffer(buffer, RW_READERS);
-    leaf_node = GetBufferPageCopy(buffer);
+    leaf_node = allow_read_raw_page(type, arg) 
+            ? GetBufferPage(buffer) 
+            : GetBufferPageCopy(buffer);
     UnlockBuffer(buffer);
 
     key_len = calc_primary_key_length(table);
