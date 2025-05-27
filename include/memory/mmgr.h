@@ -9,10 +9,10 @@ typedef enum MemType {
     MEM_SHARED
 } MemType;
 
-typedef struct MemTypeRecord {
+typedef struct MemTypeRecorder {
     MemType type;
     pthread_t *worker;
-} MemTypeRecord;
+} MemTypeRecorder;
 
 typedef struct MemMethods {
     void *(*dalloc)(size_t size);

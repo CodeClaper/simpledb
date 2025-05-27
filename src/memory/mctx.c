@@ -45,7 +45,7 @@ MemoryContext CACHE_MEMORY_CONTEXT = NULL;
  */
 MemoryContext MESSAGE_MEMORY_CONTEXT = NULL;
 
-static MemContextRecorder contextRecorders[100];
+static MemContextRecorder contextRecorders[MAX_WORKER_NUM];
 static int recorderSize;
 
 
@@ -66,7 +66,7 @@ void MemoryContextInit(void) {
     MemoryContextSwitchTo(TOP_MEMORY_CONTEXT);
 }
 
-void RegisterContextRecorders(int workerNum, pthread_t workers[]) {    
+void RegisterContextRecorders(pthread_t workers[], int workerNum) {    
     Assert(CURRENT_MEMORY_CONTEXT == MASTER_MEMORY_CONTEXT);
     for (int i = 0; i < workerNum; i++) {
         MemoryContext context = AllocSetMemoryContextCreate(MASTER_MEMORY_CONTEXT, "ParallelComputeMemoryContext", DEFAULT_MAX_BLOCK_SIZE);
@@ -210,6 +210,7 @@ static MemoryContext GetCurrentMemoryContext() {
         case PARALLEL_COMPUTE: {
             MemContextRecorder *recorder = FindMemContextReorder();
             Assert(recorder);
+            Assert(recorder->context);
             return recorder->context;
         }
         default: {

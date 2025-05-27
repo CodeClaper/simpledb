@@ -940,7 +940,7 @@ static void select_from_internal_node_async(SelectResult *select_result, Conditi
     taskNum++;
 
     /* Parallel compute. */
-    ParallelCompute(8, taskNum, select_from_internal_node_child_task, (void **)taskArgs);
+    ParallelCompute(4, taskNum, select_from_internal_node_child_task, (void **)taskArgs);
 
     /* Summary select result. */
     for (i = 0; i < taskNum; i++) {

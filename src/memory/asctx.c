@@ -88,6 +88,7 @@ MemoryContext AllocSetMemoryContextCreate(MemoryContext parent, char *name, uint
 }
 
 /* Store details into chunk mask. 
+ * -----------------------------
  * Details include:
  * offset: offset to block.
  * value: chunk allocated size.
@@ -309,6 +310,7 @@ void *AllocSetRealloc(void *ptr, Size size) {
 }
 
 /* Reset AllocSetContext. 
+ * -----------------------
  * Free all allocated chunk memory which is allocated in the given set.
  * To simply, we directly free the blocks, but keep the first block which 
  * genrated when Memory Context created.
@@ -327,13 +329,13 @@ void AllocSetReset(MemoryContext context) {
     while (block != NULL) {
         AllocBlock next = block->next;
         if (IS_KEEPER_BLOCK(set, block)) {
-            // Way to handle first block.
+            /* Way to handle first block. */
             char *start = ((char *) block) + ALLOC_BLOCK_SIZE;
             block->freeptr = start;
             block->next = NULL;
             block->pres = NULL;
         } else {
-            // Way to handle other block.
+            /* Way to handle other block. */
             context->allocated_size -= block->endptr - ((char *) block);
             free(block);
         }
@@ -345,6 +347,7 @@ void AllocSetReset(MemoryContext context) {
 }
 
 /* Delete AllocSetContext. 
+ * -----------------------
  * Free all memory which is allocated in the given set.
  * Unlike AllocSetReset, this will free free all resource include the set itself.
  * */

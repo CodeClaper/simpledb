@@ -40,7 +40,7 @@ typedef struct MemContextRecorder {
 
 
 void MemoryContextInit(void);
-void RegisterContextRecorders(int workerNum, pthread_t workers[]);
+void RegisterContextRecorders(pthread_t workers[], int workerNum);
 void DestroyContextRecorders();
 
 /* Create MemoryContext.

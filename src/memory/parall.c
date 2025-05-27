@@ -94,7 +94,7 @@ void ParallelCompute(int workerNum, int taskNum, PARALLEL_TASK task, void *taskA
     }
 
     RegisterWorkers(workers, workerNum);
-    RegisterContextRecorders(workerNum,  workers);
+    RegisterContextRecorders(workers, workerNum);
 
     /* Switch to PARALLEL_COMPUTE mode. */
     ComputeMode oldMode = SwitchComputeMode(PARALLEL_COMPUTE);

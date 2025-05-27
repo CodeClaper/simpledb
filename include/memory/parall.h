@@ -2,7 +2,7 @@
 typedef void (*PARALLEL_TASK) (void *args);
 
 /* The maxinum worker num. */
-#define MAX_WORKER_NUM 100
+#define MAX_WORKER_NUM 8
 
 typedef enum ComputeMode {
     NORMAL_COMPUTE,

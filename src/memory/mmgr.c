@@ -19,7 +19,7 @@ static MemType type = MEM_LOCAL;
 /*
  * Recorder which use in parallel compute mode.
  */
-static MemTypeRecord recorders[MAX_WORKER_NUM];
+static MemTypeRecorder recorders[MAX_WORKER_NUM];
 
 /*
  * Workers Size.
@@ -49,10 +49,10 @@ void RegisterWorkers(pthread_t workers[], int workerNum) {
     workerSize = workerNum;
 }
 
-static MemTypeRecord *FindRecord() {
+static MemTypeRecorder *FindRecorder() {
     Assert(COMPUTE_IN_PARALL);
     for (int i = 0; i < workerSize; i++) {
-        MemTypeRecord *recorder = &recorders[i];
+        MemTypeRecorder *recorder = &recorders[i];
         if (*recorder->worker == pthread_self())
             return recorder;
     }
@@ -64,7 +64,7 @@ static MemType FindType() {
         case NORMAL_COMPUTE:
             return type;
         case PARALLEL_COMPUTE: {
-            MemTypeRecord *recorder = FindRecord();
+            MemTypeRecorder *recorder = FindRecorder();
             Assert(recorder);
             return recorder->type;
         }
@@ -83,7 +83,7 @@ inline void switch_shared() {
             break;
         }
         case PARALLEL_COMPUTE: {
-            MemTypeRecord *recorder = FindRecord();
+            MemTypeRecorder *recorder = FindRecorder();
             Assert(recorder);
             recorder->type = MEM_SHARED;
             break;
@@ -103,7 +103,7 @@ inline void switch_local() {
             break;
         }
         case PARALLEL_COMPUTE: {
-            MemTypeRecord *recorder = FindRecord();
+            MemTypeRecorder *recorder = FindRecorder();
             Assert(recorder);
             recorder->type = MEM_LOCAL;
             break;
