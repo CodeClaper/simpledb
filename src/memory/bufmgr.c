@@ -69,8 +69,6 @@ static BufferDesc *bDescTable;
  */
 static VictimController *victimController;
 
-static void PrintDesc(int k);
-
 /* Create BufferDesc. */
 void CreateBufferDescTable() {
     Size size = BUFFER_SLOT_NUM;
