@@ -84,7 +84,7 @@ void db_log(LogLevel level, char *format, ...) {
     /* Calculate the len. */
     va_start(ap, format);
     len = vsnprintf(NULL, 0, format, ap);
-    if (len < 0) {
+    if (len <= 0) {
         va_end(ap);
         return;
     }
@@ -94,7 +94,7 @@ void db_log(LogLevel level, char *format, ...) {
     memset(message, 0, len);
 
     va_start(ap, format);
-    vsnprintf(message, len + 1, format, ap);
+    vsnprintf(message, len, format, ap);
     va_end(ap);
 
     /* Only print higher level log. */
