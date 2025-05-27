@@ -162,6 +162,10 @@ def exec_cmd(cmd):
                 clear()
             case 'CLS':
                 clear()
+            case 'LS':
+                fetchTables(True)
+            case 'LL':
+                fetchTables(True)
             case _:
                 simpledb(cmd)
 
@@ -187,8 +191,10 @@ def printSlogan():
     print(" Copyright (c) 2024, Inspur.com     ")
 
 ## Fetch Tables.
-def fetchTables():
+def fetchTables(ifPrint: bool):
     ret = client.execute("show tables;")
+    if (ifPrint):
+        print(ret)
     assert ret["success"] == True
     for item in ret["data"]:
         keywords.append(item["relname"])
@@ -199,7 +205,7 @@ if __name__ == "__main__":
     try:
         if login():
             printSlogan()
-            fetchTables()
+            fetchTables(False)
             while True:
                 cmd = readCmd()
                 exec_cmd(cmd)
