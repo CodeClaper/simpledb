@@ -79,13 +79,15 @@ def test_select_after_delete():
     assert ret["success"] == True
     assert ret["data"] == []
 
-
+## test insert long text value.
 def test_insert_long_text():
     content = "An abstract syntax tree (AST) is a data structure used in computer science to represent the structure of a program or code snippet. It is a tree representation of the abstract syntactic structure of text (often source code) written in a formal language. Each node of the tree denotes a construct occurring in the text. It is sometimes called just a syntax tree."
     sql = f"insert into Email values ('11', '{content}', 'zhangsan', '{time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(time.time()))}');"
     ret = client.execute(sql)
     assert ret["success"] == True
 
+
+## test query long text value.
 def test_query_long_text():
     content = "An abstract syntax tree (AST) is a data structure used in computer science to represent the structure of a program or code snippet. It is a tree representation of the abstract syntactic structure of text (often source code) written in a formal language. Each node of the tree denotes a construct occurring in the text. It is sometimes called just a syntax tree."
     sql = "select content from Email where id = '11';"
@@ -93,6 +95,8 @@ def test_query_long_text():
     assert ret["success"] == True
     assert ret["data"] == [ { "content": content }]
 
+
+## test insert file text.
 def test_insert_file_text():
     with open('test/pytest/unit/files/whatisdocker.txt', encoding= 'utf-8') as file:
         content = file.read()
@@ -100,6 +104,8 @@ def test_insert_file_text():
         ret = client.execute(sql)
         assert ret["success"] == True
 
+
+## test query file text.
 def test_query_file_content():
     with open('test/pytest/unit/files/whatisdocker.txt', encoding= 'utf-8') as file:
         content = file.read()
@@ -109,3 +115,7 @@ def test_query_file_content():
         assert ret["data"] == [ { "content": content }]
 
 ## test for drop table.
+def test_drop_mock_table():
+    sql = "drop table Email;"
+    ret = client.execute(sql)
+    assert ret["success"] == True
