@@ -332,6 +332,30 @@ ST_FLAG stod(char *val, double *ret) {
     return ST_SUCCESS;
 }
 
+/* Escap the string value. */
+char *escap_str(const char *str) {
+    size_t new_len = 0;
+    for (const char *p = str; *p; p++) {
+        new_len += (*p == '\n') ? 2 : 1;
+    }
+    
+    char *result = (char*)dalloc(new_len + 1); 
+    if (!result) return NULL;
+    
+    char *dst = result;
+    for (const char *p = str; *p; p++) {
+        if (*p == '\n') {
+            *dst++ = '\\';
+            *dst++ = 'n';
+        } else {
+            *dst++ = *p;
+        }
+    }
+    *dst = '\0'; 
+    
+    return result;
+}
+
  void show_bytes(byte_pointer start, size_t len) {
     size_t i;
     for (i = 0; i <len; i++)

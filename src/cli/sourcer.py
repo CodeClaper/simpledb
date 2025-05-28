@@ -9,7 +9,7 @@ class Source:
 
     def push(self, sql):
         self.patch.append(sql)
-        if len(self.patch) >= 50:
+        if len(self.patch) >= 100:
             self.exec_inner()
 
 

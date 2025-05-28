@@ -114,19 +114,21 @@ FALSE                   return FALSE;
                             current_token = dstrdup(yytext);
                             return FLOATVALUE; 
                         }
-'[^'\n]*'	            { 
+'[^']*'	            { 
                             if (strcmp(yytext, "''") == 0) 
                             { 
                                 yylval.strVal = dstrdup(" ");
+                                current_token = dstrdup(yytext);
                             } 
                             else 
                             {
                                 char *str = strtok(yytext, "\'");  
                                 yylval.strVal = dstrdup(str);
+                                current_token = dstrdup(yytext);
                             } 
                             return STRINGVALUE;
                         } 
-'[^'\n]*$	            { yyerror(NULL, "Unterminated string");  return YYerror;}
+'[^']*$	            { yyerror(NULL, "Unterminated string");  return YYerror;}
 \n                      { lineno++; return NL;}
 [ \t]                   /* igonore space */
 "--".*$		;	        /* comment */

@@ -211,7 +211,7 @@ static void json_single_key_value(KeyValue *key_value) {
                 break;
             case T_CHAR: 
             case T_VARCHAR: 
-                db_send("\"%s\": \"%s\"", key, value ? (char *)value: "null");
+                db_send("\"%s\": \"%s\"", key, value ? escap_str((char *)value) : "null");
                 break;
             case T_FLOAT: 
                 db_send("\"%s\": %f", key, value ? *(float *)value : 0);
@@ -245,7 +245,7 @@ static void json_single_key_value(KeyValue *key_value) {
             }
             case T_STRING: {
                 char *strVal = QueryStringValue((StrRefer *)value);
-                db_send("\"%s\": \"%s\"", key, strVal ? strVal : "null");
+                db_send("\"%s\": \"%s\"", key, strVal ? escap_str(strVal) : "null");
                 break;
             }
             /* Specially deal with T_REFERENCE data. */
@@ -408,7 +408,6 @@ static void handle_dulicate_key(Row *row) {
             }
         } 
     }
-
 }
 
 /* Json DBResult. */

@@ -100,6 +100,9 @@ ST_FLAG stof(char *val, float *ret);
 /* Convert String value to double value. */
 ST_FLAG stod(char *val, double *ret);
 
+/* Escap the string value. */
+char *escap_str(const char *str);
+
 /* Get line from socket. */
 int get_line(int sock, char *buf, int size);
 
