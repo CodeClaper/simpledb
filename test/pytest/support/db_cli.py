@@ -29,14 +29,18 @@ class DbClient:
     def execute(self, sql) -> dict:
         resp = ''
         try:
-            self.client.send(sql.encode("utf-8")[:65535])
+            sql_bytes = sql.encode("utf-8")
+            slen = len(sql_bytes)
+            num_bytes = slen.to_bytes(4, byteorder=sys.byteorder)
+            sdata = b''+ num_bytes + sql_bytes
+            self.client.send(sdata)
             writer = io.StringIO()
             while True:
                 len_resp_bytes = self.socket_recv(4)
                 if not len_resp_bytes:
                     raise Exception("not recive any data")
-                len = int.from_bytes(len_resp_bytes, byteorder=sys.byteorder)
-                data_resp_bytes = self.socket_recv(len)
+                rlen = int.from_bytes(len_resp_bytes, byteorder=sys.byteorder)
+                data_resp_bytes = self.socket_recv(rlen)
                 if not data_resp_bytes:
                     raise Exception("not recive any data")
                 response = data_resp_bytes.decode("utf-8").strip("\x00")

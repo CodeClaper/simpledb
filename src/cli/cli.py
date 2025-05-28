@@ -177,6 +177,8 @@ def login() -> bool:
     ret = client.execute(f"{account}/{password}")
     return ret["success"]
 
+
+## Print out the Slogan.
 def printSlogan():
     print("  ____                            ____    ____          ")
     print(" /\\  _`\\   __                    /\\  _`\\ /\\  _`\\        ")

@@ -1,3 +1,4 @@
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
@@ -176,6 +177,10 @@ char *format(char *format, ...) {
  * Any of strings is NULL, return false. */
 bool streq(char *str1, char *str2) {
     return str1 && str2 && strcmp(str1, str2) == 0;
+}
+
+size_t len(char *str) {
+    return strlen(str);
 }
 
 /* Check if two strings are equal, 

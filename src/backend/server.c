@@ -1,4 +1,5 @@
 #include <bits/types/struct_timeval.h>
+#include <math.h>
 #include <pthread.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -69,12 +70,12 @@ int Startup(u_short port) {
 /* Auth client. */
 static bool AuthRequest(intptr_t client) {
     DBResult *result;
-    char *login;
+    char *login_info;
 
     result = new_db_result();
-    login = db_recv();
+    login_info = ReceiveRequestData(client);
 
-    bool pass = auth(login);
+    bool pass = auth(login_info);
     if (pass) {
         result->success = true;
     } else {
@@ -89,19 +90,49 @@ static bool AuthRequest(intptr_t client) {
     return pass;
 }
 
+/* Socket Recive data. */
+static int SocketRecv(intptr_t client, void *data, size_t size) {
+    size_t chars_num, rsize = 0;
+
+    while (rsize < size) {
+        chars_num = recv(client, data + rsize, size - rsize, 0);
+        if (chars_num > 0)
+            rsize += chars_num;
+        else
+            return -1;
+    }
+
+    return rsize;
+}
+
+/* Recive request data. */
+char *ReceiveRequestData(intptr_t client) {
+    size_t chars_num;
+    int32_t len;
+    char *rdata;
+
+    chars_num = SocketRecv(client, &len, sizeof(int32_t));
+    if (chars_num <= 0)
+        return NULL;
+    rdata = dalloc(len + 1);
+    chars_num = SocketRecv(client, rdata, len);
+    if (chars_num <= 0)
+        return NULL;
+
+    return rdata;
+}
+
 
 /* For loop request. */
 static void RequestHandler(intptr_t client) {
-    size_t chars_num;
+    char *rdata;
     struct timeval start_time, end_time;
-    char buf[SPOOL_SIZE];
-    bzero(buf, SPOOL_SIZE);
-    db_log(INFO, "Client ID '%ld' connect successfully.", getpid());
+
+    /* Start tiem recorder. */
     gettimeofday(&start_time, NULL);
-    while ((chars_num = recv(client, buf, SPOOL_SIZE, 0)) > 0) {
-        buf[chars_num] = '\0';
-        Execute(buf);
-        bzero(buf, SPOOL_SIZE);
+
+    while ((rdata = ReceiveRequestData(client)) != NULL) {
+        Execute(rdata);
         if (!db_send_over())
             break;
         MemoryContextReset(MASTER_MEMORY_CONTEXT);
@@ -110,6 +141,7 @@ static void RequestHandler(intptr_t client) {
         db_log(INFO, "Loop duration: %lfs", time_span(end_time, start_time));
         start_time = end_time;
     }
+
     db_log(INFO, "Client ID '%ld' disconnect.", getpid());
 }
 
@@ -140,8 +172,10 @@ void AcceptRequest(intptr_t client) {
     MemoryContextStart();
 
     /* Auth login message. */
-    if (AuthRequest(client)) 
+    if (AuthRequest(client)) {
+        db_log(INFO, "Client ID '%ld' connect successfully.", getpid());
         RequestHandler(client);
+    }
 
     close(client);
 
