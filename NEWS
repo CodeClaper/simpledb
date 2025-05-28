@@ -1,3 +1,1 @@
-1. Lack long value type for big int number input.
-2. Client send big data.
-3. Heap table.
+1. Heap table.
