@@ -23,9 +23,10 @@ List *parse(char *sql) {
     trim(sql); /* Remove space characters, includes '\f', '\n', '\r', '\t', '\v'*/
     db_log(INFO, "Execute sql: %s", sql);
 
-    size_t size = strlen(sql);
+    size_t size = strlen(sql) + 1;
     char buff[size + 1];
     sprintf(buff, "%s%c", sql, '\n');
+    buff[size] = '\0';
     /* Scan. */
     yy_scan_string(buff);
 
