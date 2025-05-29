@@ -4,6 +4,7 @@
 #include <getopt.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include "socket.h"
@@ -24,17 +25,17 @@ static const struct option long_options[]=
     {NULL,0,NULL,0}
 };
 
+volatile int timerexpired = 0;
 int mypipe[2];
-int timerexpired = 0;
 int fail = 0;
 int speed = 0;
-uint64_t bytes = 0;
+long bytes = 0;
 
-static char *host = "127.0.0.1";
-static int port = 4083;
-static int clients = 1;
-static int time = 30;
-static char *sql = "";
+char *host = "127.0.0.1";
+int port = 4083;
+volatile int clients = 1;
+int time = 30;
+char *sql = "";
 
 /* Usage print out. */
 static void usage() {
@@ -103,65 +104,75 @@ static void showInfo() {
             "  -Port:%d\n"
             "  -Run:%s\n"
             "  -time:%d\n"
-            "  -Clients:%d\n"
-           , host, port, sql, time, clients);
+            "  -Clients:%d\n", 
+            host, port, sql, time, clients);
 }
 
 static void alarmHandler(int signal) {
     timerexpired = 1;
 }	
 
+/* Bench core. */
 static void benchCore() {
     int client;
-
+    struct sigaction sa;
+    
+    /* Try to connect. */
     client = tryConnect(host, port, "root", "Zc120130211");
     if (client < 0) {
         fprintf(stderr, "Try connect database fail.\n");
         exit(2);
     }
 
-    struct sigaction sa;
     /* setup alarm signal handler */
     sa.sa_handler = alarmHandler;
     sa.sa_flags=0;
-    if(sigaction(SIGALRM, &sa, NULL))
+    if (sigaction(SIGALRM, &sa, NULL) == -1) {
+        fprintf(stderr, "Sigaction error.\n");
         exit(3);
-    alarm(time); // after benchtime,then exit
+    }
+    /* After benchtime,then exit. */
+    alarm(time);  
 
     while (1) {
         /* Exist when timer expired. */
         if (timerexpired) {
             if (fail > 0)
                 fail--;
-            return;
+            break;
         }
         /* Send sql and recive data. */
         if (SendData(client, sql) > 0) {
             char *resp = ReceiveRequestData(client);
-            bytes += strlen(resp);
-            free(resp);
-            speed++;
-        } else {
-            fail++;
+            if (resp != NULL) {
+                bytes += strlen(resp);
+                free(resp);
+                speed++;
+                continue;
+            }
         }
+        else
+            fail++;
     }
+    close(client);
 }
-
 
 /* Bench */
 static int bench() {
     int i, j;
-    uint64_t k;
+    long k;
     pid_t pid=0;
     FILE *f;
 
     /* Create pipe */
-    if(pipe(mypipe)) {
+    if (pipe(mypipe)) 
+    {
         fprintf(stderr,"Create pip fail.\n");
         exit(3);
     }
     
-    for (i = 0; i < clients; i++) {
+    for (i = 0; i < clients; i++) 
+    {
         pid = fork();
         if (pid <= (pid_t) 0) 
         {
@@ -185,9 +196,9 @@ static int bench() {
         if (f == NULL)
         {
             fprintf(stderr, "Open pip for writing fail.\n");
-            exit(1);
+            return 3;
         }
-        fprintf(f, "%d-%d-%ld\n", speed, fail, bytes);
+        fprintf(f, "%d %d %ld\n", speed, fail, bytes);
         fclose(f);
         return 0;
     }
@@ -226,7 +237,7 @@ static int bench() {
         /* Summary statistics. */
         printf("Summary statistics: \nTransaction: %d QPS. \nThroughput: %ld bytes/sec. \nRequest: %d susceed, %d failed.\n",
             (int)((speed + fail)/(float)(time)),
-            (uint64_t)(bytes/(float)time),
+            (long)(bytes/(float)time),
             speed,
             fail);
 
@@ -255,6 +266,7 @@ int main(int argc, char *argv[]) {
     showInfo();
 
     client = tryConnect(host, port, "root", "Zc120130211");
+    close(client);
 
     switch (client) {
         case -2:

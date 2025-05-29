@@ -14,7 +14,7 @@ LDADDCFLAGS = -lpthread -lm -lz
 all: $(SUBDIRS) bench
 
 bench: $(OBJS) $(headers) bench.c 
-	$(CC) $(CFLAGS) bench.c $(OBJS) $(headers) -o $@ $(LDADDCFLAGS)
+	$(CC) $(CFLAGS) bench.c $(OBJS) -o $@ $(LDADDCFLAGS)
 
 $(SUBDIRS): 
 	@$(MAKE) -C $@

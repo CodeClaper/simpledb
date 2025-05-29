@@ -1,9 +1,12 @@
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include "socket.h"
 #include "cJSON.h"
+
+#define OVER_FLAG "\r\n\r\n"  /* Over flag of message. */
 
 /* Socket Recive data. */
 static int SocketRecv(int client, void *data, size_t size) {
@@ -20,6 +23,17 @@ static int SocketRecv(int client, void *data, size_t size) {
     return rsize;
 }
 
+/* check if a file has suffix. */
+bool endwith(char *str, char *suffix) {
+    if (!str || !suffix)
+        return false;
+    ssize_t str_len = strlen(str);
+    ssize_t suffix_size = strlen(suffix);
+    if (suffix_size > str_len)
+        return false;
+    return strcmp(str + str_len - suffix_size, suffix) == 0;
+}
+
 /* Recive request data. */
 char *ReceiveRequestData(int client) {
     size_t chars_num;
@@ -33,7 +47,7 @@ char *ReceiveRequestData(int client) {
     chars_num = SocketRecv(client, rdata, len);
     if (chars_num <= 0)
         return NULL;
-
+    rdata[len] = '\0';
     return rdata;
 }
 
