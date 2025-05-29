@@ -118,7 +118,7 @@ static void benchCore() {
     struct sigaction sa;
     
     /* Try to connect. */
-    client = tryConnect(host, port, "root", "Zc120130211");
+    client = TryConnect(host, port, "root", "Zc120130211");
     if (client < 0) {
         fprintf(stderr, "Try connect database fail.\n");
         exit(2);
@@ -265,7 +265,7 @@ int main(int argc, char *argv[]) {
 
     showInfo();
 
-    client = tryConnect(host, port, "root", "Zc120130211");
+    client = TryConnect(host, port, "root", "Zc120130211");
     close(client);
 
     switch (client) {

@@ -8,6 +8,17 @@
 
 #define OVER_FLAG "\r\n\r\n"  /* Over flag of message. */
 
+/* check if a file has suffix. */
+bool endwith(char *str, char *suffix) {
+    if (!str || !suffix)
+        return false;
+    ssize_t str_len = strlen(str);
+    ssize_t suffix_size = strlen(suffix);
+    if (suffix_size > str_len)
+        return false;
+    return strcmp(str + str_len - suffix_size, suffix) == 0;
+}
+
 /* Socket Recive data. */
 static int SocketRecv(int client, void *data, size_t size) {
     size_t chars_num, rsize = 0;
@@ -23,16 +34,6 @@ static int SocketRecv(int client, void *data, size_t size) {
     return rsize;
 }
 
-/* check if a file has suffix. */
-bool endwith(char *str, char *suffix) {
-    if (!str || !suffix)
-        return false;
-    ssize_t str_len = strlen(str);
-    ssize_t suffix_size = strlen(suffix);
-    if (suffix_size > str_len)
-        return false;
-    return strcmp(str + str_len - suffix_size, suffix) == 0;
-}
 
 /* Recive request data. */
 char *ReceiveRequestData(int client) {
@@ -66,7 +67,7 @@ int SendData(int client, char *data) {
     return slen;
 }
 
-int login(int client, char *account, char *pwd) {
+int TryLogin(int client, char *account, char *pwd) {
     char buff[1024];
     memset(buff, 0, 1024);
     sprintf(buff, "%s/%s", account, pwd);
@@ -80,16 +81,21 @@ int login(int client, char *account, char *pwd) {
             exit(1);
         }
         cJSON *success = cJSON_GetObjectItemCaseSensitive(json, "success");
-        return success->valueint ? client : 2;
+        return success->valueint ? client : -2;
     }
     return -1;
 }
 
-/* Try to connect. */
-int tryConnect(char *host, int port, char *account, char *pwd) {
+/* Try to connect the database. 
+ * --------------------------
+ * >0: success.
+ * -1: connect fail.
+ * -2: bad account or password.
+ * */
+int TryConnect(char *host, int port, char *account, char *pwd) {
     int client = Socket(host, port);
     if (client > 0) {
-        if (login(client, account, pwd))
+        if (TryLogin(client, account, pwd))
             return client;
         else
             return -2;

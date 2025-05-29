@@ -1,5 +1,6 @@
 
-int tryConnect(char *host, int port, char *account, char *pwd);
+/* Try to connect. */
+int TryConnect(char *host, int port, char *account, char *pwd);
 
 /* Send data. */
 int SendData(int client, char *data);
