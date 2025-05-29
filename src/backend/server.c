@@ -1,5 +1,4 @@
 #include <bits/types/struct_timeval.h>
-#include <math.h>
 #include <pthread.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -78,6 +77,7 @@ static bool AuthRequest(intptr_t client) {
     bool pass = auth(login_info);
     if (pass) {
         result->success = true;
+        result->message = dstrdup("Login success.");
     } else {
         result->success = false;
         result->message = dstrdup("No access.");

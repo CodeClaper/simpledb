@@ -342,7 +342,7 @@ static void json_nondata_result(DBResult *result) {
 
 static void json_login_result(DBResult *result) {
     db_send("{ \"success\": %s,  \"message\":", result->success ? "true" : "false");
-    db_send("\"%s\"", "Login success.");
+    db_send("\"%s\"", result->message);
     db_send(",\"duration\": %lf}", result->duration);
 }
 
