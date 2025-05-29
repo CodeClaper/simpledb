@@ -1,0 +1,85 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include "socket.h"
+#include "cJSON.h"
+
+/* Socket Recive data. */
+static int SocketRecv(int client, void *data, size_t size) {
+    size_t chars_num, rsize = 0;
+
+    while (rsize < size) {
+        chars_num = recv(client, data + rsize, size - rsize, 0);
+        if (chars_num > 0)
+            rsize += chars_num;
+        else
+            return -1;
+    }
+
+    return rsize;
+}
+
+/* Recive request data. */
+char *ReceiveRequestData(int client) {
+    size_t chars_num;
+    int32_t len;
+    char *rdata;
+
+    chars_num = SocketRecv(client, &len, sizeof(int32_t));
+    if (chars_num <= 0)
+        return NULL;
+    rdata = malloc(len + 1);
+    chars_num = SocketRecv(client, rdata, len);
+    if (chars_num <= 0)
+        return NULL;
+
+    return rdata;
+}
+
+/* Send data. */
+int SendData(int client, char *data) {
+    int len, slen;
+    char *buff;
+
+    len = strlen(data);
+    buff = malloc(len + 4);
+    memcpy(buff, &len, 4);
+    memcpy(buff + 4, data, len);
+    slen = send(client, buff, len + 4, 0);
+    free(buff);
+
+    return slen;
+}
+
+int login(int client, char *account, char *pwd) {
+    char buff[1024];
+    memset(buff, 0, 1024);
+    sprintf(buff, "%s/%s", account, pwd);
+    if (SendData(client, buff) > 0) {
+        char *resp = ReceiveRequestData(client);
+        printf("%s\n", resp);
+        cJSON *json = cJSON_Parse(resp);
+        if (json == NULL) {
+            const char *err = cJSON_GetErrorPtr();
+            if (err != NULL)
+                fprintf(stderr, "Parse json err: %s\n", err);
+            exit(1);
+        }
+        cJSON *success = cJSON_GetObjectItemCaseSensitive(json, "success");
+        return success->valueint ? client : 2;
+    }
+    return -1;
+}
+
+/* Try to connect. */
+int tryConnect(char *host, int port, char *account, char *pwd) {
+    int client = Socket(host, port);
+    if (client > 0) {
+        if (login(client, account, pwd))
+            return client;
+        else
+            return -2;
+    }
+    return client;
+}

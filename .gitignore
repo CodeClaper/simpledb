@@ -120,4 +120,5 @@ compile_commands.json
 
 src/simpledb
 src/simpledb_cli
+src/bench/bench
 test/gtest/gtest
