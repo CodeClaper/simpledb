@@ -1247,7 +1247,8 @@ static KeyValue *calc_column_avg_value(ColumnNode *column, SelectResult *select_
 /* Calulate column max value.*/
 static KeyValue *calc_column_max_value(ColumnNode *column, SelectResult *select_result) {
     void *max_value = NULL;
-    DataType data_type;
+    DataType data_type = T_UNKNOWN;
+
     QueueCell *qc;
     qforeach (qc, select_result->rows) {
         Row *row = qfirst(qc);
@@ -1264,13 +1265,15 @@ static KeyValue *calc_column_max_value(ColumnNode *column, SelectResult *select_
             max_value = copy_value(current_value, data_type);
         }
     }
+
     return new_key_value(dstrdup(MAX_NAME), max_value, data_type);
 }
 
 /* Calulate column max value.*/
 static KeyValue *calc_column_min_value(ColumnNode *column, SelectResult *select_result) {
     void *min_value = NULL;
-    DataType data_type;
+    DataType data_type = T_UNKNOWN;
+
     QueueCell *qc;
     qforeach (qc, select_result->rows) {
         Row *row = qfirst(qc);
@@ -1287,6 +1290,7 @@ static KeyValue *calc_column_min_value(ColumnNode *column, SelectResult *select_
             min_value = copy_value(current_value, data_type);
         }
     }
+
     return new_key_value(dstrdup(MIN_NAME), min_value, data_type);
 }
 

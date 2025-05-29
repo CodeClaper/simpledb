@@ -21,7 +21,7 @@
  * Return current system timestamp, and -1 if fail.
  * Supports four time level, SECOND, MILLISECOND, MICROSECOND, NANOSECOND. */
 int64_t get_current_sys_time(TIME_LEVEL time_level) {
-    int64_t value;
+    int64_t value = - 1;
     char time_str[32];
     struct timespec tv;
 
