@@ -7,10 +7,11 @@
 #include "socket.h"
 #include "cJSON.h"
 
-#define OVER_FLAG "\r\n\r\n"  /* Over flag of message. */
+/* Over flag of message. */
+#define OVER_FLAG "\r\n\r\n"  
 
 /* check if a file has suffix. */
-bool endwith(char *str, char *suffix) {
+static bool endwith(char *str, char *suffix) {
     if (!str || !suffix)
         return false;
     ssize_t str_len = strlen(str);
@@ -66,7 +67,7 @@ char *RecvData(int client) {
     rdata = NULL;
     size = 0;
 
-    while (!endwith(data, OVER_FLAG)) {
+    for (;;) {
         rdata = ReceiveRequestData(client);
         if (rdata == NULL)
             return NULL;
@@ -74,6 +75,10 @@ char *RecvData(int client) {
         data = realloc(data, size + len + 1);
         memcpy(data + size, rdata, len);
         size += len;
+        if (endwith(rdata, OVER_FLAG)) {
+            free(rdata);
+            break;
+        }
         free(rdata);
     }
     
@@ -106,6 +111,7 @@ int TryLogin(int client, char *account, char *pwd) {
     char buff[1024];
     memset(buff, 0, 1024);
     sprintf(buff, "%s/%s", account, pwd);
+
     if (SendData(client, buff) > 0) {
         char *resp = RecvData(client);
         cJSON *json = cJSON_Parse(resp);
@@ -118,6 +124,7 @@ int TryLogin(int client, char *account, char *pwd) {
         cJSON *success = cJSON_GetObjectItemCaseSensitive(json, "success");
         return success->valueint ? client : -2;
     }
+
     return -1;
 }
 
@@ -128,12 +135,15 @@ int TryLogin(int client, char *account, char *pwd) {
  * -2: bad account or password.
  * */
 int TryConnect(char *host, int port, char *account, char *pwd) {
-    int client = Socket(host, port);
+    int client;
+    client = Socket(host, port);
+
     if (client > 0) {
         if (TryLogin(client, account, pwd))
             return client;
         else
             return -2;
     }
+
     return client;
 }
