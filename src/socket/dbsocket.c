@@ -58,7 +58,6 @@ int login(int client, char *account, char *pwd) {
     sprintf(buff, "%s/%s", account, pwd);
     if (SendData(client, buff) > 0) {
         char *resp = ReceiveRequestData(client);
-        printf("%s\n", resp);
         cJSON *json = cJSON_Parse(resp);
         if (json == NULL) {
             const char *err = cJSON_GetErrorPtr();

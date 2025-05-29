@@ -1,4 +1,5 @@
 #include <signal.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <getopt.h>
 #include <stdlib.h>
@@ -25,6 +26,9 @@ static const struct option long_options[]=
 
 int mypipe[2];
 int timerexpired = 0;
+int fail = 0;
+int speed = 0;
+uint64_t bytes = 0;
 
 static char *host = "127.0.0.1";
 static int port = 4083;
@@ -108,6 +112,14 @@ static void alarmHandler(int signal) {
 }	
 
 static void benchCore() {
+    int client;
+
+    client = tryConnect(host, port, "root", "Zc120130211");
+    if (client < 0) {
+        fprintf(stderr, "Try connect database fail.\n");
+        exit(2);
+    }
+
     struct sigaction sa;
     /* setup alarm signal handler */
     sa.sa_handler = alarmHandler;
@@ -119,26 +131,30 @@ static void benchCore() {
     while (1) {
         /* Exist when timer expired. */
         if (timerexpired) {
+            if (fail > 0)
+                fail--;
             return;
         }
-
+        /* Send sql and recive data. */
+        if (SendData(client, sql) > 0) {
+            char *resp = ReceiveRequestData(client);
+            bytes += strlen(resp);
+            free(resp);
+            speed++;
+        } else {
+            fail++;
+        }
     }
 }
 
 
 /* Bench */
-static void bench() {
-    int i, client;
+static int bench() {
+    int i, j;
+    uint64_t k;
     pid_t pid=0;
+    FILE *f;
 
-    /* Check socket avaliable. */
-    client = Socket(host, port);
-    if (client < 0) { 
-        fprintf(stderr,"Connect to database server failed. Aborting benchmark.\n");
-        exit(1);
-    }
-    close(client);
-    
     /* Create pipe */
     if(pipe(mypipe)) {
         fprintf(stderr,"Create pip fail.\n");
@@ -146,8 +162,8 @@ static void bench() {
     }
     
     for (i = 0; i < clients; i++) {
-        pid=fork();
-        if(pid <= (pid_t) 0) 
+        pid = fork();
+        if (pid <= (pid_t) 0) 
         {
             /* child process or error*/
             sleep(1); /* make childs faster */
@@ -156,20 +172,74 @@ static void bench() {
     }
 
     /* Fork child process. */
-    if (pid < (pid_t) 0) {
+    if (pid < (pid_t) 0) 
+    {
         fprintf(stderr,"Fork child process fail.\n");
-        exit(3);
-    } else if (pid == (pid_t) 0) {
+        return 3;
+    } 
+    else if (pid == (pid_t) 0) 
+    {
+        /* Child process bench. */
         benchCore();
-    } else {
-
+        f = fdopen(mypipe[1],"w");
+        if (f == NULL)
+        {
+            fprintf(stderr, "Open pip for writing fail.\n");
+            exit(1);
+        }
+        fprintf(f, "%d-%d-%ld\n", speed, fail, bytes);
+        fclose(f);
+        return 0;
     }
+    else
+    {
+        /* Parent process summary statistics */
+        f = fdopen(mypipe[0], "r");
+        if (f == NULL) 
+        {
+            fprintf(stderr, "Open pip for reading fail.\n");
+            exit(1);
+        }
+
+        setvbuf(f,NULL,_IONBF,0);
+
+        speed = 0;
+        fail = 0;
+        bytes = 0;
+
+        while (1)
+        {
+            pid = fscanf(f,"%d %d %ld", &i, &j, &k);
+            if (pid < 2)
+            {
+                fprintf(stderr,"Some of our childrens died.\n");
+                break;
+            }
+            
+            speed += i;
+            fail += j;
+            bytes += k;
+        
+            if(--clients == 0) break;
+        }
+    
+        /* Summary statistics. */
+        printf("Summary statistics: \nTransaction: %d QPS. \nThroughput: %ld bytes/sec. \nRequest: %d susceed, %d failed.\n",
+            (int)((speed + fail)/(float)(time)),
+            (uint64_t)(bytes/(float)time),
+            speed,
+            fail);
+
+        fclose(f);
+    }
+
+    return i;
 }
-
-
 
 /* The main entry. */
 int main(int argc, char *argv[]) {
+
+    int client;
 
     if (argc == 1) {
         usage();
@@ -184,5 +254,17 @@ int main(int argc, char *argv[]) {
 
     showInfo();
 
-    tryConnect(host, port, "root", "Zc120130211");
+    client = tryConnect(host, port, "root", "Zc120130211");
+
+    switch (client) {
+        case -2:
+            fprintf(stderr, "Bad account or password.\n");
+            return -2;
+        case -1:
+            fprintf(stderr, "Try to connect %s:%d fail.\n", host, port);
+            return -1;
+        default:
+            return bench();
+            break;
+    }
 }
