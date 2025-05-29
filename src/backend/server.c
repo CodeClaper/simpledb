@@ -114,6 +114,7 @@ char *ReceiveRequestData(intptr_t client) {
     chars_num = SocketRecv(client, &len, sizeof(int32_t));
     if (chars_num <= 0)
         return NULL;
+
     rdata = dalloc(len + 1);
     chars_num = SocketRecv(client, rdata, len);
     if (chars_num <= 0)

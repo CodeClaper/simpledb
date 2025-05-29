@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,6 +30,9 @@ static int SocketRecv(int client, void *data, size_t size) {
             rsize += chars_num;
         else
             return -1;
+
+        if (errno == EINTR)
+            return -1;
     }
 
     return rsize;
@@ -48,8 +52,33 @@ char *ReceiveRequestData(int client) {
     chars_num = SocketRecv(client, rdata, len);
     if (chars_num <= 0)
         return NULL;
+
     rdata[len] = '\0';
     return rdata;
+}
+
+/* Recv data. */
+char *RecvData(int client) {
+    char *data, *rdata;
+    size_t size, len;
+
+    data = NULL;
+    rdata = NULL;
+    size = 0;
+
+    while (!endwith(data, OVER_FLAG)) {
+        rdata = ReceiveRequestData(client);
+        if (rdata == NULL)
+            return NULL;
+        len = strlen(rdata);
+        data = realloc(data, size + len + 1);
+        memcpy(data + size, rdata, len);
+        size += len;
+        free(rdata);
+    }
+    
+    data[size] = '\0';
+    return data;
 }
 
 /* Send data. */
@@ -67,12 +96,18 @@ int SendData(int client, char *data) {
     return slen;
 }
 
+/* Try to login database. 
+ * ----------------------
+ * >0: login success.
+ * -1: connect fail.
+ * -2: login fail.
+ * */
 int TryLogin(int client, char *account, char *pwd) {
     char buff[1024];
     memset(buff, 0, 1024);
     sprintf(buff, "%s/%s", account, pwd);
     if (SendData(client, buff) > 0) {
-        char *resp = ReceiveRequestData(client);
+        char *resp = RecvData(client);
         cJSON *json = cJSON_Parse(resp);
         if (json == NULL) {
             const char *err = cJSON_GetErrorPtr();

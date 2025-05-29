@@ -93,12 +93,14 @@ bool db_send(const char *format, ...) {
     Assert(!spool_is_empty());
 
     len = (uint32_t) strlen(inner_session.spool);
+    Assert(len > 0);
     Assert(len < SPOOL_SIZE - LEFT_SPACE);
 
     memmove(((char *) inner_session.spool) + 4, inner_session.spool, len);
     memcpy(inner_session.spool, &len, 4);
 
-    /* Check if client close connection, if recv get zero which means client has closed conneciton. */
+    /* Check if client close connection, if recv get zero 
+     * which means client has closed conneciton. */
     if ((s = send(inner_session.client, inner_session.spool, (len + 4), 0)) > 0) {
 
         /* Clear up spool. */

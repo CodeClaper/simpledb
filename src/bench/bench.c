@@ -1,4 +1,5 @@
 #include <signal.h>
+#include <stdatomic.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <getopt.h>
@@ -7,6 +8,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <errno.h>
 #include "socket.h"
 #include "dbsocket.h"
 
@@ -25,7 +27,7 @@ static const struct option long_options[]=
     {NULL,0,NULL,0}
 };
 
-volatile int timerexpired = 0;
+volatile atomic_int timerexpired = 0;
 int mypipe[2];
 int fail = 0;
 int speed = 0;
@@ -100,11 +102,11 @@ static void getOpt(int argc, char *argv[]) {
 static void showInfo() {
     fprintf(stdout,
             "Run info:\n"
-            "  -Host:%s\n"
-            "  -Port:%d\n"
-            "  -Run:%s\n"
-            "  -time:%d\n"
-            "  -Clients:%d\n", 
+            "  -Host: %s\n"
+            "  -Port: %d\n"
+            "  -Run:  %s\n"
+            "  -Time: %d\n"
+            "  -Clients: %d\n", 
             host, port, sql, time, clients);
 }
 
@@ -126,11 +128,10 @@ static void benchCore() {
 
     /* setup alarm signal handler */
     sa.sa_handler = alarmHandler;
-    sa.sa_flags=0;
-    if (sigaction(SIGALRM, &sa, NULL) == -1) {
-        fprintf(stderr, "Sigaction error.\n");
+    sa.sa_flags = SA_RESTART;
+    if (sigaction(SIGALRM, &sa, NULL)) 
         exit(3);
-    }
+
     /* After benchtime,then exit. */
     alarm(time);  
 
@@ -143,12 +144,18 @@ static void benchCore() {
         }
         /* Send sql and recive data. */
         if (SendData(client, sql) > 0) {
-            char *resp = ReceiveRequestData(client);
-            if (resp != NULL) {
+            char *resp = RecvData(client);
+            if (resp == NULL && errno == EINTR) {
+                if (timerexpired) break;
+                else fail++;
+            } else if (resp != NULL) {
                 bytes += strlen(resp);
                 free(resp);
                 speed++;
                 continue;
+            } else {
+                fail++;
+                break;
             }
         }
         else
@@ -212,7 +219,7 @@ static int bench() {
             exit(1);
         }
 
-        setvbuf(f,NULL,_IONBF,0);
+        setvbuf(f, NULL, _IONBF, 0);
 
         speed = 0;
         fail = 0;
