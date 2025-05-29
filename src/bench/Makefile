@@ -1,6 +1,6 @@
 CC = gcc
 includedir = ../../include
-SUBDIRS := ../json ../socket/
+SUBDIRS := ../json ../socket
 OBJS := $(patsubst %.c, %.o, $(shell find $(SUBDIRS) -name "*.c"))
 
 headerdirs = $(includedir)/json $(includedir)/socket
@@ -23,3 +23,4 @@ $(SUBDIRS):
 
 clean:
 	rm -f *.o bench
+	@$(foreach dir, $(SUBDIRS), $(MAKE) -C $(dir) clean;)
