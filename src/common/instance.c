@@ -41,6 +41,7 @@ SelectResult *new_select_result(StatementType stype, char *table_name) {
     select_result->rows = CreateQueue(NODE_ROW);
     select_result->derived = NULL;
     select_result->last_derived = false;
+    select_result->first_row_flag = true;
     return select_result;
 }
 

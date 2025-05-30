@@ -412,6 +412,9 @@ static void handle_dulicate_key(Row *row) {
 
 /* Json DBResult. */
 void json_db_result(DBResult *result) {
+    /* If result has ouput, return. */
+    if (result->hasOutput)
+        return;
     switch (result->stmt_type) {
         case SELECT_STMT:
             json_select_result(result);

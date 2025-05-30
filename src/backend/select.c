@@ -16,6 +16,7 @@
 #include <strings.h>
 #define _XOPEN_SOURCE
 #define __USE_XOPEN
+#include <sys/time.h>
 #include <time.h>
 #include "select.h"
 #include "check.h"
@@ -35,6 +36,7 @@
 #include "refer.h"
 #include "utils.h"
 #include "const.h"
+#include "timer.h"
 #include "compare.h"
 #include "instance.h"
 #include "jsonwriter.h"
@@ -1145,19 +1147,30 @@ void query_row(Row *row, SelectResult *select_result, Table *table,
                ROW_HANDLER_ARG_TYPE type, void *arg) {
 
     /* If has limit clause. */
-    if (type == ARG_SELECT_PARAM && ((SelectParam *) arg)->limitClause != NULL) {
+    if (type == ARG_SELECT_PARAM && ((SelectParam *) arg)->limitClause != NULL) 
+    {
         SelectParam *selectParam = (SelectParam *) arg;
         LimitClauseNode *limit_clause = selectParam->limitClause;
 
         /* If has limit clause, only append row whose pindex > offset and pindex < offset + rows. */
         if (selectParam->offset >= limit_clause->offset && 
-                selectParam->offset < (limit_clause->offset + limit_clause->rows)) {
-            
+                selectParam->offset < (limit_clause->offset + limit_clause->rows)) 
+        {
+            if (select_result->first_row_flag)
+                select_result->first_row_flag = false;
+            else
+                db_send(", ");
             json_row(purge_row(row));
             select_result->row_size++;
         }
         selectParam->offset++;
-    } else {
+    }
+    else 
+    {
+        if (select_result->first_row_flag)
+            select_result->first_row_flag = false;
+        else
+            db_send(", ");
         json_row(purge_row(row));
         select_result->row_size++;
     }
@@ -2321,20 +2334,30 @@ static inline ConditionNode *get_table_exp_condition(TableExpNode *table_exp) {
         return NULL;
 }
 
+/* Do before query condition. */
 static void before_query_condition(SelectParam *selectParam) {
     if (selectParam->onlyAll) {
-        db_send("[");
+        db_send("{ \"success\": true, ");
+        db_send("\"data\": [");
     }
 }
 
-static void after_query_condition(SelectParam *selectParam) {
+/* Do after query condition. */
+static void after_query_condition(SelectParam *selectParam, SelectResult *selectResult, DBResult *dbresult) {
     if (selectParam->onlyAll) {
-        db_send("]");
+        dbresult->hasOutput = true;
+        /* Calulate duration. */
+        gettimeofday(&dbresult->end_time, NULL);
+        dbresult->duration = time_span(dbresult->end_time, dbresult->start_time);
+        db_send("], ");
+        db_send("\"rows\": %d,", selectResult->row_size);
+        db_send("\"message\": \"Query %d rows data from table '%s' successfully.\", ", selectResult->row_size, selectResult->table_name);
+        db_send("\"duration\": %lf }", dbresult->duration);
     }
 }
 
 /* Query with condition when multiple table. */
-static SelectResult *query_multi_table_with_condition(SelectNode *select_node) {
+static SelectResult *query_multi_table_with_condition(SelectNode *select_node, DBResult *dbresult) {
     List *list;
     SelectResult *result;
     ConditionNode *condition;
@@ -2349,6 +2372,9 @@ static SelectResult *query_multi_table_with_condition(SelectNode *select_node) {
     result = NULL;
     selectParam = optimizeSelect(select_node);
     condition = get_table_exp_condition(select_node->table_exp);
+
+    /* Do before query condition. */
+    // before_query_condition(selectParam);
 
     ListCell *lc;
     foreach (lc, list) {
@@ -2372,6 +2398,9 @@ static SelectResult *query_multi_table_with_condition(SelectNode *select_node) {
         result = current_result;
     }
 
+    /* Do after query condition. */
+    // after_query_condition(selectParam, result, dbresult);
+
     return result;
 }
 
@@ -2382,13 +2411,13 @@ void exec_select_statement(SelectNode *select_node, DBResult *result) {
     check_select_node(select_node);
 
     /* Query multiple table with conditon and get select result which is after row filtered. */
-    SelectResult *select_result = query_multi_table_with_condition(select_node);
+    SelectResult *select_result = query_multi_table_with_condition(select_node, result);
 
     /* Query Selection to define row content. */
     query_with_selection(select_node->selection, select_result);
 
     /* If select all, return all row data. */
-    result->rows = QueueSize(select_result->rows);
+    result->rows = select_result->row_size;
     result->data = select_result;
     result->success = true;
     result->message = format("Query %d rows data from table '%s' successfully.", 

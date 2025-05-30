@@ -652,6 +652,7 @@ typedef struct SelectResult {
     Queue *rows;                    /* Selected rows. */
     struct SelectResult *derived;   /* Derived select result, used for multi-table query. */
     bool last_derived;              /* Last derived flag. */
+    bool first_row_flag;            /* First row flag. */
 } SelectResult;
 
 
@@ -709,6 +710,7 @@ typedef struct {
     struct timeval start_time;
     struct timeval end_time;
     double duration;
+    bool hasOutput;
 } DBResult;
 
 /* TransactionHandle */
