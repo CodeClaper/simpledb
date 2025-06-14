@@ -16,6 +16,7 @@ typedef enum ROW_HANDLER_ARG_TYPE {
 typedef void (*ROW_HANDLER)(Row *, SelectResult *select_result, Table *table, ROW_HANDLER_ARG_TYPE type,void *arg);
 
 typedef struct SelectParam {
+    StatementType stmt_type;        /* StatementType. */
     bool onlyAll;                   /* Only select all. */
     bool onlyCount;                 /* Only count int select statement. */
     volatile int32_t offset;        /* Current offset. Need volatile in parall calculating.*/

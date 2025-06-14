@@ -1163,7 +1163,7 @@ void query_row(Row *row, SelectResult *select_result, Table *table,
             json_row(purge_row(row));
             select_result->row_size++;
         }
-        selectParam->offset++;
+        __sync_fetch_and_add(&selectParam->offset, 1);
     }
     else 
     {
@@ -1174,6 +1174,9 @@ void query_row(Row *row, SelectResult *select_result, Table *table,
         json_row(purge_row(row));
         select_result->row_size++;
     }
+
+    /* Not use row info, free it. */
+    free_common_row(row);
 }
 
 
@@ -2336,7 +2339,7 @@ static inline ConditionNode *get_table_exp_condition(TableExpNode *table_exp) {
 
 /* Do before query condition. */
 static void before_query_condition(SelectParam *selectParam) {
-    if (selectParam->onlyAll) {
+    if (selectParam->onlyAll && selectParam->stmt_type == SELECT_STMT) {
         db_send("{ \"success\": true, ");
         db_send("\"data\": [");
     }
@@ -2344,7 +2347,7 @@ static void before_query_condition(SelectParam *selectParam) {
 
 /* Do after query condition. */
 static void after_query_condition(SelectParam *selectParam, SelectResult *selectResult, DBResult *dbresult) {
-    if (selectParam->onlyAll) {
+    if (selectParam->onlyAll && selectParam->stmt_type == SELECT_STMT) {
         dbresult->hasOutput = true;
         /* Calulate duration. */
         gettimeofday(&dbresult->end_time, NULL);
@@ -2370,11 +2373,11 @@ static SelectResult *query_multi_table_with_condition(SelectNode *select_node, D
     list = select_node->table_exp->from_clause->from;
     Assert(len_list(list) > 0);
     result = NULL;
-    selectParam = optimizeSelect(select_node);
+    selectParam = optimizeSelect(select_node, dbresult->stmt_type);
     condition = get_table_exp_condition(select_node->table_exp);
 
     /* Do before query condition. */
-    // before_query_condition(selectParam);
+    before_query_condition(selectParam);
 
     ListCell *lc;
     foreach (lc, list) {
@@ -2399,7 +2402,7 @@ static SelectResult *query_multi_table_with_condition(SelectNode *select_node, D
     }
 
     /* Do after query condition. */
-    // after_query_condition(selectParam, result, dbresult);
+    after_query_condition(selectParam, result, dbresult);
 
     return result;
 }

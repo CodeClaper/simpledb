@@ -64,6 +64,7 @@ def test_auto_rollback():
     sql = "begin;\n" \
           "insert into Student values('S009', 'holy', 8, '2016-02-08', ref(id = 'C002'));\n" 
     ret = client.execute(sql)
+    print(ret)
     assert ret[0]["success"] == True
     assert ret[1]["success"] == False
 

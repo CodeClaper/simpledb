@@ -238,6 +238,7 @@ void Execute(char *sql) {
         /* Catch Error. */
         if (setjmp(errEnv) == 0) {
             statements = parse(sql);
+            db_send(len_list(statements) > 1 ? "[" : "");
             /* Execute each statement. */
             ListCell *lc;
             foreach (lc, statements) {
@@ -245,7 +246,11 @@ void Execute(char *sql) {
                 append_list(result_list, result);
                 Statement *statement = lfirst(lc);
                 ExecuteStatement(statement, result);
+                json_db_result(result);
+                if (last_cell(statements) != lc)
+                    db_send(",");
             }
+            db_send(len_list(statements) > 1 ? "]" : "");
         } else {
             /* Catch routine. */
             /* If the set is empty, which means sql syntax error, 
@@ -265,16 +270,16 @@ void Execute(char *sql) {
                 last_result->duration = time_span(last_result->end_time, last_result->start_time);
                 db_log(INFO, "Duration: %lfs", last_result->duration);
             }
+            json_db_result(last_result);
+            db_send(len_list(result_list) > 1 ? "]" : "");
         }
     } else {
         DBResult *emptyResult = new_db_result();
         emptyResult->success = false;
         emptyResult->message = format("Input nothing");
         append_list(result_list, emptyResult);
+        json_list(result_list);
     }
-
-    /* Json result list. */
-    json_list(result_list);
 
     /* Free statements. */
     free_list_deep(statements);

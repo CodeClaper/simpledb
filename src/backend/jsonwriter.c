@@ -439,7 +439,6 @@ void json_db_result(DBResult *result) {
 
 /* Json DBResult list*/
 static void json_db_result_list(List *list) {
-    db_send(len_list(list) > 1 ? "[" : "");
 
     ListCell *lc;
     foreach (lc, list) {

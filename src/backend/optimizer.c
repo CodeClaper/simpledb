@@ -9,8 +9,9 @@ static LimitClauseNode *GetLimitClause(SelectNode *selectNode);
 static ROW_HANDLER DefineRowHandler(SelectParam *selectParam);
 
 /* Optimize Select Statment. */
-SelectParam *optimizeSelect(SelectNode *selectNode) {
+SelectParam *optimizeSelect(SelectNode *selectNode, StatementType stmt_type) {
     SelectParam *selectParam = instance(SelectParam);
+    selectParam->stmt_type = stmt_type;
     selectParam->onlyAll = OnlySelectAllInSelection(selectNode);
     selectParam->onlyCount = OnlyCountInSelection(selectNode);
     selectParam->limitClause = GetLimitClause(selectNode);
@@ -74,7 +75,7 @@ static LimitClauseNode *GetLimitClause(SelectNode *selectNode) {
  * (3) otherwise, use select_row as default.
  * */
 static ROW_HANDLER DefineRowHandler(SelectParam *selectParam) {
-   return selectParam->onlyAll 
-            ? select_row
+   return selectParam->onlyAll && selectParam->stmt_type == SELECT_STMT
+            ? query_row
             : selectParam->onlyCount ? count_row : select_row;
 }

@@ -404,7 +404,7 @@ static List *insert_for_query_spec(InsertNode *insert_node) {
 
     /* Make a DBResult to store query result. */
     DBResult *result = new_db_result();
-    result->stmt_type = SELECT_STMT;
+    result->stmt_type = INSERT_STMT;
 
     exec_select_statement(select_node, result);
 
