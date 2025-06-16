@@ -89,8 +89,7 @@ def clear():
 ## Execute sql statement.
 def simpledb(cmd):
     sql = handleSql(cmd)
-    resp = client.directExecute(sql)    
-    print(resp)
+    client.directExecute(sql)    
 
 ## Read command.
 def readCmd():

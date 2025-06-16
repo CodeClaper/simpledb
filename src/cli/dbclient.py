@@ -34,15 +34,14 @@ class DbClient:
             data += packet
         return data
 
-    def directExecute(self, sql: str) -> str:
-        resp = ''
+    def directExecute(self, sql: str):
         try:
             sql_bytes = sql.encode("utf-8")
             slen = len(sql_bytes)
             num_bytes = slen.to_bytes(4, byteorder=sys.byteorder)
             sdata = b''+ num_bytes + sql_bytes
             self.client.send(sdata)
-            writer = io.StringIO()
+            # writer = io.StringIO()
             while True:
                 len_resp_bytes = self.socket_recv(4)
                 if not len_resp_bytes:
@@ -53,19 +52,17 @@ class DbClient:
                     raise Exception("not recive any data")
                 response = data_resp_bytes.decode("utf-8").strip("\x00")
                 if response.endswith("\r\n\r\n"):
-                    writer.write(response[:-4])
+                    print(response[:-4])
                     break
-                writer.write(response)
-            resp = writer.getvalue()
-            writer.close()
-            return resp
+                else:
+                    print(response)
         except ConnectionError:
             exit(1)
         except socket.timeout:
             print("timeout.")
             exit(1)
         except Exception as e:
-            print(f"Error: {e}, and Raw is {resp}")
+            print(f"Error: {e}")
         return ''
 
     def execute(self, sql: str) -> dict:
