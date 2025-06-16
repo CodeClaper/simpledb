@@ -28,6 +28,7 @@
 #include "free.h"
 #include "log.h"
 #include "tablecache.h"
+#include "heaptable.h"
 #include "systable.h"
 
 /* Calculate meta column length. 
@@ -300,6 +301,7 @@ void exec_create_table_statement(CreateTableNode *create_table_node, DBResult *r
         create_table(oid, meta_table) && 
         save_table_object(oid, GET_METATABLE_NAME(meta_table)) &&
         save_table_cache(oid, meta_table) &&
+        CreateHeapTable(meta_table->table_name) &&
         CreateStrHeapTable(meta_table->table_name) 
     ) {
         result->success = true;

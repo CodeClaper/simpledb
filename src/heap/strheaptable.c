@@ -228,7 +228,7 @@ StrRefer *InsertStringValue(Oid oid, char *str_val) {
 
 /* Overflow the page. */
 static inline bool OverflowStringPage(StrRefer *strRefer) {
-    return (strRefer->refer.cell_num * STRING_ROW_SIZE + strRefer->size) <= PAGE_SIZE;
+    return (strRefer->refer.cell_num * STRING_ROW_SIZE + strRefer->size) > PAGE_SIZE;
 }
 
 /* Query not cross page. */
@@ -309,7 +309,8 @@ char *QueryStringValue(StrRefer *strRefer) {
     if (EmptyStrRefer(strRefer))
         return NULL;
     return OverflowStringPage(strRefer) 
-        ? QueryNotCrossPage(strRefer) : QueryCrossPage(strRefer);
+        ? QueryCrossPage(strRefer)
+        : QueryNotCrossPage(strRefer);
 }
 
 /* Drop the string heap table. */
