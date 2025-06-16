@@ -24,13 +24,14 @@ typedef uint64_t Oid;
 
 /* Object Type. 
  * Only support four object type:
- * normal table, view, index table and schema.
+ * normal table, view, index table, schema, heap table, string heap table.
  * */
 typedef enum ObjectType {
     OTABLE,
     OVIEW,
     OINDEX,
     OSCHEMA,
+    OHEAP_TABLE,
     OSTRING_HEAP_TABLE
 } ObjectType;
 
@@ -43,6 +44,7 @@ static char *ObjectTypeNameList[] = {
     "VIEW",
     "INDEX",
     "SCHEMA",
+    "HEAP_TABLE",
     "STRING_HEAP_TABLE"
 };
 

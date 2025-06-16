@@ -1,5 +1,5 @@
 includedir = ../include
-SUBDIRS := backend common json lock memory parser storage trans utils sys
+SUBDIRS := backend common json lock memory parser heap storage trans utils sys
 CC = gcc
 OBJS := $(patsubst %.c, %.o, $(shell find $(SUBDIRS) -name "*.c"))
 
