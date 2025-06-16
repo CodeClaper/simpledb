@@ -17,6 +17,7 @@
 #include "meta.h"
 #include "bufmgr.h"
 #include "ltree.h"
+#include "select.h"
 
 /* Create the heap table. */
 bool CreateHeapTable(char *tableName) {
@@ -133,4 +134,33 @@ Refer *HeapTableInsertRow(Oid oid, Row *row) {
     ReleaseBuffer(rootBuffer);
     
     return currentRefer;
+}
+
+
+/* Query row from heap table. */
+Row *HeapTableQueryRow(Refer *refer) {
+    Buffer buffer;
+    void *block;
+    Table *table;
+    uint32_t row_len;
+    Row *row;
+    
+    table = open_table_inner(refer->oid);
+    if (table == NULL) {
+        db_log(ERROR, "Try to open table fail.");
+        return NULL;
+    }
+    row_len = calc_table_row_length(table);
+
+    buffer = ReadBuffer(refer->oid, refer->page_num);
+    LockBuffer(buffer, RW_READERS);
+    block = GetBufferBlock(buffer);
+
+    /* Deserialize row. */
+    row = generate_row(block + refer->page_num * row_len, table->meta_table);
+
+    UnlockBuffer(buffer);
+    ReleaseBuffer(buffer);
+
+    return row;
 }

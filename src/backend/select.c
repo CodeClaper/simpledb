@@ -77,7 +77,6 @@ static KeyValue *query_function_value(ScalarExpNode *scalar_exp, SelectResult *s
 static KeyValue *query_value_item(ValueItemNode *value_item, Row *row);
 static KeyValue *query_row_value(SelectResult *select_result, ScalarExpNode *scalar_exp, Row *row);
 static Row *query_plain_row_selection(SelectResult *select_result, List *scalar_exp_set, Row *row);
-static Row *generate_row(void *destinct, MetaTable *meta_table);
 static void* purge_row(Row *row);
 static char *search_table_via_alias(SelectResult *select_result, char *range_variable);
 static KeyValue *query_plain_column_value(SelectResult *select_result, ColumnNode *column, Row *row);
@@ -558,7 +557,7 @@ static void *assign_row_value(void *destination, MetaColumn *meta_column) {
 
 
 /* Generate select row. */
-static Row *generate_row(void *destination, MetaTable *meta_table) {
+Row *generate_row(void *destination, MetaTable *meta_table) {
     /* Instance new row. */
     Row *row = new_row(NULL, meta_table->table_name);
 

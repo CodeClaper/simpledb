@@ -45,6 +45,9 @@ Row *define_row(Refer *refer);
  * */
 Row *define_visible_row(Refer *refer);
 
+/* Deseriable row. 1*/
+Row *generate_row(void *destinct, MetaTable *meta_table);
+
 /* Query with column and value. */
 SelectResult *select_with_column_value(Oid oid, MetaColumn *meta_column, void *value);
 
