@@ -477,6 +477,21 @@ uint32_t calc_primary_key_length2(MetaTable *meta_table) {
     return -1;
 }
 
+/* Calculate primary index value length. */
+uint32_t calc_primary_index_value_length(Table *table) {
+    uint32_t value_len;
+    uint32_t i;
+    
+    value_len = sizeof(Refer);
+    for (i = 0; i < table->meta_table->all_column_size; i++) {
+        MetaColumn *meta_column = table->meta_table->meta_column[i];
+        if (meta_column->sys_reserved)
+            value_len += meta_column->column_length;
+    }
+    return value_len;
+}
+ 
+
 /* Get column meta info by index. */
 static MetaColumn *get_meta_column_by_index(void *root_node, uint32_t index, uint32_t offset) {
     void *destination = get_meta_column_pointer(root_node, index);
