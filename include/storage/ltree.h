@@ -50,13 +50,13 @@ uint32_t get_internal_node_child(void *node, uint32_t index, uint32_t key_len, u
 uint32_t get_internal_node_cell_child_page_num(void *node, void *key, uint32_t keys_num, uint32_t key_len, uint32_t value_len, DataType primary_key_data_type);
 
 /* Get leaf node cell key. */
-void *get_leaf_node_cell_key(void *node, uint32_t index, uint32_t key_len,uint32_t value_len);
+void *get_leaf_node_cell_key(void *node, uint32_t index, uint32_t key_len, uint32_t value_len, uint32_t default_value_len);
 
 /* Get leaf node cell value pointer. */
-void *get_leaf_node_cell_value(void *node, uint32_t key_len, uint32_t value_len, uint32_t index);
+void *get_leaf_node_cell_value(void *node, uint32_t key_len, uint32_t value_len, uint32_t default_value_len, uint32_t index);
 
 /* Get leaf node cell index. */
-uint32_t get_leaf_node_cell_index(void *node, void *key, uint32_t cell_num, uint32_t key_len, uint32_t value_len, DataType key_data_type);
+uint32_t get_leaf_node_cell_index(void *node, void *key, uint32_t cell_num, uint32_t key_len, uint32_t value_len, uint32_t default_value_len, DataType key_data_type);
 
 /* Get index meta column pointer. */
 void *get_meta_column_pointer(void *root_node, uint32_t index);
@@ -65,7 +65,7 @@ void *get_meta_column_pointer(void *root_node, uint32_t index);
 void set_meta_column(void *root_node, void *destination, uint32_t index);
 
 /* Check if leaf node page overflow. */
-bool overflow_leaf_node(void *leaf_node, uint32_t key_len, uint32_t value_len, uint32_t cell_num);
+bool overflow_leaf_node(void *leaf_node, uint32_t key_len, uint32_t value_len, uint32_t default_value_len, uint32_t cell_num);
 
 /* Get meta column size. */
 uint32_t get_root_node_meta_column_size();
@@ -83,7 +83,7 @@ void *get_array_value(void *destination, uint32_t index, uint32_t span);
 void initial_leaf_node(void *leaf_node, uint32_t default_value_len, bool is_root);
 
 /* Insert new internal node cell. */
-void insert_internal_node_cell(Table *table, uint32_t page_num, uint32_t new_child_page_num, uint32_t key_len, uint32_t value_len);
+void insert_internal_node_cell(Table *table, uint32_t page_num, uint32_t new_child_page_num, uint32_t key_len, uint32_t value_len, uint32_t default_value_len);
 
 /* Insert a new leaf node cell. */
 void insert_leaf_node_cell(Cursor *cursor, Row *row);

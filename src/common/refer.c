@@ -119,27 +119,28 @@ static Cursor *define_cursor_leaf_node(Table *table, void *leaf_node, uint32_t p
     Cursor *cursor = instance(Cursor);
     MetaColumn *primary_meta_column = get_primary_key_meta_column(table->meta_table);
     uint32_t key_len = calc_primary_key_length(table);
-    uint32_t value_len = calc_table_row_length(table);
-    uint32_t cell_num = get_leaf_node_cell_num(leaf_node, value_len);
+    uint32_t value_len = calc_primary_index_value_length(table);
+    uint32_t default_value_len = calc_table_row_length(table);
+    uint32_t cell_num = get_leaf_node_cell_num(leaf_node, default_value_len);
     cursor->table = table;
     cursor->page_num = page_num;
-    cursor->cell_num = get_leaf_node_cell_index(leaf_node, key, cell_num, key_len, value_len, primary_meta_column->column_type);
+    cursor->cell_num = get_leaf_node_cell_index(leaf_node, key, cell_num, key_len, value_len, default_value_len, primary_meta_column->column_type);
     return cursor;
 }
 
 /* Define cursor when meet internal node. */
 static Cursor *define_cursor_internal_node(Table *table, void *internal_node, void *key, bool if_exsits) {
     Cursor *cursor;
-    uint32_t key_len, value_len, keys_num;
+    uint32_t key_len, default_value_len, keys_num;
 
     key_len = calc_primary_key_length(table);
-    value_len = calc_table_row_length(table);
-    keys_num = get_internal_node_keys_num(internal_node, value_len);
+    default_value_len = calc_table_row_length(table);
+    keys_num = get_internal_node_keys_num(internal_node, default_value_len);
 
     MetaColumn *primary_meta_column = get_primary_key_meta_column(table->meta_table);
     uint32_t child_page_num = if_exsits
-            ? get_internal_node_cell_child_page_num(internal_node, key, keys_num, key_len, value_len, primary_meta_column->column_type)
-            : get_internal_node_cell_child_page_num(internal_node, key, keys_num, key_len, value_len, primary_meta_column->column_type);
+            ? get_internal_node_cell_child_page_num(internal_node, key, keys_num, key_len, default_value_len, primary_meta_column->column_type)
+            : get_internal_node_cell_child_page_num(internal_node, key, keys_num, key_len, default_value_len, primary_meta_column->column_type);
     Assert(child_page_num != -1);
 
     /* Get the child node buffer. */

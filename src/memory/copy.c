@@ -272,6 +272,7 @@ Table *copy_table(Table *table) {
 
     Table *duplica = instance(Table);
     duplica->oid = table->oid;
+    duplica->hoid = table->hoid;
     duplica->root_page_num = table->root_page_num;
     duplica->meta_table = copy_meta_table(table->meta_table);
     duplica->creator = table->creator;

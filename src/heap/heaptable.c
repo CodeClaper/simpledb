@@ -19,18 +19,16 @@
 #include "ltree.h"
 #include "select.h"
 
-/* Create the heap table. */
-bool CreateHeapTable(char *tableName) {
-    Object entity;
-    char heap_table_file[MAX_TABLE_NAME_LEN + 100];
+/* Create table inner. */
+bool CreateHeapTableInner(Oid oid) {
     int descr;
     void *rblock;
     Refer *rRefer;
+    char heap_table_file[MAX_TABLE_NAME_LEN + 100];
     Size w_size;
-    
-    entity = GenerateObject(tableName, OHEAP_TABLE);
+
     memset(heap_table_file, 0, MAX_TABLE_NAME_LEN + 100);
-    sprintf(heap_table_file, "%s%ld", conf->data_dir, entity.oid);
+    sprintf(heap_table_file, "%s%ld", conf->data_dir, oid);
 
     /* Avoid repeatly create. */
     if (table_file_exist(heap_table_file))
@@ -43,7 +41,7 @@ bool CreateHeapTable(char *tableName) {
     }
     
     rblock = dalloc(PAGE_SIZE);
-    rRefer = new_refer(entity.oid, HEAP_TABLE_ROOT_PAGE, HEAP_TABLE_FIRST_CELL_NUM);
+    rRefer = new_refer(oid, HEAP_TABLE_ROOT_PAGE, HEAP_TABLE_FIRST_CELL_NUM);
     memcpy(rblock + NODE_STATE_SIZE, rRefer, sizeof(Refer));
     
     /* Flush to disk. */
@@ -54,15 +52,26 @@ bool CreateHeapTable(char *tableName) {
         return false;
     } 
 
-    /* Save the String table Object. */
-    SaveObject(entity);
-    
     /* Free memory. */
     dfree(rblock);
     dfree(rRefer);
 
     /* Close desription. */
     close(descr);
+
+    return true;
+}
+
+/* Create the heap table. */
+bool CreateHeapTable(char *tableName) {
+
+    Object entity = GenerateObject(tableName, OHEAP_TABLE);
+    
+    /* Create the heap table. */
+    CreateHeapTableInner(entity.oid);
+
+    /* Save the String table Object. */
+    SaveObject(entity);
 
     return true;
 }
@@ -77,29 +86,27 @@ static inline bool OverflowPage(Refer *refer, uint32_t row_len) {
     return (refer->cell_num + 1) * row_len > PAGE_SIZE;
 }
 
+static Table *GetTableByHeapOid(Oid hoid) {
+    Object obj = OidFindObject(hoid);
+    Assert(obj.reltype == OHEAP_TABLE);
+    return open_table(obj.relname);
+}
+
 /* Insert into heap table. */
-static void HeapTableInsertRowInner(Refer *refer, Row *row) {
-    Table *table;
+static void HeapTableInsertRowInner(Refer *refer, Table *table, Row *row) {
     uint32_t row_len;
     Buffer buffer;
     void *block;
 
-    table = open_table_inner(refer->oid);
-    if (table == NULL) {
-        db_log(ERROR, "Try to open table fail");
-        return;
-    }
-    
     row_len = calc_table_row_length(table);
-
     /* Logically, will not overflow page size. */
     AssertFalse(OverflowPage(refer, row_len));
-
     buffer = ReadBuffer(refer->oid, refer->page_num);
     LockBuffer(buffer, RW_WRITER);
     block = GetBufferBlock(buffer);
 
-    memcpy(block + refer->cell_num * row_len, serialize_row_data(row, table), row_len);
+    void *destintion = serialize_row_data(row, table); 
+    memcpy(block + refer->cell_num * row_len, destintion, row_len);
     refer->cell_num++;
 
     /* If overflow, move to next page. */
@@ -114,20 +121,21 @@ static void HeapTableInsertRowInner(Refer *refer, Row *row) {
 }
 
 /* Insert row data to heap table. */
-Refer *HeapTableInsertRow(Oid oid, Row *row) {
+Refer *HeapTableInsertRow(Table *table, Row *row) {
     Buffer rootBuffer;
     void *root;
     Refer *rootRefer, *currentRefer;
 
-    rootBuffer = ReadBuffer(oid, HEAP_TABLE_ROOT_PAGE);
+    rootBuffer = ReadBuffer(table->hoid, HEAP_TABLE_ROOT_PAGE);
     LockBuffer(rootBuffer, RW_WRITER);
     root = GetBufferBlock(rootBuffer);
     
     rootRefer = GetRootRefer(root);
     currentRefer = instance(Refer);
     memcpy(currentRefer, rootRefer, sizeof(Refer));
-
-    HeapTableInsertRowInner(rootRefer, row);
+    
+    /* Insert into heap table. */
+    HeapTableInsertRowInner(rootRefer, table, row);
 
     MakeBufferDirty(rootBuffer);
     UnlockBuffer(rootBuffer);
@@ -137,27 +145,20 @@ Refer *HeapTableInsertRow(Oid oid, Row *row) {
 }
 
 
-/* Query row from heap table. */
-Row *HeapTableQueryRow(Refer *refer) {
+/* Loop up row from heap table. */
+Row *HeapTableLookupRow(Table *table, Refer *refer) {
     Buffer buffer;
     void *block;
-    Table *table;
     uint32_t row_len;
     Row *row;
     
-    table = open_table_inner(refer->oid);
-    if (table == NULL) {
-        db_log(ERROR, "Try to open table fail.");
-        return NULL;
-    }
     row_len = calc_table_row_length(table);
-
     buffer = ReadBuffer(refer->oid, refer->page_num);
     LockBuffer(buffer, RW_READERS);
     block = GetBufferBlock(buffer);
 
     /* Deserialize row. */
-    row = generate_row(block + refer->page_num * row_len, table->meta_table);
+    row = generate_row(block + refer->cell_num * row_len, table->meta_table);
 
     UnlockBuffer(buffer);
     ReleaseBuffer(buffer);

@@ -44,6 +44,7 @@
 #include "optimizer.h"
 #include "tablecache.h"
 #include "strheaptable.h"
+#include "heaptable.h"
 
 typedef struct SelectFromInternalChildTaskArgs {
     SelectResult *select_result;
@@ -586,6 +587,33 @@ Row *generate_row(void *destination, MetaTable *meta_table) {
     return row;
 }
 
+static Row *generate_index_row(void *destination, MetaTable *meta_table) {
+    /* Instance new row. */
+    Row *row = new_row(NULL, meta_table->table_name);
+
+    /* Assignment row data. */
+    uint32_t i, offset = sizeof(Refer);
+    for (i = 0; i < meta_table->all_column_size; i++) {
+        MetaColumn *meta_column = meta_table->meta_column[i];
+        /* Generate a key value pair. */
+        KeyValue *key_value = meta_column->sys_reserved
+                            ? new_key_value(meta_column->column_name, destination + offset, meta_column->column_type)
+                            : new_key_value(meta_column->column_name, NULL, meta_column->column_type);
+        key_value->is_array = meta_column->array_dim > 0;
+        key_value->table_name = meta_table->table_name;
+
+        /* Append to row data. */
+        append_list(row->data, key_value);
+
+        /* Get the column offset. */
+        if (meta_column->sys_reserved)
+            offset += meta_column->column_length;
+    }
+
+    return row;
+}
+
+
 /* Define row by refer. 
  * -------------------
  * Return row not matter if it is deleted, caller check the row if deleted.
@@ -603,17 +631,18 @@ Row *define_row(Refer *refer) {
     if (refer_null(refer))
         return NULL;
 
-    uint32_t key_len, value_len;
-    value_len = calc_table_row_length(table);
+    uint32_t key_len, value_len, default_value_len;
     key_len = calc_primary_key_length(table);
-
+    value_len = calc_primary_index_value_length(table);
+    default_value_len = calc_table_row_length(table);
+                            
     /* Get the leaf node buffer. */
     Buffer buffer = ReadBuffer(GET_TABLE_OID(table), refer->page_num);
     LockBuffer(buffer, RW_READERS);
     void *leaf_node = GetBufferPage(buffer);
 
-    void *destinct = get_leaf_node_cell_value(leaf_node, key_len, value_len, refer->cell_num);
-    Row *row = generate_row(destinct, table->meta_table);
+    void *destinct = get_leaf_node_cell_value(leaf_node, key_len, value_len, default_value_len, refer->cell_num);
+    Row *row = HeapTableLookupRow(table, (Refer *) destinct);
     
     UnlockBuffer(buffer);
     ReleaseBuffer(buffer);
@@ -677,7 +706,7 @@ static void select_from_leaf_node(SelectResult *select_result, ConditionNode *co
                                   ROW_HANDLER_ARG_TYPE type, void *arg) {
 
     /* Get cell number, key length and value lenght. */
-    uint32_t key_len, value_len, cell_num ;
+    uint32_t key_len, value_len, default_value_len, cell_num ;
     Buffer buffer;
     void *leaf_node;
 
@@ -694,16 +723,19 @@ static void select_from_leaf_node(SelectResult *select_result, ConditionNode *co
     UnlockBuffer(buffer);
 
     key_len = calc_primary_key_length(table);
-    value_len = calc_table_row_length(table);
-    cell_num = get_leaf_node_cell_num(leaf_node, value_len);
+    value_len = calc_primary_index_value_length(table);
+    default_value_len = calc_table_row_length(table);
+    cell_num = get_leaf_node_cell_num(leaf_node, default_value_len);
 
     uint32_t i;
     for (i = 0; i < cell_num; i++) {
         /* Get leaf node cell value. */
-        void *destinct = get_leaf_node_cell_value(leaf_node, key_len, value_len, i);
+        void *destinct = get_leaf_node_cell_value(leaf_node, key_len, value_len, default_value_len, i);
 
         /* If satisfied, exeucte row handler function. */
-        Row *row = generate_row(destinct, table->meta_table);
+        Row *row = allow_read_raw_page(type, arg) 
+                ? generate_index_row(destinct, table->meta_table)
+                : HeapTableLookupRow(table, (Refer *) destinct);
 
         SelectResult *derived = select_result->derived;
         if (derived != NULL) {
@@ -753,10 +785,10 @@ static void select_from_internal_node(SelectResult *select_result, ConditionNode
     UnlockBuffer(buffer);
 
     /* Get variables. */
-    uint32_t key_len, value_len, keys_num;
+    uint32_t key_len,  default_value_len, keys_num;
     key_len = calc_primary_key_length(table);
-    value_len = calc_table_row_length(table);
-    keys_num = get_internal_node_keys_num(internal_node, value_len);
+    default_value_len = calc_table_row_length(table);
+    keys_num = get_internal_node_keys_num(internal_node, default_value_len);
 
     DataType primary_key_type = get_primary_key_type(table->meta_table);
 
@@ -769,16 +801,16 @@ static void select_from_internal_node(SelectResult *select_result, ConditionNode
         /* Check if index column, use index to avoid full text scanning. */
         {
             /* Current internal node cell key as max key, previous cell key as min key. */
-            void *max_key = get_real_value(get_internal_node_key(internal_node, i, key_len, value_len), primary_key_type); 
+            void *max_key = get_real_value(get_internal_node_key(internal_node, i, key_len, default_value_len), primary_key_type); 
             void *min_key = (i == 0) 
                         ? NULL 
-                        : get_real_value(get_internal_node_key(internal_node, i - 1, key_len, value_len), primary_key_type);
+                        : get_real_value(get_internal_node_key(internal_node, i - 1, key_len, default_value_len), primary_key_type);
             if (!include_internal_node(select_result, min_key, max_key, condition, table->meta_table))
                 continue;
         }
 
         /* Check other non-key column */
-        uint32_t child_page_num = get_internal_node_child(internal_node, i, key_len, value_len);
+        uint32_t child_page_num = get_internal_node_child(internal_node, i, key_len, default_value_len);
         Assert(child_page_num != 0);
         Buffer child_buffer = ReadBuffer(GET_TABLE_OID(table), child_page_num);
         void *node = GetBufferPage(child_buffer);
@@ -807,7 +839,7 @@ static void select_from_internal_node(SelectResult *select_result, ConditionNode
 
     /* Don`t forget the right child. */
     /* Fetch right child. */
-    uint32_t right_child_page_num = get_internal_node_right_child(internal_node, value_len);
+    uint32_t right_child_page_num = get_internal_node_right_child(internal_node, default_value_len);
     Buffer right_child_buffer = ReadBuffer(GET_TABLE_OID(table), right_child_page_num);
     void *right_child = GetBufferPage(right_child_buffer);
     switch (get_node_type(right_child)) {

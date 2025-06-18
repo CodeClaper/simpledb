@@ -20,7 +20,7 @@
  bool check_duplicate_key(Cursor *cursor, void *key) {
     Buffer buffer;
     void *node, *target;
-    uint32_t key_len, value_len;
+    uint32_t key_len, value_len, default_value_len;
     MetaColumn *primary_key_meta_column;
     Table *table = cursor->table;
 
@@ -28,15 +28,16 @@
     buffer = ReadBuffer(GET_TABLE_OID(table), cursor->page_num); 
     node = GetBufferPage(buffer);
 
-    value_len = calc_table_row_length(table);
+    value_len = calc_primary_index_value_length(table);
+    default_value_len = calc_table_row_length(table);
     key_len = calc_primary_key_length(table);
 
     /* If overflow after the new tuple inserting, it not duplcate of course. */
-    if (overflow_leaf_node(node, key_len, value_len, cursor->cell_num))
+    if (overflow_leaf_node(node, key_len, value_len, default_value_len, cursor->cell_num))
         return false;
 
     primary_key_meta_column = get_primary_key_meta_column(table->meta_table);
-    target = get_leaf_node_cell_key(node, cursor->cell_num, key_len, value_len);
+    target = get_leaf_node_cell_key(node, cursor->cell_num, key_len, value_len, default_value_len);
     Assert(target < (void *) ((char *) node + PAGE_SIZE));
 
     /* Release the buffer. */

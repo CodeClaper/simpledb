@@ -490,6 +490,21 @@ uint32_t calc_primary_index_value_length(Table *table) {
     }
     return value_len;
 }
+
+
+/* Calculate primary index value length. */
+uint32_t calc_primary_index_value_length2(MetaTable *meta_table) {
+    uint32_t value_len;
+    uint32_t i;
+    
+    value_len = sizeof(Refer);
+    for (i = 0; i < meta_table->all_column_size; i++) {
+        MetaColumn *meta_column = meta_table->meta_column[i];
+        if (meta_column->sys_reserved)
+            value_len += meta_column->column_length;
+    }
+    return value_len;
+}
  
 
 /* Get column meta info by index. */

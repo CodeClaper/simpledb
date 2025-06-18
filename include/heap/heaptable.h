@@ -4,12 +4,15 @@
 #define HEAP_TABLE_ROOT_PAGE 0
 #define HEAP_TABLE_FIRST_CELL_NUM 1
 
+/* Create table inner. */
+bool CreateHeapTableInner(Oid oid);
+
 /* Create the heap table. */
 bool CreateHeapTable(char *tableName);
 
 /* Insert row data to heap table. */
-Refer *HeapTableInsertRow(Oid oid, Row *row);
+Refer *HeapTableInsertRow(Table *table, Row *row);
 
-/* Query row from heap table. */
-Row *HeapTableQueryRow(Refer *refer);
+/* Loop up row from heap table. */
+Row *HeapTableLookupRow(Table *table, Refer *refer);
 

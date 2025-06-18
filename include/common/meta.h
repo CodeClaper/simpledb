@@ -46,6 +46,9 @@ uint32_t calc_primary_key_length2(MetaTable *meta_table);
 /* Calculate primary index value length. */
 uint32_t calc_primary_index_value_length(Table *table);
 
+/* Calculate primary index value length. */
+uint32_t calc_primary_index_value_length2(MetaTable *meta_table);
+
 /* Genrate table meta info. */
 MetaTable *gen_meta_table(Oid oid);
 

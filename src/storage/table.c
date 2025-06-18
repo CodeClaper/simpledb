@@ -175,6 +175,7 @@ bool drop_meta_column(char *table_name, char *column_name) {
     return true;
 }
 
+
 /* Load Table from disk. */
 Table *load_table(Oid oid) {
     /* New table. */
@@ -186,7 +187,7 @@ Table *load_table(Oid oid) {
     table->creator = getpid();
     table->meta_table = gen_meta_table(oid);
     table->page_size = GetPageSize(oid);
-    
+    table->hoid = TableNameFindHeapOid(GET_TABLE_NAME(table));
     return table;
 }
 

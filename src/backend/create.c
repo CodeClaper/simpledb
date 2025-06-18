@@ -291,16 +291,16 @@ void exec_create_table_statement(CreateTableNode *create_table_node, DBResult *r
     /* Create table. 
      * ---------------
      * (1) Create table.
-     * (4) Save table object.
-     * (2) Save table in table cache.
-     * (3) Create string heap table.
+     * (2) Save table object.
+     * (3) Create heap table.
+     * (4) Create string heap table.
      * Besides the normal table itself, we alse create its string heap table.
      * Although the table maybe not have any string column, just in case.
      * */
     if (
         create_table(oid, meta_table) && 
         save_table_object(oid, GET_METATABLE_NAME(meta_table)) &&
-        save_table_cache(oid, meta_table) &&
+        // save_table_cache(oid, meta_table) &&
         CreateHeapTable(meta_table->table_name) &&
         CreateStrHeapTable(meta_table->table_name) 
     ) {

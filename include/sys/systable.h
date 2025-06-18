@@ -6,6 +6,7 @@
 #define SYS_TABLE_H
 
 #define SYS_ROOT_OID 1235
+#define SYS_ROOT_HEAP_OID 12356
 #define SYS_TABLE_NAME "sys_table"
 #define SYS_TABLE_OID_NAME "oid"
 #define SYS_TABLE_RELNAME_NAME "relname"
@@ -22,6 +23,7 @@ extern MetaColumn SYS_RESERVED_COLUMNS[];
 #define SYS_RESERVED_COLUMNS_LENGTH 3
 
 #define IS_SYS_ROOT(oid) (oid == SYS_ROOT_OID)
+#define IS_SYS_ROOT_HEAP(oid) (oid == SYS_ROOT_HEAP_OID)
 
 /* Init the sys table. */
 void InitSysTable();
@@ -37,6 +39,9 @@ Oid TableNameFindOid(char *tableName);
 
 /* Find oid of string table by table name. */
 Oid StrTableNameFindOid(char *tableName);
+
+/* Find oid of heap table by table name. */
+Oid TableNameFindHeapOid(char *tableName);
 
 /* Find relname by oid. */
 char *OidFindRelName(Oid oid);

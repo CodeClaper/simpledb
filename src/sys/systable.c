@@ -18,6 +18,7 @@
 #include "delete.h"
 #include "trans.h"
 #include "sysstate.h"
+#include "heaptable.h"
 
 /* System table meta column list. */
 MetaColumn SYS_TABLE_COLUMNS[] = {
@@ -94,7 +95,7 @@ void InitSysTable() {
         return;
 
     MetaTable *sysMetaTable = CreateSysMetaTable();
-    if (!create_table(SYS_ROOT_OID, sysMetaTable))
+    if (!create_table(SYS_ROOT_OID, sysMetaTable) || !CreateHeapTableInner(SYS_ROOT_HEAP_OID))
         panic("Create system table fail");
 }
 
@@ -202,12 +203,17 @@ static Object OidFindObjectInner(Oid oid) {
 /* Find Object by oid */
 Object OidFindObject(Oid oid) {
     Object entity;
+    memset(&entity, 0, sizeof(Object));
 
     if (IS_SYS_ROOT(oid)) {
         entity.oid = oid;
         memcpy(entity.relname, SYS_TABLE_NAME, strlen(SYS_TABLE_NAME));
         entity.reltype = OTABLE;
-    } else 
+    } else if (IS_SYS_ROOT_HEAP(oid)) {
+        entity.oid = oid;
+        memcpy(entity.relname, SYS_TABLE_NAME, strlen(SYS_TABLE_NAME));
+        entity.reltype = OHEAP_TABLE;
+    } else
         entity = OidFindObjectInner(oid);
    
     return entity;
@@ -267,6 +273,17 @@ Oid TableNameFindOid(char *tableName) {
  * */
 Oid StrTableNameFindOid(char *tableName) {
     return RelnameAndReltypeFindOid(tableName, OSTRING_HEAP_TABLE);
+}
+
+/* Find oid of heap table by table name. 
+ * ------------------------
+ * Return the oid of the found object.
+ * Return OID_ZERO if missing.
+ * */
+Oid TableNameFindHeapOid(char *tableName) {
+    if (streq(tableName, SYS_TABLE_NAME))
+        return SYS_ROOT_HEAP_OID;
+    return RelnameAndReltypeFindOid(tableName, OHEAP_TABLE);
 }
 
 /* Find relname by oid. 

@@ -48,7 +48,7 @@ int get_current_log_fdesc() {
     if (desc == -1) 
         db_log(
             PANIC,
-            "Open table file %d fail: %s.", 
+            "Open log file %s fail: %s.", 
             file_path, 
             strerror(errno)
         );
