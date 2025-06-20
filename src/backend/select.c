@@ -693,6 +693,7 @@ static void scan_from_leaf_node(SelectResult *select_result, ConditionNode *cond
     uint32_t key_len, value_len, default_value_len, cell_num ;
     Buffer buffer;
     void *leaf_node;
+    TransEntry *current_trans;
 
     /* Get leaf node buffer. */
     buffer = ReadBuffer(GET_TABLE_OID(table), page_num);
@@ -703,6 +704,8 @@ static void scan_from_leaf_node(SelectResult *select_result, ConditionNode *cond
     value_len = calc_primary_index_value_length(table);
     default_value_len = calc_table_row_length(table);
     cell_num = get_leaf_node_cell_num(leaf_node, default_value_len);
+    current_trans = FindTransaction();
+    Assert(current_trans);
 
     uint32_t i;
     for (i = 0; i < cell_num; i++) {
@@ -710,7 +713,7 @@ static void scan_from_leaf_node(SelectResult *select_result, ConditionNode *cond
         void *destinct = get_leaf_node_cell_value(leaf_node, key_len, value_len, default_value_len, i);
         Xid create_xid = *(Xid *) (destinct + REFER_SIZE + LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE);
         Xid expired_xid = *(Xid *) (destinct + REFER_SIZE + LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE+ sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE);
-        if (IsVisible(create_xid, expired_xid))
+        if (IsVisibleInner(create_xid, expired_xid, current_trans->xid))
             row_handler(NULL, select_result, table, type, arg);
     }
     

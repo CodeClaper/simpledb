@@ -7,6 +7,9 @@
 void InitTrans();
 
 /* Is visible by created_xid and expired_xid. */
+bool IsVisibleInner(Xid created_xid, Xid expired_xid, Xid currnet_xid);
+
+/* Is visible by created_xid and expired_xid. */
 bool IsVisible(Xid created_xid, Xid expired_xid);
 
 /* Check if row is visible for current transaction. */

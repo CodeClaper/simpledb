@@ -219,5 +219,5 @@ bool DropHeapTable(char *tableName) {
 }
 
 void HeapTableAppendColumn(Table *table, MetaColumn *newColumn, int pos) {
-
+    
 }
