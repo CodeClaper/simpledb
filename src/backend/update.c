@@ -52,17 +52,13 @@ static void update_cell(Row *row, AssignmentNode *assign_node, MetaColumn *meta_
 }
 
 /* Delete row for update */
-static void delete_row_for_update(Row *row, Table *table) {
+static void delete_row_for_update(Refer *refer, Row *row) {
     if (RowIsVisible(row)) {
-        Cursor *cursor = define_cursor(table, row->key, true);
-        Refer *refer = convert_refer(cursor);
-
+        Cursor *cursor = convert_cursor(refer);
         UpdateTransactionState(row, TR_DELETE);
-        // update_row_data(row, cursor);
+        update_row_data(row, cursor);
         RecordXlog(refer, HEAP_UPDATE_DELETE);
-
         free_cursor(cursor);
-        free_refer(refer);
     }
 }
 
@@ -102,7 +98,7 @@ static void update_row(Row *rawRow, SelectResult *select_result, Table *table,
     currentRow = define_row(oldRefer);
 
     /* Delete row for update. */
-    delete_row_for_update(currentRow, table);
+    delete_row_for_update(oldRefer, currentRow);
 
     new_row = copy_row(currentRow);
 
@@ -132,6 +128,9 @@ static void update_row(Row *rawRow, SelectResult *select_result, Table *table,
         ReferUpdateEntity *refer_update_entity = new_refer_update_entity(oldRefer, newRefer);
         update_related_tables_refer(refer_update_entity);
         free_refer_update_entity(refer_update_entity);
+    } else {
+        free_refer(oldRefer);
+        free_refer(newRefer);
     }
 }
 

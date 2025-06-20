@@ -5,6 +5,7 @@
 
 static bool OnlySelectAllInSelection(SelectNode *selectNode);
 static bool OnlyCountInSelection(SelectNode *selectNode);
+static bool OnlyScanIndex(SelectNode *selectNode);
 static LimitClauseNode *GetLimitClause(SelectNode *selectNode);
 static ROW_HANDLER DefineRowHandler(SelectParam *selectParam);
 
@@ -14,6 +15,7 @@ SelectParam *optimizeSelect(SelectNode *selectNode, StatementType stmt_type) {
     selectParam->stmt_type = stmt_type;
     selectParam->onlyAll = OnlySelectAllInSelection(selectNode);
     selectParam->onlyCount = OnlyCountInSelection(selectNode);
+    selectParam->oblyScanIndex = OnlyScanIndex(selectNode);
     selectParam->limitClause = GetLimitClause(selectNode);
     selectParam->offset = 0;
     selectParam->rowHanler = DefineRowHandler(selectParam);
@@ -60,6 +62,11 @@ static bool OnlyCountInSelection(SelectNode *selectNode) {
     scalarExp = (ScalarExpNode *) lfirst(first_cell(scalarExpList));
     Assert(scalarExp != NULL);
     return scalarExp->type == SCALAR_FUNCTION && scalarExp->function->type == F_COUNT;
+}
+
+static bool OnlyScanIndex(SelectNode *selectNode) {
+    return OnlyCountInSelection(selectNode) 
+        && selectNode->table_exp->where_clause == NULL;
 }
 
 /* Get LimitClauseNode for the SelectionNode. */

@@ -8,10 +8,10 @@ class DbClient:
     def __init__(self, ip, port):
         # create a socket object.
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        socket.setdefaulttimeout(300)
+        socket.setdefaulttimeout(3000)
         try:
             self.client.connect((ip, port))
-            self.client.settimeout(300)
+            self.client.settimeout(3000)
         except socket.timeout:
             print(f"Connect to {ip}:{port} timeout.")
         except socket.error as e:

@@ -70,6 +70,7 @@ static void insert_leaf_node_new_cell(Cursor *cursor, Row *row);
 static void append_leaf_node_column(uint32_t page_num, Table *table, MetaColumn *new_column, int pos);
 static bool check_internal_node_cells_mass(void *internal_node, uint32_t keys_num, uint32_t key_len, uint32_t default_value_len, DataType data_type);
 static void *seriable_index_value(Row *row, Table *table);
+static void update_index_system_content(void *destination, Row *row, Table *table);
 
 /* If obsolute node. */
 bool is_obsolute_node(void *node) {
@@ -2358,7 +2359,6 @@ bool cursor_is_deleted(Cursor *cursor) {
 
 /* Update row system reserved columns. */
 void update_row_data(Row *row, Cursor *cursor) {
-
     Table *table;
     Buffer buffer;
     void *leaf_node, *destination;
@@ -2371,23 +2371,20 @@ void update_row_data(Row *row, Cursor *cursor) {
     
     /* Get leaf node. */
     buffer = ReadBuffer(GET_TABLE_OID(table), cursor->page_num);
+    LockBuffer(buffer, RW_WRITER);
     leaf_node = GetBufferPage(buffer);
 
-    /* Serialize row. */
-    destination = serialize_row_data(row, cursor->table);
-
-    /* Overcover leaf node. */
-    memcpy(
-        get_leaf_node_cell_value(leaf_node, key_len, value_len, default_value_len, cursor->cell_num), 
-        destination, value_len
-    );
+    destination = get_leaf_node_cell_value(leaf_node, key_len, value_len, default_value_len, cursor->cell_num);
+    /* Update heap table row. */
+    HeapTableUpdateRow(table, (Refer *) destination, row);
+    /* Update system column contents. */
+    update_index_system_content(destination, row, table);
 
     /* Flush page. */
     MakeBufferDirty(buffer);
 
-    dfree(destination);
-
     /* Release page buffer. */
+    UnlockBuffer(buffer);
     ReleaseBuffer(buffer);
 }
 
@@ -2767,12 +2764,12 @@ void *serialize_row_data(Row *row, Table *table) {
     return destination;
 }
 
+/* Serialize index value. */
 static void *seriable_index_value(Row *row, Table *table) {
     uint32_t value_len;
     void *destination;
     MetaTable *meta_table;
     Refer *refer;
-
 
     value_len = calc_primary_index_value_length(table);
     destination = dalloc(value_len);
@@ -2782,16 +2779,30 @@ static void *seriable_index_value(Row *row, Table *table) {
     refer = HeapTableInsertRow(table, row);
     
     /* Assign refer value. */
-    memcpy(destination, refer, sizeof(Refer));
+    memcpy(destination, refer, REFER_SIZE);
 
-    uint32_t i, offset = sizeof(Refer);
+    uint32_t i, offset = REFER_SIZE;
     for (i = 0; i < meta_table->all_column_size; i++) {
         MetaColumn *meta_column = meta_table->meta_column[i]; 
         if (meta_column->sys_reserved) {
             void *value = get_value_from_row(row, meta_column);
-            memcpy(destination + offset, value, meta_column->column_length);
+            assign_row_value(destination + offset, value, meta_column);
             offset += meta_column->column_length;
         }
     }
     return destination;
+}
+
+static void update_index_system_content(void *destination, Row *row, Table *table) {
+    uint32_t i, offset = REFER_SIZE;
+    MetaTable *meta_table = table->meta_table;
+
+    for (i = 0; i < meta_table->all_column_size; i++) {
+        MetaColumn *meta_column = meta_table->meta_column[i]; 
+        if (meta_column->sys_reserved) {
+            void *value = get_value_from_row(row, meta_column);
+            assign_row_value(destination + offset, value, meta_column);
+            offset += meta_column->column_length;
+        }
+    }
 }

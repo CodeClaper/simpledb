@@ -334,7 +334,7 @@ bool DropStrHeapTable(char *table_name) {
 
     /* Not reach here logically. */
     db_log(ERROR, 
-           "String heap table '%s' deleted fail, error : %s", 
+           "Try to drop string heap table '%s' fail, error : %s", 
            table_name, strerror(errno));
 
     return false;

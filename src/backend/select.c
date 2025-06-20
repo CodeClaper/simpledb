@@ -587,32 +587,6 @@ Row *generate_row(void *destination, MetaTable *meta_table) {
     return row;
 }
 
-static Row *generate_index_row(void *destination, MetaTable *meta_table) {
-    /* Instance new row. */
-    Row *row = new_row(NULL, meta_table->table_name);
-
-    /* Assignment row data. */
-    uint32_t i, offset = sizeof(Refer);
-    for (i = 0; i < meta_table->all_column_size; i++) {
-        MetaColumn *meta_column = meta_table->meta_column[i];
-        /* Generate a key value pair. */
-        KeyValue *key_value = meta_column->sys_reserved
-                            ? new_key_value(meta_column->column_name, destination + offset, meta_column->column_type)
-                            : new_key_value(meta_column->column_name, NULL, meta_column->column_type);
-        key_value->is_array = meta_column->array_dim > 0;
-        key_value->table_name = meta_table->table_name;
-
-        /* Append to row data. */
-        append_list(row->data, key_value);
-
-        /* Get the column offset. */
-        if (meta_column->sys_reserved)
-            offset += meta_column->column_length;
-    }
-
-    return row;
-}
-
 
 /* Define row by refer. 
  * -------------------
@@ -700,6 +674,51 @@ static bool allow_read_raw_page(ROW_HANDLER_ARG_TYPE type, void *arg) {
     return false;
 }
 
+
+static bool allow_scan_index(ROW_HANDLER_ARG_TYPE type, void *arg) {
+    if (type == ARG_SELECT_PARAM) {
+        SelectParam *selectParam = (SelectParam *) arg;
+        return selectParam->oblyScanIndex;
+    }
+    return false;
+}
+
+
+/* Scan from leaf node. */
+static void scan_from_leaf_node(SelectResult *select_result, ConditionNode *condition, 
+                                  uint32_t page_num, Table *table, ROW_HANDLER row_handler, 
+                                  ROW_HANDLER_ARG_TYPE type, void *arg) {
+
+    /* Get cell number, key length and value lenght. */
+    uint32_t key_len, value_len, default_value_len, cell_num ;
+    Buffer buffer;
+    void *leaf_node;
+
+    /* Get leaf node buffer. */
+    buffer = ReadBuffer(GET_TABLE_OID(table), page_num);
+    LockBuffer(buffer, RW_READERS);
+    leaf_node = GetBufferPage(buffer);
+
+    key_len = calc_primary_key_length(table);
+    value_len = calc_primary_index_value_length(table);
+    default_value_len = calc_table_row_length(table);
+    cell_num = get_leaf_node_cell_num(leaf_node, default_value_len);
+
+    uint32_t i;
+    for (i = 0; i < cell_num; i++) {
+        /* Get leaf node cell value. */
+        void *destinct = get_leaf_node_cell_value(leaf_node, key_len, value_len, default_value_len, i);
+        Xid create_xid = *(Xid *) (destinct + REFER_SIZE + LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE);
+        Xid expired_xid = *(Xid *) (destinct + REFER_SIZE + LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE+ sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE);
+        if (IsVisible(create_xid, expired_xid))
+            row_handler(NULL, select_result, table, type, arg);
+    }
+    
+    /* Release the buffer. */
+    UnlockBuffer(buffer);
+    ReleaseBuffer(buffer);
+}
+
 /* Select through leaf node. */
 static void select_from_leaf_node(SelectResult *select_result, ConditionNode *condition, 
                                   uint32_t page_num, Table *table, ROW_HANDLER row_handler, 
@@ -733,9 +752,7 @@ static void select_from_leaf_node(SelectResult *select_result, ConditionNode *co
         void *destinct = get_leaf_node_cell_value(leaf_node, key_len, value_len, default_value_len, i);
 
         /* If satisfied, exeucte row handler function. */
-        Row *row = allow_read_raw_page(type, arg) 
-                ? generate_index_row(destinct, table->meta_table)
-                : HeapTableLookupRow(table, (Refer *) destinct);
+        Row *row = HeapTableLookupRow(table, (Refer *) destinct);
 
         SelectResult *derived = select_result->derived;
         if (derived != NULL) {
@@ -816,12 +833,19 @@ static void select_from_internal_node(SelectResult *select_result, ConditionNode
         void *node = GetBufferPage(child_buffer);
 
         switch (get_node_type(node)) {
-            case LEAF_NODE:
-                select_from_leaf_node(
-                    select_result, condition, child_page_num, 
-                    table, row_handler, type, arg
-                );
+            case LEAF_NODE: {
+                if (allow_scan_index(type, arg))
+                    scan_from_leaf_node(
+                        select_result, condition, child_page_num, 
+                        table, row_handler, type, arg
+                    );
+                else
+                    select_from_leaf_node(
+                        select_result, condition, child_page_num, 
+                        table, row_handler, type, arg
+                    );
                 break;
+            }
             case INTERNAL_NODE:
                 select_from_internal_node(
                     select_result, condition, child_page_num, 
@@ -843,13 +867,21 @@ static void select_from_internal_node(SelectResult *select_result, ConditionNode
     Buffer right_child_buffer = ReadBuffer(GET_TABLE_OID(table), right_child_page_num);
     void *right_child = GetBufferPage(right_child_buffer);
     switch (get_node_type(right_child)) {
-        case LEAF_NODE:
-            select_from_leaf_node(
-                select_result, 
-                condition, right_child_page_num, 
-                table, row_handler, type, arg
-            );
+        case LEAF_NODE: {
+            if (allow_scan_index(type, arg))
+                scan_from_leaf_node(
+                    select_result, 
+                    condition, right_child_page_num, 
+                    table, row_handler, type, arg
+                );
+            else
+                select_from_leaf_node(
+                    select_result, 
+                    condition, right_child_page_num, 
+                    table, row_handler, type, arg
+                );
             break;
+        }
         case INTERNAL_NODE:
             select_from_internal_node(
                 select_result, 
@@ -1018,12 +1050,19 @@ void query_with_condition_inner(Oid oid, ConditionNode *condition, SelectResult 
     root = GetBufferPage(buffer);
 
     switch (get_node_type(root)) {
-        case LEAF_NODE:
-            select_from_leaf_node(
-                select_result, condition, table->root_page_num, 
-                table, row_handler, type, arg
-            );
+        case LEAF_NODE: {
+            if (allow_scan_index(type, arg))
+                scan_from_leaf_node(
+                    select_result, condition, table->root_page_num, 
+                    table, row_handler, type, arg
+                );
+            else
+                select_from_leaf_node(
+                    select_result, condition, table->root_page_num, 
+                    table, row_handler, type, arg
+                );
             break;
+        }
         case INTERNAL_NODE: {
             if (async_condition(select_result)) 
                 select_from_internal_node_async(

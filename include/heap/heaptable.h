@@ -16,3 +16,8 @@ Refer *HeapTableInsertRow(Table *table, Row *row);
 /* Loop up row from heap table. */
 Row *HeapTableLookupRow(Table *table, Refer *refer);
 
+/* Update the row in heap table. */
+void HeapTableUpdateRow(Table *table, Refer *refer, Row *row);
+
+/* Drop the heap table. */
+bool DropHeapTable(char *tableName);

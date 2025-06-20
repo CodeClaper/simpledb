@@ -86,12 +86,6 @@ static inline bool OverflowPage(Refer *refer, uint32_t row_len) {
     return (refer->cell_num + 1) * row_len > PAGE_SIZE;
 }
 
-static Table *GetTableByHeapOid(Oid hoid) {
-    Object obj = OidFindObject(hoid);
-    Assert(obj.reltype == OHEAP_TABLE);
-    return open_table(obj.relname);
-}
-
 /* Insert into heap table. */
 static void HeapTableInsertRowInner(Refer *refer, Table *table, Row *row) {
     uint32_t row_len;
@@ -164,4 +158,51 @@ Row *HeapTableLookupRow(Table *table, Refer *refer) {
     ReleaseBuffer(buffer);
 
     return row;
+}
+
+/* Update the row in heap table. */
+void HeapTableUpdateRow(Table *table, Refer *refer, Row *row) {
+    Buffer buffer;
+    void *block;
+    uint32_t row_len;
+
+    row_len = calc_table_row_length(table);
+    buffer = ReadBuffer(refer->oid, refer->page_num);
+    LockBuffer(buffer, RW_WRITER);
+    block = GetBufferBlock(buffer);
+    
+    /* Update heap table row centent. */
+    void *destintion = serialize_row_data(row, table);
+    memcpy(block + refer->cell_num * row_len, destintion, row_len);
+
+    UnlockBuffer(buffer);
+    ReleaseBuffer(buffer);
+}
+
+/* Drop the heap table. */
+bool DropHeapTable(char *tableName) {
+    Oid oid;
+    char *heap_table_file;
+
+    oid = TableNameFindHeapOid(tableName);
+    AssertFalse(ZERO_OID(oid));
+    heap_table_file = table_file_path(oid);
+
+    if (!check_table_exist_direct(oid)) {
+        db_log(ERROR, "Heap table file '%s' not exists, error : %s", 
+               heap_table_file, strerror(errno));
+        return false;
+    }
+
+    /* Delete physically. */
+    if (remove(heap_table_file) == 0 && RemoveObject(oid))
+        return true;
+
+
+    /* Not reach here logically. */
+    db_log(ERROR, 
+           "Try to drop heap table '%s' fail, error : %s", 
+           tableName, strerror(errno));
+
+    return false;
 }

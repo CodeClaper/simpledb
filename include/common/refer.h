@@ -3,6 +3,8 @@
 #ifndef REFER_H
 #define REFER_H
 
+#define REFER_SIZE sizeof(Refer)
+
 /* Init Refer. */
 void init_refer();
 
