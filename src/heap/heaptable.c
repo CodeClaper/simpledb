@@ -87,24 +87,32 @@ static inline bool OverflowPage(Refer *refer, uint32_t row_len) {
 }
 
 /* Insert into heap table. */
-static void HeapTableInsertRowInner(Refer *refer, Table *table, Row *row) {
-    uint32_t row_len;
+static void HeapTableInsertRowInner(Refer *refer, Cursor *cursor, Row *row) {
+    Table *table;
+    uint32_t row_len, cell_len;
     Buffer buffer;
+    Refer *iRefer;
     void *block;
 
+    table = cursor->table;
     row_len = calc_table_row_length(table);
+    cell_len = REFER_SIZE + row_len;
     /* Logically, will not overflow page size. */
-    AssertFalse(OverflowPage(refer, row_len));
+    AssertFalse(OverflowPage(refer, cell_len));
     buffer = ReadBuffer(refer->oid, refer->page_num);
     LockBuffer(buffer, RW_WRITER);
     block = GetBufferBlock(buffer);
 
+    iRefer = convert_refer(cursor);
     void *destintion = serialize_row_data(row, table); 
-    memcpy(block + refer->cell_num * row_len, destintion, row_len);
+    /* Assign index refer value. */
+    memcpy(block + refer->cell_num * cell_len, iRefer, REFER_SIZE);
+    /* Assign row ceontent value. */
+    memcpy(block + refer->cell_num * cell_len + REFER_SIZE, destintion, row_len);
     refer->cell_num++;
 
     /* If overflow, move to next page. */
-    if (OverflowPage(refer, row_len)) {
+    if (OverflowPage(refer, cell_len)) {
         refer->page_num++;
         refer->cell_num = HEAP_TABLE_FIRST_CELL_NUM;
     }
@@ -115,11 +123,13 @@ static void HeapTableInsertRowInner(Refer *refer, Table *table, Row *row) {
 }
 
 /* Insert row data to heap table. */
-Refer *HeapTableInsertRow(Table *table, Row *row) {
+Refer *HeapTableInsertRow(Cursor *cursor, Row *row) {
+    Table *table;
     Buffer rootBuffer;
     void *root;
     Refer *rootRefer, *currentRefer;
 
+    table = cursor->table;
     rootBuffer = ReadBuffer(table->hoid, HEAP_TABLE_ROOT_PAGE);
     LockBuffer(rootBuffer, RW_WRITER);
     root = GetBufferBlock(rootBuffer);
@@ -129,7 +139,7 @@ Refer *HeapTableInsertRow(Table *table, Row *row) {
     memcpy(currentRefer, rootRefer, sizeof(Refer));
     
     /* Insert into heap table. */
-    HeapTableInsertRowInner(rootRefer, table, row);
+    HeapTableInsertRowInner(rootRefer, cursor, row);
 
     MakeBufferDirty(rootBuffer);
     UnlockBuffer(rootBuffer);
@@ -143,16 +153,17 @@ Refer *HeapTableInsertRow(Table *table, Row *row) {
 Row *HeapTableLookupRow(Table *table, Refer *refer) {
     Buffer buffer;
     void *block;
-    uint32_t row_len;
+    uint32_t row_len, cell_len;
     Row *row;
     
     row_len = calc_table_row_length(table);
+    cell_len = row_len + REFER_SIZE;
     buffer = ReadBuffer(refer->oid, refer->page_num);
     LockBuffer(buffer, RW_READERS);
     block = GetBufferBlock(buffer);
 
     /* Deserialize row. */
-    row = generate_row(block + refer->cell_num * row_len, table->meta_table);
+    row = generate_row(block + refer->cell_num * cell_len + REFER_SIZE, table->meta_table);
 
     UnlockBuffer(buffer);
     ReleaseBuffer(buffer);
@@ -164,16 +175,17 @@ Row *HeapTableLookupRow(Table *table, Refer *refer) {
 void HeapTableUpdateRow(Table *table, Refer *refer, Row *row) {
     Buffer buffer;
     void *block;
-    uint32_t row_len;
+    uint32_t row_len, cell_len;
 
     row_len = calc_table_row_length(table);
+    cell_len = row_len + REFER_SIZE;
     buffer = ReadBuffer(refer->oid, refer->page_num);
     LockBuffer(buffer, RW_WRITER);
     block = GetBufferBlock(buffer);
     
     /* Update heap table row centent. */
     void *destintion = serialize_row_data(row, table);
-    memcpy(block + refer->cell_num * row_len, destintion, row_len);
+    memcpy(block + refer->cell_num * cell_len + REFER_SIZE, destintion, row_len);
 
     UnlockBuffer(buffer);
     ReleaseBuffer(buffer);
@@ -198,11 +210,14 @@ bool DropHeapTable(char *tableName) {
     if (remove(heap_table_file) == 0 && RemoveObject(oid))
         return true;
 
-
     /* Not reach here logically. */
     db_log(ERROR, 
            "Try to drop heap table '%s' fail, error : %s", 
            tableName, strerror(errno));
 
     return false;
+}
+
+void HeapTableAppendColumn(Table *table, MetaColumn *newColumn, int pos) {
+
 }

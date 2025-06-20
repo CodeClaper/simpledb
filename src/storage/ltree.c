@@ -69,7 +69,7 @@ static void assign_row_value(void *destination, void *value, MetaColumn *meta_co
 static void insert_leaf_node_new_cell(Cursor *cursor, Row *row);
 static void append_leaf_node_column(uint32_t page_num, Table *table, MetaColumn *new_column, int pos);
 static bool check_internal_node_cells_mass(void *internal_node, uint32_t keys_num, uint32_t key_len, uint32_t default_value_len, DataType data_type);
-static void *seriable_index_value(Row *row, Table *table);
+static void *seriable_index_value(Row *row, Cursor *cursor);
 static void update_index_system_content(void *destination, Row *row, Table *table);
 
 /* If obsolute node. */
@@ -1198,7 +1198,7 @@ static void insert_and_split_leaf_node(Cursor *cursor, Row *row) {
          * Because i start with cell number and decrease, right cells firstly move and make space. */
         if (i == cursor->cell_num) {
             /* Deposit cursor. */
-            void *serial_data = seriable_index_value(row, cursor->table);
+            void *serial_data = seriable_index_value(row, cursor);
             memcpy(destination, serial_data, value_len);
             set_leaf_node_cell_key(destination_node, index_at_node, key_len, value_len, default_value_len, row->key);
             dfree(serial_data);
@@ -1302,7 +1302,7 @@ static void insert_leaf_node_new_cell(Cursor *cursor, Row *row) {
     
     /* Insert the new row. */
     set_leaf_node_cell_key(node, cursor->cell_num, key_len, value_len, default_value_len, row->key);
-    void *destination = seriable_index_value(row, cursor->table);
+    void *destination = seriable_index_value(row, cursor);
     memcpy(get_leaf_node_cell_value(node, key_len, value_len, default_value_len, cursor->cell_num), 
            destination, value_len);
     
@@ -2765,18 +2765,20 @@ void *serialize_row_data(Row *row, Table *table) {
 }
 
 /* Serialize index value. */
-static void *seriable_index_value(Row *row, Table *table) {
+static void *seriable_index_value(Row *row, Cursor *cursor) {
     uint32_t value_len;
     void *destination;
+    Table *table;
     MetaTable *meta_table;
     Refer *refer;
 
+    table = cursor->table;
     value_len = calc_primary_index_value_length(table);
     destination = dalloc(value_len);
     meta_table = table->meta_table;
 
     /* Insert into heap table. */
-    refer = HeapTableInsertRow(table, row);
+    refer = HeapTableInsertRow(cursor, row);
     
     /* Assign refer value. */
     memcpy(destination, refer, REFER_SIZE);
