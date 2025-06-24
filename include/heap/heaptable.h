@@ -2,7 +2,7 @@
 #include "refer.h"
 
 #define HEAP_TABLE_ROOT_PAGE 0
-#define HEAP_TABLE_FIRST_CELL_NUM 1
+#define HEAP_TABLE_FIRST_CELL_NUM 0
 
 /* Create table inner. */
 bool CreateHeapTableInner(Oid oid);
