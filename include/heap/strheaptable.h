@@ -25,15 +25,11 @@ int CompareStrRefer(StrRefer *source, StrRefer *target);
 /* Create the string heap table. */
 bool CreateStrHeapTable(char *table_name);
 
-/* Insert new String value. 
- * Return the Refer value.
- * */
+/* Insert new String value. */
 StrRefer *InsertStringValue(Oid oid, char *str_val);
-
 
 /* Query string value. */
 char *QueryStringValue(StrRefer *strRefer);
-
 
 /* Drop the string heap table. */
 bool DropStrHeapTable(char *table_name);

@@ -28,6 +28,7 @@
 #include "index.h"
 #include "fdesc.h"
 #include "compres.h"
+#include "heaptable.h"
 
 /* Get table file path. */
 char *table_file_path(Oid oid) {
@@ -162,7 +163,10 @@ bool add_new_meta_column(char *table_name, MetaColumn *new_meta_column, ColumnPo
     Table *table = open_table(table_name);
     MetaTable *meta_table = table->meta_table;
     int pos = get_column_position(meta_table, post_def);
+    /* Index table append new column. */
     append_new_column(table->root_page_num, table, new_meta_column, pos);
+    /* Heap table append new column. */
+    HeapTableAppendColumn(table, new_meta_column, pos);
     return true;
 }
 

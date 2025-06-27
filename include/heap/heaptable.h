@@ -19,5 +19,11 @@ Row *HeapTableLookupRow(Table *table, Refer *refer);
 /* Update the row in heap table. */
 void HeapTableUpdateRow(Table *table, Refer *refer, Row *row);
 
+/* Update the index refer in row. */
+void HeapTableUpdateIndexRefer(Table *table, Refer *refer, Refer *newIRefer);
+
 /* Drop the heap table. */
 bool DropHeapTable(char *tableName);
+
+/* Heap table append new column. */
+void HeapTableAppendColumn(Table *table, MetaColumn *newColumn, int pos);

@@ -256,7 +256,7 @@ static bool include_internal_node(SelectResult *select_result, void *min_key, vo
 
 /* Check if include leaf node if the condition is logic condition. */
 static bool include_logic_leaf_node(SelectResult *select_result, Row *row, ConditionNode *condition_node) {
-    switch(condition_node->conn_type) {
+    switch (condition_node->conn_type) {
         case C_AND:
             return include_leaf_node(select_result, row, condition_node->left) && 
                         include_leaf_node(select_result, row, condition_node->right);
@@ -548,7 +548,7 @@ static ArrayValue *get_row_array_value(void *destination, MetaColumn *meta_colum
 }
 
 /* Assignment row value. */
-static void *assign_row_value(void *destination, MetaColumn *meta_column) {
+static void *define_row_value(void *destination, MetaColumn *meta_column) {
     return (meta_column->array_dim == 0)
             /* For non-array data. */
             ? destination + LEAF_NODE_CELL_NULL_FLAG_SIZE 
@@ -569,7 +569,7 @@ Row *generate_row(void *destination, MetaTable *meta_table) {
         /* Generate a key value pair. */
         KeyValue *key_value = is_null_cell(destination + offset) 
                             ? new_key_value(meta_column->column_name, NULL, meta_column->column_type)
-                            : new_key_value(meta_column->column_name, assign_row_value(destination + offset, meta_column), meta_column->column_type);
+                            : new_key_value(meta_column->column_name, define_row_value(destination + offset, meta_column), meta_column->column_type);
         key_value->is_array = meta_column->array_dim > 0;
         key_value->table_name = meta_table->table_name;
 
@@ -578,7 +578,7 @@ Row *generate_row(void *destination, MetaTable *meta_table) {
 
         /* Assign primary key. */
         if (meta_column->is_primary)
-            row->key = assign_row_value(destination + offset, meta_column);
+            row->key = define_row_value(destination + offset, meta_column);
 
         /* Get the column offset. */
         offset += meta_column->column_length;

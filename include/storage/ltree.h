@@ -100,6 +100,9 @@ void update_row_data(Row *row, Cursor *cursor);
 /* Deserialize meta column. */
 MetaColumn *deserialize_meta_column(void *destination);
 
+/* Assign value to row destination.  */
+void assign_row_value(void *destination, void *value, MetaColumn *meta_column);
+
 /* Deserialize meta column. */
 void *serialize_meta_column(MetaColumn *meta_column);
 
@@ -108,6 +111,9 @@ void *serialize_row_data(Row *row, Table *table);
 
 /* Appedn new column. */
 void append_new_column(uint32_t page_num, Table *table, MetaColumn *new_column, int pos);
+
+/* Update index refer content. */
+void update_index_refer_content(Table *table, Refer *iRefer, Refer *newRefer);
 
 /* Drop the column. */
 void drop_column(uint32_t page_num, Table *table, int pos);
