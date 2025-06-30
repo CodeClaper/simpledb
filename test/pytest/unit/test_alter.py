@@ -123,6 +123,7 @@ def test_query_data_after_add_column3():
     sql = "select * from Student;"
     ret = client.execute(sql)
     assert ret['success'] == True
+    assert ret['rows'] == 3
     for row in ret["data"]:
         assert row["grade"] == None
         assert row["score"] == None
@@ -140,9 +141,11 @@ def test_drop_column():
 
 ## query after drop column.
 def test_query_after_drop_column():
-    sql = "select age from Student;"
+    sql = "select * from Student;"
     ret = client.execute(sql)
-    assert ret["success"] == False
+    print(ret)
+    assert ret["success"] == True
+    assert ret["rows"] == 3
 
 
 ## drop mock table

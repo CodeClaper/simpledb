@@ -176,17 +176,3 @@ void RemoveTableBuffer(Oid oid) {
     }
     switch_local();
 }
-
-static void PrintBufTable(int k) {
-    for (Index i = (k * 1000); i < (k + 1) *1000; i++) {
-        int deep;
-        BufferTableEntrySlot *slot ;
-        BufferTableEntry *current;
-        
-        slot = GetBufferTableSlotByIndex(i);
-        for (current = slot->next, deep = 0; 
-                current != NULL; 
-                    current = current->next, deep++);
-        printf("%d\t", deep);
-    }
-}

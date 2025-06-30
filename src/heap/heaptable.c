@@ -263,7 +263,7 @@ static inline bool OverflowPageAfterAppendColumn(uint32_t cell_num, uint32_t cel
 }
 
 /* Calcualte the offset where new column appending at. */
-static uint32_t CalcOffsetAfterNewColumn(MetaTable *meta_table, int pos) {
+static uint32_t CalcOffsetByPos(MetaTable *meta_table, int pos) {
     /*  Calcualte offset. */
     uint32_t offset = 0;
     for (int i = 0; i < pos; i++) {
@@ -275,7 +275,7 @@ static uint32_t CalcOffsetAfterNewColumn(MetaTable *meta_table, int pos) {
 
 /* New cell data after append column. */
 static void *NewCellAfterAppendColumn(void *destintion, Table *table, MetaColumn *newColumn, int pos, uint32_t cell_len) {
-    uint32_t offset = CalcOffsetAfterNewColumn(table->meta_table, pos);
+    uint32_t offset = CalcOffsetByPos(table->meta_table, pos);
     Assert(cell_len > offset);
     
     /* Move after new column memcpy. */
@@ -301,6 +301,25 @@ static void *NewCellAfterAppendColumn(void *destintion, Table *table, MetaColumn
 /* New cell postion after append column. */
 static void *NewCellPostionAferAppendColumn(void *block, MetaColumn *newColumn, uint32_t cell_len, uint32_t index) {
     cell_len += newColumn->column_length;
+    return GetPageBodyCell(block) + cell_len * index;
+}
+
+/* New cell data after drop column. */
+static void *NewCellAfterDropColumn(void *destintion, Table *table, MetaColumn *oldColumn, int pos, uint32_t cell_len) {
+    uint32_t offset = CalcOffsetByPos(table->meta_table, pos);
+    Assert(cell_len > offset);
+    
+    /* Move after new column memcpy. */
+    memcpy(destintion + REFER_SIZE + offset, 
+           destintion + REFER_SIZE + offset + oldColumn->column_length, 
+           cell_len - REFER_SIZE - offset - oldColumn->column_length);
+
+    return destintion;
+}
+
+/* New cell postion after drop column. */
+static void *NewCellPostionAferDropColumn(void *block, MetaColumn *oldColumn, uint32_t cell_len, uint32_t index) {
+    cell_len -= oldColumn->column_length;
     return GetPageBodyCell(block) + cell_len * index;
 }
 
@@ -392,8 +411,8 @@ static void HeapTableSplitAppendColumn(Refer *rootRefer, Table *table, MetaColum
 }
 
 /* Heap table append column looping each page. */
-static void HeapTableAppendColumnEachPage(Refer *rootRefer, Table *table, MetaColumn *newColumn, 
-                                          int pos, Oid oid, int pageNum) {
+static void HeapTableAppendColumnLoop(Refer *rootRefer, Table *table, MetaColumn *newColumn, 
+                                      int pos, Oid oid, int pageNum) {
     void *block;
     Buffer buffer;
     uint32_t row_len, cell_len, cell_num;
@@ -425,12 +444,60 @@ void HeapTableAppendColumn(Table *table, MetaColumn *newColumn, int pos) {
     
     /* Handle each page. */
     for (int i = 0; i <= rootRefer->page_num; i++) {
-        HeapTableAppendColumnEachPage(rootRefer, table, newColumn, pos, rootRefer->oid, i);
+        HeapTableAppendColumnLoop(rootRefer, table, newColumn, pos, rootRefer->oid, i);
     }
 
     /* Maybe root refer has changed. */
     MakeBufferDirty(rootBuffer);
     
+    UnlockBuffer(rootBuffer);
+    ReleaseBuffer(rootBuffer);
+}
+
+/* Heap table drop column looping each page. */
+static void HeapTableDropColumnLoop(Table *table, MetaColumn *oldColumn, 
+                                    int pos, Oid oid, int pageNum) {
+    void *block;
+    Buffer buffer;
+    uint32_t row_len, cell_len, cell_num;
+
+    row_len = calc_table_row_length(table);
+    cell_len = REFER_SIZE + row_len;
+    buffer = ReadBuffer(oid, pageNum);
+    LockBuffer(buffer, RW_WRITER);
+    block = GetBufferBlock(buffer);
+    cell_num = GetPageCellNum(block);
+    
+    for (int i = 0; i < cell_num; i++) {
+        void *destintion = GetPageBodyCell(block) + cell_len * i; 
+        memcpy(
+            NewCellPostionAferDropColumn(block, oldColumn, cell_len, i), 
+            NewCellAfterDropColumn(destintion, table, oldColumn, pos, cell_len), 
+            cell_len - oldColumn->column_length
+        );
+    }
+    MakeBufferDirty(buffer);
+
+    UnlockBuffer(buffer);
+    ReleaseBuffer(buffer);
+}
+
+/* Heap table drop column. */
+void HeapTableDropColumn(Table *table, MetaColumn *oldColumn, int pos) {
+    Buffer rootBuffer;
+    void *root;
+    Refer *rootRefer;
+
+    rootBuffer = ReadBuffer(table->hoid, HEAP_TABLE_ROOT_PAGE);
+    LockBuffer(rootBuffer, RW_WRITER);
+    root = GetBufferBlock(rootBuffer);
+    rootRefer = GetRootRefer(root);
+    
+    /* Handle each page. */
+    for (int i = 0; i <= rootRefer->page_num; i++) {
+        HeapTableDropColumnLoop(table, oldColumn, pos, rootRefer->oid, i);
+    }
+
     UnlockBuffer(rootBuffer);
     ReleaseBuffer(rootBuffer);
 }

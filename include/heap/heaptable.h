@@ -27,3 +27,6 @@ bool DropHeapTable(char *tableName);
 
 /* Heap table append new column. */
 void HeapTableAppendColumn(Table *table, MetaColumn *newColumn, int pos);
+
+/* Heap table drop column. */
+void HeapTableDropColumn(Table *table, MetaColumn *oldColumn, int pos);

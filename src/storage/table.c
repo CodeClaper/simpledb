@@ -163,9 +163,9 @@ bool add_new_meta_column(char *table_name, MetaColumn *new_meta_column, ColumnPo
     Table *table = open_table(table_name);
     MetaTable *meta_table = table->meta_table;
     int pos = get_column_position(meta_table, post_def);
-    /* Index table append new column. */
+    /* Append index table new column. */
     append_new_column(table->root_page_num, table, new_meta_column, pos);
-    /* Heap table append new column. */
+    /* Append heap table new column. */
     HeapTableAppendColumn(table, new_meta_column, pos);
     return true;
 }
@@ -174,8 +174,12 @@ bool add_new_meta_column(char *table_name, MetaColumn *new_meta_column, ColumnPo
 bool drop_meta_column(char *table_name, char *column_name) {
     Table *table = open_table(table_name);
     int pos = get_meta_column_pos_by_name(table->meta_table, column_name);
+    MetaColumn *oldColumn = get_meta_column_by_name(table->meta_table, column_name);
     Assert(pos >= 0);
+    /* Drop index table column. */
     drop_column(table->root_page_num, table, pos);
+    /* Drop heap table column. */
+    HeapTableDropColumn(table, oldColumn, pos);
     return true;
 }
 
