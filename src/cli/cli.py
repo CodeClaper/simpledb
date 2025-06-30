@@ -12,10 +12,11 @@ client = dbclient.DbClient('127.0.0.1', 4083)
 
 ## System keywords.
 keywords = [
-    'SELECT', 'UPDATE', 'DELETE', 'INSERT', 'DROP', 'CREATE', 'ALTER', 'DESC', 'DESCRIBE', 'SHOW', 'SET', ## operation.
-    'TABLE', 'FROM', 'WHERE',  ## clause
+    'SELECT', 'UPDATE', 'DELETE', 'INSERT', 'DROP', 'CREATE', 'ALTER', 'DESC', 'DESCRIBE', 'SHOW', 'SET', 'ADD',## operation.
+    'TABLE', 'COLUMN', 'FROM', 'WHERE',  ## clause
     'AND', 'OR' ## logic
     'MAX', 'MIN', 'SUM', 'COUNT', 'AVG', ## aggregate functions
+    "INT", "BOOL", "CHAR", "VARCHAR", "TIMESTAMP", "FLOAT", "DOUBLE", "STRING", ## data type.
     'SOURCE'
 ]
 
