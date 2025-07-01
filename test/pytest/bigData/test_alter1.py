@@ -42,7 +42,6 @@ def test_select_count():
     assert ret["success"] == True
     assert ret["data"][0] == { "count": 999 }
 
-
 ## select add column.
 def test_select_add_column():
     sql = "select * from Student;"
