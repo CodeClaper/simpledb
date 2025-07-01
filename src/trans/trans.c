@@ -398,21 +398,7 @@ bool RowIsVisible(Row *row) {
 
     /* If satisfy above three conditions, 
      * row is visible for current transaction. */
-    if (row_created_xid == entry->xid && 
-            row_expired_xid == 0)
-        return true;
-    if (row_created_xid != entry->xid && 
-            !IsActive(row_created_xid) && 
-                row_expired_xid == 0)
-        return true;
-    if (row_expired_xid != 0 && 
-            row_expired_xid != entry->xid && 
-                IsActive(row_expired_xid) && 
-                    row_created_xid != row_expired_xid)
-        return true;
-    
-    /* Else not visible. */
-    return false;
+    return IsVisibleInner(row_created_xid, row_expired_xid, entry->xid);
 }
 
 /* Check if a row has been deleted. */

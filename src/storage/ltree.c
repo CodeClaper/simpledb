@@ -485,11 +485,6 @@ void *get_meta_column_pointer(void *root_node, uint32_t index) {
     return root_node + ROOT_NODE_META_COLUMN_OFFSET + ROOT_NODE_META_COLUMN_SIZE * index;
 }
 
-/* Get meta column size. */
-uint32_t get_root_node_meta_column_size() {
-    return ROOT_NODE_META_COLUMN_SIZE;
-}
-
 /* Set index meta column */
 void set_meta_column(void *root_node, void *destination, uint32_t index) {
    memcpy(root_node + ROOT_NODE_META_COLUMN_OFFSET + ROOT_NODE_META_COLUMN_SIZE * index, 
@@ -523,6 +518,26 @@ static void *get_max_key(Table *table, void *node, uint32_t key_len,
             UNEXPECTED_VALUE(get_node_type(node));
             return NULL;
     }
+}
+
+/* Get index created_xid. */
+Xid get_index_created_xid(void *destination) {
+    return *(Xid *) (destination + REFER_SIZE + LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE);
+}
+
+/* Set index created_xid. */
+static void set_index_created_xid(void *destination, Xid created_xid) {
+    *(Xid *) (destination + REFER_SIZE + LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE) = created_xid;
+}
+
+/* Get index expired_xid. */
+Xid get_index_expired_xid(void *destination) {
+    return *(Xid *) (destination + REFER_SIZE + LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE+ sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE);
+}
+
+/* Set index expired_xid. */
+static void set_index_expired_xid(void *destination, Xid expired_xid) {
+    *(Xid *) (destination + REFER_SIZE + LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE+ sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE) = expired_xid;
 }
 
 /* Initialize leaf node. */
@@ -2636,7 +2651,7 @@ void update_row_created_xid(Refer *refer, Xid created_xid) {
 
     /* Modify the created_xid. */
     destination = get_leaf_node_cell_value(leaf_node, key_len, value_len, default_value_len, refer->cell_num);
-    *(Xid *)(destination + LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(Xid) + LEAF_NODE_CELL_NULL_FLAG_SIZE) = created_xid;
+    set_index_created_xid(destination, created_xid);
 
     /* Update heap table row created_xid. */
     HeapTableUpdateRowCreatedXid(table, (Refer *) destination, created_xid);
@@ -2668,7 +2683,7 @@ void update_row_expired_xid(Refer *refer, Xid expired_xid) {
 
     /* Modify the expired_xid. */
     destination = get_leaf_node_cell_value(leaf_node, key_len, value_len, default_value_len, refer->cell_num);
-    *(Xid *)(destination + value_len - sizeof(Xid)) = expired_xid;
+    set_index_expired_xid(destination, expired_xid);
 
     /* Update heap table row expired_xid. */
     HeapTableUpdateRowExpiredXid(table, (Refer *) destination, expired_xid);
@@ -2723,3 +2738,4 @@ void update_index_refer_content(Table *table, Refer *iRefer, Refer *newRefer) {
     UnlockBuffer(buffer);
     ReleaseBuffer(buffer);
 }
+

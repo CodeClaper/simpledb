@@ -492,10 +492,6 @@ static bool include_exec_leaf_node(SelectResult *select_result, Row *row, Condit
 
 /* Check if the key include the leaf node. */
 static bool include_leaf_node(SelectResult *select_result, Row *row, ConditionNode *condition_node) {
-    /* If not visible for current transaction, return false. */
-    if (!RowIsVisible(row))
-        return false;
-
     /* If without condition, of course the key include, so just return true. */
     if (condition_node == NULL) 
           return true;
@@ -711,9 +707,9 @@ static void scan_from_leaf_node(SelectResult *select_result, ConditionNode *cond
     for (i = 0; i < cell_num; i++) {
         /* Get leaf node cell value. */
         void *destinct = get_leaf_node_cell_value(leaf_node, key_len, value_len, default_value_len, i);
-        Xid create_xid = *(Xid *) (destinct + REFER_SIZE + LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE);
-        Xid expired_xid = *(Xid *) (destinct + REFER_SIZE + LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE+ sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE);
-        if (IsVisibleInner(create_xid, expired_xid, current_trans->xid))
+        Xid created_xid = get_index_created_xid(destinct);
+        Xid expired_xid = get_index_expired_xid(destinct);
+        if (IsVisibleInner(created_xid, expired_xid, current_trans->xid))
             row_handler(NULL, select_result, table, type, arg);
     }
     
@@ -726,11 +722,11 @@ static void scan_from_leaf_node(SelectResult *select_result, ConditionNode *cond
 static void select_from_leaf_node(SelectResult *select_result, ConditionNode *condition, 
                                   uint32_t page_num, Table *table, ROW_HANDLER row_handler, 
                                   ROW_HANDLER_ARG_TYPE type, void *arg) {
-
     /* Get cell number, key length and value lenght. */
     uint32_t key_len, value_len, default_value_len, cell_num ;
     Buffer buffer;
     void *leaf_node;
+    TransEntry *current_trans;
 
     /* If LimitClauseNode full, not continue. */
     if (type == ARG_SELECT_PARAM && limit_clause_full(arg))
@@ -748,11 +744,16 @@ static void select_from_leaf_node(SelectResult *select_result, ConditionNode *co
     value_len = calc_primary_index_value_length(table);
     default_value_len = calc_table_row_length(table);
     cell_num = get_leaf_node_cell_num(leaf_node, default_value_len);
+    current_trans = FindTransaction();
 
     uint32_t i;
     for (i = 0; i < cell_num; i++) {
         /* Get leaf node cell value. */
         void *destinct = get_leaf_node_cell_value(leaf_node, key_len, value_len, default_value_len, i);
+        Xid created_xid = get_index_created_xid(destinct);
+        Xid expired_xid = get_index_expired_xid(destinct);
+        if (current_trans != NULL && !IsVisibleInner(created_xid, expired_xid, current_trans->xid))
+            continue;
 
         /* If satisfied, exeucte row handler function. */
         Row *row = HeapTableLookupRow(table, (Refer *) destinct);
@@ -793,7 +794,6 @@ static void select_from_leaf_node(SelectResult *select_result, ConditionNode *co
 static void select_from_internal_node(SelectResult *select_result, ConditionNode *condition, 
                                       uint32_t page_num, Table *table, 
                                       ROW_HANDLER row_handler, ROW_HANDLER_ARG_TYPE type, void *arg) {
-
     /* If LimitClauseNode full, not continue. */
     if (type == ARG_SELECT_PARAM && limit_clause_full(arg))
         return;

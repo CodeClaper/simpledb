@@ -61,14 +61,17 @@ uint32_t get_leaf_node_cell_index(void *node, void *key, uint32_t cell_num, uint
 /* Get index meta column pointer. */
 void *get_meta_column_pointer(void *root_node, uint32_t index);
 
+/* Get index created_xid. */
+Xid get_index_created_xid(void *destination);
+
+/* Get index expired_xid. */
+Xid get_index_expired_xid(void *destination);
+
 /* Set index meta column. */
 void set_meta_column(void *root_node, void *destination, uint32_t index);
 
 /* Check if leaf node page overflow. */
 bool overflow_leaf_node(void *leaf_node, uint32_t key_len, uint32_t value_len, uint32_t default_value_len, uint32_t cell_num);
-
-/* Get meta column size. */
-uint32_t get_root_node_meta_column_size();
 
 /* Check cell is null. */
 bool is_null_cell(void *destination);
