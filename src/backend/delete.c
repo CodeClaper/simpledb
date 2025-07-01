@@ -40,7 +40,7 @@ void delete_row(Row *row, SelectResult *select_result,
     if (RowIsVisible(row)) {
 
         /* Define the cursor of the row. */
-        cursor = define_cursor(table, row->key, true);
+        cursor = define_cursor(table, row->key);
 
         /* Get refer and record xlog. */
         refer = convert_refer(cursor);

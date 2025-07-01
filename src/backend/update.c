@@ -64,7 +64,7 @@ static void delete_row_for_update(Refer *refer, Row *row) {
 
 /* Insert row for update. */
 static void insert_row_for_update(Row *row, Table *table) {
-    Cursor *new_cur = define_cursor(table, row->key, true);
+    Cursor *new_cur = define_cursor(table, row->key);
     UpdateTransactionState(row, TR_INSERT);
 
     /* Insert */

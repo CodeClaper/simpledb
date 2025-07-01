@@ -482,7 +482,7 @@ uint32_t calc_primary_index_value_length(Table *table) {
     uint32_t value_len;
     uint32_t i;
     
-    value_len = sizeof(Refer);
+    value_len = REFER_SIZE;
     for (i = 0; i < table->meta_table->all_column_size; i++) {
         MetaColumn *meta_column = table->meta_table->meta_column[i];
         if (meta_column->sys_reserved)

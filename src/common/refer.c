@@ -129,7 +129,7 @@ static Cursor *define_cursor_leaf_node(Table *table, void *leaf_node, uint32_t p
 }
 
 /* Define cursor when meet internal node. */
-static Cursor *define_cursor_internal_node(Table *table, void *internal_node, void *key, bool if_exsits) {
+static Cursor *define_cursor_internal_node(Table *table, void *internal_node, void *key) {
     Cursor *cursor;
     uint32_t key_len, default_value_len, keys_num;
 
@@ -138,9 +138,7 @@ static Cursor *define_cursor_internal_node(Table *table, void *internal_node, vo
     keys_num = get_internal_node_keys_num(internal_node, default_value_len);
 
     MetaColumn *primary_meta_column = get_primary_key_meta_column(table->meta_table);
-    uint32_t child_page_num = if_exsits
-            ? get_internal_node_cell_child_page_num(internal_node, key, keys_num, key_len, default_value_len, primary_meta_column->column_type)
-            : get_internal_node_cell_child_page_num(internal_node, key, keys_num, key_len, default_value_len, primary_meta_column->column_type);
+    uint32_t child_page_num = get_internal_node_cell_child_page_num(internal_node, key, keys_num, key_len, default_value_len, primary_meta_column->column_type);
     Assert(child_page_num != -1);
 
     /* Get the child node buffer. */
@@ -152,7 +150,7 @@ static Cursor *define_cursor_internal_node(Table *table, void *internal_node, vo
             cursor = define_cursor_leaf_node(table, child_node, child_page_num, key);
             break;
         case INTERNAL_NODE:
-            cursor = define_cursor_internal_node(table, child_node, key, if_exsits);
+            cursor = define_cursor_internal_node(table, child_node, key);
             break;
         default:
             UNEXPECTED_VALUE(node_type);
@@ -166,7 +164,7 @@ static Cursor *define_cursor_internal_node(Table *table, void *internal_node, vo
 }
 
 /* Define Cursor. */
-Cursor *define_cursor(Table *table, void *key, bool if_exsits) {
+Cursor *define_cursor(Table *table, void *key) {
     Cursor *cursor;
 
     Assert(table != NULL);
@@ -181,7 +179,7 @@ Cursor *define_cursor(Table *table, void *key, bool if_exsits) {
             cursor = define_cursor_leaf_node(table, root_node, table->root_page_num, key);
             break;
         case INTERNAL_NODE:
-            cursor = define_cursor_internal_node(table, root_node, key, if_exsits);
+            cursor = define_cursor_internal_node(table, root_node, key);
             break;
         default:
             UNEXPECTED_VALUE(node_type);
@@ -197,7 +195,7 @@ Cursor *define_cursor(Table *table, void *key, bool if_exsits) {
 /* Define Refer */
 Refer *define_refer(Row *row) {
     Table *table = open_table(row->table_name);
-    Cursor *cursor = define_cursor(table, row->key, true);
+    Cursor *cursor = define_cursor(table, row->key);
     Refer *refer = convert_refer(cursor);
     free_cursor(cursor);
     return refer;
@@ -333,10 +331,9 @@ static bool update_array_key_value_refer(KeyValue *key_value, ReferUpdateEntity 
 }
 
 /* Update row key value. */
-static void update_key_value_refer(Row *row, MetaColumn *meta_column, 
-                                   Cursor *cursor, ReferUpdateEntity *refer_update_entity) {
+static void update_key_value_refer(Row *row, MetaColumn *meta_column, Cursor *cursor, 
+                                   ReferUpdateEntity *refer_update_entity) {
     bool flag = false;
-
     ListCell *lc;
     foreach (lc, row->data) {
         KeyValue *key_value = lfirst(lc);
@@ -362,15 +359,15 @@ static void update_key_value_refer(Row *row, MetaColumn *meta_column,
 static void update_row_refer(Row *row, SelectResult *select_result, Table *table, 
                              ROW_HANDLER_ARG_TYPE type, void *arg) {
     Assert(arg);
-    /* ReferUpdateEntity */
     Assert(type == ARG_REFER_UPDATE_ENTITY);
+
     ReferUpdateEntity *refer_update_entity = (ReferUpdateEntity *) arg;
     Oid oid = refer_update_entity->old_refer->oid;
     Table *ref_table = open_table_inner(oid);
     Assert(ref_table);
 
     /* Curosr */
-    Cursor *cursor = define_cursor(table, row->key, true);
+    Cursor *cursor = define_cursor(table, row->key);
 
     /* MetaTable */
     MetaTable *meta_table = table->meta_table;

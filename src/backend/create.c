@@ -260,6 +260,7 @@ static bool save_table_cache(Oid oid, MetaTable *meta_table) {
     /* Save to table cache. */
     Table *table = instance(Table);
     table->oid = oid;
+    table->hoid = TableNameFindHeapOid(meta_table->table_name);
     table->meta_table = meta_table;
     table->root_page_num = ROOT_PAGE_NUM;
     table->creator = getpid();
@@ -276,7 +277,6 @@ static bool save_table_object(Oid oid, char *relname) {
 
 /* Execute create table statement. */
 void exec_create_table_statement(CreateTableNode *create_table_node, DBResult *result) {
-
     Oid oid = FindNextOid();
 
     /* Check valid. */
@@ -300,9 +300,9 @@ void exec_create_table_statement(CreateTableNode *create_table_node, DBResult *r
     if (
         create_table(oid, meta_table) && 
         save_table_object(oid, GET_METATABLE_NAME(meta_table)) &&
-        // save_table_cache(oid, meta_table) &&
         CreateHeapTable(meta_table->table_name) &&
-        CreateStrHeapTable(meta_table->table_name) 
+        CreateStrHeapTable(meta_table->table_name) &&
+        save_table_cache(oid, meta_table)
     ) {
         result->success = true;
         result->rows = 0;

@@ -76,27 +76,20 @@ void gc_row(Row *row, SelectResult *select_result,
     /* Only for deleted row. */
     if (!RowIsDeleted(row))
         return;
-
     /* Cursor */
-    Cursor * cursor = define_cursor(table, row->key, true);
-
+    Cursor * cursor = define_cursor(table, row->key);
     /* Delete row. */
     delete_leaf_node_cell(cursor, row->key);
 }
 
 /* Gc table */
 void gc_table(char *table_name) {
-
 #ifdef DEBUG
     db_log(DEBUG, "GC table '%s'.", table_name);
 #endif
-
     /* Query with condition, and delete satisfied condition row. */
     SelectResult *select_result = new_select_result(UNKONWN_STMT, table_name);
-
     query_with_condition(NULL, select_result, gc_row, ARG_NULL, NULL);
-    
     free_select_result(select_result);
-
 }
 

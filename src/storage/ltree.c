@@ -461,9 +461,9 @@ uint32_t get_internal_node_cell_child_page_num(void *node, void *key,
 /* Get leaf node cell index, 
  * maybe the key not exist in the node,then return the bigger one. */
 uint32_t get_leaf_node_cell_index(void *node, void *key, uint32_t cell_num, 
-                                  uint32_t key_len, uint32_t value_len, uint32_t default_value_len, 
-                                  DataType key_data_type) {
-    // binary search
+                                  uint32_t key_len, uint32_t value_len, 
+                                  uint32_t default_value_len, DataType key_data_type) {
+    /* Binary search */
     uint32_t min_index = 0;
     uint32_t max_index = cell_num;
     while (min_index != max_index) {
@@ -2129,16 +2129,17 @@ bool cursor_is_deleted(Cursor *cursor) {
     void *leaf_node = GetBufferPage(buffer);
     void *destination = get_leaf_node_cell_value(leaf_node, key_len, value_len, default_value_len, cursor->cell_num);
  
-    int i, offset = 0;
+    int i, offset = REFER_SIZE;
     for (i = 0; i < table->meta_table->all_column_size; i++) {
         MetaColumn *meta_column = table->meta_table->meta_column[i];
         if (meta_column->sys_reserved && 
                 strcmp(meta_column->column_name, EXPIRED_XID_COLUMN_NAME) == 0) {
-            int64_t expired_xid = *(int64_t *)(destination + offset);
+            Xid expired_xid = *(Xid *)(destination + offset);
             ReleaseBuffer(buffer);
             return expired_xid != 0;
         }
-        offset += meta_column->column_length;
+        if (meta_column->sys_reserved)
+            offset += meta_column->column_length;
     }
 
     /* Release the leaf node buffer. */
@@ -2537,16 +2538,16 @@ void assign_row_value(void *destination, void *value, MetaColumn *meta_column) {
         bool nflag = value == NULL ? true : false;
         memcpy(destination, &nflag, LEAF_NODE_CELL_NULL_FLAG_SIZE);
         if (!nflag)
-            memcpy(destination + LEAF_NODE_CELL_NULL_FLAG_SIZE, value, meta_column->column_length);
+            memcpy(destination + LEAF_NODE_CELL_NULL_FLAG_SIZE, value, meta_column->column_length - LEAF_NODE_CELL_NULL_FLAG_SIZE);
         else
-            memset(destination + LEAF_NODE_CELL_NULL_FLAG_SIZE, 0, meta_column->column_length);
+            memset(destination + LEAF_NODE_CELL_NULL_FLAG_SIZE, 0, meta_column->column_length - LEAF_NODE_CELL_NULL_FLAG_SIZE);
     } else {
         bool nflag = value == NULL ? true : false;
         memcpy(destination, &nflag, LEAF_NODE_CELL_NULL_FLAG_SIZE);
         if (!nflag)
             assign_row_array_value(destination, value, meta_column);
         else
-            memset(destination + LEAF_NODE_CELL_NULL_FLAG_SIZE, 0, meta_column->column_length);
+            memset(destination + LEAF_NODE_CELL_NULL_FLAG_SIZE, 0, meta_column->column_length - LEAF_NODE_CELL_NULL_FLAG_SIZE);
     } 
 }
 
@@ -2598,6 +2599,7 @@ static void *seriable_index_value(Row *row, Cursor *cursor) {
             offset += meta_column->column_length;
         }
     }
+
     return destination;
 }
 
