@@ -37,6 +37,7 @@
 #include "asserts.h"
 #include "utils.h"
 #include "pager.h"
+#include "meta.h"
 
 
 /* 
@@ -147,15 +148,7 @@ void ExecuteRollback() {
 
 /* Reverse insert operation. */
 static void HeapInsertXLog(Refer *refer, TransEntry *transaction) {
-    Row *row = define_row(refer);
-
-    KeyValue *created_xid_col = lfirst(second_last_cell(row->data));
-    KeyValue *expired_xid_col = lfirst(last_cell(row->data));
-    Xid created_xid = *(Xid *)created_xid_col->value;
-    Assert(created_xid == transaction->xid);
-
-    /* Delete the insered row. */
-    *(Xid *)expired_xid_col->value = transaction->xid;
+    update_row_expired_xid(refer, transaction->xid);
 }
 
 /* Reverse delete operation. 
@@ -174,7 +167,7 @@ static void HeapDeleteXLog(Refer *refer, TransEntry *transaction) {
 
     /* Make the row visible. */
     *(Xid *)expired_xid_col->value = 0;
-    
+
     /* Repositioning. */
     Cursor *new_cur = define_cursor(open_table_inner(refer->oid), newRow->key);
 

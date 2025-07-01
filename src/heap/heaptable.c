@@ -229,6 +229,48 @@ void HeapTableUpdateIndexRefer(Table *table, Refer *refer, Refer *newIRefer) {
     ReleaseBuffer(buffer);
 }
 
+/* Update the heap table row createdXid. */
+void HeapTableUpdateRowCreatedXid(Table *table, Refer *refer, Xid createdXid) {
+    Buffer buffer;
+    uint32_t row_len, cell_len;
+    void *block, *destintion;
+
+    row_len = calc_table_row_length(table);
+    cell_len = row_len + REFER_SIZE;
+    buffer = ReadBuffer(refer->oid, refer->page_num);
+    LockBuffer(buffer, RW_WRITER);
+    block = GetBufferBlock(buffer);
+    
+    /* Update heap table row createdXid. */
+    destintion = GetPageBodyCell(block) + refer->cell_num * cell_len;
+    *(Xid *)(destintion + cell_len - sizeof(Xid) - LEAF_NODE_CELL_NULL_FLAG_SIZE - sizeof(Xid)) = createdXid;
+    MakeBufferDirty(buffer);
+
+    UnlockBuffer(buffer);
+    ReleaseBuffer(buffer);
+}
+
+/* Update the heap table row createdXid. */
+void HeapTableUpdateRowExpiredXid(Table *table, Refer *refer, Xid expiredXid) {
+    Buffer buffer;
+    uint32_t row_len, cell_len;
+    void *block, *destintion;
+
+    row_len = calc_table_row_length(table);
+    cell_len = row_len + REFER_SIZE;
+    buffer = ReadBuffer(refer->oid, refer->page_num);
+    LockBuffer(buffer, RW_WRITER);
+    block = GetBufferBlock(buffer);
+    
+    /* Update heap table row createdXid. */
+    destintion = GetPageBodyCell(block) + refer->cell_num * cell_len;
+    *(Xid *)(destintion + cell_len - sizeof(Xid)) = expiredXid;
+    MakeBufferDirty(buffer);
+
+    UnlockBuffer(buffer);
+    ReleaseBuffer(buffer);
+}
+
 /* Drop the heap table. */
 bool DropHeapTable(char *tableName) {
     Oid oid;

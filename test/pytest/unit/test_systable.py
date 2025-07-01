@@ -22,10 +22,13 @@ def test_query_from_systable():
     assert ret["data"] == [
         {'relname': 'Book', 'reltype': 0}, 
         {'relname': 'Book', 'reltype': 4}, 
+        {'relname': 'Book', 'reltype': 5}, 
         {'relname': 'Student', 'reltype': 0}, 
         {'relname': 'Student', 'reltype': 4}, 
+        {'relname': 'Student', 'reltype': 5}, 
         {'relname': 'Class', 'reltype': 0}, 
-        {'relname': 'Class', 'reltype': 4}
+        {'relname': 'Class', 'reltype': 4},
+        {'relname': 'Class', 'reltype': 5},
     ]
 
 ## test query from systable.

@@ -94,9 +94,6 @@ void delete_leaf_node_cell(Cursor *obs_cursor, void *key);
 /* If cursor is deleted*/
 bool cursor_is_deleted(Cursor *cursor);
 
-/* Update row data. */
-void update_row_data(Row *row, Cursor *cursor);
-
 /* Deserialize meta column. */
 MetaColumn *deserialize_meta_column(void *destination);
 
@@ -111,6 +108,15 @@ void *serialize_row_data(Row *row, Table *table);
 
 /* Appedn new column. */
 void append_new_column(uint32_t page_num, Table *table, MetaColumn *new_column, int pos);
+
+/* Update row data. */
+void update_row_data(Row *row, Cursor *cursor);
+
+/* Update row created_xid. */
+void update_row_created_xid(Refer *refer, Xid created_xid);
+
+/* Update row expired_xid. */
+void update_row_expired_xid(Refer *refer, Xid expired_xid);
 
 /* Update index refer content. */
 void update_index_refer_content(Table *table, Refer *iRefer, Refer *newRefer);

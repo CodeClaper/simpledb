@@ -22,6 +22,12 @@ void HeapTableUpdateRow(Table *table, Refer *refer, Row *row);
 /* Update the index refer in row. */
 void HeapTableUpdateIndexRefer(Table *table, Refer *refer, Refer *newIRefer);
 
+/* Update the heap table row createdXid. */
+void HeapTableUpdateRowCreatedXid(Table *table, Refer *refer, Xid createdXid);
+
+/* Update the heap table row createdXid. */
+void HeapTableUpdateRowExpiredXid(Table *table, Refer *refer, Xid expiredXid);
+
 /* Drop the heap table. */
 bool DropHeapTable(char *tableName);
 

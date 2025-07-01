@@ -2148,38 +2148,6 @@ bool cursor_is_deleted(Cursor *cursor) {
     return false;
 }
 
-/* Update row system reserved columns. */
-void update_row_data(Row *row, Cursor *cursor) {
-    Table *table;
-    Buffer buffer;
-    void *leaf_node, *destination;
-    uint32_t key_len, value_len, default_value_len;
-
-    table = cursor->table;
-    key_len = calc_primary_key_length(table); 
-    value_len = calc_primary_index_value_length(table); 
-    default_value_len = calc_table_row_length(table);
-    
-    /* Get leaf node. */
-    buffer = ReadBuffer(GET_TABLE_OID(table), cursor->page_num);
-    LockBuffer(buffer, RW_WRITER);
-    leaf_node = GetBufferPage(buffer);
-    destination = get_leaf_node_cell_value(leaf_node, key_len, value_len, default_value_len, cursor->cell_num);
-
-    /* Update heap table row. */
-    HeapTableUpdateRow(table, (Refer *) destination, row);
-
-    /* Update index contents. */
-    update_index_system_content(destination, row, table);
-
-    /* Flush page. */
-    MakeBufferDirty(buffer);
-
-    /* Release page buffer. */
-    UnlockBuffer(buffer);
-    ReleaseBuffer(buffer);
-}
-
 /* When root is empty to do. */
 static void make_empty_root_node(Table *table) {
     Buffer buffer;
@@ -2602,6 +2570,103 @@ static void *seriable_index_value(Row *row, Cursor *cursor) {
 
     return destination;
 }
+
+/* Update row system reserved columns. */
+void update_row_data(Row *row, Cursor *cursor) {
+    Table *table;
+    Buffer buffer;
+    void *leaf_node, *destination;
+    uint32_t key_len, value_len, default_value_len;
+
+    table = cursor->table;
+    key_len = calc_primary_key_length(table); 
+    value_len = calc_primary_index_value_length(table); 
+    default_value_len = calc_table_row_length(table);
+    
+    /* Get leaf node. */
+    buffer = ReadBuffer(GET_TABLE_OID(table), cursor->page_num);
+    LockBuffer(buffer, RW_WRITER);
+    leaf_node = GetBufferPage(buffer);
+    destination = get_leaf_node_cell_value(leaf_node, key_len, value_len, default_value_len, cursor->cell_num);
+
+    /* Update heap table row. */
+    HeapTableUpdateRow(table, (Refer *) destination, row);
+
+    /* Update index contents. */
+    update_index_system_content(destination, row, table);
+
+    /* Flush page. */
+    MakeBufferDirty(buffer);
+
+    /* Release page buffer. */
+    UnlockBuffer(buffer);
+    ReleaseBuffer(buffer);
+}
+
+/* Update row created_xid. */
+void update_row_created_xid(Refer *refer, Xid created_xid) {
+    Table *table;
+    Buffer buffer;
+    void *leaf_node, *destination;
+    uint32_t key_len, value_len, default_value_len;
+
+    table = open_table_inner(refer->oid);
+    key_len = calc_primary_key_length(table); 
+    value_len = calc_primary_index_value_length(table); 
+    default_value_len = calc_table_row_length(table);
+    
+    /* Get leaf node. */
+    buffer = ReadBuffer(refer->oid, refer->page_num);
+    LockBuffer(buffer, RW_WRITER);
+    leaf_node = GetBufferPage(buffer);
+
+    /* Modify the created_xid. */
+    destination = get_leaf_node_cell_value(leaf_node, key_len, value_len, default_value_len, refer->cell_num);
+    *(Xid *)(destination + LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(Xid) + LEAF_NODE_CELL_NULL_FLAG_SIZE) = created_xid;
+
+    /* Update heap table row created_xid. */
+    HeapTableUpdateRowCreatedXid(table, (Refer *) destination, created_xid);
+
+    /* Flush page. */
+    MakeBufferDirty(buffer);
+
+    /* Release page buffer. */
+    UnlockBuffer(buffer);
+    ReleaseBuffer(buffer);
+}
+
+/* Update row expired_xid. */
+void update_row_expired_xid(Refer *refer, Xid expired_xid) {
+    Table *table;
+    Buffer buffer;
+    void *leaf_node, *destination;
+    uint32_t key_len, value_len, default_value_len;
+
+    table = open_table_inner(refer->oid);
+    key_len = calc_primary_key_length(table); 
+    value_len = calc_primary_index_value_length(table); 
+    default_value_len = calc_table_row_length(table);
+    
+    /* Get leaf node. */
+    buffer = ReadBuffer(refer->oid, refer->page_num);
+    LockBuffer(buffer, RW_WRITER);
+    leaf_node = GetBufferPage(buffer);
+
+    /* Modify the expired_xid. */
+    destination = get_leaf_node_cell_value(leaf_node, key_len, value_len, default_value_len, refer->cell_num);
+    *(Xid *)(destination + value_len - sizeof(Xid)) = expired_xid;
+
+    /* Update heap table row expired_xid. */
+    HeapTableUpdateRowExpiredXid(table, (Refer *) destination, expired_xid);
+
+    /* Flush page. */
+    MakeBufferDirty(buffer);
+
+    /* Release page buffer. */
+    UnlockBuffer(buffer);
+    ReleaseBuffer(buffer);
+}
+
 
 /* Update index content. */
 static void update_index_system_content(void *destination, Row *row, Table *table) {
