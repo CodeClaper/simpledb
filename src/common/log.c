@@ -99,7 +99,7 @@ void db_log(LogLevel level, char *format, ...) {
 
     /* Only print higher level log. */
     if (level >= conf->log_level) {
-        char *sys_time = get_current_sys_time2(MICROSECOND);
+        char *sys_time = get_datetime(MICROSECOND);
         char buff[len + 100];
         sprintf(buff, "[%s][%d][%s]:\t%s\n", 
                 sys_time, getpid(), 

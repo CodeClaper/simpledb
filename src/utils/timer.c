@@ -17,10 +17,10 @@
 #include "data.h"
 #include "log.h"
 
-/* Get current system timestamp.
+/* Get system timestamp.
  * Return current system timestamp, and -1 if fail.
  * Supports four time level, SECOND, MILLISECOND, MICROSECOND, NANOSECOND. */
-int64_t get_current_sys_time(TIME_LEVEL time_level) {
+int64_t get_timestamp(TIME_LEVEL level) {
     int64_t value = - 1;
     char time_str[32];
     struct timespec tv;
@@ -31,7 +31,7 @@ int64_t get_current_sys_time(TIME_LEVEL time_level) {
         return -1;
     }
 
-    switch(time_level) {
+    switch(level) {
         case SECOND:
             value = tv.tv_sec;
         case MILLISECOND:
@@ -51,8 +51,9 @@ int64_t get_current_sys_time(TIME_LEVEL time_level) {
 }
 
 
-/* Get system time for ms level. */
-char *get_current_sys_time2(TIME_LEVEL level) {
+/* Get system datetime for ms level. 
+ * Supports four time level, SECOND, MILLISECOND, MICROSECOND, NANOSECOND. */
+char *get_datetime(TIME_LEVEL level) {
     struct timeval tv;
     time_t t;
     struct tm *ptm;

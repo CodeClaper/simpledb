@@ -38,7 +38,7 @@ static Object RowConvertObject(Row *row);
 
 /* Find next Oid. */
 inline Oid FindNextOid() {
-    return (Oid) get_current_sys_time(NANOSECOND);
+    return (Oid) get_timestamp(NANOSECOND);
 }
 
 /* If system table file already exists, 

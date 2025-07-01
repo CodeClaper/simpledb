@@ -295,7 +295,6 @@ static bool check_value_data_type(DataType column_type, AtomNode *atom_node,
 /* Check value if valid. 
  * Because, CHAR, DATE, TIMESTAMP use '%s' format to pass value, thus check it. */
 bool check_value_valid(MetaColumn *meta_column, AtomNode *atom_node) {
-
     /* Get value from atom. */
     void *value = get_value_from_atom(atom_node);
 

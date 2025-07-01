@@ -124,7 +124,7 @@ static void CreateXlock() {
 /* Generate next xid. 
  * return next xid, if return -1, there is an error. */
 static inline Xid NextXid() {
-    return get_current_sys_time(NANOSECOND);
+    return (Xid) get_timestamp(NANOSECOND);
 }
 
 /* Any running transaction. */

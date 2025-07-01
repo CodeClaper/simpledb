@@ -81,7 +81,7 @@ static SelectNode *convert_select_node(QuerySpecNode *query_spec) {
 /* Generate new sys_id column.*/
 static KeyValue *new_sys_id_column() {
     /* Automatically insert sys_id using current sys time. */
-    int64_t sys_id = get_current_sys_time(NANOSECOND);
+    int64_t sys_id = get_timestamp(NANOSECOND);
     return new_key_value(
         dstrdup(SYS_RESERVED_ID_COLUMN_NAME), 
         copy_value(&sys_id, T_LONG), 
