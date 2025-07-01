@@ -27,16 +27,19 @@ static inline Refer *GetRootRefer(void *root_node) {
     return (Refer *) (root_node + NODE_STATE_SIZE + CELL_NUM_SIZE);
 }
 
+/* Get cell number. */
 static inline uint32_t GetPageCellNum(void *page) {
     return *(uint32_t *)(page + NODE_STATE_SIZE);
 }
 
+/* Set cell number. */
 static inline void SetPageCellNum(void *page, uint32_t cell_num) {
      *(uint32_t *)(page + NODE_STATE_SIZE) = cell_num;
 }
 
-static inline void *GetPageBodyData(void *page) {
-    return (page + HEAP_TABLE_HEADER_LEN);
+/* Get the cell data. */
+static void *GetPageCellData(void *page, uint32_t cell_len, int index) {
+    return (page + HEAP_TABLE_HEADER_LEN) + cell_len * index;
 }
 
  /* If overflow page size. */
@@ -89,15 +92,11 @@ bool CreateHeapTableInner(Oid oid) {
 
 /* Create the heap table. */
 bool CreateHeapTable(char *tableName) {
-
     Object entity = GenerateObject(tableName, OHEAP_TABLE);
-    
     /* Create the heap table. */
     CreateHeapTableInner(entity.oid);
-
     /* Save the String table Object. */
     SaveObject(entity);
-
     return true;
 }
 
@@ -118,13 +117,14 @@ static void HeapTableInsertRowInner(Refer *rootRefer, Cursor *cursor, Row *row) 
     LockBuffer(buffer, RW_WRITER);
     block = GetBufferBlock(buffer);
     cell_num = GetPageCellNum(block);
-
     iRefer = convert_refer(cursor);
-    void *destintion = serialize_row_data(row, table); 
+
+    void *data = serialize_row_data(row, table); 
+    void *destintion = GetPageCellData(block, cell_len, rootRefer->cell_num);
     /* Assign index refer value. */
-    memcpy(GetPageBodyData(block) + rootRefer->cell_num * cell_len, iRefer, REFER_SIZE);
+    memcpy(destintion, iRefer, REFER_SIZE);
     /* Assign row ceontent value. */
-    memcpy(GetPageBodyData(block) + rootRefer->cell_num * cell_len + REFER_SIZE, destintion, row_len);
+    memcpy(destintion + REFER_SIZE, data, row_len);
     rootRefer->cell_num++;
     /* Increase cell num. */
     SetPageCellNum(block, ++cell_num);
@@ -180,7 +180,8 @@ Row *HeapTableLookupRow(Table *table, Refer *refer) {
     block = GetBufferBlock(buffer);
 
     /* Deserialize row. */
-    row = generate_row(GetPageBodyData(block) + refer->cell_num * cell_len + REFER_SIZE, table->meta_table);
+    void *destintion = GetPageCellData(block, cell_len, refer->cell_num);
+    row = generate_row(destintion + REFER_SIZE, table->meta_table);
 
     UnlockBuffer(buffer);
     ReleaseBuffer(buffer);
@@ -201,8 +202,9 @@ void HeapTableUpdateRow(Table *table, Refer *refer, Row *row) {
     block = GetBufferBlock(buffer);
     
     /* Update heap table row centent. */
-    void *destintion = serialize_row_data(row, table);
-    memcpy(GetPageBodyData(block) + refer->cell_num * cell_len + REFER_SIZE, destintion, row_len);
+    void *data = serialize_row_data(row, table);
+    void *destintion = GetPageCellData(block, cell_len, refer->cell_num);
+    memcpy(destintion + REFER_SIZE, data, row_len);
     MakeBufferDirty(buffer);
 
     UnlockBuffer(buffer);
@@ -222,7 +224,8 @@ void HeapTableUpdateIndexRefer(Table *table, Refer *refer, Refer *newIRefer) {
     block = GetBufferBlock(buffer);
     
     /* Update heap table row centent. */
-    memcpy(GetPageBodyData(block) + refer->cell_num * cell_len, newIRefer, REFER_SIZE);
+    void *destintion = GetPageCellData(block, cell_len, refer->cell_num);
+    memcpy(destintion, newIRefer, REFER_SIZE);
     MakeBufferDirty(buffer);
 
     UnlockBuffer(buffer);
@@ -242,7 +245,7 @@ void HeapTableUpdateRowCreatedXid(Table *table, Refer *refer, Xid createdXid) {
     block = GetBufferBlock(buffer);
     
     /* Update heap table row createdXid. */
-    destintion = GetPageBodyData(block) + refer->cell_num * cell_len;
+    destintion = GetPageCellData(block, cell_len, refer->cell_num);
     *(Xid *)(destintion + cell_len - sizeof(Xid) - LEAF_NODE_CELL_NULL_FLAG_SIZE - sizeof(Xid)) = createdXid;
     MakeBufferDirty(buffer);
 
@@ -263,7 +266,7 @@ void HeapTableUpdateRowExpiredXid(Table *table, Refer *refer, Xid expiredXid) {
     block = GetBufferBlock(buffer);
     
     /* Update heap table row createdXid. */
-    destintion = GetPageBodyData(block) + refer->cell_num * cell_len;
+    destintion = GetPageCellData(block, cell_len, refer->cell_num);
     *(Xid *)(destintion + cell_len - sizeof(Xid)) = expiredXid;
     MakeBufferDirty(buffer);
 
@@ -343,7 +346,7 @@ static void *NewCellAfterAppendColumn(void *destintion, Table *table, MetaColumn
 /* New cell postion after append column. */
 static void *NewCellPostionAferAppendColumn(void *block, MetaColumn *newColumn, uint32_t cell_len, uint32_t index) {
     cell_len += newColumn->column_length;
-    return GetPageBodyData(block) + cell_len * index;
+    return GetPageCellData(block, cell_len, index);
 }
 
 /* New cell data after drop column. */
@@ -362,7 +365,7 @@ static void *NewCellAfterDropColumn(void *destintion, Table *table, MetaColumn *
 /* New cell postion after drop column. */
 static void *NewCellPostionAferDropColumn(void *block, MetaColumn *oldColumn, uint32_t cell_len, uint32_t index) {
     cell_len -= oldColumn->column_length;
-    return GetPageBodyData(block) + cell_len * index;
+    return GetPageCellData(block, cell_len, index);
 }
 
 /* Heap table append column for normal. 
@@ -374,7 +377,7 @@ static void *NewCellPostionAferDropColumn(void *block, MetaColumn *oldColumn, ui
 static void HeapTableAppendColumnNormal(Table *table, MetaColumn *newColumn, int pos, void *block, uint32_t cell_num, uint32_t cell_len) {
     int i;
     for (i = cell_num - 1; i >= 0; i--) {
-        void *destintion = GetPageBodyData(block) + cell_len * i; 
+        void *destintion = GetPageCellData(block, cell_len, i); 
         memmove(
             NewCellPostionAferAppendColumn(block, newColumn, cell_len, i), 
             NewCellAfterAppendColumn(destintion, table, newColumn, pos, cell_len), 
@@ -387,7 +390,7 @@ static void HeapTableAppendColumnNormal(Table *table, MetaColumn *newColumn, int
  * -----------------------------------
  * Return refer of re-insert-row postion, which freed by caller.
  * */
-static Refer *HeapTableSplitReInsertRow(Refer *rootRefer, Table *table, void *destintion) {
+static Refer *HeapTableSplitReInsertRow(Refer *rootRefer, Table *table, void *data) {
     Refer *refer;
     Buffer buffer;
     void *block;
@@ -401,7 +404,8 @@ static Refer *HeapTableSplitReInsertRow(Refer *rootRefer, Table *table, void *de
     cell_num = GetPageCellNum(block);
     refer = new_refer(rootRefer->oid, rootRefer->page_num, rootRefer->cell_num);
     
-    memcpy(GetPageBodyData(block) + rootRefer->cell_num * cell_len, destintion, cell_len);
+    void *destintion = GetPageCellData(block, cell_len, rootRefer->cell_num);
+    memcpy(destintion, data, cell_len);
     rootRefer->cell_num++;
     /* Increase cell num. */
     SetPageCellNum(block, ++cell_num);
@@ -434,13 +438,13 @@ static void HeapTableSplitAppendColumn(Refer *rootRefer, Table *table, MetaColum
 
     /* Reinsert the right part cell, and update the refer of index row. */
     for (i = cell_num - 1; i > left_num; i--) {
-        void *destintion = GetPageBodyData(block) + cell_len * i; 
+        void *destintion = GetPageCellData(block, cell_len, i);
         Refer *refer = HeapTableSplitReInsertRow(rootRefer, table, destintion);
         update_index_refer_content(table, (Refer *) destintion, refer);
     }
     
     for (i = left_num; i >= 0; i--) {
-        void *destintion = GetPageBodyData(block) + cell_len * i; 
+        void *destintion = GetPageCellData(block, cell_len, i);
         memmove(
             NewCellPostionAferAppendColumn(block, newColumn, cell_len, i), 
             NewCellAfterAppendColumn(destintion, table, newColumn, pos, cell_len), 
@@ -513,7 +517,7 @@ static void HeapTableDropColumnLoop(Table *table, MetaColumn *oldColumn,
     cell_num = GetPageCellNum(block);
     
     for (int i = 0; i < cell_num; i++) {
-        void *destintion = GetPageBodyData(block) + cell_len * i; 
+        void *destintion = GetPageCellData(block, cell_len, i);
         memcpy(
             NewCellPostionAferDropColumn(block, oldColumn, cell_len, i), 
             NewCellAfterDropColumn(destintion, table, oldColumn, pos, cell_len), 
