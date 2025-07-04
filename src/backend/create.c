@@ -257,15 +257,21 @@ static MetaTable *combine_meta_table(CreateTableNode *create_table_node) {
 
 /* Save to table cache. */
 static bool save_table_cache(Oid oid, MetaTable *meta_table) {
-    /* Save to table cache. */
+    /* Combine table. */
     Table *table = instance(Table);
     table->oid = oid;
     table->hoid = TableNameFindHeapOid(meta_table->table_name);
     table->meta_table = meta_table;
     table->root_page_num = ROOT_PAGE_NUM;
-    table->creator = getpid();
     table->page_size = 1;
+    table->creator = getpid();
+    table->key_len = calc_primary_key_length(table);
+    table->index_value_len = calc_primary_index_value_length(table);
+    table->heap_value_len = calc_table_row_length(table);
+
+    /* Save into cache. */
     SaveTableCache(table);
+
     return true;
 }
 

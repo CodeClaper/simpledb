@@ -196,6 +196,9 @@ Table *load_table(Oid oid) {
     table->meta_table = gen_meta_table(oid);
     table->page_size = GetPageSize(oid);
     table->hoid = TableNameFindHeapOid(GET_TABLE_NAME(table));
+    table->key_len = calc_primary_key_length(table);
+    table->index_value_len = calc_primary_index_value_length(table);
+    table->heap_value_len = calc_table_row_length(table);
     return table;
 }
 

@@ -277,6 +277,9 @@ Table *copy_table(Table *table) {
     duplica->meta_table = copy_meta_table(table->meta_table);
     duplica->creator = table->creator;
     duplica->page_size = table->page_size;
+    duplica->key_len = table->key_len;
+    duplica->index_value_len = table->index_value_len;
+    duplica->heap_value_len = table->heap_value_len;
 
     return duplica;
 }

@@ -280,7 +280,6 @@ void set_leaf_node_cell_key(void *node, uint32_t index, uint32_t key_len, uint32
     }
 }
 
-
 /* Get leaf node cell value pointer. */
 void *get_leaf_node_cell_value(void *node, uint32_t key_len, uint32_t value_len, uint32_t default_value_len, uint32_t index) {
     return get_leaf_node_cell(node, key_len, value_len, default_value_len, index);
@@ -640,8 +639,8 @@ static void redefine_parent(Table *table, uint32_t page_num) {
     void *internal_node = GetBufferPage(buffer);
 
     uint32_t key_len, default_value_len, keys_num, right_child_page_num;
-    key_len = calc_primary_key_length(table);
-    default_value_len = calc_table_row_length(table);
+    key_len = table->key_len;
+    default_value_len = table->heap_value_len;
     keys_num = get_internal_node_keys_num(internal_node, default_value_len);
 
     /* Redefine each child node parent page. */
@@ -901,9 +900,9 @@ static void insert_and_split_internal_node(Table *table, uint32_t old_internal_p
     old_buffer = ReadBuffer(GET_TABLE_OID(table), old_internal_page_num);
     old_internal_node = GetBufferPage(old_buffer);
 
-    default_value_len = calc_table_row_length(table);
-    value_len = calc_primary_index_value_length(table);
-    key_len = calc_primary_key_length(table);
+    default_value_len = table->heap_value_len;
+    value_len = table->index_value_len;
+    key_len = table->key_len;
     keys_num = get_internal_node_keys_num(old_internal_node, default_value_len);
     cell_len = key_len + INTERNAL_NODE_CELL_CHILD_SIZE;
 
@@ -1163,9 +1162,9 @@ static void insert_and_split_leaf_node(Cursor *cursor, Row *row) {
     uint32_t key_len, value_len, default_value_len, cell_length;
     
     table = cursor->table;
-    key_len = calc_primary_key_length(table);
-    value_len = calc_primary_index_value_length(table);
-    default_value_len = calc_table_row_length(table);
+    key_len = table->key_len;
+    value_len = table->index_value_len;
+    default_value_len = table->heap_value_len;
     cell_length = key_len + value_len;
     Oid oid = GET_TABLE_OID(table);
 
@@ -1318,9 +1317,9 @@ static void insert_leaf_node_new_cell(Cursor *cursor, Row *row) {
     Buffer buffer = ReadBuffer(oid, cursor->page_num);  
     void *node = GetBufferPage(buffer);
     
-    default_value_len = calc_table_row_length(table);
-    value_len = calc_primary_index_value_length(table);
-    key_len = calc_primary_key_length(table);
+    default_value_len = table->heap_value_len;
+    value_len = table->index_value_len;
+    key_len = table->key_len;
     cell_num = get_leaf_node_cell_num(node, default_value_len);
     cell_length = value_len + key_len;
 
@@ -1400,9 +1399,9 @@ void insert_leaf_node_cell(Cursor *cursor, Row *row) {
     node = GetBufferPage(buffer); 
     
     /* Get data. */ 
-    default_value_len = calc_table_row_length(table);
-    value_len = calc_primary_index_value_length(table);
-    key_len = calc_primary_key_length(table);
+    default_value_len = table->heap_value_len;
+    value_len = table->index_value_len;
+    key_len = table->key_len;
     cell_num = get_leaf_node_cell_num(node, default_value_len);
 
     /* Check if the leaf node overflow after inserting, 
@@ -1515,9 +1514,9 @@ static void split_root_leaf_node_append_column(uint32_t page_num, Table *table, 
     leaf_node = GetBufferPage(buffer);
     Assert(is_root_node(leaf_node));
 
-    key_len = calc_primary_key_length(table);
-    value_len = calc_primary_index_value_length(table);
-    default_value_len = calc_table_row_length(table);
+    key_len = table->key_len;
+    value_len = table->index_value_len;
+    default_value_len = table->heap_value_len;
     cell_len = key_len + value_len;
     cell_num = get_leaf_node_cell_num(leaf_node, default_value_len);
     next_unused_page_num = GetNextUnusedPageNum(table);
@@ -1585,9 +1584,9 @@ static void split_root_internal_node_append_column(uint32_t page_num, Table *tab
     old_internal_node = GetBufferPage(buffer);
 
     /* Get keys number, key length, value length. cell_len */
-    default_value_len = calc_table_row_length(table);
-    value_len = calc_primary_index_value_length(table);
-    key_len = calc_primary_key_length(table);
+    default_value_len = table->heap_value_len;
+    value_len = table->index_value_len;
+    key_len = table->key_len;
     keys_num = get_internal_node_keys_num(old_internal_node, default_value_len);
     cell_len = key_len + INTERNAL_NODE_CELL_CHILD_SIZE;
 
@@ -1670,9 +1669,9 @@ static void append_root_leaf_node_column(uint32_t page_num, Table *table, MetaCo
     Assert(is_root_node(leaf_node));
 
     uint32_t key_len, value_len, default_value_len, cell_len, cell_num;
-    value_len = calc_primary_index_value_length(table);
-    key_len = calc_primary_key_length(table);
-    default_value_len = calc_table_row_length(table);
+    key_len = table->key_len;
+    value_len = table->index_value_len;
+    default_value_len = table->heap_value_len;
     cell_len = key_len + value_len;
     cell_num = get_leaf_node_cell_num(leaf_node, default_value_len);
     
@@ -1744,9 +1743,9 @@ static void append_leaf_node_column(uint32_t page_num, Table *table, MetaColumn 
     leaf_node = GetBufferPage(buffer);
     Assert(get_node_type(leaf_node) == LEAF_NODE);
 
-    default_value_len = calc_table_row_length(table);
-    value_len = calc_primary_index_value_length(table);
-    key_len = calc_primary_key_length(table);
+    key_len = table->key_len;
+    value_len = table->index_value_len;
+    default_value_len = table->heap_value_len;
     
     if (is_root_node(leaf_node)) {
         if (overflow_leaf_node_new_column(leaf_node, new_column, key_len, value_len, default_value_len)) {
@@ -1773,8 +1772,8 @@ static void append_root_internal_node_column(uint32_t page_num, Table *table, Me
     root_node = GetBufferPage(buffer);
     Assert(is_root_node(root_node));
 
-    key_len = calc_primary_key_length(table);
-    default_value_len = calc_table_row_length(table);
+    key_len = table->key_len;
+    default_value_len = table->heap_value_len;
     
     destination = serialize_meta_column(new_column);
     if (overflow_root_internal_node_new_column(root_node, new_column, key_len, default_value_len)) {
@@ -1853,8 +1852,8 @@ static void append_internal_node_column(uint32_t page_num, Table *table, MetaCol
     if (is_root_node(internal_node)) 
         append_root_internal_node_column(page_num, table, new_column, pos);
     else {
-        uint32_t key_len = calc_primary_key_length(table);
-        uint32_t value_len = calc_table_row_length(table);
+        uint32_t key_len = table->key_len;
+        uint32_t value_len = table->index_value_len;
         uint32_t keys_num = get_internal_node_keys_num(internal_node, value_len);
         
         uint32_t right_child_page_num = get_internal_node_right_child(internal_node, value_len);
@@ -1936,9 +1935,9 @@ static void drop_root_leaf_node_column(uint32_t page_num, Table *table, int pos)
     Assert(is_root_node(root_node));
 
     uint32_t key_len, value_len, default_value_len, cell_len, cell_num;
-    value_len = calc_primary_index_value_length(table);
-    default_value_len = calc_table_row_length(table);
-    key_len = calc_primary_key_length(table);
+    value_len = table->index_value_len;
+    default_value_len = table->heap_value_len;
+    key_len = table->key_len;
     cell_len = key_len + value_len;
     cell_num = get_leaf_node_cell_num(root_node, default_value_len);
     
@@ -2015,8 +2014,8 @@ static void drop_root_internal_node_column(uint32_t page_num, Table *table, int 
     Assert(is_root_node(root_node));
 
     uint32_t key_len, default_value_len;
-    default_value_len = calc_table_row_length(table);
-    key_len = calc_primary_key_length(table);
+    key_len = table->key_len;
+    default_value_len = table->heap_value_len;
     
     MetaTable *meta_table = table->meta_table;
     MetaColumn *meta_column = meta_table->meta_column[pos];
@@ -2088,9 +2087,9 @@ static void drop_normal_internal_node_column(uint32_t page_num, Table *table, in
     Assert(!is_root_node(internal_node));
 
     uint32_t key_len, value_len, default_value_len, keys_num;
-    value_len = calc_primary_index_value_length(table);
-    default_value_len = calc_table_row_length(table);
-    key_len = calc_primary_key_length(table);
+    key_len = table->key_len;
+    value_len = table->index_value_len;
+    default_value_len = table->heap_value_len;
     keys_num = get_internal_node_keys_num(internal_node, value_len);
 
     /* Loop for children. */
@@ -2149,9 +2148,9 @@ bool cursor_is_deleted(Cursor *cursor) {
     uint32_t key_len, value_len, default_value_len;
 
     Table *table = cursor->table;
-    key_len = calc_primary_key_length(table); 
-    value_len = calc_primary_index_value_length(table); 
-    default_value_len = calc_table_row_length(table);
+    key_len = table->key_len; 
+    value_len = table->index_value_len; 
+    default_value_len = table->heap_value_len;
 
     /* Get the leaf node buffer. */
     Buffer buffer = ReadBuffer(GET_TABLE_OID(table), cursor->page_num);
@@ -2205,9 +2204,9 @@ void delete_internal_node_cell(Table *table, uint32_t page_num, void *key, DataT
 
     buffer = ReadBuffer(GET_TABLE_OID(table), page_num);
     internal_node = GetBufferPage(buffer);
-    key_len = calc_primary_key_length(table);
-    value_len = calc_primary_index_value_length(table);
-    default_value_len = calc_table_row_length(table);
+    key_len = table->key_len;
+    value_len = table->index_value_len;
+    default_value_len = table->heap_value_len;
     key_num = get_internal_node_keys_num(internal_node, default_value_len);
     cell_len = key_len + INTERNAL_NODE_CELL_CHILD_SIZE;
     key_index = get_internal_node_key_index(internal_node, key, key_num, key_len, default_value_len, key_data_type);
@@ -2323,9 +2322,9 @@ void delete_leaf_node_cell(Cursor *cursor, void *key) {
     Oid oid;
 
     table = cursor->table;
-    key_len = calc_primary_key_length(table);
-    value_len = calc_primary_index_value_length(table);
-    default_value_len = calc_table_row_length(table);
+    key_len = table->key_len;
+    value_len = table->index_value_len;
+    default_value_len = table->heap_value_len;
     cell_length = value_len + key_len;
 
     /* Get leaf node and cell number. */
@@ -2577,7 +2576,7 @@ static void *seriable_index_value(Row *row, Cursor *cursor) {
     Refer *refer;
 
     table = cursor->table;
-    value_len = calc_primary_index_value_length(table);
+    value_len = table->index_value_len;
     destination = dalloc(value_len);
     meta_table = table->meta_table;
 
@@ -2608,9 +2607,9 @@ void update_row_data(Row *row, Cursor *cursor) {
     uint32_t key_len, value_len, default_value_len;
 
     table = cursor->table;
-    key_len = calc_primary_key_length(table); 
-    value_len = calc_primary_index_value_length(table); 
-    default_value_len = calc_table_row_length(table);
+    key_len = table->key_len; 
+    value_len = table->index_value_len; 
+    default_value_len = table->heap_value_len;
     
     /* Get leaf node. */
     buffer = ReadBuffer(GET_TABLE_OID(table), cursor->page_num);
@@ -2640,9 +2639,9 @@ void update_row_created_xid(Refer *refer, Xid created_xid) {
     uint32_t key_len, value_len, default_value_len;
 
     table = open_table_inner(refer->oid);
-    key_len = calc_primary_key_length(table); 
-    value_len = calc_primary_index_value_length(table); 
-    default_value_len = calc_table_row_length(table);
+    key_len = table->key_len; 
+    value_len = table->index_value_len; 
+    default_value_len = table->heap_value_len;
     
     /* Get leaf node. */
     buffer = ReadBuffer(refer->oid, refer->page_num);
@@ -2672,9 +2671,9 @@ void update_row_expired_xid(Refer *refer, Xid expired_xid) {
     uint32_t key_len, value_len, default_value_len;
 
     table = open_table_inner(refer->oid);
-    key_len = calc_primary_key_length(table); 
-    value_len = calc_primary_index_value_length(table); 
-    default_value_len = calc_table_row_length(table);
+    key_len = table->key_len; 
+    value_len = table->index_value_len; 
+    default_value_len = table->heap_value_len;
     
     /* Get leaf node. */
     buffer = ReadBuffer(refer->oid, refer->page_num);
@@ -2719,9 +2718,9 @@ void update_index_refer_content(Table *table, Refer *iRefer, Refer *newRefer) {
     void *leaf_node, *destination;
     uint32_t key_len, value_len, default_value_len;
 
-    key_len = calc_primary_key_length(table); 
-    value_len = calc_primary_index_value_length(table); 
-    default_value_len = calc_table_row_length(table);
+    key_len = table->key_len; 
+    value_len = table->index_value_len; 
+    default_value_len = table->heap_value_len;
     
     /* Get leaf node. */
     oid = GET_TABLE_OID(table);

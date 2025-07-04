@@ -602,9 +602,9 @@ Row *define_row(Refer *refer) {
         return NULL;
 
     uint32_t key_len, value_len, default_value_len;
-    key_len = calc_primary_key_length(table);
-    value_len = calc_primary_index_value_length(table);
-    default_value_len = calc_table_row_length(table);
+    key_len = table->key_len;
+    value_len = table->index_value_len;
+    default_value_len = table->heap_value_len;
                             
     /* Get the leaf node buffer. */
     Buffer buffer = ReadBuffer(GET_TABLE_OID(table), refer->page_num);
@@ -696,9 +696,9 @@ static void scan_from_leaf_node(SelectResult *select_result, ConditionNode *cond
     LockBuffer(buffer, RW_READERS);
     leaf_node = GetBufferPage(buffer);
 
-    key_len = calc_primary_key_length(table);
-    value_len = calc_primary_index_value_length(table);
-    default_value_len = calc_table_row_length(table);
+    key_len = table->key_len;
+    value_len = table->index_value_len;
+    default_value_len = table->heap_value_len;
     cell_num = get_leaf_node_cell_num(leaf_node, default_value_len);
     current_trans = FindTransaction();
     Assert(current_trans);
@@ -740,9 +740,9 @@ static void select_from_leaf_node(SelectResult *select_result, ConditionNode *co
             : GetBufferPageCopy(buffer);
     UnlockBuffer(buffer);
 
-    key_len = calc_primary_key_length(table);
-    value_len = calc_primary_index_value_length(table);
-    default_value_len = calc_table_row_length(table);
+    key_len = table->key_len;
+    value_len = table->index_value_len;
+    default_value_len = table->heap_value_len;
     cell_num = get_leaf_node_cell_num(leaf_node, default_value_len);
     current_trans = FindTransaction();
 
@@ -805,9 +805,9 @@ static void select_from_internal_node(SelectResult *select_result, ConditionNode
     UnlockBuffer(buffer);
 
     /* Get variables. */
-    uint32_t key_len,  default_value_len, keys_num;
-    key_len = calc_primary_key_length(table);
-    default_value_len = calc_table_row_length(table);
+    uint32_t key_len, default_value_len, keys_num;
+    key_len = table->key_len;
+    default_value_len = table->heap_value_len;
     keys_num = get_internal_node_keys_num(internal_node, default_value_len);
 
     DataType primary_key_type = get_primary_key_type(table->meta_table);
@@ -959,8 +959,8 @@ static void select_from_internal_node_async(SelectResult *select_result, Conditi
 
     /* Get variables. */
     uint32_t key_len, value_len, keys_num;
-    key_len = calc_primary_key_length(table);
-    value_len = calc_table_row_length(table);
+    key_len = table->key_len;
+    value_len = table->index_value_len;
     keys_num = get_internal_node_keys_num(internal_node, value_len);
 
     DataType primary_key_type = get_primary_key_type(table->meta_table);

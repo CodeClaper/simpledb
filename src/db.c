@@ -96,7 +96,6 @@ static void init_db() {
     /* Init pager. */
     InitPager();
 
-
     /* Initialise table cache. */
     InitTableCache();
 

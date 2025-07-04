@@ -118,9 +118,9 @@ Cursor *new_cursor(Table *table, uint32_t page_num, uint32_t cell_num) {
 static Cursor *define_cursor_leaf_node(Table *table, void *leaf_node, uint32_t page_num, void *key) {
     Cursor *cursor = instance(Cursor);
     MetaColumn *primary_meta_column = get_primary_key_meta_column(table->meta_table);
-    uint32_t key_len = calc_primary_key_length(table);
-    uint32_t value_len = calc_primary_index_value_length(table);
-    uint32_t default_value_len = calc_table_row_length(table);
+    uint32_t key_len = table->key_len;
+    uint32_t value_len = table->index_value_len;
+    uint32_t default_value_len = table->heap_value_len;
     uint32_t cell_num = get_leaf_node_cell_num(leaf_node, default_value_len);
     cursor->table = table;
     cursor->page_num = page_num;
@@ -133,8 +133,8 @@ static Cursor *define_cursor_internal_node(Table *table, void *internal_node, vo
     Cursor *cursor;
     uint32_t key_len, default_value_len, keys_num;
 
-    key_len = calc_primary_key_length(table);
-    default_value_len = calc_table_row_length(table);
+    key_len = table->key_len;
+    default_value_len = table->heap_value_len;
     keys_num = get_internal_node_keys_num(internal_node, default_value_len);
 
     MetaColumn *primary_meta_column = get_primary_key_meta_column(table->meta_table);
