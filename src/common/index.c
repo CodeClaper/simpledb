@@ -28,9 +28,9 @@
     buffer = ReadBuffer(GET_TABLE_OID(table), cursor->page_num); 
     node = GetBufferPage(buffer);
 
-    value_len = calc_primary_index_value_length(table);
-    default_value_len = calc_table_row_length(table);
-    key_len = calc_primary_key_length(table);
+    value_len = table->index_value_len;
+    default_value_len = table->heap_value_len;
+    key_len = table->key_len;
 
     /* If overflow after the new tuple inserting, it not duplcate of course. */
     if (overflow_leaf_node(node, key_len, value_len, default_value_len, cursor->cell_num))
