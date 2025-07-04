@@ -166,12 +166,11 @@ Refer *HeapTableInsertRow(Cursor *cursor, Row *row) {
     return currentRefer;
 }
 
-/* Loop up row from heap table. */
-Row *HeapTableLookupRow(Table *table, Refer *refer) {
+/* Loop up destintion from heap table. */
+void *HeapTableLookup(Table *table, Refer *refer) {
     Buffer buffer;
     void *block;
     uint32_t row_len, cell_len;
-    Row *row;
     
     row_len = calc_table_row_length(table);
     cell_len = row_len + REFER_SIZE;
@@ -181,12 +180,17 @@ Row *HeapTableLookupRow(Table *table, Refer *refer) {
 
     /* Deserialize row. */
     void *destintion = GetPageCellData(block, cell_len, refer->cell_num);
-    row = generate_row(destintion + REFER_SIZE, table->meta_table);
 
     UnlockBuffer(buffer);
     ReleaseBuffer(buffer);
 
-    return row;
+    return (destintion + REFER_SIZE);
+}
+
+/* Loop up row from heap table. */
+Row *HeapTableLookupRow(Table *table, Refer *refer) {
+    void *destintion = HeapTableLookup(table, refer);
+    return generate_row(destintion, table->meta_table);
 }
 
 /* Update the row in heap table. */
