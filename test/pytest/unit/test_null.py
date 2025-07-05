@@ -27,6 +27,13 @@ def test_select_null_value():
     assert ret['success'] == True
     assert ret["data"] == [{ "id": "S001", "name": "shangsan", "age": 10, "phone": None, "idCard": "37023237472877674672"}]
 
+## test with null condition.
+def test_select_with_null_condition():
+    sql = "select * from A where phone = null;"
+    ret = client.execute(sql)
+    assert ret['success'] == True
+    assert ret["data"] == [{ "id": "S001", "name": "shangsan", "age": 10, "phone": None, "idCard": "37023237472877674672"}]
+
 ## insert allow null data
 def test_insert_not_allow_null_data():
     sql = "insert into A values('S002', 'daly', 10, null, null);"
