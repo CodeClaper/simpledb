@@ -229,14 +229,18 @@ static MetaTable *combine_meta_table(CreateTableNode *create_table_node) {
     meta_table->meta_column = dalloc(sizeof(MetaColumn *) * meta_table->all_column_size);
 
     /* User-level defination. */
-    uint32_t j = 0;
+    uint32_t j = 0, offset = 0;
     ListCell *lc;
     foreach (lc, create_table_node->base_table_element_commalist) {
         BaseTableElementNode *base_table_element = lfirst(lc);
         switch (base_table_element->type) {
-            case TELE_COLUMN_DEF:
-                meta_table->meta_column[j++] = combine_user_meta_column(base_table_element->column_def, create_table_node->table_name);
+            case TELE_COLUMN_DEF: {
+                MetaColumn *current = combine_user_meta_column(base_table_element->column_def, create_table_node->table_name);
+                current->offset = offset;
+                meta_table->meta_column[j++] = current;
+                offset += current->column_length;
                 break;
+            }
             case TELE_TABLE_CONTRAINT_DEF:
                 table_operate_contraint(meta_table, base_table_element->table_contraint_def);
                 break;
@@ -246,7 +250,10 @@ static MetaTable *combine_meta_table(CreateTableNode *create_table_node) {
     /* System-level defination. */
     uint32_t k;
     for (k = j; k < meta_table->all_column_size; k++) {
-        meta_table->meta_column[k] = combine_sys_meta_column(meta_table->table_name, (k - j));
+        MetaColumn *current = combine_sys_meta_column(meta_table->table_name, (k - j));
+        current->offset = offset;
+        meta_table->meta_column[k] = current;
+        offset += current->column_length;
     }
     
     /* Handler if user not define priamry key. */

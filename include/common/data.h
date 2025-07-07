@@ -585,6 +585,7 @@ typedef struct MetaColumn {
     char table_name[MAX_TABLE_NAME_LEN];        /* Table Name. Note: for REFERENCE type, the table name is refered table name, 
                                                    for STRING type, the table name is the strheaptable name. */
     uint32_t column_length;                     /* Column data length. Not allowed exceed the length limit. */
+    uint32_t offset;                            /* Offset from the beginning. */
     bool is_primary;                            /* Primary-key column. */
     bool not_null;                              /* Not-null column. */
     bool is_unique;                             /* Unique column. */

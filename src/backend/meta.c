@@ -597,6 +597,7 @@ MetaTable *gen_meta_table(Oid oid) {
         if (!current->sys_reserved)
             meta_table->column_size++;
         meta_table->all_column_size++;
+        current->offset = offset;
         offset += current->column_length;
     }
 

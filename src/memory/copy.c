@@ -231,8 +231,21 @@ MetaColumn *copy_meta_column(MetaColumn *meta_column) {
         return NULL;
 
     MetaColumn *duplica = instance(MetaColumn);
-    memcpy(duplica, meta_column, sizeof(MetaColumn));
+    memcpy(duplica->column_name, meta_column->column_name, MAX_COLUMN_NAME_LEN);
+    duplica->column_type = meta_column->column_type;
+    memcpy(duplica->table_name, meta_column->table_name, MAX_TABLE_NAME_LEN);
+    duplica->column_length = meta_column->column_length;
+    duplica->offset = meta_column->offset;
+    duplica->is_primary = meta_column->is_primary;
+    duplica->not_null = meta_column->not_null;
+    duplica->is_unique = meta_column->is_unique;
+    duplica->sys_reserved = meta_column->sys_reserved;
+    duplica->array_dim = meta_column->array_dim;
+    duplica->array_cap = meta_column->array_cap;
+    duplica->default_value_type = meta_column->default_value_type;
     duplica->default_value = copy_default_value(meta_column);
+    duplica->has_comment = meta_column->has_comment;
+    memcpy(duplica->comment, meta_column->comment, MAX_COMMENT_STRING_LENGTH);
     return duplica;
 }
 
