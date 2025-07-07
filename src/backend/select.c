@@ -709,7 +709,7 @@ static void scan_from_leaf_node(SelectResult *select_result, ConditionNode *cond
         void *destinct = get_leaf_node_cell_value(leaf_node, key_len, value_len, default_value_len, i);
         Xid created_xid = get_index_created_xid(destinct);
         Xid expired_xid = get_index_expired_xid(destinct);
-        if (IsVisibleInner(created_xid, expired_xid, current_trans->xid))
+        if (IsVisibleInner(created_xid, expired_xid, current_trans))
             row_handler(NULL, select_result, table, type, arg);
     }
     
@@ -752,7 +752,7 @@ static void select_from_leaf_node(SelectResult *select_result, ConditionNode *co
         void *destinct = get_leaf_node_cell_value(leaf_node, key_len, value_len, default_value_len, i);
         Xid created_xid = get_index_created_xid(destinct);
         Xid expired_xid = get_index_expired_xid(destinct);
-        if (current_trans != NULL && !IsVisibleInner(created_xid, expired_xid, current_trans->xid))
+        if (!IsVisibleInner(created_xid, expired_xid, current_trans))
             continue;
 
         /* If satisfied, exeucte row handler function. */

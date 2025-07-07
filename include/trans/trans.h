@@ -7,7 +7,7 @@
 void InitTrans();
 
 /* Is visible by created_xid and expired_xid. */
-bool IsVisibleInner(Xid created_xid, Xid expired_xid, Xid currnet_xid);
+bool IsVisibleInner(Xid created_xid, Xid expired_xid, TransEntry *current);
 
 /* Is visible by created_xid and expired_xid. */
 bool IsVisible(Xid created_xid, Xid expired_xid);

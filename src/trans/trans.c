@@ -334,7 +334,14 @@ void AutoRollbackTransaction() {
  * (2) other transaction creates the row, and transaction is committed and the row is not deleted.
  * (3) the row is deleted by another uncommitted transaction (which not creates the row)
  * */
-bool IsVisibleInner(Xid created_xid, Xid expired_xid, Xid currnet_xid) {
+bool IsVisibleInner(Xid created_xid, Xid expired_xid, TransEntry *current) {
+    /* When system ready, simple check. */
+    if (SYS_IS_READY) 
+        return (created_xid != 0 && expired_xid == 0);
+
+    Assert(current != NULL);
+    Xid currnet_xid = current->xid;
+
     /* If satisfy above three conditions, 
      * row is visible for current transaction. */
     if (created_xid == currnet_xid && 
@@ -369,7 +376,7 @@ bool IsVisible(Xid created_xid, Xid expired_xid) {
 
     /* If satisfy above three conditions, 
      * row is visible for current transaction. */
-    return IsVisibleInner(created_xid, expired_xid, entry->xid);
+    return IsVisibleInner(created_xid, expired_xid, entry);
 }
 
 /* 
@@ -398,7 +405,7 @@ bool RowIsVisible(Row *row) {
 
     /* If satisfy above three conditions, 
      * row is visible for current transaction. */
-    return IsVisibleInner(row_created_xid, row_expired_xid, entry->xid);
+    return IsVisibleInner(row_created_xid, row_expired_xid, entry);
 }
 
 /* Check if a row has been deleted. */
