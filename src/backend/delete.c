@@ -29,13 +29,14 @@
 #include "instance.h"
 
 /* Delete row */
-void delete_row(Row *row, SelectResult *select_result, 
+void delete_row(void *destin, SelectResult *select_result, 
                 Table *table, ROW_HANDLER_ARG_TYPE type, void *arg) {
 
     Cursor *cursor;
     Refer *refer;
-    Row *currentRow;
-
+    Row *row, *currentRow;
+    
+    row = generate_row(destin, table->meta_table);
     /* Only deal with row that is visible for current transaction. */
     if (RowIsVisible(row)) {
 

@@ -181,7 +181,7 @@ static Object OidFindObjectInner(Oid oid) {
     SelectResult *result;
 
     condition = OidConvertCondition(oid);
-    result = new_select_result(SELECT_STMT, NULL);
+    result = new_select_result(SELECT_STMT, SYS_TABLE_NAME);
     
     /* Query. */
     query_with_condition_inner(
@@ -231,7 +231,7 @@ static Oid RelnameAndReltypeFindOid(char *relname, ObjectType reltype) {
     Row *row;
 
     condition = RelnameTypeConvertCondition(relname, reltype);
-    result = new_select_result(SELECT_STMT, NULL);
+    result = new_select_result(SELECT_STMT, SYS_TABLE_NAME);
 
     /* Query. */
     query_with_condition_inner(
@@ -316,7 +316,7 @@ static List *RowsConvertObjectList(Queue *qRow) {
 /* Find all object list. */
 List *FindAllObject() {
 
-    SelectResult *result = new_select_result(SELECT_STMT, NULL);
+    SelectResult *result = new_select_result(SELECT_STMT, SYS_TABLE_NAME);
     
     /* Query. */
     query_with_condition_inner(
@@ -436,7 +436,7 @@ bool RemoveObject(Oid oid) {
     SelectResult *result;
     ConditionNode *condition;
 
-    result = new_select_result(DELETE_STMT, NULL);
+    result = new_select_result(DELETE_STMT, SYS_TABLE_NAME);
     condition = OidConvertCondition(oid);
     
     /* Query. */

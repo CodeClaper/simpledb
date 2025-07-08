@@ -72,7 +72,7 @@ typedef struct SelectFromInternalChildTaskArgs {
 #define DIV_NAME "div"
 
 static bool include_internal_node(SelectResult *select_result, void *min_key, void *max_key, ConditionNode *condition_node, MetaTable *meta_table);
-static bool include_leaf_node(SelectResult *select_result, Row *row, ConditionNode *condition_node);
+static bool include_leaf_node(SelectResult *select_result, void *destin, ConditionNode *condition_node);
 static MetaColumn *get_cond_meta_column(PredicateNode *predicate, MetaTable *meta_table);
 static KeyValue *query_function_value(ScalarExpNode *scalar_exp, SelectResult *select_result);
 static KeyValue *query_value_item(ValueItemNode *value_item, Row *row);
@@ -81,6 +81,11 @@ static Row *query_plain_row_selection(SelectResult *select_result, List *scalar_
 static void* purge_row(Row *row);
 static char *search_table_via_alias(SelectResult *select_result, char *range_variable);
 static KeyValue *query_plain_column_value(SelectResult *select_result, ColumnNode *column, Row *row);
+
+static inline void *value_in_destin(void *destin, MetaColumn *meta_column) {
+    bool nflag =  *(bool *)(destin + meta_column->offset);
+    return nflag ? NULL : (destin + meta_column->offset + LEAF_NODE_CELL_NULL_FLAG_SIZE);
+}
 
 /* Check if LimitClauseNode is full. 
  * LimitClauseNode full means the poffset is greater or equal the offset.
@@ -255,14 +260,14 @@ static bool include_internal_node(SelectResult *select_result, void *min_key, vo
 }
 
 /* Check if include leaf node if the condition is logic condition. */
-static bool include_logic_leaf_node(SelectResult *select_result, Row *row, ConditionNode *condition_node) {
+static bool include_logic_leaf_node(SelectResult *select_result, void *destin, ConditionNode *condition_node) {
     switch (condition_node->conn_type) {
         case C_AND:
-            return include_leaf_node(select_result, row, condition_node->left) && 
-                        include_leaf_node(select_result, row, condition_node->right);
+            return include_leaf_node(select_result, destin, condition_node->left) && 
+                        include_leaf_node(select_result, destin, condition_node->right);
         case C_OR:
-            return include_leaf_node(select_result, row, condition_node->left) || 
-                        include_leaf_node(select_result, row, condition_node->right);
+            return include_leaf_node(select_result, destin, condition_node->left) || 
+                        include_leaf_node(select_result, destin, condition_node->right);
         case C_NONE:
             db_log(PANIC, "System Logic Error");
             return false;
@@ -273,7 +278,7 @@ static bool include_logic_leaf_node(SelectResult *select_result, Row *row, Condi
 }
 
 /* Check the row predicate for column. */
-static bool check_row_predicate_column(SelectResult *select_result, Row *row, void *value, 
+static bool check_row_predicate_column(SelectResult *select_result, void *destin, void *value, 
                                        ColumnNode *column, CompareType type, MetaColumn *meta_column) {
     char *table_name = search_table_via_alias(select_result, column->range_variable);
     if (select_result->last_derived && table_name == NULL) {
@@ -282,16 +287,23 @@ static bool check_row_predicate_column(SelectResult *select_result, Row *row, vo
         return false;
     }
     
-    /* Other table query, skip. */
-    if (table_name == NULL)
+    /* Check if the first table. If yes, it means 
+     * compare itself, just return true, */
+    if (streq(select_result->table_name, table_name))
         return true;
-
-    ListCell *lc;
-    foreach (lc, row->data) {
-        KeyValue *key_value = lfirst(lc);
-        if (streq(key_value->table_name, table_name) && 
-                streq(key_value->key, column->column_name)) 
-            return eval(type, value, key_value->value, meta_column->column_type);
+    
+    uint32_t offset = 0;
+    SelectResult *current = select_result->derived;
+    while (current != NULL) {
+        Table *cTable = open_table(current->table_name);
+        if (streq(current->table_name, table_name)) {
+            MetaColumn *target_meta_column = get_meta_column_by_name(cTable->meta_table, column->column_name);
+            if (target_meta_column) {
+                void *target_value = value_in_destin(destin + offset, target_meta_column);
+                return eval(type, value, target_value, meta_column->column_type);
+            }
+        }
+        offset += cTable->heap_value_len;
     }
     db_log(ERROR, "Unknown column '%s.%s' in where clause. ", 
            column->range_variable, 
@@ -307,78 +319,74 @@ static bool check_row_predicate_value(SelectResult *select_result, void *value,
 }
 
 /* Check the row predicate. */
-static bool check_row_predicate(SelectResult *select_result, Row *row, 
+static bool check_row_predicate(SelectResult *select_result, char *table_name, void *destin, 
                                 ColumnNode *column, ComparisonNode *comparison) {
-    ListCell *lc;
-    foreach (lc, row->data) {
-        KeyValue *key_value = lfirst(lc);
-        if (streq(key_value->key, column->column_name)) {
-            /* If exists range variable, check if equals. */
-            if (column->range_variable) {
-                char *table_name = search_table_via_alias(select_result, column->range_variable);
-                if (select_result->last_derived && table_name == NULL) {
-                    db_log(ERROR, "Unknown column '%s.%s' in where clause. ", 
-                           column->range_variable, column->column_name);
-                    return false;
-                }
-                /* May subling tables, skip it temporarily. */
-                if (!table_name || !streq(table_name, key_value->table_name))
-                    continue;
-            }
+    Table *table;
+    MetaColumn *meta_column;
+    void *value;
+    if (column->range_variable) {
+        char *rtable_name = search_table_via_alias(select_result, column->range_variable);
+        if (select_result->last_derived && rtable_name == NULL) {
+            db_log(ERROR, "Unknown column '%s.%s' in where clause. ", 
+                   column->range_variable, column->column_name);
+            return false;
+        }
+        table = open_table(rtable_name);
+    } else 
+        table = open_table(table_name);
+    
+    Assert(table != NULL);
+    meta_column = get_meta_column_by_name(table->meta_table, column->column_name);
+    if (meta_column == NULL) {
+        db_log(ERROR, "Not found column '%s'. ", column->column_name);
+        return false;
+    }
 
-            Table *table = open_table(key_value->table_name);
-            MetaColumn *meta_column = get_meta_column_by_name(table->meta_table, key_value->key);
-            if (meta_column == NULL) {
-                db_log(ERROR, "Not found column '%s'. ", column->column_name);
-                return false;
-            }
+    value = value_in_destin(destin, meta_column);
 
-            if (column->has_sub_column && column->sub_column) {
-                /* Just check, if column has sub column, it must be Reference type. */
-                Assert(meta_column->column_type == T_REFERENCE);
-                /* Get subrow, and recursion. */
-                Refer *refer = key_value->value;
-                Row *sub_row = define_visible_row(refer);
-                bool ret = check_row_predicate(
+    if (column->has_sub_column && column->sub_column) {
+        /* Just check, if column has sub column, it must be Reference type. */
+        Assert(meta_column->column_type == T_REFERENCE);
+        /* Get subrow, and recursion. */
+        void *sub_destin = define_row_inner((Refer *)value);
+        return check_row_predicate(
+            select_result, 
+            meta_column->table_name,
+            sub_destin, 
+            column->sub_column, 
+            comparison
+        ); 
+    } else if (column->has_sub_column && column->scalar_exp_list) {
+        db_log(ERROR, "Not support support sub column for pridicate.");
+        return false;
+    } else {
+        ScalarExpNode *comparison_value = comparison->value;
+        switch (comparison_value->type) {
+            case SCALAR_COLUMN:
+                return check_row_predicate_column(
+                    select_result, destin, 
+                    get_real_value(value, meta_column->column_type), 
+                    comparison_value->column, 
+                    comparison->type, 
+                    meta_column
+                );    
+            case SCALAR_VALUE: 
+                return check_row_predicate_value(
                     select_result, 
-                    sub_row, 
-                    column->sub_column, 
-                    comparison
-                ); 
-                return ret;
-            } else if (column->has_sub_column && column->scalar_exp_list) {
-                db_log(ERROR, "Not support support sub column for pridicate.");
+                    get_real_value(value, meta_column->column_type),
+                    comparison_value->value,
+                    comparison->type, 
+                    meta_column
+                );
+            case SCALAR_FUNCTION:
+                db_log(ERROR, "Not support function as comparison value.");
                 return false;
-            } else {
-                ScalarExpNode *comparison_value = comparison->value;
-                switch (comparison_value->type) {
-                    case SCALAR_COLUMN:
-                        return check_row_predicate_column(
-                            select_result, row, 
-                            get_real_value(key_value->value, meta_column->column_type), 
-                            comparison_value->column, 
-                            comparison->type, 
-                            meta_column
-                        );    
-                    case SCALAR_VALUE: 
-                        return check_row_predicate_value(
-                            select_result, 
-                            get_real_value(key_value->value, meta_column->column_type),
-                            comparison_value->value,
-                            comparison->type, 
-                            meta_column
-                        );
-                    case SCALAR_FUNCTION:
-                        db_log(ERROR, "Not support function as comparison value.");
-                        return false;
-                    case SCALAR_CALCULATE:
-                        db_log(ERROR, "Not support calcuation comparison value.");
-                        return false;
-                    default:
-                        UNEXPECTED_VALUE(comparison_value->type);
-                        return false;
-                }
-            }
+            case SCALAR_CALCULATE:
+                db_log(ERROR, "Not support calcuation comparison value.");
+                return false;
+            default:
+                UNEXPECTED_VALUE(comparison_value->type);
+                return false;
         }
     }
     /* When column skip test, 
@@ -388,8 +396,8 @@ static bool check_row_predicate(SelectResult *select_result, Row *row,
 
 
 /* Check if include leaf node satisfy comparison predicate. */
-static bool include_leaf_comparison_predicate(SelectResult *select_result, Row *row, ComparisonNode *comparison) {
-    return check_row_predicate(select_result, row, comparison->column, comparison);
+static bool include_leaf_comparison_predicate(SelectResult *select_result, void *destin, ComparisonNode *comparison) {
+    return check_row_predicate(select_result, select_result->table_name, destin, comparison->column, comparison);
 }
 
 /* Check if include in value item set. */
@@ -404,22 +412,16 @@ static bool check_in_value_item_set(List *value_list, void *value, MetaColumn *m
 }
 
 /* Check if include leaf node satisfy in predicate. */
-static bool include_leaf_in_predicate(Row *row, InNode *in_node) {
-    Table *table = open_table(row->table_name);
-
-    ListCell *lc;
-    foreach (lc, row->data) {
-        KeyValue *key_value = lfirst(lc);
-        /* Define the column. */
-        if (streq(key_value->key, in_node->column->column_name)) {
-            MetaColumn *meta_column = get_meta_column_by_name(table->meta_table , key_value->key);
-            return check_in_value_item_set(
-                in_node->value_list, 
-                get_real_value(key_value->value, meta_column->column_type), 
-                meta_column
-            );
-        }
-    }
+static bool include_leaf_in_predicate(SelectResult *select_result, void *destin, InNode *in_node) {
+    Table *table = open_table(select_result->table_name);
+    Assert(table != NULL);
+    MetaColumn *meta_column = get_meta_column_by_name(table->meta_table, in_node->column->column_name);
+    if (meta_column != NULL)
+        return check_in_value_item_set(
+            in_node->value_list, 
+            get_real_value(value_in_destin(destin, meta_column), meta_column->column_type), 
+            meta_column
+        );
     return false;
 }
 
@@ -450,25 +452,19 @@ static bool check_like_string_value(char *value, char *target) {
 
 
 /* Check if include leaf node satisfy like predicate. */
-static bool include_leaf_like_predicate(Row *row, LikeNode *like_node) {
-    Table *table = open_table(row->table_name);
-
-    ListCell *lc;
-    foreach (lc, row->data) {
-        KeyValue *key_value = lfirst(lc);
-        /* Define the column. */
-        if (streq(key_value->key, like_node->column->column_name)) {
-            MetaColumn *meta_column = get_meta_column_by_name(table->meta_table, key_value->key);
-            void *target_value = get_value_from_value_item_node(like_node->value, meta_column);
-            return check_like_string_value(get_real_value(key_value->value, meta_column->column_type), target_value);
-        }
+static bool include_leaf_like_predicate(SelectResult *select_result, void *destin, LikeNode *like_node) {
+    Table *table = open_table(select_result->table_name);
+    MetaColumn *meta_column = get_meta_column_by_name(table->meta_table, like_node->column->column_name);
+    if (meta_column != NULL) {
+        void *target_value = get_value_from_value_item_node(like_node->value, meta_column);
+        void *value = value_in_destin(destin, meta_column);
+        return check_like_string_value(get_real_value(value, meta_column->column_type), target_value);
     }
-
     return false;
 }
 
 /* Check if include leaf node if the condition is exec condition. */
-static bool include_exec_leaf_node(SelectResult *select_result, Row *row, ConditionNode *condition_node) {
+static bool include_exec_leaf_node(SelectResult *select_result, void *destin, ConditionNode *condition_node) {
     /* If without condition, of course the key include, so just return true. */
     if (condition_node == NULL)
         return true;
@@ -478,11 +474,11 @@ static bool include_exec_leaf_node(SelectResult *select_result, Row *row, Condit
     PredicateNode *predicate = condition_node->predicate;
     switch (predicate->type) {
         case PRE_COMPARISON:
-            return include_leaf_comparison_predicate(select_result, row, predicate->comparison);
+            return include_leaf_comparison_predicate(select_result, destin, predicate->comparison);
         case PRE_IN:
-            return include_leaf_in_predicate(row, predicate->in);
+            return include_leaf_in_predicate(select_result, destin, predicate->in);
         case PRE_LIKE:
-            return include_leaf_like_predicate(row, predicate->like);
+            return include_leaf_like_predicate(select_result, destin, predicate->like);
         default:
             UNEXPECTED_VALUE(predicate->type);
             return false;
@@ -491,7 +487,7 @@ static bool include_exec_leaf_node(SelectResult *select_result, Row *row, Condit
 }
 
 /* Check if the key include the leaf node. */
-static bool include_leaf_node(SelectResult *select_result, Row *row, ConditionNode *condition_node) {
+static bool include_leaf_node(SelectResult *select_result, void *destin, ConditionNode *condition_node) {
     /* If without condition, of course the key include, so just return true. */
     if (condition_node == NULL) 
           return true;
@@ -499,9 +495,9 @@ static bool include_leaf_node(SelectResult *select_result, Row *row, ConditionNo
     switch(condition_node->conn_type) {
         case C_OR:
         case C_AND:
-            return include_logic_leaf_node(select_result, row, condition_node);
+            return include_logic_leaf_node(select_result, destin, condition_node);
         case C_NONE:
-            return include_exec_leaf_node(select_result, row, condition_node);
+            return include_exec_leaf_node(select_result, destin, condition_node);
         default:
             UNEXPECTED_VALUE(condition_node->conn_type);
             return false;
@@ -583,6 +579,39 @@ Row *generate_row(void *destination, MetaTable *meta_table) {
     return row;
 }
 
+/* Define heap row destinct by refer. 
+ * -------------------
+ * Return heap row destinct not matter if it is deleted, caller check if deleted.
+ * */
+void *define_row_inner(Refer *refer) {
+    Assert(refer != NULL);
+
+    /* Check table exists. */
+    Table *table = open_table_inner(refer->oid);
+    if (table == NULL)
+        return NULL;
+
+    /* Check if refer null. */
+    if (refer_null(refer))
+        return NULL;
+
+    uint32_t key_len, value_len, default_value_len;
+    key_len = table->key_len;
+    value_len = table->index_value_len;
+    default_value_len = table->heap_value_len;
+                            
+    /* Get the leaf node buffer. */
+    Buffer buffer = ReadBuffer(GET_TABLE_OID(table), refer->page_num);
+    LockBuffer(buffer, RW_READERS);
+    void *leaf_node = GetBufferPage(buffer);
+
+    void *cell_value = get_leaf_node_cell_value(leaf_node, key_len, value_len, default_value_len, refer->cell_num);
+    void *destinct = HeapTableLookup(table, (Refer *) cell_value);
+    
+    UnlockBuffer(buffer);
+    ReleaseBuffer(buffer);
+    return destinct;
+}
 
 /* Define row by refer. 
  * -------------------
@@ -756,34 +785,32 @@ static void select_from_leaf_node(SelectResult *select_result, ConditionNode *co
             continue;
 
         /* If satisfied, exeucte row handler function. */
-        Row *row = HeapTableLookupRow(table, (Refer *) destinct);
+        void *destin = HeapTableLookup(table, (Refer *) destinct);
 
-        SelectResult *derived = select_result->derived;
-        if (derived != NULL) {
-            /* Cartesian product. */
-            QueueCell *qc;
-            qforeach (qc, derived->rows) {
-                /* Merge derived-row. */
-                Row *derived_row = qfirst(qc);
-                merge_row(derived_row, row);
-                free_common_row(row);
+        // SelectResult *derived = select_result->derived;
+        // if (derived != NULL) {
+        //     /* Cartesian product. */
+        //     QueueCell *qc;
+        //     qforeach (qc, derived->rows) {
+        //         /* Merge derived-row. */
+        //         Row *derived_row = qfirst(qc);
+        //         merge_row(derived_row, row);
+        //         free_common_row(row);
 
-                /* Check if the row data include. In another word, 
-                 * check if the row data satisfy the condition. */
-                if (include_leaf_node(select_result, derived_row, condition)) 
-                    row_handler(derived_row, select_result, table, type, arg);
-                else
-                    free_common_row(derived_row);
-            }
-            continue;
-        }
+        //         /* Check if the row data include. In another word, 
+        //          * check if the row data satisfy the condition. */
+        //         if (include_leaf_node(select_result, derived_row, condition)) 
+        //             row_handler(derived_row, select_result, table, type, arg);
+        //         else
+        //             free_common_row(derived_row);
+        //     }
+        //     continue;
+        // }
 
         /* Check if the row data include. In another word, 
          * check if the row data satisfy the condition. */
-        if (include_leaf_node(select_result, row, condition)) 
-            row_handler(row, select_result, table, type, arg);
-        else
-            free_common_row(row);
+        if (include_leaf_node(select_result, destin, condition)) 
+            row_handler(destin, select_result, table, type, arg);
     }
     
     /* Release the buffer. */
@@ -1135,7 +1162,7 @@ SelectResult *select_with_column_value(Oid oid, MetaColumn *meta_column, void *v
 }
 
 /* Count number of row, used in the sql function count(1) */
-void count_row(Row *row, SelectResult *select_result, Table *table, ROW_HANDLER_ARG_TYPE type, void *arg) {
+void count_row(void *destine, SelectResult *select_result, Table *table, ROW_HANDLER_ARG_TYPE type, void *arg) {
 
     if (type == ARG_SELECT_PARAM && ((SelectParam *) arg)->limitClause != NULL) {
         SelectParam *selectParam = (SelectParam *) arg;
@@ -1161,9 +1188,6 @@ void count_row(Row *row, SelectResult *select_result, Table *table, ROW_HANDLER_
         select_result->row_size++;
         select_result->rows->size++;
     }
-
-    /* Not use row info, free it. */
-    free_common_row(row);
 }
 
 /* Purge row. 
@@ -1181,9 +1205,10 @@ static void* purge_row(Row *row) {
 }
 
 /* Select row data. */
-void select_row(Row *row, SelectResult *select_result, Table *table, 
+void select_row(void *destin, SelectResult *select_result, Table *table, 
                 ROW_HANDLER_ARG_TYPE type, void *arg) {
-
+    
+    Row *row = generate_row(destin, table->meta_table);
     /* If has limit clause. */
     if (type == ARG_SELECT_PARAM && ((SelectParam *) arg)->limitClause != NULL) {
         SelectParam *selectParam = (SelectParam *) arg;
@@ -1216,9 +1241,10 @@ void select_row(Row *row, SelectResult *select_result, Table *table,
  * data immediately and then free memory, not store the row 
  * data until selection. It works for query-rows operation.
  * */
-void query_row(Row *row, SelectResult *select_result, Table *table, 
+void query_row(void *destin, SelectResult *select_result, Table *table, 
                ROW_HANDLER_ARG_TYPE type, void *arg) {
 
+    Row *row = generate_row(destin, table->meta_table);
     /* If has limit clause. */
     if (type == ARG_SELECT_PARAM && ((SelectParam *) arg)->limitClause != NULL) 
     {

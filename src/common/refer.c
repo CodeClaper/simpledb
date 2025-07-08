@@ -356,7 +356,7 @@ static void update_key_value_refer(Row *row, MetaColumn *meta_column, Cursor *cu
 
 
 /* Update row refer. */
-static void update_row_refer(Row *row, SelectResult *select_result, Table *table, 
+static void update_row_refer(void *destin, SelectResult *select_result, Table *table, 
                              ROW_HANDLER_ARG_TYPE type, void *arg) {
     Assert(arg);
     Assert(type == ARG_REFER_UPDATE_ENTITY);
@@ -366,7 +366,7 @@ static void update_row_refer(Row *row, SelectResult *select_result, Table *table
     Table *ref_table = open_table_inner(oid);
     Assert(ref_table);
 
-    /* Curosr */
+    Row *row = generate_row(destin, table->meta_table);
     Cursor *cursor = define_cursor(table, row->key);
 
     /* MetaTable */

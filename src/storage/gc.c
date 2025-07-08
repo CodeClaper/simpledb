@@ -71,8 +71,9 @@ static bool allow_gc() {
 }
 
 /* Gc row*/
-void gc_row(Row *row, SelectResult *select_result, 
+static void gc_row(void *destin, SelectResult *select_result, 
             Table *table, ROW_HANDLER_ARG_TYPE type, void *arg) {
+    Row *row = generate_row(destin, table->meta_table);
     /* Only for deleted row. */
     if (!RowIsDeleted(row))
         return;

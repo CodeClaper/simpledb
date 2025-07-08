@@ -81,11 +81,12 @@ static void insert_row_for_update(Row *row, Table *table) {
 /* Update row 
  * Update operation can be regarded as delete + re-insert operation. 
  * It makes transaction roll back simpler. */
-static void update_row(Row *rawRow, SelectResult *select_result, Table *table, 
+static void update_row(void *destin, SelectResult *select_result, Table *table, 
                        ROW_HANDLER_ARG_TYPE type, void *arg) {
     Refer *oldRefer, *newRefer;
-    Row *currentRow, *new_row;
-
+    Row *rawRow, *currentRow, *new_row;
+    
+    rawRow = generate_row(destin, table->meta_table);
     /* Only update row that is visible for current transaction. */
     if (!RowIsVisible(rawRow)) 
         return;
