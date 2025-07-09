@@ -28,6 +28,9 @@ void *get_value_from_value_item_node(ValueItemNode *value_item_node, MetaColumn 
 /* Get Really value. */
 void *get_real_value(void *value, DataType type);
 
+/* Get value in destin memory. */
+void *get_value_in_destin(void *destin, MetaColumn *meta_column);
+
 /* Combine AtomNode by column and value. */
 AtomNode *combine_atom_node(MetaColumn *meta_column, void *value);
 

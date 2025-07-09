@@ -386,6 +386,12 @@ void *get_real_value(void *value, DataType type) {
     }
 } 
 
+/* Get value in destin memory. */
+void *get_value_in_destin(void *destin, MetaColumn *meta_column) {
+    bool nflag =  *(bool *)(destin + meta_column->offset);
+    return nflag ? NULL : (destin + meta_column->offset + LEAF_NODE_CELL_NULL_FLAG_SIZE);
+}
+
 /* Combine AtomNode by column and value. */
 AtomNode *combine_atom_node(MetaColumn *meta_column, void *value) {
     AtomNode *atom_node = instance(AtomNode);

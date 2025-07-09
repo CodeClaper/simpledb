@@ -82,10 +82,6 @@ static void* purge_row(Row *row);
 static char *search_table_via_alias(SelectResult *select_result, char *range_variable);
 static KeyValue *query_plain_column_value(SelectResult *select_result, ColumnNode *column, Row *row);
 
-static inline void *value_in_destin(void *destin, MetaColumn *meta_column) {
-    bool nflag =  *(bool *)(destin + meta_column->offset);
-    return nflag ? NULL : (destin + meta_column->offset + LEAF_NODE_CELL_NULL_FLAG_SIZE);
-}
 
 /* Check if LimitClauseNode is full. 
  * LimitClauseNode full means the poffset is greater or equal the offset.
@@ -299,7 +295,7 @@ static bool check_row_predicate_column(SelectResult *select_result, void *destin
         if (streq(current->table_name, table_name)) {
             MetaColumn *target_meta_column = get_meta_column_by_name(cTable->meta_table, column->column_name);
             if (target_meta_column) {
-                void *target_value = value_in_destin(destin + offset, target_meta_column);
+                void *target_value = get_value_in_destin(destin + offset, target_meta_column);
                 return eval(type, value, target_value, meta_column->column_type);
             }
         }
@@ -356,7 +352,7 @@ static bool check_row_predicate(SelectResult *select_result, char *table_name, v
         return false;
     }
 
-    value = value_in_destin(destin, meta_column);
+    value = get_value_in_destin(destin, meta_column);
 
     if (column->has_sub_column && column->sub_column) {
         /* Just check, if column has sub column, it must be Reference type. */
@@ -433,7 +429,7 @@ static bool include_leaf_in_predicate(SelectResult *select_result, void *destin,
     if (meta_column != NULL)
         return check_in_value_item_set(
             in_node->value_list, 
-            get_real_value(value_in_destin(destin, meta_column), meta_column->column_type), 
+            get_real_value(get_value_in_destin(destin, meta_column), meta_column->column_type), 
             meta_column
         );
     return false;
@@ -471,7 +467,7 @@ static bool include_leaf_like_predicate(SelectResult *select_result, void *desti
     MetaColumn *meta_column = get_meta_column_by_name(table->meta_table, like_node->column->column_name);
     if (meta_column != NULL) {
         void *target_value = get_value_from_value_item_node(like_node->value, meta_column);
-        void *value = value_in_destin(destin, meta_column);
+        void *value = get_value_in_destin(destin, meta_column);
         return check_like_string_value(get_real_value(value, meta_column->column_type), target_value);
     }
     return false;

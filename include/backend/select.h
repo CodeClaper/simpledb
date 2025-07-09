@@ -15,6 +15,7 @@ typedef enum ROW_HANDLER_ARG_TYPE {
 /* Function pointer about row handler */
 typedef void (*ROW_HANDLER)(void *destin, SelectResult *select_result, Table *table, ROW_HANDLER_ARG_TYPE type,void *arg);
 
+
 typedef struct SelectParam {
     StatementType stmt_type;        /* StatementType. */
     bool onlyAll;                   /* Only select all. */
