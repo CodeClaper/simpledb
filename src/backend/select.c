@@ -324,19 +324,33 @@ static bool check_row_predicate(SelectResult *select_result, char *table_name, v
     Table *table;
     MetaColumn *meta_column;
     void *value;
-    if (column->range_variable) {
-        char *rtable_name = search_table_via_alias(select_result, column->range_variable);
-        if (select_result->last_derived && rtable_name == NULL) {
-            db_log(ERROR, "Unknown column '%s.%s' in where clause. ", 
-                   column->range_variable, column->column_name);
-            return false;
-        }
-        table = open_table(rtable_name);
-    } else 
-        table = open_table(table_name);
-    
+
+    /* Load table. */
+    if (column->table != NULL)
+        table = column->table;
+    else {
+        if (column->range_variable) {
+            char *rtable_name = search_table_via_alias(select_result, column->range_variable);
+            if (select_result->last_derived && rtable_name == NULL) {
+                db_log(ERROR, "Unknown column '%s.%s' in where clause. ", 
+                       column->range_variable, column->column_name);
+                return false;
+            }
+            table = open_table(rtable_name);
+        } else 
+            table = open_table(table_name);
+        column->table = table;
+    }
     Assert(table != NULL);
-    meta_column = get_meta_column_by_name(table->meta_table, column->column_name);
+
+    /* Load meta column. */
+    if (column->meta_column != NULL)
+        meta_column = column->meta_column;
+    else {
+        meta_column = get_meta_column_by_name(table->meta_table, column->column_name);
+        column->meta_column = meta_column;
+    }
+
     if (meta_column == NULL) {
         db_log(ERROR, "Not found column '%s'. ", column->column_name);
         return false;

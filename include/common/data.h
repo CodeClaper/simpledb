@@ -162,6 +162,10 @@ typedef struct ColumnNode {
     bool has_sub_column;
     struct ColumnNode *sub_column;
     List *scalar_exp_list;
+    /* The flowing fileds are not AST structure, 
+     * just are recorded to avoid repeatly loop up. */
+    struct Table *table;
+    struct MetaColumn *meta_column;
 } ColumnNode;
 
 /* FunctionValueType */
