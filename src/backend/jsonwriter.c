@@ -33,240 +33,276 @@
 /* Handle duplicate Key. */
 static void handle_dulicate_key(Row *row);
 
+static void json_key_value_inner(char *key, void *value, DataType type) {
+    switch(type) {
+        case T_BOOL: 
+            db_send("\"%s\": %s", key, value && (*(bool *)value) ? "true" : "false");
+            break;
+        case T_INT: 
+            db_send("\"%s\": %d", key, value ? *(int32_t *)value : 0);
+            break;
+        case T_LONG: 
+            db_send("\"%s\": %" PRIu64, key, value ? *(int64_t *)value : 0);
+            break;
+        case T_CHAR: 
+        case T_VARCHAR: 
+            db_send("\"%s\": \"%s\"", key, value ? escap_str((char *)value) : "null");
+            break;
+        case T_FLOAT: 
+            db_send("\"%s\": %f", key, value ? *(float *)value : 0);
+            break;
+        case T_DOUBLE: 
+            db_send("\"%s\": %lf", key, value ? *(double *)value : 0);
+            break;
+        case T_TIMESTAMP: {
+            char temp[90];
+            if (value) {
+                time_t t = *(time_t *)value;
+                struct tm *tmp_time = localtime(&t);
+                strftime(temp, sizeof(temp), "%Y-%m-%d %H:%M:%S", tmp_time);
+                db_send("\"%s\": \"%s\"", key, temp);
+            } 
+            else 
+                db_send("\"%s\": \"%s\"", key, "null");
+            break;
+        }
+        case T_DATE: {
+            char temp[90];
+            if (value) {
+                time_t t = *(time_t *)value;
+                struct tm *tmp_time = localtime(&t);
+                strftime(temp, sizeof(temp), "%Y-%m-%d", tmp_time);
+                db_send("\"%s\": \"%s\"", key, temp);
+            }
+            else 
+                db_send("\"%s\": \"%s\"", key, "null");
+            break;
+        }
+        case T_STRING: {
+            char *strVal = QueryStringValue((StrRefer *)value);
+            db_send("\"%s\": \"%s\"", key, strVal ? escap_str(strVal) : "null");
+            break;
+        }
+        /* Specially deal with T_REFERENCE data. */
+        case T_REFERENCE: {
+            db_send("\"%s\": ", key);
+            Refer *refer = (Refer *)value;
+            assert_not_null(refer, "Try to get Reference type value fail.\n");
+            Row *subrow = define_visible_row(refer);
+            json_row(subrow);
+            break;
+        }
+        case T_ROW: {
+            db_send("\"%s\": ", key);
+            Row *subrow = (Row *)value;
+            json_row(subrow);
+            break;
+        }
+        default:
+            db_log(PANIC, "Not support data type at <json_key_value>");
+    }
+}
+
+static void json_key_array_value_inner(char *key, ArrayValue *array_value, DataType type) {
+    switch (type) {
+        case T_BOOL: {
+            db_send("\"%s\": [", key);
+
+            ListCell *lc;
+            foreach (lc, array_value->list) {
+                bool value = *(bool *)lfirst(lc);
+                db_send(value ? "true" : "false");
+                if (last_cell(array_value->list) != lc)
+                    db_send( ",");
+            }
+
+            db_send("]");
+            break;
+        }
+        case T_INT: {
+            db_send("\"%s\": [", key);
+
+            ListCell *lc;
+            foreach (lc, array_value->list) {
+                int32_t value = *(int32_t *)lfirst(lc);
+                char *strVal = itos(value);
+                db_send(strVal);
+                if (last_cell(array_value->list) != lc)
+                    db_send(",");
+                dfree(strVal);
+            }
+
+            db_send("]");
+            break;
+        }
+        case T_LONG: {
+            db_send("\"%s\": [", key);
+
+            ListCell *lc;
+            foreach (lc, array_value->list) {
+                int64_t value = *(int64_t *)lfirst(lc);
+                char *strVal = ltos(value);
+                db_send(strVal);
+                if (last_cell(array_value->list) != lc)
+                    db_send(",");
+                dfree(strVal);
+            }
+
+            db_send("]");
+            break;
+        }
+        case T_STRING:
+        case T_VARCHAR:
+        case T_CHAR: {
+            db_send("\"%s\": [", key);
+
+            ListCell *lc;
+            foreach (lc, array_value->list) {
+                char *value = (char *)lfirst(lc);
+                db_send("\"%s\"", value);
+                if (last_cell(array_value->list) != lc)
+                    db_send(",");
+            }
+
+            db_send("]");
+            break;
+        }
+        case T_FLOAT: {
+            db_send("\"%s\": [", key);
+
+            ListCell *lc;
+            foreach (lc, array_value->list) {
+                float value = *(float *)lfirst(lc);
+                char *strVal = ftos(value);
+                db_send(strVal);
+                if (last_cell(array_value->list) != lc)
+                     db_send(",");
+                dfree(strVal);
+            }
+
+            db_send("]");
+            break;
+        }
+        case T_DOUBLE: {
+            db_send("\"%s\": [", key);
+
+            ListCell *lc;
+            foreach (lc, array_value->list) {
+                double value = *(double *)lfirst(lc);
+                char *strVal = dtos(value);
+                db_send(strVal);
+                if (last_cell(array_value->list) != lc)
+                    db_send(",");
+                dfree(strVal);
+            }
+
+            db_send("]");
+            break;
+        }
+        case T_TIMESTAMP: {
+            db_send("\"%s\": [", key);
+
+            ListCell *lc;
+            foreach (lc, array_value->list) {
+                time_t value = *(time_t *)lfirst(lc);
+                char *strVal = ttos(value, "%Y-%m-%d %H:%M:%S");
+                db_send("\"%s\"", strVal);
+                if (last_cell(array_value->list) != lc)
+                    db_send(",");
+                dfree(strVal);
+            }
+
+            db_send("]");
+            break;
+        }
+        case T_DATE: {
+            db_send("\"%s\": [", key);
+
+            ListCell *lc;
+            foreach (lc, array_value->list) {
+                time_t value = *(time_t *)lfirst(lc);
+                char *strVal = ttos(value, "%Y-%m-%d");
+                db_send("\"%s\"", strVal);
+                if (last_cell(array_value->list) != lc)
+                    db_send(",");
+                dfree(strVal);
+            }
+
+            db_send("]");
+            break;
+        }
+        case T_REFERENCE: {
+            db_send("\"%s\": [", key);
+
+            ListCell *lc;
+            foreach (lc, array_value->list) {
+                Refer *refer = (Refer *)lfirst(lc);
+                Row *subrow = define_visible_row(refer);
+                json_row(subrow);
+                if (last_cell(array_value->list) != lc)
+                    db_send(",");
+            }
+
+            db_send("]");
+            break;
+        }
+        default:
+            db_log(PANIC, "Not support data type at <json_key_value>");
+    }
+}
+
+/* Json single-value key value. */
+static void json_single_raw_row_entry(MetaColumn *meta_column, void *value) {
+    char *key = meta_column->column_name;
+    DataType type = meta_column->column_type;
+    if (!value)
+        db_send("\"%s\": %s", key, "null");
+    else {
+        json_key_value_inner(key, value, type);
+    }
+}
+
+/* Json array-value key value. */
+static void json_array_raw_row_entry(MetaColumn *meta_column, ArrayValue *array_value ) {
+    char *key = meta_column->column_name;
+    DataType type = meta_column->column_type;
+    if (!array_value)
+        db_send("\"%s\": %s", key, "null");
+    else 
+        json_key_array_value_inner(key, array_value, type);
+}
+
+/* Json single-value key value. */
+static void json_single_key_value(KeyValue *key_value) {
+    Assert(!key_value->is_array);
+    char *key = key_value->key;
+    void *value = key_value->value;
+    DataType type = key_value->data_type;
+    if (!value)
+        db_send("\"%s\": %s", key, "null");
+    else {
+        json_key_value_inner(key, value, type);
+    }
+}
+
 /* Json array-value key value. */
 static void json_array_key_value(KeyValue *key_value) {
     Assert(key_value->is_array);
     char *key = key_value->key;
     ArrayValue *array_value = (ArrayValue *)key_value->value;
+    DataType type = key_value->data_type;
     if (!array_value)
         db_send("\"%s\": %s", key, "null");
-    else {
-        switch (key_value->data_type) {
-            case T_BOOL: {
-                db_send("\"%s\": [", key);
-
-                ListCell *lc;
-                foreach (lc, array_value->list) {
-                    bool value = *(bool *)lfirst(lc);
-                    db_send(value ? "true" : "false");
-                    if (last_cell(array_value->list) != lc)
-                        db_send( ",");
-                }
-
-                db_send("]");
-                break;
-            }
-            case T_INT: {
-                db_send("\"%s\": [", key);
-
-                ListCell *lc;
-                foreach (lc, array_value->list) {
-                    int32_t value = *(int32_t *)lfirst(lc);
-                    char *strVal = itos(value);
-                    db_send(strVal);
-                    if (last_cell(array_value->list) != lc)
-                        db_send(",");
-                    dfree(strVal);
-                }
-
-                db_send("]");
-                break;
-            }
-            case T_LONG: {
-                db_send("\"%s\": [", key);
-
-                ListCell *lc;
-                foreach (lc, array_value->list) {
-                    int64_t value = *(int64_t *)lfirst(lc);
-                    char *strVal = ltos(value);
-                    db_send(strVal);
-                    if (last_cell(array_value->list) != lc)
-                        db_send(",");
-                    dfree(strVal);
-                }
-
-                db_send("]");
-                break;
-            }
-            case T_STRING:
-            case T_VARCHAR:
-            case T_CHAR: {
-                db_send("\"%s\": [", key);
-
-                ListCell *lc;
-                foreach (lc, array_value->list) {
-                    char *value = (char *)lfirst(lc);
-                    db_send("\"%s\"", value);
-                    if (last_cell(array_value->list) != lc)
-                        db_send(",");
-                }
-
-                db_send("]");
-                break;
-            }
-            case T_FLOAT: {
-                db_send("\"%s\": [", key);
-
-                ListCell *lc;
-                foreach (lc, array_value->list) {
-                    float value = *(float *)lfirst(lc);
-                    char *strVal = ftos(value);
-                    db_send(strVal);
-                    if (last_cell(array_value->list) != lc)
-                         db_send(",");
-                    dfree(strVal);
-                }
-
-                db_send("]");
-                break;
-            }
-            case T_DOUBLE: {
-                db_send("\"%s\": [", key);
-
-                ListCell *lc;
-                foreach (lc, array_value->list) {
-                    double value = *(double *)lfirst(lc);
-                    char *strVal = dtos(value);
-                    db_send(strVal);
-                    if (last_cell(array_value->list) != lc)
-                        db_send(",");
-                    dfree(strVal);
-                }
-
-                db_send("]");
-                break;
-            }
-            case T_TIMESTAMP: {
-                db_send("\"%s\": [", key);
-
-                ListCell *lc;
-                foreach (lc, array_value->list) {
-                    time_t value = *(time_t *)lfirst(lc);
-                    char *strVal = ttos(value, "%Y-%m-%d %H:%M:%S");
-                    db_send("\"%s\"", strVal);
-                    if (last_cell(array_value->list) != lc)
-                        db_send(",");
-                    dfree(strVal);
-                }
-
-                db_send("]");
-                break;
-            }
-            case T_DATE: {
-                db_send("\"%s\": [", key);
-
-                ListCell *lc;
-                foreach (lc, array_value->list) {
-                    time_t value = *(time_t *)lfirst(lc);
-                    char *strVal = ttos(value, "%Y-%m-%d");
-                    db_send("\"%s\"", strVal);
-                    if (last_cell(array_value->list) != lc)
-                        db_send(",");
-                    dfree(strVal);
-                }
-
-                db_send("]");
-                break;
-            }
-            case T_REFERENCE: {
-                db_send("\"%s\": [", key);
-
-                ListCell *lc;
-                foreach (lc, array_value->list) {
-                    Refer *refer = (Refer *)lfirst(lc);
-                    Row *subrow = define_visible_row(refer);
-                    json_row(subrow);
-                    if (last_cell(array_value->list) != lc)
-                        db_send(",");
-                }
-
-                db_send("]");
-                break;
-            }
-            default:
-                db_log(PANIC, "Not support data type at <json_key_value>");
-        }
-    }
+    else 
+        json_key_array_value_inner(key, array_value, type);
 }
 
-/* Json single-value key value. */
-static void json_single_key_value(KeyValue *key_value) {
-
-    Assert(!key_value->is_array);
-
-    char *key = key_value->key;
-    void *value = key_value->value;
-    if (!value)
-        db_send("\"%s\": %s", key, "null");
-    else {
-        switch(key_value->data_type) {
-            case T_BOOL: 
-                db_send("\"%s\": %s", key, value && (*(bool *)value) ? "true" : "false");
-                break;
-            case T_INT: 
-                db_send("\"%s\": %d", key, value ? *(int32_t *)value : 0);
-                break;
-            case T_LONG: 
-                db_send("\"%s\": %" PRIu64, key, value ? *(int64_t *)value : 0);
-                break;
-            case T_CHAR: 
-            case T_VARCHAR: 
-                db_send("\"%s\": \"%s\"", key, value ? escap_str((char *)value) : "null");
-                break;
-            case T_FLOAT: 
-                db_send("\"%s\": %f", key, value ? *(float *)value : 0);
-                break;
-            case T_DOUBLE: 
-                db_send("\"%s\": %lf", key, value ? *(double *)value : 0);
-                break;
-            case T_TIMESTAMP: {
-                char temp[90];
-                if (value) {
-                    time_t t = *(time_t *)value;
-                    struct tm *tmp_time = localtime(&t);
-                    strftime(temp, sizeof(temp), "%Y-%m-%d %H:%M:%S", tmp_time);
-                    db_send("\"%s\": \"%s\"", key, temp);
-                } 
-                else 
-                    db_send("\"%s\": \"%s\"", key, "null");
-                break;
-            }
-            case T_DATE: {
-                char temp[90];
-                if (value) {
-                    time_t t = *(time_t *)value;
-                    struct tm *tmp_time = localtime(&t);
-                    strftime(temp, sizeof(temp), "%Y-%m-%d", tmp_time);
-                    db_send("\"%s\": \"%s\"", key, temp);
-                }
-                else 
-                    db_send("\"%s\": \"%s\"", key, "null");
-                break;
-            }
-            case T_STRING: {
-                char *strVal = QueryStringValue((StrRefer *)value);
-                db_send("\"%s\": \"%s\"", key, strVal ? escap_str(strVal) : "null");
-                break;
-            }
-            /* Specially deal with T_REFERENCE data. */
-            case T_REFERENCE: {
-                db_send("\"%s\": ", key);
-                Refer *refer = (Refer *)key_value->value;
-                assert_not_null(refer, "Try to get Reference type value fail.\n");
-                Row *subrow = define_visible_row(refer);
-                json_row(subrow);
-                break;
-            }
-            case T_ROW: {
-                db_send("\"%s\": ", key);
-                Row *subrow = (Row *)key_value->value;
-                json_row(subrow);
-                break;
-            }
-            default:
-                db_log(PANIC, "Not support data type at <json_key_value>");
-        }
-    }
+/* Json key value. */
+static void json_raw_row_entry(MetaColumn *meta_column, void *value) {
+    if (meta_column->array_dim > 0)
+        json_array_raw_row_entry(meta_column, (ArrayValue *) value);
+    else
+        json_single_raw_row_entry(meta_column, value);
 }
 
 /* Json key value. */
@@ -278,6 +314,24 @@ static void json_key_value(KeyValue *key_value) {
         json_single_key_value(key_value);
 }
 
+/* Json raw row. */
+void json_raw_row(List *meta_columns, void *destin) {
+    if (destin == NULL)
+        db_send("null");
+    else {
+        db_send("{ ");
+        ListCell *lc;
+        foreach (lc, meta_columns) {
+            MetaColumn *meta_column = (MetaColumn *) lfirst(lc);
+            void *value = get_value_in_destin(destin, meta_column);
+            json_raw_row_entry(meta_column, value);
+            if (last_cell(meta_columns) != lc)
+                db_send(",");
+        }
+        db_send(" }");
+    }
+}
+
 /* Json row. */
 void json_row(Row *row) {
     if (!row) 
@@ -286,7 +340,6 @@ void json_row(Row *row) {
         /* Handler duplacate key. */
         handle_dulicate_key(row);
         db_send("{ ");
-
         ListCell *lc;
         foreach (lc, row->data) {
             KeyValue *key_value = lfirst(lc);
@@ -295,7 +348,6 @@ void json_row(Row *row) {
             if (last_cell(row->data) != lc) 
                 db_send(", ");
         }
-
         db_send(" }");
     }
 }
