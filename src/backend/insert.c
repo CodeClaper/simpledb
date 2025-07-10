@@ -114,17 +114,13 @@ static KeyValue *new_expired_xid_column() {
 
 /* Supplement system reserved column. */
 void supple_reserved_column(Row *row) {
-
     /* Append sys_id column key value. */
     KeyValue *sys_id_col = new_sys_id_column();
     append_list(row->data, sys_id_col);
-
     /* Append created_xid column key value. */
     append_list(row->data, new_created_xid_column());
-
     /* Append expired_xid column key value. */
     append_list(row->data, new_expired_xid_column());
-    
     
     /* If built-in primary key, assign it with sys_id. */
     Table *table = open_table(row->table_name);
@@ -137,7 +133,6 @@ void supple_reserved_column(Row *row) {
  * Return Row.
  * */
 static Row *generate_insert_row_for_all2(MetaTable *meta_table, List *value_item_list) {
-
     /* Check NodeType. */
     Assert(value_item_list->type == NODE_VALUE_ITEM);
 

@@ -721,8 +721,8 @@ static bool allow_scan_index(ROW_HANDLER_ARG_TYPE type, void *arg) {
 
 /* Scan from leaf node. */
 static void scan_from_leaf_node(SelectResult *select_result, ConditionNode *condition, 
-                                  uint32_t page_num, Table *table, ROW_HANDLER row_handler, 
-                                  ROW_HANDLER_ARG_TYPE type, void *arg) {
+                                uint32_t page_num, Table *table, ROW_HANDLER row_handler, 
+                                ROW_HANDLER_ARG_TYPE type, void *arg) {
 
     /* Get cell number, key length and value lenght. */
     uint32_t key_len, value_len, default_value_len, cell_num ;
