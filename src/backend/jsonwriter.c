@@ -393,17 +393,15 @@ static void json_result_list(DBResult *result) {
 
 /* Handle duplicate Key. */
 static void handle_dulicate_key(Row *row) {
-    uint32_t times = 0;
-
     ListCell *lc1, *lc2;
     foreach (lc1, row->data) {
+        uint32_t times = 0;
         KeyValue *first = lfirst(lc1);
         foreach (lc2, row->data) {
             KeyValue *second = lfirst(lc2);
             if (lc1 == lc2)
                 continue;
             if (streq(second->key, first->key)) {
-                dfree(second->key);
                 second->key = format("%s(%d)", first->key, ++times);
             }
         } 
