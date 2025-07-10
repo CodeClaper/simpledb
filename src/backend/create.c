@@ -106,7 +106,6 @@ static void operate_column(MetaColumn *meta_column, List *column_def_opt_list) {
 
 /* Combine user-level column. */
 MetaColumn *combine_user_meta_column(ColumnDefNode *column_def, char *table_name) {
-
     MetaColumn *meta_column = instance(MetaColumn);
 
     /* Base info. */
@@ -221,7 +220,6 @@ void handler_user_none_priamry_key(MetaTable *meta_table) {
 
 /* Combine meta table by create table node. */
 static MetaTable *combine_meta_table(CreateTableNode *create_table_node) {
-
     MetaTable *meta_table = instance(MetaTable);
     meta_table->table_name = dstrdup(create_table_node->table_name);
     meta_table->column_size = get_column_def_size(create_table_node); 

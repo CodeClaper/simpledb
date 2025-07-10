@@ -31,7 +31,6 @@ static void save_stack_message(const char *msg) {
     memcpy(CurrentMessage, msg, min_size(BUFF_SIZE, strlen(msg)));
 }
 
-
 /* Get stack message. */
 inline char *get_stack_message() {
     return CurrentMessage;

@@ -278,10 +278,10 @@ static bool if_related_table(MetaTable *meta_table, Oid refer_oid) {
 
     refer_table = open_table_inner(refer_oid);
     Assert(refer_table);
-
     Assert(meta_table);
+
     int i;
-    for(i = 0; i < meta_table->column_size; i++) {
+    for (i = 0; i < meta_table->column_size; i++) {
         MetaColumn *current_meta_column = meta_table->meta_column[i];
         if (current_meta_column->column_type == T_REFERENCE && 
                 strcmp(current_meta_column->table_name, GET_TABLE_NAME(refer_table)) == 0)
@@ -383,7 +383,6 @@ static void update_row_refer(void *destin, SelectResult *select_result, Table *t
 
 /* Update table refer. */
 static void update_table_refer(MetaTable *meta_table, ReferUpdateEntity *refer_update_entity) {
-
     /* Skip update locked refer. */
     if (include_update_refer_lock(refer_update_entity->old_refer))
         return;

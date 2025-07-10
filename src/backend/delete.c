@@ -31,7 +31,6 @@
 /* Delete row */
 void delete_row(void *destin, SelectResult *select_result, 
                 Table *table, ROW_HANDLER_ARG_TYPE type, void *arg) {
-
     Cursor *cursor;
     Refer *refer;
     Row *row, *currentRow;
@@ -67,7 +66,6 @@ void delete_row(void *destin, SelectResult *select_result,
 
 /* Execute delete statment.*/
 void exec_delete_statement(DeleteNode *delete_node, DBResult *result) { 
-
     /* Check table exists. */
     Table *table = open_table(delete_node->table_name);
     if (table == NULL) {
@@ -95,4 +93,3 @@ void exec_delete_statement(DeleteNode *delete_node, DBResult *result) {
 
     db_log(SUCCESS, "Successfully deleted %d row data.", select_result->row_size);
 }
-

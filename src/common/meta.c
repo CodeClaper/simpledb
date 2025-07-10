@@ -116,7 +116,6 @@ inline char *function_type_name(FunctionType function_type) {
 
 /* Assign value from atom*/
 static void *assign_value_from_atom(AtomNode *atom_node, MetaColumn *meta_column) {
-
     /* Assign new value. */
     switch(meta_column->column_type) {
         case T_BOOL: 
@@ -389,7 +388,9 @@ void *get_real_value(void *value, DataType type) {
 /* Get value in destin memory. */
 void *get_value_in_destin(void *destin, MetaColumn *meta_column) {
     bool nflag =  *(bool *)(destin + meta_column->offset);
-    return nflag ? NULL : (destin + meta_column->offset + LEAF_NODE_CELL_NULL_FLAG_SIZE);
+    return nflag 
+        ? NULL 
+        : (destin + meta_column->offset + LEAF_NODE_CELL_NULL_FLAG_SIZE);
 }
 
 /* Combine AtomNode by column and value. */
