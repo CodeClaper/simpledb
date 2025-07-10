@@ -725,7 +725,7 @@ static void scan_from_leaf_node(SelectResult *select_result, ConditionNode *cond
                                 ROW_HANDLER_ARG_TYPE type, void *arg) {
 
     /* Get cell number, key length and value lenght. */
-    uint32_t key_len, value_len, default_value_len, cell_num ;
+    uint32_t key_len, value_len, default_value_len, cell_num;
     Buffer buffer;
     void *leaf_node;
     TransEntry *current_trans;

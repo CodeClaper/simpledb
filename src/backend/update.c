@@ -64,12 +64,16 @@ static void delete_row_for_update(Refer *refer, Row *row) {
 
 /* Insert row for update. */
 static void insert_row_for_update(Row *row, Table *table) {
-    Cursor *new_cur = define_cursor(table, row->key);
-    UpdateTransactionState(row, TR_INSERT);
+    Cursor *new_cur;
+    Refer *new_ref;
 
+    new_cur = define_cursor(table, row->key);
+    new_ref = convert_refer(new_cur);
+
+    /* Update old row. */
+    UpdateTransactionState(row, TR_INSERT);
     /* Insert */
     insert_leaf_node_cell(new_cur, row);
-    Refer *new_ref = convert_refer(new_cur);
     /* Record xlog for insert. */
     RecordXlog(new_ref, HEAP_UPDATE_INSERT);
 
