@@ -97,11 +97,12 @@ bool create_table(Oid oid, MetaTable *meta_table) {
     void *default_value_dest = get_default_value_cell(root_node);
 
     /* Serialize */
-    uint32_t i, offset = 0;
-    for (i = 0; i < meta_table->all_column_size; i++) {
-        MetaColumn *meta_column = (MetaColumn *) (meta_table->meta_column[i]);
+    uint32_t offset = 0;
+    ListCell *lc;
+    foreach (lc, meta_table->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
         void *destination = serialize_meta_column(meta_column);
-        set_meta_column(root_node, destination, i);
+        set_meta_column(root_node, destination, __i);
         if (meta_column->default_value_type == DEFAULT_VALUE)
             memcpy(default_value_dest + offset, meta_column->default_value, meta_column->column_length);
         else
@@ -136,15 +137,15 @@ static int get_column_position(MetaTable *meta_table, ColumnPositionDef *pos_def
     if (is_null(pos_def))
         return meta_table->column_size;
 
-    int i;
-    for (i = 0; i < meta_table->column_size; i++) {
-        MetaColumn *current = meta_table->meta_column[i];
-        if (streq(current->column_name, pos_def->column)) {
+    ListCell *lc;
+    foreach (lc, meta_table->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
+        if (streq(meta_column->column_name, pos_def->column)) {
             switch (pos_def->type) {
                 case POS_BEFORE:
-                    return i;
+                    return __i;
                 case POS_AFTER:
-                    return i + 1;
+                    return __i + 1;
             }
         }
     }
@@ -188,7 +189,6 @@ bool drop_meta_column(char *table_name, char *column_name) {
 Table *load_table(Oid oid) {
     /* New table. */
     Table *table = instance(Table);
-
     /* Define root page is first page. */
     table->oid = oid;
     table->root_page_num = ROOT_PAGE_NUM; 

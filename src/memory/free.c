@@ -134,11 +134,7 @@ void free_meta_table(MetaTable *meta_table) {
         if (meta_table->table_name) {
             dfree(meta_table->table_name);
         }
-        uint32_t i;
-        for (i = 0; i < meta_table->all_column_size; i++) {
-            free_meta_column(meta_table->meta_column[i]);
-        }
-        dfree(meta_table->meta_column);
+        free_list_deep(meta_table->meta_columns);
         dfree(meta_table);
     }
 }

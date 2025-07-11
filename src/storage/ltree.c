@@ -1460,7 +1460,8 @@ static uint32_t calc_offset_new_column(MetaTable *meta_table, int pos) {
     /*  Calcualte offset. */
     uint32_t offset = 0;
     for (int i = 0; i < pos; i++) {
-        MetaColumn *current = meta_table->meta_column[i];
+        ListCell *lc = list_nth_cell(meta_table->meta_columns, i);
+        MetaColumn *current = (MetaColumn *)lfirst(lc);
         offset += current->column_length;
     }
     return offset;
@@ -1942,7 +1943,7 @@ static void drop_root_leaf_node_column(uint32_t page_num, Table *table, int pos)
     cell_num = get_leaf_node_cell_num(root_node, default_value_len);
     
     MetaTable *meta_table = table->meta_table;
-    MetaColumn *meta_column = meta_table->meta_column[pos];
+    MetaColumn *meta_column = (MetaColumn *)lfirst(list_nth_cell(meta_table->meta_columns, pos));
 
     /* Move meta column info. */
     uint32_t column_size = get_column_size(root_node);
@@ -2018,7 +2019,7 @@ static void drop_root_internal_node_column(uint32_t page_num, Table *table, int 
     default_value_len = table->heap_value_len;
     
     MetaTable *meta_table = table->meta_table;
-    MetaColumn *meta_column = meta_table->meta_column[pos];
+    MetaColumn *meta_column = (MetaColumn *)lfirst(list_nth_cell(meta_table->meta_columns, pos));
 
     /* Move meta column info. */
     uint32_t column_size = get_column_size(root_node);
@@ -2157,9 +2158,10 @@ bool cursor_is_deleted(Cursor *cursor) {
     void *leaf_node = GetBufferPage(buffer);
     void *destination = get_leaf_node_cell_value(leaf_node, key_len, value_len, default_value_len, cursor->cell_num);
  
-    int i, offset = REFER_SIZE;
-    for (i = 0; i < table->meta_table->all_column_size; i++) {
-        MetaColumn *meta_column = table->meta_table->meta_column[i];
+    int offset = REFER_SIZE;
+    ListCell *lc;
+    foreach (lc, table->meta_table->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
         if (meta_column->sys_reserved && 
                 strcmp(meta_column->column_name, EXPIRED_XID_COLUMN_NAME) == 0) {
             Xid expired_xid = *(Xid *)(destination + offset);
@@ -2552,9 +2554,10 @@ void *serialize_row_data(Row *row, Table *table) {
     uint32_t row_length = calc_table_row_length(table);
     void *destination = dalloc(row_length);
     MetaTable *meta_table = table->meta_table;
-    uint32_t i, offset = 0;
-    for (i = 0; i < meta_table->all_column_size; i++) {
-        MetaColumn *meta_column = meta_table->meta_column[i]; 
+    uint32_t offset = 0;
+    ListCell *lc;
+    foreach (lc, meta_table->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
         void *value = get_value_from_row(row, meta_column);
         if (meta_column->not_null && is_null(value)) {
             db_log(ERROR, "Column '%s' does`t have a default value.", meta_column->column_name);
@@ -2586,9 +2589,10 @@ static void *seriable_index_value(Row *row, Cursor *cursor) {
     /* Assign refer value. */
     memcpy(destination, refer, REFER_SIZE);
 
-    uint32_t i, offset = REFER_SIZE;
-    for (i = 0; i < meta_table->all_column_size; i++) {
-        MetaColumn *meta_column = meta_table->meta_column[i]; 
+    uint32_t offset = REFER_SIZE;
+    ListCell *lc;
+    foreach (lc, meta_table->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
         if (meta_column->sys_reserved) {
             void *value = get_value_from_row(row, meta_column);
             assign_row_value(destination + offset, value, meta_column);
@@ -2698,11 +2702,12 @@ void update_row_expired_xid(Refer *refer, Xid expired_xid) {
 
 /* Update index content. */
 static void update_index_system_content(void *destination, Row *row, Table *table) {
-    uint32_t i, offset = REFER_SIZE;
+    uint32_t offset = REFER_SIZE;
     MetaTable *meta_table = table->meta_table;
 
-    for (i = 0; i < meta_table->all_column_size; i++) {
-        MetaColumn *meta_column = meta_table->meta_column[i]; 
+    ListCell *lc;
+    foreach (lc, meta_table->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
         if (meta_column->sys_reserved) {
             void *value = get_value_from_row(row, meta_column);
             assign_row_value(destination + offset, value, meta_column);

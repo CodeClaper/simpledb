@@ -63,20 +63,20 @@ static MetaTable *CreateSysMetaTable() {
     meta_table->table_name = dstrdup(SYS_TABLE_NAME);
     meta_table->column_size = SYS_TABLE_COLUMNS_LENGTH;
     meta_table->all_column_size = SYS_TABLE_COLUMNS_LENGTH + SYS_RESERVED_COLUMNS_LENGTH;
-    meta_table->meta_column = dalloc(sizeof(MetaColumn *) * meta_table->all_column_size);
+    meta_table->meta_columns = create_list(NODE_META_COLUMN);
     
     /* Define system table columns. */
     for (i = 0; i < SYS_TABLE_COLUMNS_LENGTH; i++) {
         MetaColumn *meta_column = instance(MetaColumn);
         memcpy(meta_column, SYS_TABLE_COLUMNS + i, sizeof(MetaColumn));
-        meta_table->meta_column[i] = meta_column;
+        append_list(meta_table->meta_columns, meta_column);
     }
 
     /* Define system reserved columns. */
     for (; i < SYS_TABLE_COLUMNS_LENGTH + SYS_RESERVED_COLUMNS_LENGTH; i++) {
         MetaColumn *meta_column = instance(MetaColumn);
         memcpy(meta_column, (SYS_RESERVED_COLUMNS + i - SYS_TABLE_COLUMNS_LENGTH), sizeof(MetaColumn));
-        meta_table->meta_column[i] = meta_column;
+        append_list(meta_table->meta_columns, meta_column);
     }
 
     return meta_table;

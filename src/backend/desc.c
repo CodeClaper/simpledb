@@ -34,9 +34,12 @@ static List *gen_describe_result(MetaTable *meta_table) {
 
     List *list = create_list(NODE_LIST);
 
-    uint32_t i;
-    for (i = 0; i < meta_table->column_size; i++) {
-        MetaColumn *meta_column = meta_table->meta_column[i];
+    ListCell *lc;
+    foreach (lc, meta_table->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
+        /* Skip system-reserved column. */
+        if (meta_column->sys_reserved)
+            continue;
 
         List *child_list = create_list(NODE_KEY_VALUE);
 

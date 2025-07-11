@@ -472,6 +472,14 @@ List *list_copy_deep(List *old_list) {
             }
             break;
         }
+        case NODE_META_COLUMN: {
+            ListCell *lc;
+            foreach (lc, old_list) {
+                void *replica = copy_meta_column(lfirst(lc));
+                append_list(new_list, replica);
+            }
+            break;
+        }
         default:
             UNEXPECTED_VALUE("Not support this node to copy.");
     }
@@ -562,6 +570,14 @@ void free_list_deep(List *list) {
                 foreach (lc, list) {
                     BufferDesc *buff_desc = lfirst(lc);
                     free_buffer_desc(buff_desc);
+                }
+                break;
+            }
+            case NODE_META_COLUMN: {
+                ListCell *lc;
+                foreach (lc, list) {
+                    MetaColumn *meta_column = lfirst(lc);
+                    free_meta_column(meta_column);
                 }
                 break;
             }

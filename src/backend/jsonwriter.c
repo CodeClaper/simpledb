@@ -323,6 +323,8 @@ void json_raw_row(List *meta_columns, void *destin) {
         ListCell *lc;
         foreach (lc, meta_columns) {
             MetaColumn *meta_column = (MetaColumn *) lfirst(lc);
+            if (meta_column->sys_reserved)
+                continue;
             void *value = get_value_in_destin(destin, meta_column);
             json_raw_row_entry(meta_column, value);
             if (last_cell(meta_columns) != lc)

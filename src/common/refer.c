@@ -280,11 +280,11 @@ static bool if_related_table(MetaTable *meta_table, Oid refer_oid) {
     Assert(refer_table);
     Assert(meta_table);
 
-    int i;
-    for (i = 0; i < meta_table->column_size; i++) {
-        MetaColumn *current_meta_column = meta_table->meta_column[i];
-        if (current_meta_column->column_type == T_REFERENCE && 
-                strcmp(current_meta_column->table_name, GET_TABLE_NAME(refer_table)) == 0)
+    ListCell *lc;
+    foreach (lc, meta_table->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
+        if (meta_column->column_type == T_REFERENCE && 
+                strcmp(meta_column->table_name, GET_TABLE_NAME(refer_table)) == 0)
             return true;
     }
 
@@ -372,9 +372,9 @@ static void update_row_refer(void *destin, SelectResult *select_result, Table *t
     /* MetaTable */
     MetaTable *meta_table = table->meta_table;
 
-    uint32_t i;
-    for (i = 0; i < meta_table->column_size; i++) {
-        MetaColumn *meta_column = meta_table->meta_column[i];
+    ListCell *lc;
+    foreach (lc, meta_table->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
         if (meta_column->column_type == T_REFERENCE && 
                 streq(meta_column->table_name, GET_TABLE_NAME(ref_table))) 
             update_key_value_refer(row, meta_column, cursor, refer_update_entity);

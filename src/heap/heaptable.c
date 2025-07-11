@@ -316,7 +316,8 @@ static uint32_t CalcOffsetByPos(MetaTable *meta_table, int pos) {
     /*  Calcualte offset. */
     uint32_t offset = 0;
     for (int i = 0; i < pos; i++) {
-        MetaColumn *current = meta_table->meta_column[i];
+        ListCell *lc = list_nth_cell(meta_table->meta_columns, i);
+        MetaColumn *current = (MetaColumn *)lfirst(lc);
         offset += current->column_length;
     }
     return offset;

@@ -254,18 +254,13 @@ MetaTable *copy_meta_table(MetaTable *meta_table) {
     if (meta_table == NULL)
         return NULL;
 
-    MetaTable *copy = instance(MetaTable);
-    copy->table_name = dstrdup(meta_table->table_name);
-    copy->column_size = meta_table->column_size;
-    copy->all_column_size = meta_table->all_column_size;
-    copy->meta_column = dalloc(sizeof(MetaColumn *) * copy->all_column_size);
+    MetaTable *duplica = instance(MetaTable);
+    duplica->table_name = dstrdup(meta_table->table_name);
+    duplica->column_size = meta_table->column_size;
+    duplica->all_column_size = meta_table->all_column_size;
+    duplica->meta_columns = list_copy_deep(meta_table->meta_columns);
 
-    uint32_t i;
-    for (i = 0; i < meta_table->all_column_size; i++) {
-        copy->meta_column[i] = copy_meta_column(meta_table->meta_column[i]);
-    }
-
-    return copy;
+    return duplica;
 }
 
 /* Copy BufferDesc. */

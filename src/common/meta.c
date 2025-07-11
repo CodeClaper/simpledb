@@ -434,9 +434,9 @@ AtomNode *combine_atom_node(MetaColumn *meta_column, void *value) {
 /* Calculate the length of table row. */
 uint32_t calc_table_row_length(Table *table) {
     uint32_t row_len = 0;
-    uint32_t i;
-    for (i = 0; i < table->meta_table->all_column_size; i++) {
-        MetaColumn *meta_column = table->meta_table->meta_column[i];
+    ListCell *lc;
+    foreach (lc, table->meta_table->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
         row_len += meta_column->column_length;
     }
     return row_len;
@@ -445,9 +445,9 @@ uint32_t calc_table_row_length(Table *table) {
 /* Calculate the length of table row. */
 uint32_t calc_table_row_length2(MetaTable *meta_table) {
     uint32_t row_len = 0;
-    uint32_t i;
-    for (i = 0; i < meta_table->all_column_size; i++) {
-        MetaColumn *meta_column = meta_table->meta_column[i];
+    ListCell *lc;
+    foreach (lc, meta_table->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
         row_len += meta_column->column_length;
     }
     return row_len;
@@ -457,9 +457,9 @@ uint32_t calc_table_row_length2(MetaTable *meta_table) {
  * Return primary-key column length.
  * Panic if not found. */
 uint32_t calc_primary_key_length(Table *table) {
-    uint32_t i;
-    for (i = 0; i < table->meta_table->all_column_size; i++) {
-        MetaColumn *meta_column = table->meta_table->meta_column[i];
+    ListCell *lc;
+    foreach(lc, table->meta_table->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
         if (meta_column->is_primary)
             return meta_column->column_length;
     }
@@ -472,9 +472,9 @@ uint32_t calc_primary_key_length(Table *table) {
  * Return primary-key column length.
  * Panic if not found. */
 uint32_t calc_primary_key_length2(MetaTable *meta_table) {
-    uint32_t i;
-    for (i = 0; i < meta_table->all_column_size; i++) {
-       MetaColumn *meta_column = meta_table->meta_column[i];
+    ListCell *lc;
+    foreach (lc, meta_table->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
        if (meta_column->is_primary)
            return meta_column->column_length;
     }
@@ -485,11 +485,10 @@ uint32_t calc_primary_key_length2(MetaTable *meta_table) {
 /* Calculate primary index value length. */
 uint32_t calc_primary_index_value_length(Table *table) {
     uint32_t value_len;
-    uint32_t i;
-    
     value_len = REFER_SIZE;
-    for (i = 0; i < table->meta_table->all_column_size; i++) {
-        MetaColumn *meta_column = table->meta_table->meta_column[i];
+    ListCell *lc;
+    foreach (lc, table->meta_table->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
         if (meta_column->sys_reserved)
             value_len += meta_column->column_length;
     }
@@ -500,11 +499,10 @@ uint32_t calc_primary_index_value_length(Table *table) {
 /* Calculate primary index value length. */
 uint32_t calc_primary_index_value_length2(MetaTable *meta_table) {
     uint32_t value_len;
-    uint32_t i;
-    
-    value_len = sizeof(Refer);
-    for (i = 0; i < meta_table->all_column_size; i++) {
-        MetaColumn *meta_column = meta_table->meta_column[i];
+    value_len = REFER_SIZE;
+    ListCell *lc;
+    foreach (lc, meta_table->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
         if (meta_column->sys_reserved)
             value_len += meta_column->column_length;
     }
@@ -525,9 +523,9 @@ static MetaColumn *get_meta_column_by_index(void *root_node, uint32_t index, uin
 
 /* Get meta column info by column name. */
 MetaColumn *get_meta_column_by_name(MetaTable *meta_table, char *column_name) {
-    uint32_t i;
-    for (i = 0; i < meta_table->column_size; i++) {
-        MetaColumn *meta_column = meta_table->meta_column[i];
+    ListCell *lc;
+    foreach (lc, meta_table->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
         if (streq(meta_column->column_name, column_name))
             return meta_column;
     }
@@ -539,21 +537,22 @@ MetaColumn *get_meta_column_by_name(MetaTable *meta_table, char *column_name) {
  * Return -1 if missing. 
  * */
 int get_meta_column_pos_by_name(MetaTable *meta_table, char *column_name) {
-    uint32_t i;
-    for (i = 0; i < meta_table->column_size; i++) {
-        MetaColumn *meta_column = meta_table->meta_column[i];
+    uint32_t i = 0;
+    ListCell *lc;
+    foreach (lc, meta_table->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
         if (streq(meta_column->column_name, column_name))
             return i;
+        i++;
     }
-
     return -1;
 }
 
 /* Get meta column of primary key. */
 MetaColumn *get_primary_key_meta_column(MetaTable *meta_table) {
-    uint32_t i;
-    for (i = 0; i < meta_table->all_column_size; i++) {
-        MetaColumn *meta_column = meta_table->meta_column[i];
+    ListCell *lc;
+    foreach (lc, meta_table->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
         if (meta_column->is_primary)
             return meta_column;
     }
@@ -572,9 +571,9 @@ DataType get_primary_key_type(MetaTable *meta_table) {
  * Return NULL if not found.
  * */
 MetaColumn *get_all_meta_column_by_name(MetaTable *meta_table, char *name) {
-    uint32_t i;
-    for (i = 0; i < meta_table->all_column_size; i++) {
-        MetaColumn *meta_column = meta_table->meta_column[i];
+    ListCell *lc;
+    foreach (lc, meta_table->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
         if (streq(meta_column->column_name, name))
             return meta_column;
     }
@@ -591,13 +590,13 @@ MetaTable *gen_meta_table(Oid oid) {
     meta_table->table_name = IS_SYS_ROOT(oid) ? dstrdup(SYS_TABLE_NAME) : OidFindRelName(oid);
     meta_table->column_size = 0;
     meta_table->all_column_size = 0;
-    meta_table->meta_column = dalloc(sizeof(MetaColumn *) * column_size);
+    meta_table->meta_columns = create_list(NODE_META_COLUMN);
 
     uint32_t offset = 0;
     uint32_t i;
     for (i = 0; i < column_size; i++) {
         MetaColumn *current = get_meta_column_by_index(root_node, i, offset);
-        meta_table->meta_column[i] = current;
+        append_list(meta_table->meta_columns, current);
         /* Skip to system reserved column. */
         if (!current->sys_reserved)
             meta_table->column_size++;
@@ -685,9 +684,10 @@ char *get_default_value_name(MetaColumn *meta_column) {
 bool if_exists_column_in_table(char *column_name, char *table_name) {
     Table *table = open_table(table_name);
     MetaTable *meta_table = table->meta_table;
-    uint32_t i;
-    for (i = 0; i < meta_table->column_size; i++) {
-        if (streq(column_name, meta_table->meta_column[i]->column_name))
+    ListCell *lc;
+    foreach (lc, meta_table->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
+        if (streq(column_name, meta_column->column_name))
             return true;
     }
     return false;
@@ -710,9 +710,9 @@ uint32_t calc_raw_meta_column_len(MetaColumn *meta_column) {
 
 /* Check if user has defined primary key.*/
 bool has_user_primary_key(MetaTable *meta_table) {
-    int i;
-    for (i = 0; i < meta_table->column_size; i++) {
-        MetaColumn *meta_column = meta_table->meta_column[i];
+    ListCell *lc;
+    foreach (lc, meta_table->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
         if (meta_column->is_primary)
             return true;
     }
@@ -721,10 +721,10 @@ bool has_user_primary_key(MetaTable *meta_table) {
 
 /* Get the created xid. */
 Xid get_created_xid(void *destinct, MetaTable *meta_table) {
-    uint32_t i, offset;
-    offset = 0;
-    for (i = 0; i < meta_table->all_column_size; i++) {
-        MetaColumn *meta_column = meta_table->meta_column[i];
+    uint32_t offset = 0;
+    ListCell *lc;
+    foreach (lc, meta_table->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
         if (meta_column->sys_reserved && streq(meta_column->column_name, CREATED_XID_COLUMN_NAME))
             return *(Xid *)(destinct + offset);
         offset += meta_column->column_length;
@@ -734,10 +734,10 @@ Xid get_created_xid(void *destinct, MetaTable *meta_table) {
 
 /* Get the expired xid. */
 Xid get_expired_xid(void *destinct, MetaTable *meta_table) {
-    uint32_t i, offset;
-    offset = 0;
-    for (i = 0; i < meta_table->all_column_size; i++) {
-        MetaColumn *meta_column = meta_table->meta_column[i];
+    uint32_t offset = 0;
+    ListCell *lc;
+    foreach (lc, meta_table->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
         if (meta_column->sys_reserved && streq(meta_column->column_name, EXPIRED_XID_COLUMN_NAME))
             return *(Xid *)(destinct + offset);
         offset += meta_column->column_length;
@@ -747,10 +747,10 @@ Xid get_expired_xid(void *destinct, MetaTable *meta_table) {
 
 /* Get the created xid. */
 uint32_t get_created_xid_offset(MetaTable *meta_table) {
-    uint32_t i, offset;
-    offset = 0;
-    for (i = 0; i < meta_table->all_column_size; i++) {
-        MetaColumn *meta_column = meta_table->meta_column[i];
+    uint32_t offset = 0;
+    ListCell *lc;
+    foreach (lc, meta_table->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
         if (meta_column->sys_reserved && streq(meta_column->column_name, CREATED_XID_COLUMN_NAME))
             return offset;
         offset += meta_column->column_length;
@@ -760,10 +760,10 @@ uint32_t get_created_xid_offset(MetaTable *meta_table) {
 
 /* Get the expired xid. */
 uint32_t get_expired_xid_offset(MetaTable *meta_table) {
-    uint32_t i, offset;
-    offset = 0;
-    for (i = 0; i < meta_table->all_column_size; i++) {
-        MetaColumn *meta_column = meta_table->meta_column[i];
+    uint32_t offset = 0;
+    ListCell *lc;
+    foreach (lc, meta_table->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
         if (meta_column->sys_reserved && streq(meta_column->column_name, EXPIRED_XID_COLUMN_NAME))
             return offset;
         offset += meta_column->column_length;

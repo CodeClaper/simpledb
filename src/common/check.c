@@ -147,9 +147,9 @@ static bool include_column_for_query_spece(MetaColumn *meta_column, QuerySpecNod
 
 /* Check ident node. */
 static bool check_column_node(ColumnNode *column_node, MetaTable *meta_table) {
-    uint32_t i;
-    for (i = 0; i < meta_table->column_size; i++) {
-        MetaColumn *meta_column = meta_table->meta_column[i];
+    ListCell *lc;
+    foreach (lc, meta_table->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
         if (streq(meta_column->column_name, column_node->column_name)) {
             if (column_node->has_sub_column == false)
                 return true;
@@ -197,11 +197,10 @@ static bool check_column_node(ColumnNode *column_node, MetaTable *meta_table) {
 
 /* Confirm MetaTable via ColumnNode. */
 static MetaTable *confirm_meta_table_via_column(ColumnNode *column, AliasMap alias_map) {
-
     MetaTable *current_meta_table = NULL;
     int times = 0;
 
-    uint32_t i, j;
+    uint32_t i;
     for (i = 0; i < alias_map.size; i++) {
         AliasEntry alias_entry = alias_map.map[i];
         Table *table = open_table(alias_entry.name);
@@ -213,8 +212,9 @@ static MetaTable *confirm_meta_table_via_column(ColumnNode *column, AliasMap ali
                 current_meta_table = meta_table;
 
         if (column->range_variable == NULL) {
-            for (j = 0; j < meta_table->column_size; j++) {
-                MetaColumn *meta_column = meta_table->meta_column[j];
+            ListCell *lc;
+            foreach (lc, meta_table->meta_columns) {
+                MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
                 if (streq(meta_column->column_name, column->column_name)) {
                     current_meta_table = meta_table;
                     times++;
@@ -392,10 +392,11 @@ bool check_value_valid(MetaColumn *meta_column, AtomNode *atom_node) {
 
 /* Check ValueItemNode. */
 static bool check_value_item_node(MetaTable *meta_table, char *column_name, ValueItemNode *value_item_node) {
-
-    uint32_t i;
-    for (i = 0; i < meta_table->column_size; i++) {
-        MetaColumn *meta_column = meta_table->meta_column[i];
+    ListCell *lc;
+    foreach (lc, meta_table->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
+        if (meta_column->sys_reserved)
+            continue;
         if (streq(meta_column->column_name, column_name)) {
             switch (value_item_node->type) {
                 case V_ATOM: {
@@ -1011,16 +1012,17 @@ static bool check_insert_node_for_value_items(InsertNode *insert_node, List *val
             return false;
         }
 
-        uint32_t i;
-        for (i = 0; i < meta_table->column_size; i++) {
-            MetaColumn *meta_column = meta_table->meta_column[i];
-            ValueItemNode *value_item_node = lfirst(list_nth_cell(value_item_list, i));
+        ListCell *lc;
+        foreach (lc, meta_table->meta_columns) {
+            MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
+            if (meta_column->sys_reserved)
+                continue;
+            ValueItemNode *value_item_node = lfirst(list_nth_cell(value_item_list, __i));
             if (!check_value_item_node(meta_table, meta_column->column_name, value_item_node))
                 return false;
         }
 
     } else {
-
         /* Check column number equals the insert values number. */
         if (len_list(insert_node->column_list) != len_list(value_item_list)) {
             db_log(ERROR, "Column count doesn`t match value count.");
@@ -1047,7 +1049,6 @@ static bool check_insert_node_for_value_items(InsertNode *insert_node, List *val
 
 /* Check InsertNode for VALUES. */
 static bool check_insert_node_for_values(InsertNode *insert_node, List *value_list) {
-
     ListCell *lc;
     foreach (lc, value_list) {
         List *value_item_list = lfirst(lc);
@@ -1069,9 +1070,9 @@ static bool check_insert_node_for_query_spec(InsertNode *insert_node, QuerySpecN
 
     if (insert_node->all_column) {
         MetaTable *meta_table = table->meta_table;
-        uint32_t i;
-        for (i = 0; i < meta_table->column_size; i++) {
-            MetaColumn *meta_column = meta_table->meta_column[i];
+        ListCell *lc;
+        foreach (lc, meta_table->meta_columns) {
+            MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
             if (!include_column_for_query_spece(meta_column, query_spec))
                 return false;
         }
@@ -1191,12 +1192,14 @@ static bool check_table(char *table_name) {
 static bool if_table_used_refer(Table *table, char *refer_table_name) {
     MetaTable *meta_table = table->meta_table;
 
-    uint32_t i;
-    for (i = 0; i < meta_table->column_size; i++) {
-        MetaColumn *current_meta_column = meta_table->meta_column[i];
-        if (current_meta_column->column_type == T_REFERENCE && strcmp(current_meta_column->table_name, refer_table_name) == 0) {
+    ListCell *lc;
+    foreach (lc, meta_table->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
+        if (meta_column->sys_reserved)
+            continue;
+        if (meta_column->column_type == T_REFERENCE && strcmp(meta_column->table_name, refer_table_name) == 0) {
             db_log(ERROR , "Table '%s' is refered by column '%s' in table '%s', so can`t drop it.", 
-                   refer_table_name, current_meta_column->column_name, table->meta_table->table_name);
+                   refer_table_name, meta_column->column_name, table->meta_table->table_name);
             return true;
         }
     }

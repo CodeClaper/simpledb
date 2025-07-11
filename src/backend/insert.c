@@ -144,20 +144,19 @@ static Row *generate_insert_row_for_all2(MetaTable *meta_table, List *value_item
     row->data = create_list(NODE_KEY_VALUE);
     
     /* Row data. */
-    uint32_t i;
-    for (i = 0; i < meta_table->all_column_size; i++) {
-
-        MetaColumn *meta_column = meta_table->meta_column[i];
-
+    ListCell *lc;
+    foreach (lc, meta_table->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
         /* Ship system reserved. */
         if (meta_column->sys_reserved) 
             continue;
 
         KeyValue *key_value = new_key_value(
             dstrdup(meta_column->column_name),
-            get_insert_value(value_item_list, i, meta_column),
+            get_insert_value(value_item_list, __i, meta_column),
             meta_column->column_type
         );
+
         /* Check if primary key column. */
         if (meta_column->is_primary) 
             row->key = copy_value2(key_value->value, meta_column);
@@ -216,9 +215,7 @@ static Row *generate_insert_row_for_part2(MetaTable *meta_table, List *column_li
     ListCell *lc;
     int i = 0;
     foreach (lc, column_list) {
-
         ColumnNode *column = lfirst(lc);
-
         MetaColumn *meta_column = get_meta_column_by_name(meta_table, column->column_name);
 
         if (!meta_table)
@@ -253,10 +250,8 @@ static Row *generate_insert_row_for_part2(MetaTable *meta_table, List *column_li
  * Return list of Row.
  * */
 static List *generate_insert_row_for_part(InsertNode *insert_node) {
-
     List *column_list = insert_node->column_list;
     List *value_list = insert_node->values_or_query_spec->values;
-
 
     /* Table and MetaTable. */
     Table *table = open_table(insert_node->table_name);
@@ -266,7 +261,6 @@ static List *generate_insert_row_for_part(InsertNode *insert_node) {
     }
 
     MetaTable *meta_table = table->meta_table;
-
     List *row_list = create_list(NODE_ROW);
 
     ListCell *lc;
@@ -283,10 +277,8 @@ static List *generate_insert_row_for_part(InsertNode *insert_node) {
  * Return list of Row.
  * */
 static List *generate_insert_row(InsertNode *insert_node) {
-
     /* Check only for VQ_VALUES. */
     Assert(insert_node->values_or_query_spec->type == VQ_VALUES);
-    
     return insert_node->all_column 
             ? generate_insert_row_for_all(insert_node)
             : generate_insert_row_for_part(insert_node);
@@ -294,11 +286,8 @@ static List *generate_insert_row(InsertNode *insert_node) {
 
 /* Convert to insert row. */
 static Row *convert_insert_row(Row *row, Table *table) {
-
     MetaColumn *primary_meta_column = get_primary_key_meta_column(table->meta_table);
-
     Row *insert_row = instance(Row);
-
     strcpy(insert_row->table_name, GET_TABLE_NAME(table));
     insert_row->data = create_list(NODE_KEY_VALUE);
 

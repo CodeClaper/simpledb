@@ -206,9 +206,9 @@ static void table_operate_contraint(MetaTable *meta_table, TableContraintDefNode
  * In this case, use system reserved column 'sys_id' as primary key.
  * */
 void handler_user_none_priamry_key(MetaTable *meta_table) {
-    uint32_t i;
-    for (i = 0; i < meta_table->column_size; i++) {
-        MetaColumn *meta_column = meta_table->meta_column[i];
+    ListCell *lc;
+    foreach (lc, meta_table->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
         if (meta_column->is_primary)
             return;
     }
@@ -224,7 +224,7 @@ static MetaTable *combine_meta_table(CreateTableNode *create_table_node) {
     meta_table->table_name = dstrdup(create_table_node->table_name);
     meta_table->column_size = get_column_def_size(create_table_node); 
     meta_table->all_column_size = meta_table->column_size + SYS_RESERVED_COLUMNS_LENGTH;
-    meta_table->meta_column = dalloc(sizeof(MetaColumn *) * meta_table->all_column_size);
+    meta_table->meta_columns = create_list(NODE_META_COLUMN);
 
     /* User-level defination. */
     uint32_t j = 0, offset = 0;
@@ -235,8 +235,9 @@ static MetaTable *combine_meta_table(CreateTableNode *create_table_node) {
             case TELE_COLUMN_DEF: {
                 MetaColumn *current = combine_user_meta_column(base_table_element->column_def, create_table_node->table_name);
                 current->offset = offset;
-                meta_table->meta_column[j++] = current;
+                append_list(meta_table->meta_columns, current);
                 offset += current->column_length;
+                j++;
                 break;
             }
             case TELE_TABLE_CONTRAINT_DEF:
@@ -250,7 +251,7 @@ static MetaTable *combine_meta_table(CreateTableNode *create_table_node) {
     for (k = j; k < meta_table->all_column_size; k++) {
         MetaColumn *current = combine_sys_meta_column(meta_table->table_name, (k - j));
         current->offset = offset;
-        meta_table->meta_column[k] = current;
+        append_list(meta_table->meta_columns, current);
         offset += current->column_length;
     }
     

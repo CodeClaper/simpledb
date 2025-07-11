@@ -22,6 +22,7 @@ typedef enum NodeTag {
     NODE_COLUMN,
     NODE_PAGE,
     NODE_BUFFER_DESC,
+    NODE_META_COLUMN,
     NODE_TABLE,
     NODE_STATEMENT,
     NODE_DB_RESULT,
@@ -156,10 +157,8 @@ bool list_member_ptr(List *list, void *ptr);
 /* Check if the item is the memeber of list. */
 bool list_member(List *list, void *item);
 
-
 /* Check if the int item is all the member of list. */
 bool list_all_int(List *list, int item);
-
 
 /* Delete int item in List. 
  * Skip if not found in list.

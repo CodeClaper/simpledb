@@ -605,7 +605,7 @@ typedef struct MetaColumn {
 /* MetaTable */
 typedef struct MetaTable {
     char *table_name;           /* Table name.*/
-    MetaColumn **meta_column;   /* Meta column array. */
+    List *meta_columns;         /* Meta column list. */
     uint32_t column_size;       /* size of column, excluding system reserved columns. */
     uint32_t all_column_size;   /* sizo of column, including system reserved columns. */
 } MetaTable;

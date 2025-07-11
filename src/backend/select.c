@@ -565,9 +565,10 @@ Row *generate_row(void *destination, MetaTable *meta_table) {
     Row *row = new_row(NULL, meta_table->table_name);
 
     /* Assignment row data. */
-    uint32_t i, offset = 0;
-    for (i = 0; i < meta_table->all_column_size; i++) {
-        MetaColumn *meta_column = meta_table->meta_column[i];
+    uint32_t offset = 0;
+    ListCell *lc;
+    foreach (lc, meta_table->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
         /* Generate a key value pair. */
         KeyValue *key_value = is_null_cell(destination + offset) 
                             ? new_key_value(meta_column->column_name, NULL, meta_column->column_type)
