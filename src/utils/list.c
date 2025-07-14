@@ -24,6 +24,17 @@ List *create_list(NodeTag type) {
     return list;
 }
 
+/* Create List with init list. */
+List *create_list_init(NodeTag type, List *init_list) {
+    List *list = create_list(type);
+    ListCell *lc;
+    foreach (lc, init_list) {
+        void *item = lfirst(lc);
+        append_list(list, item);
+    }
+    return list;
+}
+
 /* Enlarge the list and expand the capacity. 
  * List will growth capacity with the power of 2. 
  * */
