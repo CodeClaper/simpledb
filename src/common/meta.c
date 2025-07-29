@@ -385,8 +385,8 @@ void *get_real_value(void *value, DataType type) {
     }
 } 
 
-/* Get value in destin memory. */
-void *get_value_in_destin(void *destin, MetaColumn *meta_column) {
+/* Get value in tuple. */
+void *get_value_in_tuple(void *destin, MetaColumn *meta_column) {
     bool nflag =  *(bool *)(destin + meta_column->offset);
     return nflag ? NULL : (destin + meta_column->offset + LEAF_NODE_CELL_NULL_FLAG_SIZE);
 }
@@ -596,6 +596,7 @@ MetaTable *gen_meta_table(Oid oid) {
     uint32_t i;
     for (i = 0; i < column_size; i++) {
         MetaColumn *current = get_meta_column_by_index(root_node, i, offset);
+        current->own_table_name = dstrdup(meta_table->table_name);
         append_list(meta_table->meta_columns, current);
         /* Skip to system reserved column. */
         if (!current->sys_reserved)
@@ -769,4 +770,29 @@ uint32_t get_expired_xid_offset(MetaTable *meta_table) {
         offset += meta_column->column_length;
     }
     return -1;
+}
+
+
+/* Find MetaColumn by table name and column name. */
+MetaColumn *TableColumnNameFindMetaColumn(List *meta_columns, char *table_name, char *column_name) {
+    Assert(meta_columns != NIL);
+    ListCell *lc;
+    foreach (lc, meta_columns) {
+        MetaColumn *current = (MetaColumn *) lfirst(lc);
+        if (streq(current->own_table_name, table_name) && streq(current->column_name, column_name))
+            return current;
+    }
+    return NULL;
+}
+
+/* Find MetaColumn by column name. */
+MetaColumn *NameFindMetaColumn(List *meta_columns, char *column_name) {
+    Assert(meta_columns != NIL);
+    ListCell *lc;
+    foreach (lc, meta_columns) {
+        MetaColumn *current = (MetaColumn *) lfirst(lc);
+        if (streq(current->column_name, column_name))
+            return current;
+    }
+    return NULL;
 }

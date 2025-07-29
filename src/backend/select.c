@@ -72,7 +72,7 @@ typedef struct SelectFromInternalChildTaskArgs {
 #define DIV_NAME "div"
 
 static bool include_internal_node(SelectResult *select_result, void *min_key, void *max_key, ConditionNode *condition_node, MetaTable *meta_table);
-static bool include_leaf_node(SelectResult *select_result, void *destin, ConditionNode *condition_node);
+static bool include_leaf_node(SelectResult *select_result, List *meta_columns, void *destin, ConditionNode *condition_node);
 static MetaColumn *get_cond_meta_column(PredicateNode *predicate, MetaTable *meta_table);
 static KeyValue *query_function_value(ScalarExpNode *scalar_exp, SelectResult *select_result);
 static KeyValue *query_value_item(ValueItemNode *value_item, Row *row);
@@ -256,14 +256,14 @@ static bool include_internal_node(SelectResult *select_result, void *min_key, vo
 }
 
 /* Check if include leaf node if the condition is logic condition. */
-static bool include_logic_leaf_node(SelectResult *select_result, void *destin, ConditionNode *condition_node) {
+static bool include_logic_leaf_node(SelectResult *select_result, List *meta_columns, void *destin, ConditionNode *condition_node) {
     switch (condition_node->conn_type) {
         case C_AND:
-            return include_leaf_node(select_result, destin, condition_node->left) && 
-                        include_leaf_node(select_result, destin, condition_node->right);
+            return include_leaf_node(select_result, meta_columns, destin, condition_node->left) && 
+                        include_leaf_node(select_result, meta_columns, destin, condition_node->right);
         case C_OR:
-            return include_leaf_node(select_result, destin, condition_node->left) || 
-                        include_leaf_node(select_result, destin, condition_node->right);
+            return include_leaf_node(select_result, meta_columns, destin, condition_node->left) || 
+                        include_leaf_node(select_result, meta_columns, destin, condition_node->right);
         case C_NONE:
             db_log(PANIC, "System Logic Error");
             return false;
@@ -274,56 +274,53 @@ static bool include_logic_leaf_node(SelectResult *select_result, void *destin, C
 }
 
 /* Check the row predicate for column. */
-static bool check_row_predicate_column(SelectResult *select_result, void *destin, void *value, 
+static bool check_row_predicate_column(SelectResult *select_result, List *meta_columns, void *tuple, void *value, 
                                        ColumnNode *column, CompareType type, MetaColumn *meta_column) {
-    char *table_name = search_table_via_alias(select_result, column->range_variable);
-    if (select_result->last_derived && table_name == NULL) {
+    char *table_name;
+    MetaColumn *target_meta_column;
+    
+    /* Find table name. Maybe not found when sing-table query, 
+     * there is no range_variable. */
+    table_name = search_table_via_alias(select_result, column->range_variable);
+
+    /* Find meta column. */
+    target_meta_column = is_empty(table_name) 
+            ? NameFindMetaColumn(meta_columns, column->column_name)
+            : TableColumnNameFindMetaColumn(meta_columns, table_name, column->column_name);
+    if (target_meta_column == NULL) {
         db_log(ERROR, "Unknown column '%s.%s' in where clause. ", 
-               column->range_variable, column->column_name);
+               column->range_variable, 
+               column->column_name);
         return false;
     }
     
-    /* Check if the first table. If yes, it means 
-     * compare itself, just return true, */
-    if (streq(select_result->table_name, table_name))
+    /* Check if the target column equals the meta column. 
+     * If yes, it means compare itself, just return true. */
+    if (target_meta_column == meta_column)
         return true;
     
-    uint32_t offset = 0;
-    SelectResult *current = select_result->derived;
-    while (current != NULL) {
-        Table *cTable = open_table(current->table_name);
-        if (streq(current->table_name, table_name)) {
-            MetaColumn *target_meta_column = get_meta_column_by_name(cTable->meta_table, column->column_name);
-            if (target_meta_column) {
-                void *target_value = get_value_in_destin(destin + offset, target_meta_column);
-                return eval(type, value, target_value, meta_column->column_type);
-            }
-        }
-        offset += cTable->heap_value_len;
-    }
-    db_log(ERROR, "Unknown column '%s.%s' in where clause. ", 
-           column->range_variable, 
-           column->column_name);
-    return false;
+    /* Get the target value and eval. */
+    void *target_value = get_value_in_tuple(tuple, target_meta_column);
+    return eval(type, value, target_value, meta_column->column_type);
 }
 
 /* Check the row predicate for value. */
 static bool check_row_predicate_value(SelectResult *select_result, void *value, 
-                                      ValueItemNode *value_item, CompareType type, MetaColumn *meta_column) {
+                                      ValueItemNode *value_item, CompareType type, 
+                                      MetaColumn *meta_column) {
     void *target = get_value_from_value_item_node(value_item, meta_column);
     return eval(type, value, target, meta_column->column_type);
 }
 
 /* Check the row predicate. */
-static bool check_row_predicate(SelectResult *select_result, char *table_name, void *destin, 
+static bool check_row_predicate(SelectResult *select_result, List *meta_columns, void *tuple, 
                                 ColumnNode *column, ComparisonNode *comparison) {
-    Table *table;
     MetaColumn *meta_column;
     void *value;
 
-    /* Load table. */
-    if (column->table != NULL)
-        table = column->table;
+    /* Fint the corresponding meta column. */
+    if (column->meta_column != NULL)
+        meta_column = column->meta_column;
     else {
         if (column->range_variable) {
             char *rtable_name = search_table_via_alias(select_result, column->range_variable);
@@ -332,18 +329,9 @@ static bool check_row_predicate(SelectResult *select_result, char *table_name, v
                        column->range_variable, column->column_name);
                 return false;
             }
-            table = open_table(rtable_name);
+            meta_column = TableColumnNameFindMetaColumn(meta_columns, rtable_name, column->column_name);
         } else 
-            table = open_table(table_name);
-        column->table = table;
-    }
-    Assert(table != NULL);
-
-    /* Load meta column. */
-    if (column->meta_column != NULL)
-        meta_column = column->meta_column;
-    else {
-        meta_column = get_meta_column_by_name(table->meta_table, column->column_name);
+            meta_column = NameFindMetaColumn(meta_columns, column->column_name);
         column->meta_column = meta_column;
     }
 
@@ -351,17 +339,19 @@ static bool check_row_predicate(SelectResult *select_result, char *table_name, v
         db_log(ERROR, "Not found column '%s'. ", column->column_name);
         return false;
     }
-
-    value = get_value_in_destin(destin, meta_column);
+    
+    /* Get value in tuple. */
+    value = get_value_in_tuple(tuple, meta_column);
 
     if (column->has_sub_column && column->sub_column) {
         /* Just check, if column has sub column, it must be Reference type. */
         Assert(meta_column->column_type == T_REFERENCE);
         /* Get subrow, and recursion. */
-        void *sub_destin = define_row_inner((Refer *)value);
+        void *sub_destin = define_row_inner((Refer *) value);
+        Table *sub_table = open_table(meta_column->table_name);
         return check_row_predicate(
             select_result, 
-            meta_column->table_name,
+            sub_table->meta_table->meta_columns,
             sub_destin, 
             column->sub_column, 
             comparison
@@ -374,7 +364,7 @@ static bool check_row_predicate(SelectResult *select_result, char *table_name, v
         switch (comparison_value->type) {
             case SCALAR_COLUMN:
                 return check_row_predicate_column(
-                    select_result, destin, 
+                    select_result, meta_columns, tuple, 
                     get_real_value(value, meta_column->column_type), 
                     comparison_value->column, 
                     comparison->type, 
@@ -406,8 +396,8 @@ static bool check_row_predicate(SelectResult *select_result, char *table_name, v
 
 
 /* Check if include leaf node satisfy comparison predicate. */
-static bool include_leaf_comparison_predicate(SelectResult *select_result, void *destin, ComparisonNode *comparison) {
-    return check_row_predicate(select_result, select_result->table_name, destin, comparison->column, comparison);
+static bool include_leaf_comparison_predicate(SelectResult *select_result, List *meta_columns, void *destin, ComparisonNode *comparison) {
+    return check_row_predicate(select_result, meta_columns, destin, comparison->column, comparison);
 }
 
 /* Check if include in value item set. */
@@ -429,7 +419,7 @@ static bool include_leaf_in_predicate(SelectResult *select_result, void *destin,
     if (meta_column != NULL)
         return check_in_value_item_set(
             in_node->value_list, 
-            get_real_value(get_value_in_destin(destin, meta_column), meta_column->column_type), 
+            get_real_value(get_value_in_tuple(destin, meta_column), meta_column->column_type), 
             meta_column
         );
     return false;
@@ -467,14 +457,14 @@ static bool include_leaf_like_predicate(SelectResult *select_result, void *desti
     MetaColumn *meta_column = get_meta_column_by_name(table->meta_table, like_node->column->column_name);
     if (meta_column != NULL) {
         void *target_value = get_value_from_value_item_node(like_node->value, meta_column);
-        void *value = get_value_in_destin(destin, meta_column);
+        void *value = get_value_in_tuple(destin, meta_column);
         return check_like_string_value(get_real_value(value, meta_column->column_type), target_value);
     }
     return false;
 }
 
 /* Check if include leaf node if the condition is exec condition. */
-static bool include_exec_leaf_node(SelectResult *select_result, void *destin, ConditionNode *condition_node) {
+static bool include_exec_leaf_node(SelectResult *select_result, List *meta_columns, void *destin, ConditionNode *condition_node) {
     /* If without condition, of course the key include, so just return true. */
     if (condition_node == NULL)
         return true;
@@ -484,7 +474,7 @@ static bool include_exec_leaf_node(SelectResult *select_result, void *destin, Co
     PredicateNode *predicate = condition_node->predicate;
     switch (predicate->type) {
         case PRE_COMPARISON:
-            return include_leaf_comparison_predicate(select_result, destin, predicate->comparison);
+            return include_leaf_comparison_predicate(select_result, meta_columns, destin, predicate->comparison);
         case PRE_IN:
             return include_leaf_in_predicate(select_result, destin, predicate->in);
         case PRE_LIKE:
@@ -497,7 +487,7 @@ static bool include_exec_leaf_node(SelectResult *select_result, void *destin, Co
 }
 
 /* Check if the key include the leaf node. */
-static bool include_leaf_node(SelectResult *select_result, void *destin, ConditionNode *condition_node) {
+static bool include_leaf_node(SelectResult *select_result, List *meta_columns, void *destin, ConditionNode *condition_node) {
     /* If without condition, of course the key include, so just return true. */
     if (condition_node == NULL) 
           return true;
@@ -505,9 +495,9 @@ static bool include_leaf_node(SelectResult *select_result, void *destin, Conditi
     switch(condition_node->conn_type) {
         case C_OR:
         case C_AND:
-            return include_logic_leaf_node(select_result, destin, condition_node);
+            return include_logic_leaf_node(select_result, meta_columns, destin, condition_node);
         case C_NONE:
-            return include_exec_leaf_node(select_result, destin, condition_node);
+            return include_exec_leaf_node(select_result, meta_columns, destin, condition_node);
         default:
             UNEXPECTED_VALUE(condition_node->conn_type);
             return false;
@@ -820,7 +810,7 @@ static void select_from_leaf_node(SelectResult *select_result, ConditionNode *co
 
         /* Check if the row data include. In another word, 
          * check if the row data satisfy the condition. */
-        if (include_leaf_node(select_result, destin, condition)) 
+        if (include_leaf_node(select_result, table->meta_table->meta_columns, destin, condition)) 
             row_handler(destin, select_result, table, type, arg);
     }
     

@@ -28,8 +28,8 @@ void *get_value_from_value_item_node(ValueItemNode *value_item_node, MetaColumn 
 /* Get Really value. */
 void *get_real_value(void *value, DataType type);
 
-/* Get value in destin memory. */
-void *get_value_in_destin(void *destin, MetaColumn *meta_column);
+/* Get value in tuple. */
+void *get_value_in_tuple(void *destin, MetaColumn *meta_column);
 
 /* Combine AtomNode by column and value. */
 AtomNode *combine_atom_node(MetaColumn *meta_column, void *value);
@@ -97,3 +97,9 @@ uint32_t get_created_xid_offset(MetaTable *meta_table);
 
 /* Get the expired xid. */
 uint32_t get_expired_xid_offset(MetaTable *meta_table);
+
+/* Find MetaColumn by table name and column name. */
+MetaColumn *TableColumnNameFindMetaColumn(List *meta_columns, char *table_name, char *column_name);
+
+/* Find MetaColumn by column name. */
+MetaColumn *NameFindMetaColumn(List *meta_columns, char *column_name);
