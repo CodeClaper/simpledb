@@ -256,14 +256,14 @@ static bool include_internal_node(SelectResult *select_result, void *min_key, vo
 }
 
 /* Check if include leaf node if the condition is logic condition. */
-static bool include_logic_leaf_node(SelectResult *select_result, List *meta_columns, void *destin, ConditionNode *condition_node) {
+static bool include_logic_leaf_node(SelectResult *select_result, List *meta_columns, void *tuple, ConditionNode *condition_node) {
     switch (condition_node->conn_type) {
         case C_AND:
-            return include_leaf_node(select_result, meta_columns, destin, condition_node->left) && 
-                        include_leaf_node(select_result, meta_columns, destin, condition_node->right);
+            return include_leaf_node(select_result, meta_columns, tuple, condition_node->left) && 
+                        include_leaf_node(select_result, meta_columns, tuple, condition_node->right);
         case C_OR:
-            return include_leaf_node(select_result, meta_columns, destin, condition_node->left) || 
-                        include_leaf_node(select_result, meta_columns, destin, condition_node->right);
+            return include_leaf_node(select_result, meta_columns, tuple, condition_node->left) || 
+                        include_leaf_node(select_result, meta_columns, tuple, condition_node->right);
         case C_NONE:
             db_log(PANIC, "System Logic Error");
             return false;
@@ -396,8 +396,9 @@ static bool check_row_predicate(SelectResult *select_result, List *meta_columns,
 
 
 /* Check if include leaf node satisfy comparison predicate. */
-static bool include_leaf_comparison_predicate(SelectResult *select_result, List *meta_columns, void *destin, ComparisonNode *comparison) {
-    return check_row_predicate(select_result, meta_columns, destin, comparison->column, comparison);
+static bool include_leaf_comparison_predicate(SelectResult *select_result, List *meta_columns, 
+                                              void *tuple, ComparisonNode *comparison) {
+    return check_row_predicate(select_result, meta_columns, tuple, comparison->column, comparison);
 }
 
 /* Check if include in value item set. */
@@ -412,14 +413,14 @@ static bool check_in_value_item_set(List *value_list, void *value, MetaColumn *m
 }
 
 /* Check if include leaf node satisfy in predicate. */
-static bool include_leaf_in_predicate(SelectResult *select_result, void *destin, InNode *in_node) {
+static bool include_leaf_in_predicate(SelectResult *select_result, void *tuple, InNode *in_node) {
     Table *table = open_table(select_result->table_name);
     Assert(table != NULL);
     MetaColumn *meta_column = get_meta_column_by_name(table->meta_table, in_node->column->column_name);
     if (meta_column != NULL)
         return check_in_value_item_set(
             in_node->value_list, 
-            get_real_value(get_value_in_tuple(destin, meta_column), meta_column->column_type), 
+            get_real_value(get_value_in_tuple(tuple, meta_column), meta_column->column_type), 
             meta_column
         );
     return false;
@@ -452,19 +453,20 @@ static bool check_like_string_value(char *value, char *target) {
 
 
 /* Check if include leaf node satisfy like predicate. */
-static bool include_leaf_like_predicate(SelectResult *select_result, void *destin, LikeNode *like_node) {
+static bool include_leaf_like_predicate(SelectResult *select_result, void *tuple, LikeNode *like_node) {
     Table *table = open_table(select_result->table_name);
     MetaColumn *meta_column = get_meta_column_by_name(table->meta_table, like_node->column->column_name);
     if (meta_column != NULL) {
         void *target_value = get_value_from_value_item_node(like_node->value, meta_column);
-        void *value = get_value_in_tuple(destin, meta_column);
+        void *value = get_value_in_tuple(tuple, meta_column);
         return check_like_string_value(get_real_value(value, meta_column->column_type), target_value);
     }
     return false;
 }
 
 /* Check if include leaf node if the condition is exec condition. */
-static bool include_exec_leaf_node(SelectResult *select_result, List *meta_columns, void *destin, ConditionNode *condition_node) {
+static bool include_exec_leaf_node(SelectResult *select_result, List *meta_columns, 
+                                   void *tuple, ConditionNode *condition_node) {
     /* If without condition, of course the key include, so just return true. */
     if (condition_node == NULL)
         return true;
@@ -474,11 +476,11 @@ static bool include_exec_leaf_node(SelectResult *select_result, List *meta_colum
     PredicateNode *predicate = condition_node->predicate;
     switch (predicate->type) {
         case PRE_COMPARISON:
-            return include_leaf_comparison_predicate(select_result, meta_columns, destin, predicate->comparison);
+            return include_leaf_comparison_predicate(select_result, meta_columns, tuple, predicate->comparison);
         case PRE_IN:
-            return include_leaf_in_predicate(select_result, destin, predicate->in);
+            return include_leaf_in_predicate(select_result, tuple, predicate->in);
         case PRE_LIKE:
-            return include_leaf_like_predicate(select_result, destin, predicate->like);
+            return include_leaf_like_predicate(select_result, tuple, predicate->like);
         default:
             UNEXPECTED_VALUE(predicate->type);
             return false;
@@ -487,7 +489,7 @@ static bool include_exec_leaf_node(SelectResult *select_result, List *meta_colum
 }
 
 /* Check if the key include the leaf node. */
-static bool include_leaf_node(SelectResult *select_result, List *meta_columns, void *destin, ConditionNode *condition_node) {
+static bool include_leaf_node(SelectResult *select_result, List *meta_columns, void *tuple, ConditionNode *condition_node) {
     /* If without condition, of course the key include, so just return true. */
     if (condition_node == NULL) 
           return true;
@@ -495,9 +497,9 @@ static bool include_leaf_node(SelectResult *select_result, List *meta_columns, v
     switch(condition_node->conn_type) {
         case C_OR:
         case C_AND:
-            return include_logic_leaf_node(select_result, meta_columns, destin, condition_node);
+            return include_logic_leaf_node(select_result, meta_columns, tuple, condition_node);
         case C_NONE:
-            return include_exec_leaf_node(select_result, meta_columns, destin, condition_node);
+            return include_exec_leaf_node(select_result, meta_columns, tuple, condition_node);
         default:
             UNEXPECTED_VALUE(condition_node->conn_type);
             return false;
@@ -668,6 +670,13 @@ static void merge_row(Row *row1, Row *row2) {
     }
 }
 
+/* Merge two tuples. */
+static void *merge_tuple(void *tuple1, Size len1, void *tuple2, Size len2) {
+    void *ntuple = drealloc(tuple1, len1 + len2);
+    memcpy(ntuple + len1, tuple2, len2);
+    return ntuple;
+}
+
 /* Search table via alias name in SelectResult. 
  * Note: range variable may be table name or table alias name.
  * */
@@ -731,7 +740,7 @@ static void scan_from_leaf_node(SelectResult *select_result, ConditionNode *cond
     default_value_len = table->heap_value_len;
     cell_num = get_leaf_node_cell_num(leaf_node, default_value_len);
     current_trans = FindTransaction();
-    Assert(current_trans);
+    Assert(current_trans != NULL);
 
     uint32_t i;
     for (i = 0; i < cell_num; i++) {
@@ -786,32 +795,31 @@ static void select_from_leaf_node(SelectResult *select_result, ConditionNode *co
             continue;
 
         /* If satisfied, exeucte row handler function. */
-        void *destin = HeapTableLookup(table, (Refer *) destinct);
+        void *tuple = HeapTableLookup(table, (Refer *) destinct);
 
-        // SelectResult *derived = select_result->derived;
-        // if (derived != NULL) {
-        //     /* Cartesian product. */
-        //     QueueCell *qc;
-        //     qforeach (qc, derived->rows) {
-        //         /* Merge derived-row. */
-        //         Row *derived_row = qfirst(qc);
-        //         merge_row(derived_row, row);
-        //         free_common_row(row);
+        //SelectResult *derived = select_result->derived;
+        //if (derived != NULL) {
+        //    Table *derived_table = open_table(derived->table_name);
+        //    Assert(derived_table != NULL);
 
-        //         /* Check if the row data include. In another word, 
-        //          * check if the row data satisfy the condition. */
-        //         if (include_leaf_node(select_result, derived_row, condition)) 
-        //             row_handler(derived_row, select_result, table, type, arg);
-        //         else
-        //             free_common_row(derived_row);
-        //     }
-        //     continue;
-        // }
+        //    /* Cartesian product. */
+        //    QueueCell *qc;
+        //    qforeach (qc, derived->tuples) {
+        //        /* Merge tuples. */
+        //        void *current = qfirst(qc);
+        //        void *ntuple = merge_tuple(tuple, table->heap_value_len, current, derived_table->heap_value_len);
+
+        //        /* Check if the merged tuples satisfy the condition. */
+        //        if (include_leaf_node(select_result, NULL, ntuple, condition)) 
+        //            row_handler(ntuple, select_result, table, type, arg);
+        //    }
+        //    continue;
+        //}
 
         /* Check if the row data include. In another word, 
          * check if the row data satisfy the condition. */
-        if (include_leaf_node(select_result, table->meta_table->meta_columns, destin, condition)) 
-            row_handler(destin, select_result, table, type, arg);
+        if (include_leaf_node(select_result, table->meta_table->meta_columns, tuple, condition)) 
+            row_handler(tuple, select_result, table, type, arg);
     }
     
     /* Release the buffer. */
@@ -2461,7 +2469,7 @@ static void after_query_condition(SelectParam *selectParam, SelectResult *select
 
 /* Query with condition when multiple table. */
 static SelectResult *query_multi_table_with_condition(SelectNode *select_node, DBResult *dbresult) {
-    List *list;
+    List *table_list;
     SelectResult *result;
     ConditionNode *condition;
     SelectParam *selectParam;
@@ -2470,8 +2478,8 @@ static SelectResult *query_multi_table_with_condition(SelectNode *select_node, D
     if (is_null(select_node->table_exp->from_clause)) 
         return new_select_result(SELECT_STMT, NULL);
 
-    list = select_node->table_exp->from_clause->from;
-    Assert(len_list(list) > 0);
+    table_list = select_node->table_exp->from_clause->from;
+    Assert(len_list(table_list) > 0);
     result = NULL;
     selectParam = optimizeSelect(select_node, dbresult->stmt_type);
     condition = get_table_exp_condition(select_node->table_exp);
@@ -2480,7 +2488,7 @@ static SelectResult *query_multi_table_with_condition(SelectNode *select_node, D
     before_query_condition(selectParam);
 
     ListCell *lc;
-    foreach (lc, list) {
+    foreach (lc, table_list) {
         TableRefNode *table_ref = lfirst(lc);
         SelectResult *current_result = new_select_result(SELECT_STMT, table_ref->table);
 
@@ -2489,7 +2497,7 @@ static SelectResult *query_multi_table_with_condition(SelectNode *select_node, D
                                         ? dstrdup(table_ref->range_variable) 
                                         : dstrdup(table_ref->table);
         current_result->derived = result;
-        current_result->last_derived = (last_cell(list) == lc);
+        current_result->last_derived = (last_cell(table_list) == lc);
         
         /* Query with condition to filter satisfied conditions rows. */
         query_with_condition(
