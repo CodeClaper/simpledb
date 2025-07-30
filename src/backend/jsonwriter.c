@@ -12,6 +12,7 @@
  ****************************************************************************************************/
 
 #include <stdint.h>
+#include <string.h>
 #include <time.h>
 #include <unistd.h>
 #include <inttypes.h>
@@ -252,18 +253,17 @@ static void json_key_array_value_inner(char *key, ArrayValue *array_value, DataT
 }
 
 /* Json single-value key value. */
-static void json_single_raw_row_entry(MetaColumn *meta_column, void *value) {
+static void json_single_tuple_entry(MetaColumn *meta_column, void *value) {
     char *key = meta_column->column_name;
     DataType type = meta_column->column_type;
-    if (!value)
+    if (value == NULL)
         db_send("\"%s\": %s", key, "null");
-    else {
+    else 
         json_key_value_inner(key, value, type);
-    }
 }
 
 /* Json array-value key value. */
-static void json_array_raw_row_entry(MetaColumn *meta_column, ArrayValue *array_value ) {
+static void json_array_tuple_entry(MetaColumn *meta_column, ArrayValue *array_value) {
     char *key = meta_column->column_name;
     DataType type = meta_column->column_type;
     if (!array_value)
@@ -298,11 +298,11 @@ static void json_array_key_value(KeyValue *key_value) {
 }
 
 /* Json key value. */
-static void json_raw_row_entry(MetaColumn *meta_column, void *value) {
+static void json_tuple_entry(MetaColumn *meta_column, void *value) {
     if (meta_column->array_dim > 0)
-        json_array_raw_row_entry(meta_column, (ArrayValue *) value);
+        json_array_tuple_entry(meta_column, (ArrayValue *)value);
     else
-        json_single_raw_row_entry(meta_column, value);
+        json_single_tuple_entry(meta_column, value);
 }
 
 /* Json key value. */
@@ -314,9 +314,9 @@ static void json_key_value(KeyValue *key_value) {
         json_single_key_value(key_value);
 }
 
-/* Json raw row. */
-void json_raw_row(List *meta_columns, void *destin) {
-    if (destin == NULL)
+/* Json tuple. */
+void json_tuple(List *meta_columns, void *tuple) {
+    if (tuple == NULL)
         db_send("null");
     else {
         db_send("{ ");
@@ -325,10 +325,10 @@ void json_raw_row(List *meta_columns, void *destin) {
             MetaColumn *meta_column = (MetaColumn *) lfirst(lc);
             if (meta_column->sys_reserved)
                 continue;
-            void *value = get_value_in_tuple(destin, meta_column);
-            json_raw_row_entry(meta_column, value);
+            void *value = get_value_in_tuple(tuple, meta_column);
+            json_tuple_entry(meta_column, value);
             if (last_cell(meta_columns) != lc)
-                db_send(",");
+                db_send(", ");
         }
         db_send(" }");
     }
@@ -461,6 +461,7 @@ static void handle_dulicate_key(Row *row) {
         } 
     }
 }
+
 
 /* Json DBResult. */
 void json_db_result(DBResult *result) {

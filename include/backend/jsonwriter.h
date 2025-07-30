@@ -4,8 +4,8 @@
 /* Json DBResult. */
 void json_db_result(DBResult *result);
 
-/* Json raw row. */
-void json_raw_row(List *meta_columns, void *destin);
+/* Json tuple. */
+void json_tuple(List *meta_columns, void *tuple);
 
 /* Json row. */
 void json_row(Row *row);

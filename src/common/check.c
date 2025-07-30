@@ -708,7 +708,7 @@ static bool check_table_exp(TableExpNode *table_exp, AliasMap alias_map) {
 static bool check_unique_column(Table *table, MetaColumn *meta_column, void *value, UpdateNode *update_node) {
     Assert(meta_column->is_unique);
     /* Although this cehck update node, but new select result is SELECT_STMT. */
-    SelectResult *select_result = new_select_result(SELECT_STMT, update_node->table_name);
+    SelectResult *select_result = new_select_result(SELECT_STMT, update_node->table_name, true);
     ConditionNode *condition_node = get_condition_from_where_clause(update_node->where_clause);
     query_with_condition(condition_node, select_result, select_row, ARG_NULL, NULL);
     /* If selected rows more than one, 

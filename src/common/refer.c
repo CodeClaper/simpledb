@@ -206,7 +206,7 @@ Refer *define_refer(Row *row) {
 Refer *fetch_refer(MetaColumn *meta_column, ConditionNode *condition_node) {
 
     /* Make a new SelectResult. */
-    SelectResult *select_result = new_select_result(UNKONWN_STMT, meta_column->table_name);
+    SelectResult *select_result = new_select_result(UNKONWN_STMT, meta_column->table_name, true);
 
     query_with_condition(condition_node, select_result, select_row, ARG_NULL, NULL);
 
@@ -388,7 +388,7 @@ static void update_table_refer(MetaTable *meta_table, ReferUpdateEntity *refer_u
         return;
 
     /* Query with condition, and delete satisfied condition row. */
-    SelectResult *select_result = new_select_result(UPDATE_STMT, meta_table->table_name);
+    SelectResult *select_result = new_select_result(UPDATE_STMT, meta_table->table_name, true);
 
     /* Traverse rows to update refer. */
     query_with_condition(

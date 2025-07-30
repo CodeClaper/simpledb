@@ -115,8 +115,8 @@ void free_select_result(SelectResult *select_result) {
             /* free rows. */
             FreeQueue(select_result->rows);
 
-        if (select_result->derived)
-            free_select_result(select_result->derived);
+        if (select_result->nested)
+            free_select_result(select_result->nested);
 
         dfree(select_result);
     }

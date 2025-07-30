@@ -78,7 +78,7 @@ void exec_delete_statement(DeleteNode *delete_node, DBResult *result) {
         return;
 
     /* Query with condition, and delete satisfied condition row. */
-    SelectResult *select_result = new_select_result(DELETE_STMT, delete_node->table_name);
+    SelectResult *select_result = new_select_result(DELETE_STMT, delete_node->table_name, true);
 
     /* Query with condition and delete satisfied row. */
     query_with_condition(

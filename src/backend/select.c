@@ -135,7 +135,7 @@ static bool include_internal_comparison_predicate(SelectResult *select_result, v
     /* Other table query condition regard as true. */
     if (column->range_variable) {
         char *table_mame = search_table_via_alias(select_result, column->range_variable);
-        if (select_result->last_derived && !table_mame) {
+        if (is_empty(table_mame)) {
             db_log(ERROR, "Unknown column '%s.%s' in where clause. ", 
                    column->range_variable, column->column_name);
             return false;
@@ -324,7 +324,7 @@ static bool check_row_predicate(SelectResult *select_result, List *meta_columns,
     else {
         if (column->range_variable) {
             char *rtable_name = search_table_via_alias(select_result, column->range_variable);
-            if (select_result->last_derived && rtable_name == NULL) {
+            if (is_empty(rtable_name)) {
                 db_log(ERROR, "Unknown column '%s.%s' in where clause. ", 
                        column->range_variable, column->column_name);
                 return false;
@@ -523,33 +523,6 @@ static MetaColumn *get_cond_meta_column(PredicateNode *predicate, MetaTable *met
     }
 }
 
-/* Get row array value. 
- * Return ArrayValue.
- * */
-static ArrayValue *get_row_array_value(void *destination, MetaColumn *meta_column) {
-    uint32_t array_num = get_array_number(destination);
-
-    /* Generate ArrayValue instance. */
-    ArrayValue *array_value = new_array_value(meta_column->column_type, array_num);
-    uint32_t span = (meta_column->column_length - LEAF_NODE_ARRAY_NUM_SIZE - LEAF_NODE_CELL_NULL_FLAG_SIZE) / meta_column->array_cap;
-
-    uint32_t i;
-    for (i = 0; i < array_num; i++) {
-        void *value = get_array_value(destination, i, span);
-        append_list(array_value->list, copy_value(value, meta_column->column_type));
-    }
-    return array_value;
-}
-
-/* Assignment row value. */
-static void *define_row_value(void *destination, MetaColumn *meta_column) {
-    return (meta_column->array_dim == 0)
-            /* For non-array data. */
-            ? destination + LEAF_NODE_CELL_NULL_FLAG_SIZE 
-            /* For array data. */
-            : get_row_array_value(destination, meta_column); 
-}
-
 
 /* Generate select row. */
 Row *generate_row(void *destination, MetaTable *meta_table) {
@@ -671,10 +644,100 @@ static void merge_row(Row *row1, Row *row2) {
 }
 
 /* Merge two tuples. */
-static void *merge_tuple(void *tuple1, Size len1, void *tuple2, Size len2) {
-    void *ntuple = drealloc(tuple1, len1 + len2);
-    memcpy(ntuple + len1, tuple2, len2);
-    return ntuple;
+static void *merge_tuple(SelectResult *head) {
+    if (head->nested == NULL)
+        return head->tuple;
+    else {
+        Size size, offset;
+        SelectResult *current;
+        void *ntuple;
+        
+        size = 0;
+        current = head;
+        while (current != NULL) {
+            Table *table = open_table(current->table_name);
+            size += table->heap_value_len;
+            current = current->nested;
+        }
+        
+        ntuple = dalloc(size);
+        offset = 0;
+        current = head;
+        while (current != NULL) {
+            Table *table = open_table(current->table_name);
+            memcpy(ntuple + offset, current->tuple, table->heap_value_len);
+            offset += table->heap_value_len;
+            current = current->nested;
+        }
+
+        return ntuple;
+    }
+}
+
+static void handle_dulicate_column_name(List *meta_columns) {
+    ListCell *lc1, *lc2;
+    foreach (lc1, meta_columns) {
+        uint32_t times = 0;
+        MetaColumn *first = lfirst(lc1);
+        foreach (lc2, meta_columns) {
+            MetaColumn *second = lfirst(lc2);
+            if (lc1 == lc2)
+                continue;
+            if (streq(second->column_name, first->column_name)) {
+               memcpy(second->column_name, format("%s(%d)", first->column_name, ++times), MAX_COLUMN_NAME_LEN);
+            }
+        } 
+    }
+}
+
+/* Merge meta columns. */
+static List *merge_meta_columns(SelectResult *head) {
+    if (head == NULL)
+        Assert(head != NULL);
+    List *meta_columns = create_list(NODE_META_COLUMN);
+    SelectResult *current = head;
+    Size offset = 0;
+
+    while (current != NULL) {
+        Table *table;
+        ListCell *lc;
+
+        table = open_table(current->table_name);
+        foreach (lc, table->meta_table->meta_columns) {
+            MetaColumn *meta_column = (MetaColumn *) lfirst(lc);
+            MetaColumn *duplica = copy_meta_column(meta_column);
+            duplica->offset = offset;
+            append_list(meta_columns, duplica);
+            offset += meta_column->column_length;
+        }
+        current = current->nested;
+    }
+    return meta_columns;
+}
+
+static List *merge_meta_columns_without_sys(SelectResult *head) {
+    Assert(head != NULL);
+    List *meta_columns = create_list(NODE_META_COLUMN);
+    SelectResult *current = head;
+    Size offset = 0;
+
+    while (current != NULL) {
+        Table *table;
+        ListCell *lc;
+
+        table = open_table(current->table_name);
+        foreach (lc, table->meta_table->meta_columns) {
+            MetaColumn *meta_column = (MetaColumn *) lfirst(lc);
+            if (!meta_column->sys_reserved) {
+                MetaColumn *duplica = copy_meta_column(meta_column);
+                duplica->offset = offset;
+                append_list(meta_columns, duplica);
+            }
+            offset += meta_column->column_length;
+        }
+        current = current->nested;
+    }
+    return meta_columns;
 }
 
 /* Search table via alias name in SelectResult. 
@@ -689,8 +752,8 @@ static char *search_table_via_alias(SelectResult *select_result, char *range_var
             streq(select_result->range_variable, range_variable))
         return select_result->table_name;
 
-    if (select_result->derived)
-        return search_table_via_alias(select_result->derived, range_variable);
+    if (select_result->nested)
+        return search_table_via_alias(select_result->nested, range_variable);
 
     return NULL;
 }
@@ -709,7 +772,7 @@ static bool allow_read_raw_page(ROW_HANDLER_ARG_TYPE type, void *arg) {
     return false;
 }
 
-
+/* If allowed scan index. */
 static bool allow_scan_index(ROW_HANDLER_ARG_TYPE type, void *arg) {
     if (type == ARG_SELECT_PARAM) {
         SelectParam *selectParam = (SelectParam *) arg;
@@ -766,6 +829,7 @@ static void select_from_leaf_node(SelectResult *select_result, ConditionNode *co
     Buffer buffer;
     void *leaf_node;
     TransEntry *current_trans;
+    SelectResult *head, *nested;
 
     /* If LimitClauseNode full, not continue. */
     if (type == ARG_SELECT_PARAM && limit_clause_full(arg))
@@ -784,6 +848,8 @@ static void select_from_leaf_node(SelectResult *select_result, ConditionNode *co
     default_value_len = table->heap_value_len;
     cell_num = get_leaf_node_cell_num(leaf_node, default_value_len);
     current_trans = FindTransaction();
+    head = select_result->head;
+    nested = select_result->nested;
 
     uint32_t i;
     for (i = 0; i < cell_num; i++) {
@@ -796,30 +862,17 @@ static void select_from_leaf_node(SelectResult *select_result, ConditionNode *co
 
         /* If satisfied, exeucte row handler function. */
         void *tuple = HeapTableLookup(table, (Refer *) destinct);
+        select_result->tuple = tuple;
 
-        //SelectResult *derived = select_result->derived;
-        //if (derived != NULL) {
-        //    Table *derived_table = open_table(derived->table_name);
-        //    Assert(derived_table != NULL);
-
-        //    /* Cartesian product. */
-        //    QueueCell *qc;
-        //    qforeach (qc, derived->tuples) {
-        //        /* Merge tuples. */
-        //        void *current = qfirst(qc);
-        //        void *ntuple = merge_tuple(tuple, table->heap_value_len, current, derived_table->heap_value_len);
-
-        //        /* Check if the merged tuples satisfy the condition. */
-        //        if (include_leaf_node(select_result, NULL, ntuple, condition)) 
-        //            row_handler(ntuple, select_result, table, type, arg);
-        //    }
-        //    continue;
-        //}
-
-        /* Check if the row data include. In another word, 
-         * check if the row data satisfy the condition. */
-        if (include_leaf_node(select_result, table->meta_table->meta_columns, tuple, condition)) 
-            row_handler(tuple, select_result, table, type, arg);
+        if (nested != NULL) {
+            query_with_condition(condition, nested, row_handler, type, arg);
+            continue;
+        }
+        
+        List *meta_columns = merge_meta_columns(head);
+        void *ntuple = merge_tuple(head);
+        if (include_leaf_node(head, meta_columns, ntuple, condition)) 
+            row_handler(ntuple, head, table, type, arg);
     }
     
     /* Release the buffer. */
@@ -1016,7 +1069,7 @@ static void select_from_internal_node_async(SelectResult *select_result, Conditi
             continue;
         
         uint32_t child_page_num = get_internal_node_child(internal_node, i, key_len, value_len);
-        selectResults[taskNum] = new_select_result(SELECT_STMT, table->meta_table->table_name);
+        selectResults[taskNum] = new_select_result(SELECT_STMT, table->meta_table->table_name, true);
         taskArgs[taskNum] = instance(SelectFromInternalChildTaskArgs);
         taskArgs[taskNum]->select_result = selectResults[taskNum];
         taskArgs[taskNum]->page_num = child_page_num;
@@ -1031,7 +1084,7 @@ static void select_from_internal_node_async(SelectResult *select_result, Conditi
    
     /* Don`t forget the right child. */
     uint32_t right_child_page_num = get_internal_node_right_child(internal_node, value_len);
-    selectResults[taskNum] = new_select_result(SELECT_STMT, table->meta_table->table_name);
+    selectResults[taskNum] = new_select_result(SELECT_STMT, table->meta_table->table_name, true);
     taskArgs[taskNum] = instance(SelectFromInternalChildTaskArgs);
     taskArgs[taskNum]->select_result = selectResults[taskNum];
     taskArgs[taskNum]->page_num = right_child_page_num;
@@ -1165,7 +1218,7 @@ SelectResult *select_with_column_value(Oid oid, MetaColumn *meta_column, void *v
     Table *table = open_table_inner(oid);
     Assert(table != NULL);
     ConditionNode *condtion = ColumnValueConvertCondition(meta_column, value);
-    SelectResult *result = new_select_result(SELECT_STMT, GET_TABLE_NAME(table));
+    SelectResult *result = new_select_result(SELECT_STMT, GET_TABLE_NAME(table), true);
     query_with_condition_inner(oid, condtion, result, select_row, ARG_NULL, NULL);
     return result;
 }
@@ -1250,10 +1303,10 @@ void select_row(void *destin, SelectResult *select_result, Table *table,
  * data immediately and then free memory, not store the row 
  * data until selection. It works for query-rows operation.
  * */
-void query_row(void *destin, SelectResult *select_result, Table *table, 
+void query_row(void *tuple, SelectResult *select_result, Table *table, 
                ROW_HANDLER_ARG_TYPE type, void *arg) {
-
-    Row *row = generate_row(destin, table->meta_table);
+    List *meta_columns = merge_meta_columns_without_sys(select_result);
+    handle_dulicate_column_name(meta_columns);
     /* If has limit clause. */
     if (type == ARG_SELECT_PARAM && ((SelectParam *) arg)->limitClause != NULL) 
     {
@@ -1268,7 +1321,7 @@ void query_row(void *destin, SelectResult *select_result, Table *table,
                 select_result->first_row_flag = false;
             else
                 db_send(", ");
-            json_row(purge_row(row));
+            json_tuple(meta_columns, tuple);
             select_result->row_size++;
         }
         __sync_fetch_and_add(&selectParam->offset, 1);
@@ -1279,12 +1332,9 @@ void query_row(void *destin, SelectResult *select_result, Table *table,
             select_result->first_row_flag = false;
         else
             db_send(", ");
-        json_row(purge_row(row));
+        json_tuple(meta_columns, tuple);
         select_result->row_size++;
     }
-
-    /* Not use row info, free it. */
-    free_common_row(row);
 }
 
 
@@ -2470,49 +2520,55 @@ static void after_query_condition(SelectParam *selectParam, SelectResult *select
 /* Query with condition when multiple table. */
 static SelectResult *query_multi_table_with_condition(SelectNode *select_node, DBResult *dbresult) {
     List *table_list;
-    SelectResult *result;
+    SelectResult *head, *pres;
     ConditionNode *condition;
     SelectParam *selectParam;
 
     /* If no from clause, return an empty select result. */
     if (is_null(select_node->table_exp->from_clause)) 
-        return new_select_result(SELECT_STMT, NULL);
+        return new_select_result(SELECT_STMT, NULL, true);
 
     table_list = select_node->table_exp->from_clause->from;
     Assert(len_list(table_list) > 0);
-    result = NULL;
+    head = NULL;
+    pres = NULL;
     selectParam = optimizeSelect(select_node, dbresult->stmt_type);
     condition = get_table_exp_condition(select_node->table_exp);
 
-    /* Do before query condition. */
-    before_query_condition(selectParam);
-
+    /* Build the chain of SelectResult. */
     ListCell *lc;
     foreach (lc, table_list) {
         TableRefNode *table_ref = lfirst(lc);
-        SelectResult *current_result = new_select_result(SELECT_STMT, table_ref->table);
+        SelectResult *current_result = new_select_result(SELECT_STMT, table_ref->table, false);
 
         /* If not define tale alias name, use table name as range variable automatically. */
         current_result->range_variable = table_ref->range_variable 
                                         ? dstrdup(table_ref->range_variable) 
                                         : dstrdup(table_ref->table);
-        current_result->derived = result;
-        current_result->last_derived = (last_cell(table_list) == lc);
-        
-        /* Query with condition to filter satisfied conditions rows. */
-        query_with_condition(
-            condition, current_result, 
-            selectParam->rowHanler, 
-            ARG_SELECT_PARAM, selectParam
-        );
+        if (head == NULL)
+            head = current_result;
 
-        result = current_result;
+        if (pres != NULL)
+            pres->nested = current_result;
+    
+        current_result->head = head;
+        pres = current_result;
     }
 
-    /* Do after query condition. */
-    after_query_condition(selectParam, result, dbresult);
+    /* Do before query condition. */
+    before_query_condition(selectParam);
 
-    return result;
+    /* Do query condition. */
+    query_with_condition(
+        condition, head, 
+        selectParam->rowHanler, 
+        ARG_SELECT_PARAM, selectParam
+    );
+
+    /* Do after query condition. */
+    after_query_condition(selectParam, head, dbresult);
+
+    return head;
 }
 
 /* Execute select statement. */

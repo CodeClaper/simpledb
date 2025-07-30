@@ -20,6 +20,7 @@
 #include "const.h"
 #include "ltree.h"
 #include "list.h"
+#include "instance.h"
 #include "asserts.h"
 #include "pager.h"
 #include "check.h"
@@ -371,6 +372,34 @@ void *get_value_from_value_item_node(ValueItemNode *value_item_node, MetaColumn 
     }
 }
 
+/* Get row array value. 
+ * Return ArrayValue.
+ * */
+static ArrayValue *get_row_array_value(void *destination, MetaColumn *meta_column) {
+    uint32_t array_num = get_array_number(destination);
+
+    /* Generate ArrayValue instance. */
+    ArrayValue *array_value = new_array_value(meta_column->column_type, array_num);
+    uint32_t span = (meta_column->column_length - LEAF_NODE_ARRAY_NUM_SIZE - LEAF_NODE_CELL_NULL_FLAG_SIZE) / meta_column->array_cap;
+
+    uint32_t i;
+    for (i = 0; i < array_num; i++) {
+        void *value = get_array_value(destination, i, span);
+        append_list(array_value->list, copy_value(value, meta_column->column_type));
+    }
+    return array_value;
+}
+
+/* Assignment row value. */
+void *define_row_value(void *destination, MetaColumn *meta_column) {
+    return (meta_column->array_dim == 0)
+            /* For non-array data. */
+            ? destination + LEAF_NODE_CELL_NULL_FLAG_SIZE 
+            /* For array data. */
+            : get_row_array_value(destination, meta_column); 
+}
+
+
 /* Get Really value. */
 void *get_real_value(void *value, DataType type) {
     if (value == NULL)
@@ -388,7 +417,7 @@ void *get_real_value(void *value, DataType type) {
 /* Get value in tuple. */
 void *get_value_in_tuple(void *destin, MetaColumn *meta_column) {
     bool nflag =  *(bool *)(destin + meta_column->offset);
-    return nflag ? NULL : (destin + meta_column->offset + LEAF_NODE_CELL_NULL_FLAG_SIZE);
+    return nflag ? NULL : define_row_value((destin + meta_column->offset), meta_column);
 }
 
 /* Combine AtomNode by column and value. */

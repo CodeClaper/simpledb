@@ -34,8 +34,14 @@ def test_select_mutl_tables():
 def test_select_with_condition():
     sql = "select * from Student s, Teacher t where s.master_id = t.id;"
     ret = client.execute(sql)
+    print(ret)
     assert ret["success"] == True
-    assert ret["rows"] == 6
+    assert ret["rows"] == 3
+    assert ret["data"] == [
+        {'id': 'S0001', 'name': 'zhangchuran', 'age': 10, 'master_id': 'T001', 'id(1)': 'T001', 'name(1)': 'sunqing', 'class': 'C01'}, 
+        {'id': 'S0002', 'name': 'chengzhen', 'age': 11, 'master_id': 'T001', 'id(1)': 'T001', 'name(1)': 'sunqing', 'class': 'C01'}, 
+        {'id': 'S0003', 'name': 'dongxiaojun', 'age': 8, 'master_id': 'T002', 'id(1)': 'T002', 'name(1)': 'duli', 'class': 'C02'}
+    ]
 
 ## drop mock table
 def test_drop_mock_table():
