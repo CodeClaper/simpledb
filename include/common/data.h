@@ -583,7 +583,7 @@ typedef enum DefaultValueType {
 
 /* MetaColumn */
 typedef struct MetaColumn {
-    char *own_table_name;                       /* Own table name, not seriable. */
+    char own_table_name[MAX_COLUMN_NAME_LEN];   /* Own table name, not seriable. */
     char column_name[MAX_COLUMN_NAME_LEN];      /* Column Name. */
     DataType column_type;                       /* Column data type. */
     char table_name[MAX_TABLE_NAME_LEN];        /* Table Name. Note: for REFERENCE type, the table name is refered table name, 

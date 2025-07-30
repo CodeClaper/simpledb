@@ -109,8 +109,8 @@ MetaColumn *combine_user_meta_column(ColumnDefNode *column_def, char *table_name
     MetaColumn *meta_column = instance(MetaColumn);
 
     /* Base info. */
-    meta_column->own_table_name = dstrdup(table_name);
-    strcpy(meta_column->column_name, column_def->column->column);
+    memcpy(meta_column->own_table_name, table_name, MAX_COLUMN_NAME_LEN);
+    memcpy(meta_column->column_name, column_def->column->column, MAX_COLUMN_NAME_LEN);
     meta_column->is_primary = false;
     meta_column->is_unique = false;
     meta_column->not_null = false;

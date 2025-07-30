@@ -124,8 +124,11 @@ void free_select_result(SelectResult *select_result) {
 
 /* Free meta column. */
 void free_meta_column(MetaColumn *meta_column) {
-    if (meta_column) 
+    if (meta_column) {
+        if (meta_column->default_value)
+            dfree(meta_column->default_value);
         dfree(meta_column);
+    }
 }
 
 /* Free meta table. */

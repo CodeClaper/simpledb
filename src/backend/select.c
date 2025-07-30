@@ -692,8 +692,8 @@ static void handle_dulicate_column_name(List *meta_columns) {
 
 /* Merge meta columns. */
 static List *merge_meta_columns(SelectResult *head) {
-    if (head == NULL)
-        Assert(head != NULL);
+    Assert(head != NULL);
+
     List *meta_columns = create_list(NODE_META_COLUMN);
     SelectResult *current = head;
     Size offset = 0;
@@ -717,6 +717,7 @@ static List *merge_meta_columns(SelectResult *head) {
 
 static List *merge_meta_columns_without_sys(SelectResult *head) {
     Assert(head != NULL);
+
     List *meta_columns = create_list(NODE_META_COLUMN);
     SelectResult *current = head;
     Size offset = 0;
@@ -744,8 +745,7 @@ static List *merge_meta_columns_without_sys(SelectResult *head) {
  * Note: range variable may be table name or table alias name.
  * */
 static char *search_table_via_alias(SelectResult *select_result, char *range_variable) {
-    if (select_result == NULL) 
-        db_log(PANIC, "Support SelectResult. ");
+    Assert(select_result != NULL);
 
     /* Either table name or range variable is equal. */
     if (streq(select_result->table_name, range_variable) || 
@@ -873,6 +873,7 @@ static void select_from_leaf_node(SelectResult *select_result, ConditionNode *co
         void *ntuple = merge_tuple(head);
         if (include_leaf_node(head, meta_columns, ntuple, condition)) 
             row_handler(ntuple, head, table, type, arg);
+        free_list_deep(meta_columns);
     }
     
     /* Release the buffer. */
@@ -1335,6 +1336,7 @@ void query_row(void *tuple, SelectResult *select_result, Table *table,
         json_tuple(meta_columns, tuple);
         select_result->row_size++;
     }
+    free_list_deep(meta_columns);
 }
 
 

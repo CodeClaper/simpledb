@@ -625,7 +625,7 @@ MetaTable *gen_meta_table(Oid oid) {
     uint32_t i;
     for (i = 0; i < column_size; i++) {
         MetaColumn *current = get_meta_column_by_index(root_node, i, offset);
-        current->own_table_name = dstrdup(meta_table->table_name);
+        memcpy(current->own_table_name, meta_table->table_name, MAX_COLUMN_NAME_LEN);
         append_list(meta_table->meta_columns, current);
         /* Skip to system reserved column. */
         if (!current->sys_reserved)
@@ -809,7 +809,7 @@ MetaColumn *TableColumnNameFindMetaColumn(List *meta_columns, char *table_name, 
     foreach (lc, meta_columns) {
         MetaColumn *current = (MetaColumn *) lfirst(lc);
         if (streq(current->own_table_name, table_name) && streq(current->column_name, column_name))
-            return current;
+            return copy_meta_column(current);
     }
     return NULL;
 }
@@ -821,7 +821,7 @@ MetaColumn *NameFindMetaColumn(List *meta_columns, char *column_name) {
     foreach (lc, meta_columns) {
         MetaColumn *current = (MetaColumn *) lfirst(lc);
         if (streq(current->column_name, column_name))
-            return current;
+            return copy_meta_column(current);
     }
     return NULL;
 }

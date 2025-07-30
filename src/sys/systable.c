@@ -29,9 +29,9 @@ MetaColumn SYS_TABLE_COLUMNS[] = {
 
 /* System reserved columns. */
 MetaColumn SYS_RESERVED_COLUMNS[] = {
-    { NULL, SYS_RESERVED_ID_COLUMN_NAME, T_LONG, "", (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), 0, false, false, false, true, 0, 0 },
-    { NULL, CREATED_XID_COLUMN_NAME, T_LONG, "", (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), 0, false, false, false, true, 0, 0 },
-    { NULL, EXPIRED_XID_COLUMN_NAME, T_LONG, "", (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), 0, false, false, false, true, 0, 0 }
+    { "", SYS_RESERVED_ID_COLUMN_NAME, T_LONG, "", (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), 0, false, false, false, true, 0, 0 },
+    { "", CREATED_XID_COLUMN_NAME, T_LONG, "", (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), 0, false, false, false, true, 0, 0 },
+    { "", EXPIRED_XID_COLUMN_NAME, T_LONG, "", (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), 0, false, false, false, true, 0, 0 }
 }; 
 
 static Object RowConvertObject(Row *row);

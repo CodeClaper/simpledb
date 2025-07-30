@@ -231,7 +231,7 @@ MetaColumn *copy_meta_column(MetaColumn *meta_column) {
         return NULL;
 
     MetaColumn *duplica = instance(MetaColumn);
-    duplica->own_table_name = dstrdup(meta_column->own_table_name);
+    memcpy(duplica->own_table_name, meta_column->own_table_name, MAX_COLUMN_NAME_LEN);
     memcpy(duplica->column_name, meta_column->column_name, MAX_COLUMN_NAME_LEN);
     duplica->column_type = meta_column->column_type;
     memcpy(duplica->table_name, meta_column->table_name, MAX_TABLE_NAME_LEN);
