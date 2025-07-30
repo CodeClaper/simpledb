@@ -871,16 +871,28 @@ static void select_from_leaf_node(SelectResult *select_result, ConditionNode *co
         void *tuple = HeapTableLookup(table, (Refer *) destinct);
         select_result->tuple = tuple;
 
+        /* If has nested, deep seek nested. */
         if (nested != NULL) {
             query_with_condition(condition, nested, row_handler, type, arg);
             continue;
         }
+
+        List *columns;
+        void *ntuple;
+
+        if (head->columns != NULL) {
+            columns = head->columns;
+        } else {
+            columns = merge_meta_columns(head);
+            head->columns = columns;
+        }
+        ntuple = merge_tuple(head);
+        Assert(columns != NIL);
+        Assert(ntuple != NULL);
         
-        List *meta_columns = merge_meta_columns(head);
-        void *ntuple = merge_tuple(head);
-        if (include_leaf_node(head, meta_columns, ntuple, condition)) 
+        /* Filt the leaf node. */
+        if (include_leaf_node(head, columns, ntuple, condition)) 
             row_handler(ntuple, head, table, type, arg);
-        free_list_deep(meta_columns);
     }
     
     /* Release the buffer. */
@@ -922,6 +934,7 @@ static void select_from_internal_node(SelectResult *select_result, ConditionNode
             void *min_key = (i == 0) 
                         ? NULL 
                         : get_real_value(get_internal_node_key(internal_node, i - 1, key_len, default_value_len), primary_key_type);
+            /* Filter the internal node. */
             if (!include_internal_node(select_result, min_key, max_key, condition, table->meta_table))
                 continue;
         }

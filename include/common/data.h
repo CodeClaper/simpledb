@@ -660,9 +660,10 @@ typedef struct SelectResult {
     uint32_t row_size;              /* Row size. Although in rows list indicates the row size, these row_size works for count agg. */
     Queue *rows;                    /* The selected rows. */
     void *tuple;                    /* The selected tuple. */
+    bool first_row_flag;            /* The flag if first row, user in limit. */
     struct SelectResult *nested;    /* The nested select result, used for multi-table query. */
     struct SelectResult *head;      /* The head select result, used for multi-table query. */
-    bool first_row_flag;            /* The flag if first row, user in limit. */
+    List *columns;                  /* The columns which are list of meta column. Only works for head. */
 } SelectResult;
 
 
