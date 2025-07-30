@@ -674,6 +674,7 @@ static void *merge_tuple(SelectResult *head) {
     }
 }
 
+/* Deal with the duplica column name. */
 static void handle_dulicate_column_name(List *meta_columns) {
     ListCell *lc1, *lc2;
     foreach (lc1, meta_columns) {
@@ -684,7 +685,13 @@ static void handle_dulicate_column_name(List *meta_columns) {
             if (lc1 == lc2)
                 continue;
             if (streq(second->column_name, first->column_name)) {
-               memcpy(second->column_name, format("%s(%d)", first->column_name, ++times), MAX_COLUMN_NAME_LEN);
+                /* Notece: there is still some issue, maybe overflow the MAX_COLUMN_NAME_LEN buffer. */
+                if (streq(second->own_table_name, first->own_table_name))
+                    memcpy(second->column_name, format("%s(%d)", first->column_name, ++times), MAX_COLUMN_NAME_LEN);
+                else {
+                    memcpy(first->column_name, format("%s.%s", first->own_table_name, first->column_name), MAX_COLUMN_NAME_LEN);
+                    memcpy(second->column_name, format("%s.%s", second->own_table_name, second->column_name), MAX_COLUMN_NAME_LEN);
+                }
             }
         } 
     }

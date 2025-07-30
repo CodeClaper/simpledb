@@ -38,9 +38,9 @@ def test_select_with_condition():
     assert ret["success"] == True
     assert ret["rows"] == 3
     assert ret["data"] == [
-        {'id': 'S0001', 'name': 'zhangchuran', 'age': 10, 'master_id': 'T001', 'id(1)': 'T001', 'name(1)': 'sunqing', 'class': 'C01'}, 
-        {'id': 'S0002', 'name': 'chengzhen', 'age': 11, 'master_id': 'T001', 'id(1)': 'T001', 'name(1)': 'sunqing', 'class': 'C01'}, 
-        {'id': 'S0003', 'name': 'dongxiaojun', 'age': 8, 'master_id': 'T002', 'id(1)': 'T002', 'name(1)': 'duli', 'class': 'C02'}
+        {'Student.id': 'S0001', 'Student.name': 'zhangchuran', 'age': 10, 'master_id': 'T001', 'Teacher.id': 'T001', 'Teacher.name': 'sunqing', 'class': 'C01'}, 
+        {'Student.id': 'S0002', 'Student.name': 'chengzhen', 'age': 11, 'master_id': 'T001', 'Teacher.id': 'T001', 'Teacher.name': 'sunqing', 'class': 'C01'}, 
+        {'Student.id': 'S0003', 'Student.name': 'dongxiaojun', 'age': 8, 'master_id': 'T002', 'Teacher.id': 'T002', 'Teacher.name': 'duli', 'class': 'C02'}
     ]
 
 ## drop mock table
