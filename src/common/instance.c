@@ -40,11 +40,12 @@ SelectResult *new_select_result(StatementType stype, char *table_name, bool is_h
     select_result->table_name = table_name ? dstrdup(table_name) : NULL;
     select_result->range_variable = NULL;
     select_result->rows = CreateQueue(NODE_ROW);
-    select_result->tuple = NULL;
+    select_result->current_tuple = NULL;
     select_result->first_row_flag = true;
     select_result->nested = NULL;
     select_result->head = NULL;
     select_result->columns = NIL;
+    select_result->display_colums = NIL;
     if (is_head)
         select_result->head = select_result;
     return select_result;

@@ -629,19 +629,10 @@ Row *define_visible_row(Refer *refer) {
         : purge_row(row);
 }
 
-/* Merge the second row data into the first one. */
-static void merge_row(Row *row1, Row *row2) {
-    /* According the first row generate new merge row. */
-    ListCell *lc;
-    foreach (lc, row2->data) {
-        append_list(row1->data, lfirst(lc));
-    }
-}
-
 /* Merge two tuples. */
 static void *merge_tuple(SelectResult *head) {
     if (head->nested == NULL)
-        return head->tuple;
+        return head->current_tuple;
     else {
         Size size, offset;
         SelectResult *current;
@@ -660,7 +651,7 @@ static void *merge_tuple(SelectResult *head) {
         current = head;
         while (current != NULL) {
             Table *table = open_table(current->table_name);
-            memcpy(ntuple + offset, current->tuple, table->heap_value_len);
+            memcpy(ntuple + offset, current->current_tuple, table->heap_value_len);
             offset += table->heap_value_len;
             current = current->nested;
         }
@@ -721,7 +712,7 @@ static List *merge_meta_columns_without_sys(SelectResult *head) {
 }
 
 /* Deal with the duplica column name. */
-static void handle_dulicate_column_name(List *meta_columns) {
+static void DuplicateColumnNameHandler(List *meta_columns) {
     ListCell *lc1, *lc2;
     foreach (lc1, meta_columns) {
         uint32_t times = 0;
@@ -865,7 +856,7 @@ static void select_from_leaf_node(SelectResult *select_result, ConditionNode *co
 
         /* If satisfied, exeucte row handler function. */
         void *tuple = HeapTableLookup(table, (Refer *) destinct);
-        select_result->tuple = tuple;
+        select_result->current_tuple = tuple;
 
         /* If has nested, deep seek nested. */
         if (nested != NULL) {
@@ -1319,8 +1310,17 @@ void select_row(void *destin, SelectResult *select_result, Table *table,
  * */
 void query_row(void *tuple, SelectResult *select_result, Table *table, 
                ROW_HANDLER_ARG_TYPE type, void *arg) {
-    List *meta_columns = merge_meta_columns_without_sys(select_result);
-    handle_dulicate_column_name(meta_columns);
+    List *display_columns;
+
+    /* Define the display columns. */
+    if (select_result->display_colums != NIL) 
+        display_columns = select_result->display_colums;
+    else {
+        display_columns = merge_meta_columns_without_sys(select_result);
+        DuplicateColumnNameHandler(display_columns);
+        select_result->display_colums = display_columns;
+    }
+
     /* If has limit clause. */
     if (type == ARG_SELECT_PARAM && ((SelectParam *) arg)->limitClause != NULL) 
     {
@@ -1335,7 +1335,7 @@ void query_row(void *tuple, SelectResult *select_result, Table *table,
                 select_result->first_row_flag = false;
             else
                 db_send(", ");
-            json_tuple(meta_columns, tuple);
+            json_tuple(display_columns, tuple);
             select_result->row_size++;
         }
         __sync_fetch_and_add(&selectParam->offset, 1);
@@ -1346,10 +1346,9 @@ void query_row(void *tuple, SelectResult *select_result, Table *table,
             select_result->first_row_flag = false;
         else
             db_send(", ");
-        json_tuple(meta_columns, tuple);
+        json_tuple(display_columns, tuple);
         select_result->row_size++;
     }
-    free_list_deep(meta_columns);
 }
 
 
@@ -2490,6 +2489,7 @@ static bool exists_function_scalar_exp(List *scalar_exp_list) {
 
 /* Query selection. */
 static void query_with_selection(SelectionNode *selection, SelectResult *select_result) {
+    /* For all column, data has stream out by <query_row>*/
     if (selection->all_column)
         return;
     if (exists_function_scalar_exp(selection->scalar_exp_list)) 
