@@ -13,8 +13,7 @@ typedef enum ROW_HANDLER_ARG_TYPE {
 
 
 /* Function pointer about row handler */
-typedef void (*ROW_HANDLER)(void *destin, SelectResult *select_result, Table *table, ROW_HANDLER_ARG_TYPE type,void *arg);
-
+typedef void (*ROW_HANDLER)(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg);
 
 typedef struct SelectParam {
     StatementType stmt_type;        /* StatementType. */
@@ -28,13 +27,13 @@ typedef struct SelectParam {
 } SelectParam;
 
 /* Count number of row, used in the sql function count() */
-void count_row(void *destin, SelectResult *select_result, Table *table, ROW_HANDLER_ARG_TYPE type, void *arg);
+void count_row(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg);
 
 /* Select row data. */
-void select_row(void *destin, SelectResult *select_result, Table *table, ROW_HANDLER_ARG_TYPE type, void *arg);
+void select_row(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg);
 
 /* Query row data. */
-void query_row(void *destin, SelectResult *select_result, Table *table, ROW_HANDLER_ARG_TYPE type, void *arg);
+void query_row(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg);
 
 /* Define heap row destinct by refer. 
  * Return heap row destinct not matter if it is deleted, caller check if deleted.

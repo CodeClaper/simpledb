@@ -4,6 +4,7 @@
 #include "instance.h"
 #include "data.h"
 #include "mmgr.h"
+#include "systable.h"
 
 /* Generate new KeyValue instance. */
 KeyValue *new_key_value(char *key, void *value, DataType data_type) {
@@ -19,7 +20,8 @@ KeyValue *new_key_value(char *key, void *value, DataType data_type) {
 Row *new_row(void *key, char *table_name) {
     Row *row = instance(Row);
     row->key = key;
-    strcpy(row->table_name, table_name);
+    if (!is_empty(table_name))
+        strcpy(row->table_name, table_name);
     row->data = create_list(NODE_KEY_VALUE);
     return row;
 }
@@ -36,10 +38,11 @@ ArrayValue *new_array_value(DataType data_type, uint32_t size) {
 SelectResult *new_select_result(StatementType stype, char *table_name, bool is_head) {
     SelectResult *select_result = instance(SelectResult);
     select_result->stype = stype;
-    select_result->row_size = 0;
-    select_result->table_name = table_name ? dstrdup(table_name) : NULL;
+    select_result->oid = is_empty(table_name) ? OID_ZERO : TableNameFindOid(table_name);
+    select_result->table_name = is_empty(table_name) ? NULL : dstrdup(table_name);
     select_result->range_variable = NULL;
     select_result->rows = CreateQueue(NODE_ROW);
+    select_result->row_size = 0;
     select_result->current_tuple = NULL;
     select_result->first_row_flag = true;
     select_result->nested = NULL;

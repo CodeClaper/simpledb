@@ -523,11 +523,36 @@ static MetaColumn *get_cond_meta_column(PredicateNode *predicate, MetaTable *met
     }
 }
 
-/* Generate select row. */
-Row *generate_row(void *tuple, MetaTable *meta_table) {
-    /* Instance new row. */
-    Row *row = new_row(NULL, meta_table->table_name);
+/* Generate row by tuple. */
+Row *generate_display_row(void *tuple, List *meta_columns) {
+    Row *row = new_row(NULL, NULL);
 
+    /* Assignment row data. */
+    ListCell *lc;
+    foreach (lc, meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *) lfirst(lc);
+        /* Generate a key value pair. */
+        KeyValue *key_value = is_null_cell(tuple + meta_column->offset) 
+                            ? new_key_value(meta_column->column_name, NULL, meta_column->column_type)
+                            : new_key_value(meta_column->column_name, get_value_in_tuple(tuple, meta_column), meta_column->column_type);
+        key_value->is_array = meta_column->array_dim > 0;
+        key_value->table_name = meta_column->table_name;
+
+        /* Append to row data. */
+        append_list(row->data, key_value);
+
+        /* Assign primary key. */
+        if (meta_column->is_primary)
+            row->key = get_value_in_tuple(tuple, meta_column);
+    }
+
+    return row;
+}
+
+/* Generate row by tuple. */
+Row *generate_row(void *tuple, MetaTable *meta_table) {
+    Row *row = new_row(NULL, meta_table->table_name);
+    
     /* Assignment row data. */
     ListCell *lc;
     foreach (lc, meta_table->meta_columns) {
@@ -537,7 +562,7 @@ Row *generate_row(void *tuple, MetaTable *meta_table) {
                             ? new_key_value(meta_column->column_name, NULL, meta_column->column_type)
                             : new_key_value(meta_column->column_name, get_value_in_tuple(tuple, meta_column), meta_column->column_type);
         key_value->is_array = meta_column->array_dim > 0;
-        key_value->table_name = meta_table->table_name;
+        key_value->table_name = meta_column->table_name;
 
         /* Append to row data. */
         append_list(row->data, key_value);
@@ -806,7 +831,7 @@ static void scan_from_leaf_node(SelectResult *select_result, ConditionNode *cond
         Xid created_xid = get_index_created_xid(destinct);
         Xid expired_xid = get_index_expired_xid(destinct);
         if (IsVisibleInner(created_xid, expired_xid, current_trans))
-            row_handler(NULL, select_result, table, type, arg);
+            row_handler(NULL, select_result, type, arg);
     }
     
     /* Release the buffer. */
@@ -879,7 +904,7 @@ static void select_from_leaf_node(SelectResult *select_result, ConditionNode *co
         
         /* Filt the leaf node. */
         if (include_leaf_node(head, columns, ntuple, condition)) 
-            row_handler(ntuple, head, table, type, arg);
+            row_handler(ntuple, head, type, arg);
     }
     
     /* Release the buffer. */
@@ -1232,8 +1257,7 @@ SelectResult *select_with_column_value(Oid oid, MetaColumn *meta_column, void *v
 }
 
 /* Count number of row, used in the sql function count(1) */
-void count_row(void *destine, SelectResult *select_result, Table *table, ROW_HANDLER_ARG_TYPE type, void *arg) {
-
+void count_row(void *destine, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg) {
     if (type == ARG_SELECT_PARAM && ((SelectParam *) arg)->limitClause != NULL) {
         SelectParam *selectParam = (SelectParam *) arg;
         LimitClauseNode *limit_clause = selectParam->limitClause;
@@ -1275,9 +1299,9 @@ static void* purge_row(Row *row) {
 }
 
 /* Select row data. */
-void select_row(void *destin, SelectResult *select_result, Table *table, 
-                ROW_HANDLER_ARG_TYPE type, void *arg) {
-    Row *row = generate_row(destin, table->meta_table);
+void select_row(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg) {
+    Table *table = open_table_inner(select_result->oid);
+    Row *row = generate_row(tuple, table->meta_table);
     /* If has limit clause. */
     if (type == ARG_SELECT_PARAM && ((SelectParam *) arg)->limitClause != NULL) {
         SelectParam *selectParam = (SelectParam *) arg;
@@ -1290,14 +1314,14 @@ void select_row(void *destin, SelectResult *select_result, Table *table,
             /* Double check for concurrency. */
             if (selectParam->offset >= limit_clause->offset && 
                     selectParam->offset < (limit_clause->offset + limit_clause->rows)) {
-                AppendQueue(select_result->rows, purge_row(row));
+                AppendQueue(select_result->rows, row);
                 select_result->row_size++;
             }
             release_spin_lock(&selectParam->slock);
         }
         __sync_fetch_and_add(&selectParam->offset, 1);
     } else {
-        AppendQueue(select_result->rows, purge_row(row));
+        AppendQueue(select_result->rows, row);
         select_result->row_size++;
     }
 }
@@ -1308,8 +1332,7 @@ void select_row(void *destin, SelectResult *select_result, Table *table,
  * data immediately and then free memory, not store the row 
  * data until selection. It works for query-rows operation.
  * */
-void query_row(void *tuple, SelectResult *select_result, Table *table, 
-               ROW_HANDLER_ARG_TYPE type, void *arg) {
+void query_row(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg) {
     List *display_columns;
 
     /* Define the display columns. */

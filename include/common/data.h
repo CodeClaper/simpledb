@@ -655,6 +655,7 @@ typedef struct Row {
 /* SelectResult */
 typedef struct SelectResult {
     StatementType stype;            /* Statement type. */
+    Oid oid;                        /* The oid. */
     char *table_name;               /* Table name. */
     char *range_variable;           /* Range variable. */
     uint32_t row_size;              /* Row size. Although in rows list indicates the row size, these row_size works for count agg. */

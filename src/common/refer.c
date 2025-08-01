@@ -204,7 +204,6 @@ Refer *define_refer(Row *row) {
 /* Fetch Refer. 
  * If found no one or many one, return NULL.  */
 Refer *fetch_refer(MetaColumn *meta_column, ConditionNode *condition_node) {
-
     /* Make a new SelectResult. */
     SelectResult *select_result = new_select_result(UNKONWN_STMT, meta_column->table_name, true);
 
@@ -356,11 +355,12 @@ static void update_key_value_refer(Row *row, MetaColumn *meta_column, Cursor *cu
 
 
 /* Update row refer. */
-static void update_row_refer(void *destin, SelectResult *select_result, Table *table, 
+static void update_row_refer(void *destin, SelectResult *select_result, 
                              ROW_HANDLER_ARG_TYPE type, void *arg) {
     Assert(arg);
     Assert(type == ARG_REFER_UPDATE_ENTITY);
 
+    Table *table = open_table_inner(select_result->oid);
     ReferUpdateEntity *refer_update_entity = (ReferUpdateEntity *) arg;
     Oid oid = refer_update_entity->old_refer->oid;
     Table *ref_table = open_table_inner(oid);
