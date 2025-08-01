@@ -390,8 +390,8 @@ static ArrayValue *get_row_array_value(void *destination, MetaColumn *meta_colum
     return array_value;
 }
 
-/* Assignment row value. */
-void *define_row_value(void *destination, MetaColumn *meta_column) {
+/* Assignment row value. */ 
+static void *define_row_value(void *destination, MetaColumn *meta_column) {
     return (meta_column->array_dim == 0)
             /* For non-array data. */
             ? destination + LEAF_NODE_CELL_NULL_FLAG_SIZE 

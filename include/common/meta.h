@@ -25,9 +25,6 @@ void *assign_value_from_value_item_node(ValueItemNode *value_item_node, MetaColu
 /* Get value from value item node. */
 void *get_value_from_value_item_node(ValueItemNode *value_item_node, MetaColumn *meta_column);
 
-/* Assignment row value. */
-void *define_row_value(void *destination, MetaColumn *meta_column);
-
 /* Get Really value. */
 void *get_real_value(void *value, DataType type);
 

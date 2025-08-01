@@ -523,21 +523,19 @@ static MetaColumn *get_cond_meta_column(PredicateNode *predicate, MetaTable *met
     }
 }
 
-
 /* Generate select row. */
-Row *generate_row(void *destination, MetaTable *meta_table) {
+Row *generate_row(void *tuple, MetaTable *meta_table) {
     /* Instance new row. */
     Row *row = new_row(NULL, meta_table->table_name);
 
     /* Assignment row data. */
-    uint32_t offset = 0;
     ListCell *lc;
     foreach (lc, meta_table->meta_columns) {
-        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
+        MetaColumn *meta_column = (MetaColumn *) lfirst(lc);
         /* Generate a key value pair. */
-        KeyValue *key_value = is_null_cell(destination + offset) 
+        KeyValue *key_value = is_null_cell(tuple + meta_column->offset) 
                             ? new_key_value(meta_column->column_name, NULL, meta_column->column_type)
-                            : new_key_value(meta_column->column_name, define_row_value(destination + offset, meta_column), meta_column->column_type);
+                            : new_key_value(meta_column->column_name, get_value_in_tuple(tuple, meta_column), meta_column->column_type);
         key_value->is_array = meta_column->array_dim > 0;
         key_value->table_name = meta_table->table_name;
 
@@ -546,10 +544,7 @@ Row *generate_row(void *destination, MetaTable *meta_table) {
 
         /* Assign primary key. */
         if (meta_column->is_primary)
-            row->key = define_row_value(destination + offset, meta_column);
-
-        /* Get the column offset. */
-        offset += meta_column->column_length;
+            row->key = get_value_in_tuple(tuple, meta_column);
     }
 
     return row;
@@ -674,29 +669,6 @@ static void *merge_tuple(SelectResult *head) {
     }
 }
 
-/* Deal with the duplica column name. */
-static void handle_dulicate_column_name(List *meta_columns) {
-    ListCell *lc1, *lc2;
-    foreach (lc1, meta_columns) {
-        uint32_t times = 0;
-        MetaColumn *first = lfirst(lc1);
-        foreach (lc2, meta_columns) {
-            MetaColumn *second = lfirst(lc2);
-            if (lc1 == lc2)
-                continue;
-            if (streq(second->column_name, first->column_name)) {
-                /* Notece: there is still some issue, maybe overflow the MAX_COLUMN_NAME_LEN buffer. */
-                if (streq(second->own_table_name, first->own_table_name))
-                    memcpy(second->column_name, format("%s(%d)", first->column_name, ++times), MAX_COLUMN_NAME_LEN);
-                else {
-                    memcpy(first->column_name, format("%s.%s", first->own_table_name, first->column_name), MAX_COLUMN_NAME_LEN);
-                    memcpy(second->column_name, format("%s.%s", second->own_table_name, second->column_name), MAX_COLUMN_NAME_LEN);
-                }
-            }
-        } 
-    }
-}
-
 /* Merge meta columns. */
 static List *merge_meta_columns(SelectResult *head) {
     Assert(head != NULL);
@@ -747,6 +719,30 @@ static List *merge_meta_columns_without_sys(SelectResult *head) {
     }
     return meta_columns;
 }
+
+/* Deal with the duplica column name. */
+static void handle_dulicate_column_name(List *meta_columns) {
+    ListCell *lc1, *lc2;
+    foreach (lc1, meta_columns) {
+        uint32_t times = 0;
+        MetaColumn *first = lfirst(lc1);
+        foreach (lc2, meta_columns) {
+            MetaColumn *second = lfirst(lc2);
+            if (lc1 == lc2)
+                continue;
+            if (streq(second->column_name, first->column_name)) {
+                /* Notece: there is still some issue, maybe overflow the MAX_COLUMN_NAME_LEN buffer. */
+                if (streq(second->own_table_name, first->own_table_name))
+                    memcpy(second->column_name, format("%s(%d)", first->column_name, ++times), MAX_COLUMN_NAME_LEN);
+                else {
+                    memcpy(first->column_name, format("%s.%s", first->own_table_name, first->column_name), MAX_COLUMN_NAME_LEN);
+                    memcpy(second->column_name, format("%s.%s", second->own_table_name, second->column_name), MAX_COLUMN_NAME_LEN);
+                }
+            }
+        } 
+    }
+}
+
 
 /* Search table via alias name in SelectResult. 
  * Note: range variable may be table name or table alias name.
@@ -1290,7 +1286,6 @@ static void* purge_row(Row *row) {
 /* Select row data. */
 void select_row(void *destin, SelectResult *select_result, Table *table, 
                 ROW_HANDLER_ARG_TYPE type, void *arg) {
-    
     Row *row = generate_row(destin, table->meta_table);
     /* If has limit clause. */
     if (type == ARG_SELECT_PARAM && ((SelectParam *) arg)->limitClause != NULL) {
@@ -1300,7 +1295,6 @@ void select_row(void *destin, SelectResult *select_result, Table *table,
         /* If has limit clause, only append row whose pindex > offset and pindex < offset + rows. */
         if (selectParam->offset >= limit_clause->offset && 
                 selectParam->offset < (limit_clause->offset + limit_clause->rows)) {
-
             acquire_spin_lock(&selectParam->slock);
             /* Double check for concurrency. */
             if (selectParam->offset >= limit_clause->offset && 
@@ -1310,7 +1304,6 @@ void select_row(void *destin, SelectResult *select_result, Table *table,
             }
             release_spin_lock(&selectParam->slock);
         }
-
         __sync_fetch_and_add(&selectParam->offset, 1);
     } else {
         AppendQueue(select_result->rows, purge_row(row));
