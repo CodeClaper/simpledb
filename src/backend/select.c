@@ -347,12 +347,12 @@ static bool check_row_predicate(SelectResult *select_result, List *meta_columns,
         /* Just check, if column has sub column, it must be Reference type. */
         Assert(meta_column->column_type == T_REFERENCE);
         /* Get subrow, and recursion. */
-        void *sub_destin = define_row_inner((Refer *) value);
+        void *sub_tuple = define_tuple((Refer *) value);
         Table *sub_table = open_table(meta_column->table_name);
         return check_row_predicate(
             select_result, 
             sub_table->meta_table->meta_columns,
-            sub_destin, 
+            sub_tuple, 
             column->sub_column, 
             comparison
         ); 
@@ -575,11 +575,11 @@ Row *generate_row(void *tuple, MetaTable *meta_table) {
     return row;
 }
 
-/* Define heap row destinct by refer. 
+/* Define the tuple by refer. 
  * -------------------
- * Return heap row destinct not matter if it is deleted, caller check if deleted.
+ * Return the tuple not matter if it is deleted and caller checks if deleted.
  * */
-void *define_row_inner(Refer *refer) {
+void *define_tuple(Refer *refer) {
     Assert(refer != NULL);
 
     /* Check table exists. */

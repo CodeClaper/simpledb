@@ -35,13 +35,13 @@ void select_row(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE t
 /* Query row data. */
 void query_row(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg);
 
-/* Define heap row destinct by refer. 
- * Return heap row destinct not matter if it is deleted, caller check if deleted.
+/* Define the tuple by refer. 
+ * Return the tuple not matter if it is deleted and caller checks if deleted.
  * */
-void *define_row_inner(Refer *refer);
+void *define_tuple(Refer *refer);
 
-/* Define row by refer. 
- * Return row not matter if it is deleted.
+/* Define the row by refer. 
+ * Return the row not matter if it is deleted and caller checks if deleted..
  * */
 Row *define_row(Refer *refer);
 
