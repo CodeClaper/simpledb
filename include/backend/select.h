@@ -19,7 +19,7 @@ typedef struct SelectParam {
     StatementType stmt_type;        /* StatementType. */
     bool onlyAll;                   /* Only select all. */
     bool onlyCount;                 /* Only count int select statement. */
-    bool oblyScanIndex;             /* Only scan index. */
+    bool onlyScanIndex;             /* Only scan index. */
     volatile int32_t offset;        /* Current offset. Need volatile in parall calculating.*/
     LimitClauseNode *limitClause;   /* LimitClauseNode. */
     ROW_HANDLER rowHanler;          /* Row Handler implements.*/

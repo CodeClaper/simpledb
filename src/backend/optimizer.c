@@ -15,7 +15,7 @@ SelectParam *optimizeSelect(SelectNode *selectNode, StatementType stmt_type) {
     selectParam->stmt_type = stmt_type;
     selectParam->onlyAll = OnlySelectAllInSelection(selectNode);
     selectParam->onlyCount = OnlyCountInSelection(selectNode);
-    selectParam->oblyScanIndex = OnlyScanIndex(selectNode);
+    selectParam->onlyScanIndex = OnlyScanIndex(selectNode);
     selectParam->limitClause = GetLimitClause(selectNode);
     selectParam->offset = 0;
     selectParam->rowHanler = DefineRowHandler(selectParam);
@@ -64,9 +64,19 @@ static bool OnlyCountInSelection(SelectNode *selectNode) {
     return scalarExp->type == SCALAR_FUNCTION && scalarExp->function->type == F_COUNT;
 }
 
+/* Only one table object. */
+static bool OnlyOneFrom(FromClauseNode *from_clause) {
+    return len_list(from_clause->from) == 1;
+}
+
+/* The conditon that satisfy only-scan-index. 
+ * (1) Only count function in selection.
+ * (2) No where conditon.
+ * (3) Only one table object. */
 static bool OnlyScanIndex(SelectNode *selectNode) {
-    return OnlyCountInSelection(selectNode) 
-        && selectNode->table_exp->where_clause == NULL;
+    return OnlyCountInSelection(selectNode) && 
+                selectNode->table_exp->where_clause == NULL && 
+                    OnlyOneFrom(selectNode->table_exp->from_clause);
 }
 
 /* Get LimitClauseNode for the SelectionNode. */

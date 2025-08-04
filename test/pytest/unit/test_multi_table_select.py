@@ -34,7 +34,6 @@ def test_select_mutl_tables():
 def test_select_with_condition():
     sql = "select * from Student s, Teacher t where s.master_id = t.id;"
     ret = client.execute(sql)
-    print(ret)
     assert ret["success"] == True
     assert ret["rows"] == 3
     assert ret["data"] == [
@@ -42,6 +41,43 @@ def test_select_with_condition():
         {'Student.id': 'S0002', 'Student.name': 'chengzhen', 'age': 11, 'master_id': 'T001', 'Teacher.id': 'T001', 'Teacher.name': 'sunqing', 'class': 'C01'}, 
         {'Student.id': 'S0003', 'Student.name': 'dongxiaojun', 'age': 8, 'master_id': 'T002', 'Teacher.id': 'T002', 'Teacher.name': 'duli', 'class': 'C02'}
     ]
+
+## test select special columns
+def test_select_special_columns():
+    sql = "select s.id as sId, s.name as sName, s.age as sAge, t.id as tId, t.name as tName, class from Student s, Teacher t where s.master_id = t.id;"
+    ret = client.execute(sql)
+    assert ret["success"] == True
+    assert ret["rows"] == 3
+    assert ret["data"] == [
+        {'sId': 'S0001', 'sName': 'zhangchuran', 'sAge': 10,  'tId': 'T001', 'tName': 'sunqing', 'class': 'C01'}, 
+        {'sId': 'S0002', 'sName': 'chengzhen', 'sAge': 11,  'tId': 'T001', 'tName': 'sunqing', 'class': 'C01'}, 
+        {'sId': 'S0003', 'sName': 'dongxiaojun', 'sAge': 8, 'tId': 'T002', 'tName': 'duli', 'class': 'C02'}
+    ]
+
+## test select wrong columns
+def test_select_wrong_columns():
+    sql = "select s.class  from Student s, Teacher t where s.master_id = t.id;"
+    ret = client.execute(sql)
+    assert ret["success"] == False
+    assert ret["message"] == "Unknown column 's.class'."
+
+
+## test select with complext condition.
+def test_select_with_complex_condition():
+    sql = "select * from Student s, Teacher t where s.master_id = t.id and s.age >= 11 and t.class = 'C01';"
+    ret = client.execute(sql)
+    assert ret["success"] == True
+    assert ret["rows"] == 1
+    assert ret["data"] == [
+        {'Student.id': 'S0002', 'Student.name': 'chengzhen', 'age': 11, 'master_id': 'T001', 'Teacher.id': 'T001', 'Teacher.name': 'sunqing', 'class': 'C01'}
+    ]
+
+## test with count function.
+def test_select_count():
+    sql = "select count(*) from Student, Teacher;"
+    ret = client.execute(sql)
+    assert ret["success"] == True
+    assert ret["rows"] == 6
 
 ## drop mock table
 def test_drop_mock_table():

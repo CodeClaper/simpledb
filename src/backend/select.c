@@ -79,7 +79,6 @@ static KeyValue *query_function_value(ScalarExpNode *scalar_exp, SelectResult *s
 static KeyValue *query_value_item(ValueItemNode *value_item, Row *row);
 static KeyValue *query_row_value(SelectResult *select_result, ScalarExpNode *scalar_exp, Row *row);
 static Row *query_plain_row_selection(SelectResult *select_result, List *scalar_exp_set, Row *row);
-static void* purge_row(Row *row);
 static char *search_table_via_alias(SelectResult *select_result, char *range_variable);
 static KeyValue *query_plain_column_value(SelectResult *select_result, ColumnNode *column, Row *row);
 
@@ -525,7 +524,7 @@ static MetaColumn *get_cond_meta_column(PredicateNode *predicate, MetaTable *met
 }
 
 /* Generate row by tuple. */
-Row *generate_display_row(void *tuple, List *meta_columns) {
+Row *generate_row_inner(void *tuple, List *meta_columns) {
     Row *row = new_row();
 
     /* Assignment row data. */
@@ -547,23 +546,7 @@ Row *generate_display_row(void *tuple, List *meta_columns) {
 
 /* Generate row by tuple. */
 Row *generate_row(void *tuple, MetaTable *meta_table) {
-    Row *row = new_row();
-    
-    /* Assignment row data. */
-    ListCell *lc;
-    foreach (lc, meta_table->meta_columns) {
-        MetaColumn *meta_column = (MetaColumn *) lfirst(lc);
-        /* Generate a key value pair. */
-        KeyValue *key_value = is_null_cell(tuple + meta_column->offset) 
-                            ? new_key_value(meta_column->column_name, NULL, meta_column->column_type, meta_column->own_table_name)
-                            : new_key_value(meta_column->column_name, get_value_in_tuple(tuple, meta_column), meta_column->column_type, meta_column->own_table_name);
-        key_value->is_array = meta_column->array_dim > 0;
-
-        /* Append to row data. */
-        append_list(row->data, key_value);
-    }
-
-    return row;
+    return generate_row_inner(tuple, meta_table->meta_columns);
 }
 
 /* Define the tuple by refer. 
@@ -634,6 +617,21 @@ Row *define_row(Refer *refer) {
     ReleaseBuffer(buffer);
     return row;
 }
+
+/* Purge row. 
+ * Pruge means to remove the sys-reserved column.
+ * */
+static void* purge_row(Row *row) {
+    List *list = row->data;
+    /* At least, more 3 sys-reserved column. */
+    Assert(list->size > 3);
+
+    /* Delete last 3 sys-reserved items. */
+    list_delete_tail(list, 3);
+
+    return row;
+}
+
 
 /* Define row by refer. 
  * Return undelted, filtered row, return NULL if deleted.
@@ -786,7 +784,7 @@ static bool allow_read_raw_page(ROW_HANDLER_ARG_TYPE type, void *arg) {
 static bool allow_scan_index(ROW_HANDLER_ARG_TYPE type, void *arg) {
     if (type == ARG_SELECT_PARAM) {
         SelectParam *selectParam = (SelectParam *) arg;
-        return selectParam->oblyScanIndex;
+        return selectParam->onlyScanIndex;
     }
     return false;
 }
@@ -796,7 +794,6 @@ static bool allow_scan_index(ROW_HANDLER_ARG_TYPE type, void *arg) {
 static void scan_from_leaf_node(SelectResult *select_result, ConditionNode *condition, 
                                 uint32_t page_num, Table *table, ROW_HANDLER row_handler, 
                                 ROW_HANDLER_ARG_TYPE type, void *arg) {
-
     /* Get cell number, key length and value lenght. */
     uint32_t key_len, value_len, default_value_len, cell_num;
     Buffer buffer;
@@ -1248,7 +1245,7 @@ SelectResult *select_with_column_value(Oid oid, MetaColumn *meta_column, void *v
 }
 
 /* Count number of row, used in the sql function count(1) */
-void count_row(void *destine, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg) {
+void count_row(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg) {
     if (type == ARG_SELECT_PARAM && ((SelectParam *) arg)->limitClause != NULL) {
         SelectParam *selectParam = (SelectParam *) arg;
         LimitClauseNode *limit_clause = selectParam->limitClause;
@@ -1262,7 +1259,6 @@ void count_row(void *destine, SelectResult *select_result, ROW_HANDLER_ARG_TYPE 
             if (selectParam->offset >= limit_clause->offset && 
                     selectParam->offset < (limit_clause->offset + limit_clause->rows)) {
                 select_result->row_size++;
-                select_result->rows->size++;
             } 
             release_spin_lock(&selectParam->slock);
         }
@@ -1271,22 +1267,7 @@ void count_row(void *destine, SelectResult *select_result, ROW_HANDLER_ARG_TYPE 
     } 
     else {
         select_result->row_size++;
-        select_result->rows->size++;
     }
-}
-
-/* Purge row. 
- * Pruge means to remove the sys-reserved column.
- * */
-static void* purge_row(Row *row) {
-    List *list = row->data;
-    /* At least, more 3 sys-reserved column. */
-    Assert(list->size > 3);
-
-    /* Delete last 3 sys-reserved items. */
-    list_delete_tail(list, 3);
-
-    return row;
 }
 
 /* Select tuple data. */
@@ -1317,8 +1298,7 @@ void select_tuple(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE
 
 /* Select row data. */
 void select_row(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg) {
-    Table *table = open_table_inner(select_result->oid);
-    Row *row = generate_row(tuple, table->meta_table);
+    Row *row = generate_row_inner(tuple, select_result->columns);
     /* If has limit clause. */
     if (type == ARG_SELECT_PARAM && ((SelectParam *) arg)->limitClause != NULL) {
         SelectParam *selectParam = (SelectParam *) arg;
@@ -1623,7 +1603,6 @@ static KeyValue *query_function_column_value(FunctionNode *function, SelectResul
 
 /* Query column value. */
 static KeyValue *query_plain_column_value(SelectResult *select_result, ColumnNode *column, Row *row) {
-
     if (row == NULL) 
         return new_key_value(column->column_name, NULL, T_ROW, select_result->table_name);
 

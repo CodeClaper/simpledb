@@ -186,11 +186,11 @@ static bool check_column_node(ColumnNode *column_node, MetaTable *meta_table) {
     
     /* Reach here, means column is unknown. */
     if (column_node->range_variable) 
-        db_log(ERROR, "Unknown column '%s.%s', ", 
+        db_log(ERROR, "Unknown column '%s.%s'.", 
                column_node->range_variable, 
                column_node->column_name);
     else 
-        db_log(ERROR, "Unknown column '%s', ", 
+        db_log(ERROR, "Unknown column '%s'.", 
                column_node->column_name);
 
     return false;
