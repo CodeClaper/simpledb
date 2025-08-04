@@ -629,13 +629,6 @@ typedef struct TableBufferEntry {
     int64_t xid;
 } TableBufferEntry;
 
-/* Cursor */
-//typedef struct Cursor {
-//    Table *table;
-//    uint32_t page_num;
-//    uint32_t cell_num;
-//} Cursor;
-
 /* KeyValue */
 typedef struct KeyValue {
     char *key;
@@ -645,9 +638,13 @@ typedef struct KeyValue {
     bool is_array;
 } KeyValue;
 
-/* Row */
+/* Row. 
+ * Differences between Row and tuple. 
+ * (1) Row works in User-level and tuple works in System-lelve.
+ * (2) Row used for data output to client or data input from client, 
+ *     and tuple used for data write in page or data read from page.*/
 typedef struct Row {
-    List *data;                             /* List of KeyValue. */
+    List *data;                     /* List of KeyValue. */
 } Row;
 
 /* SelectResult */
