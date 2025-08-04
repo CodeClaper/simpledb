@@ -388,7 +388,6 @@ bool IsVisible(Xid created_xid, Xid expired_xid) {
  * (3) the row is deleted by another uncommitted transaction (which not creates the row)
  * */
 bool RowIsVisible(Row *row) {
-
     /* Get row created_xid and expired_xid. */
     KeyValue *created_xid_col = lfirst(second_last_cell(row->data));
     KeyValue *expired_xid_col = lfirst(last_cell(row->data));
@@ -408,6 +407,7 @@ bool RowIsVisible(Row *row) {
     return IsVisibleInner(row_created_xid, row_expired_xid, entry);
 }
 
+
 /* Check if a row has been deleted. */
 bool RowIsDeleted(Row *row) {
     KeyValue *expired_xid_col = lfirst(last_cell(row->data));
@@ -422,20 +422,12 @@ static void TransactionInsertRow(Row *row) {
     Assert(entry != NULL);
 
     /* For created_xid */
-    KeyValue *created_xid_col = new_key_value(
-        dstrdup(CREATED_XID_COLUMN_NAME), 
-        copy_value(&entry->xid, T_LONG), 
-        T_LONG
-    );
+    KeyValue *created_xid_col = new_key_value(CREATED_XID_COLUMN_NAME, &entry->xid, T_LONG, NULL);
     lfirst(second_last_cell(row->data)) = created_xid_col;
 
     /* For expired_xid */
     Xid zero = 0;
-    KeyValue *expired_xid_col = new_key_value(
-        dstrdup(EXPIRED_XID_COLUMN_NAME),
-        copy_value(&zero, T_LONG),
-        T_LONG
-    );
+    KeyValue *expired_xid_col = new_key_value(EXPIRED_XID_COLUMN_NAME, &zero, T_LONG, NULL);
     lfirst(last_cell(row->data)) = expired_xid_col;
 }
 

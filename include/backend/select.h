@@ -29,6 +29,9 @@ typedef struct SelectParam {
 /* Count number of row, used in the sql function count() */
 void count_row(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg);
 
+/* Select tuple data. */
+void select_tuple(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg);
+
 /* Select row data. */
 void select_row(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg);
 

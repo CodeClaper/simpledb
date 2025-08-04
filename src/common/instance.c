@@ -4,24 +4,23 @@
 #include "instance.h"
 #include "data.h"
 #include "mmgr.h"
+#include "copy.h"
 #include "systable.h"
 
 /* Generate new KeyValue instance. */
-KeyValue *new_key_value(char *key, void *value, DataType data_type) {
+KeyValue *new_key_value(char *key, void *value, DataType data_type, char *table_name) {
     KeyValue *key_value = instance(KeyValue);
-    key_value->key = key;
-    key_value->value = value;
+    key_value->key = dstrdup(key);
+    key_value->value = copy_value(value, data_type);
     key_value->data_type = data_type;
+    key_value->table_name = is_empty(table_name) ? NULL : dstrdup(table_name);
     key_value->is_array = false;
     return key_value;
 }
 
 /* Generate new row instance. */
-Row *new_row(void *key, char *table_name) {
+Row *new_row() {
     Row *row = instance(Row);
-    row->key = key;
-    if (!is_empty(table_name))
-        strcpy(row->table_name, table_name);
     row->data = create_list(NODE_KEY_VALUE);
     return row;
 }
@@ -41,6 +40,7 @@ SelectResult *new_select_result(StatementType stype, char *table_name, bool is_h
     select_result->oid = is_empty(table_name) ? OID_ZERO : TableNameFindOid(table_name);
     select_result->table_name = is_empty(table_name) ? NULL : dstrdup(table_name);
     select_result->range_variable = NULL;
+    select_result->tuples = CreateQueue(NODE_VOID);
     select_result->rows = CreateQueue(NODE_ROW);
     select_result->row_size = 0;
     select_result->current_tuple = NULL;

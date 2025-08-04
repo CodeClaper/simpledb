@@ -38,7 +38,7 @@
 #include "utils.h"
 #include "pager.h"
 #include "meta.h"
-
+#include "row.h"
 
 /* 
  * The XLogEntry Chain.
@@ -161,6 +161,8 @@ static void HeapDeleteXLog(Refer *refer, TransEntry *transaction) {
     Assert(RowIsDeleted(rawRow));
 
     Row *newRow = copy_row(rawRow);
+    Table *table = open_table_inner(refer->oid);
+    void *key = RowFindKey(newRow, table->meta_table);
     KeyValue *expired_xid_col = lfirst(last_cell(newRow->data));
     Xid expired_xid = *(Xid *)expired_xid_col->value;
     Assert(expired_xid == transaction->xid);
@@ -169,7 +171,7 @@ static void HeapDeleteXLog(Refer *refer, TransEntry *transaction) {
     *(Xid *)expired_xid_col->value = 0;
 
     /* Repositioning. */
-    Cursor *new_cur = define_cursor(open_table_inner(refer->oid), newRow->key);
+    Cursor *new_cur = define_cursor(table, key);
 
     /* Re-insert. */
     insert_leaf_node_cell(new_cur, newRow);
@@ -182,7 +184,9 @@ static void HeadUpdateDeleteXlog(Refer *refer, TransEntry *transaction) {
     Row *rawRow = define_row(refer);
     Assert(RowIsDeleted(rawRow));
 
+    Table *table = open_table_inner(refer->oid);
     Row *newRow = copy_row(rawRow);
+    void *key = RowFindKey(newRow, table->meta_table);
 
     KeyValue *expired_xid_col = lfirst(last_cell(newRow->data));
     Xid expired_xid = *(Xid *)expired_xid_col->value;
@@ -192,7 +196,7 @@ static void HeadUpdateDeleteXlog(Refer *refer, TransEntry *transaction) {
     *(Xid *)expired_xid_col->value = 0;
 
     /* Repositioning. */
-    Cursor *new_cur = define_cursor(open_table_inner(refer->oid), newRow->key);
+    Cursor *new_cur = define_cursor(table, key);
     Refer *new_ref = convert_refer(new_cur);
 
     /* Lock update refer. */

@@ -415,9 +415,9 @@ void *get_real_value(void *value, DataType type) {
 } 
 
 /* Get value in tuple. */
-void *get_value_in_tuple(void *destin, MetaColumn *meta_column) {
-    bool nflag =  *(bool *)(destin + meta_column->offset);
-    return nflag ? NULL : define_row_value((destin + meta_column->offset), meta_column);
+void *get_value_in_tuple(void *tuple, MetaColumn *meta_column) {
+    bool nflag =  *(bool *)(tuple + meta_column->offset);
+    return nflag ? NULL : define_row_value((tuple + meta_column->offset), meta_column);
 }
 
 /* Combine AtomNode by column and value. */
@@ -750,27 +750,23 @@ bool has_user_primary_key(MetaTable *meta_table) {
 }
 
 /* Get the created xid. */
-Xid get_created_xid(void *destinct, MetaTable *meta_table) {
-    uint32_t offset = 0;
+Xid get_created_xid(void *tuple, MetaTable *meta_table) {
     ListCell *lc;
     foreach (lc, meta_table->meta_columns) {
         MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
         if (meta_column->sys_reserved && streq(meta_column->column_name, CREATED_XID_COLUMN_NAME))
-            return *(Xid *)(destinct + offset);
-        offset += meta_column->column_length;
+            return *(Xid *) get_value_in_tuple(tuple, meta_column);
     }
     return -1;
 }
 
 /* Get the expired xid. */
-Xid get_expired_xid(void *destinct, MetaTable *meta_table) {
-    uint32_t offset = 0;
+Xid get_expired_xid(void *tuple, MetaTable *meta_table) {
     ListCell *lc;
     foreach (lc, meta_table->meta_columns) {
         MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
         if (meta_column->sys_reserved && streq(meta_column->column_name, EXPIRED_XID_COLUMN_NAME))
-            return *(Xid *)(destinct + offset);
-        offset += meta_column->column_length;
+            return *(Xid *) get_value_in_tuple(tuple, meta_column);
     }
     return -1;
 }

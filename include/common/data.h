@@ -647,8 +647,8 @@ typedef struct KeyValue {
 
 /* Row */
 typedef struct Row {
-    void *key;                              /* Primary key. */
-    char table_name[MAX_TABLE_NAME_LEN];    /* Table name. */
+   // void *key;                              /* Primary key. */
+   // char table_name[MAX_TABLE_NAME_LEN];    /* Table name. */
     List *data;                             /* List of KeyValue. */
 } Row;
 
@@ -659,6 +659,7 @@ typedef struct SelectResult {
     char *table_name;               /* Table name. */
     char *range_variable;           /* Range variable. */
     uint32_t row_size;              /* Row size. Although in rows list indicates the row size, these row_size works for count agg. */
+    Queue *tuples;                  /* The selected tuples. */
     Queue *rows;                    /* The selected rows. */
     void *current_tuple;            /* The current tuple. */
     bool first_row_flag;            /* The flag if first row, user in limit. */

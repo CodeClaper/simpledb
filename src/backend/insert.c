@@ -37,6 +37,7 @@
 #include "xlog.h"
 #include "log.h"
 #include "utils.h"
+#include "row.h"
 #include "jsonwriter.h"
 #include "instance.h"
 #include "strheaptable.h"
@@ -69,8 +70,7 @@ InsertNode *fake_insert_node(char *table_name, List *value_list) {
 }
 
 /* Convert QuerySpecNode to SelectionNode. 
- * Notice: not need to free selection, table_exp in select_node.
- * */
+ * Notice: not need to free selection, table_exp in select_node. */
 static SelectNode *convert_select_node(QuerySpecNode *query_spec) {
     SelectNode *select_node = instance(SelectNode);
     select_node->selection = query_spec->selection;
@@ -79,53 +79,35 @@ static SelectNode *convert_select_node(QuerySpecNode *query_spec) {
 }
 
 /* Generate new sys_id column.*/
-static KeyValue *new_sys_id_column() {
+static KeyValue *new_sys_id_column(char *table_name) {
     /* Automatically insert sys_id using current sys time. */
     int64_t sys_id = get_timestamp(NANOSECOND);
-    return new_key_value(
-        dstrdup(SYS_RESERVED_ID_COLUMN_NAME), 
-        copy_value(&sys_id, T_LONG), 
-        T_LONG
-    );
+    return new_key_value(SYS_RESERVED_ID_COLUMN_NAME, &sys_id, T_LONG, table_name);
 }
 
 /* Generate new created_xid column.*/
-static KeyValue *new_created_xid_column() {
+static KeyValue *new_created_xid_column(char *table_name) {
     /* Get current transaction. */
     TransEntry *current_trans = FindTransaction();
     Assert(current_trans);
-    return new_key_value(
-        dstrdup(CREATED_XID_COLUMN_NAME), 
-        copy_value(&current_trans->xid, T_LONG), 
-        T_LONG
-    );
+    return new_key_value(CREATED_XID_COLUMN_NAME, &current_trans->xid, T_LONG, table_name);
 }
 
 /* Generate new expired_xid column. */
-static KeyValue *new_expired_xid_column() {
+static KeyValue *new_expired_xid_column(char *table_name) {
     /* For expired_xid */
     int64_t zero = 0;
-    return new_key_value(
-        dstrdup(EXPIRED_XID_COLUMN_NAME),
-        copy_value(&zero, T_LONG),
-        T_LONG
-    );
+    return new_key_value(EXPIRED_XID_COLUMN_NAME, &zero, T_LONG, table_name);
 }
 
-/* Supplement system reserved column. */
-void supple_reserved_column(Row *row) {
+/* Makeup the system reserved column. */
+void makeup_reserved_columns(Row *row, char *table_name) {
     /* Append sys_id column key value. */
-    KeyValue *sys_id_col = new_sys_id_column();
-    append_list(row->data, sys_id_col);
+    append_list(row->data, new_sys_id_column(table_name));
     /* Append created_xid column key value. */
-    append_list(row->data, new_created_xid_column());
+    append_list(row->data, new_created_xid_column(table_name));
     /* Append expired_xid column key value. */
-    append_list(row->data, new_expired_xid_column());
-    
-    /* If built-in primary key, assign it with sys_id. */
-    Table *table = open_table(row->table_name);
-    if (built_in_primary_key(table->meta_table))
-        row->key = copy_value(sys_id_col->value, T_LONG);
+    append_list(row->data, new_expired_xid_column(table_name));
 }
 
 
@@ -137,11 +119,7 @@ static Row *generate_insert_row_for_all2(MetaTable *meta_table, List *value_item
     Assert(value_item_list->type == NODE_VALUE_ITEM);
 
     /* Instance row. */
-    Row *row = instance(Row);
-    
-    /* Initialization */
-    strcpy(row->table_name, meta_table->table_name);
-    row->data = create_list(NODE_KEY_VALUE);
+    Row *row = new_row();
     
     /* Row data. */
     ListCell *lc;
@@ -151,20 +129,16 @@ static Row *generate_insert_row_for_all2(MetaTable *meta_table, List *value_item
         if (meta_column->sys_reserved) 
             continue;
 
-        KeyValue *key_value = new_key_value(
-            dstrdup(meta_column->column_name),
-            get_insert_value(value_item_list, __i, meta_column),
-            meta_column->column_type
-        );
-
-        /* Check if primary key column. */
-        if (meta_column->is_primary) 
-            row->key = copy_value2(key_value->value, meta_column);
-
+        KeyValue *key_value = new_key_value(meta_column->column_name, 
+                                            NULL,
+                                            meta_column->column_type, 
+                                            meta_table->table_name);
+        key_value->value = get_insert_value(value_item_list, __i, meta_column);
         append_list(row->data, key_value);
     }
 
-    supple_reserved_column(row);
+    /* Make up the reserved columns. */
+    makeup_reserved_columns(row, meta_table->table_name);
     
     return row;
 }
@@ -173,7 +147,6 @@ static Row *generate_insert_row_for_all2(MetaTable *meta_table, List *value_item
  * Return list of Row.
  * */
 static List *generate_insert_row_for_all(InsertNode *insert_node) {
-
     List *value_list = insert_node->values_or_query_spec->values;
 
     /* Table and MetaTable. */
@@ -205,15 +178,10 @@ static List *generate_insert_row_for_all(InsertNode *insert_node) {
 static Row *generate_insert_row_for_part2(MetaTable *meta_table, List *column_list, List *value_item_list) {
 
     /* Instance row. */
-    Row *row = instance(Row);
-
-    /* Initialization */
-    strcpy(row->table_name, meta_table->table_name);
-    row->data = create_list(NODE_KEY_VALUE);
+    Row *row = new_row();
     
     /* Row data. */
     ListCell *lc;
-    int i = 0;
     foreach (lc, column_list) {
         ColumnNode *column = lfirst(lc);
         MetaColumn *meta_column = get_meta_column_by_name(meta_table, column->column_name);
@@ -223,25 +191,21 @@ static Row *generate_insert_row_for_part2(MetaTable *meta_table, List *column_li
                    column->column_name,
                    meta_table->table_name);
 
-        KeyValue *key_value = new_key_value(
-            dstrdup(meta_column->column_name), 
-            get_insert_value(value_item_list, i, meta_column), 
-            meta_column->column_type
-        );
+        KeyValue *key_value = new_key_value(meta_column->column_name, 
+                                            NULL,
+                                            meta_column->column_type, 
+                                            meta_table->table_name);
+        key_value->value = get_insert_value(value_item_list, __i, meta_column);
 
         /* Value of KeyValue may be null when it is Refer. */
         if (key_value->data_type == T_REFERENCE && key_value->value == NULL)
             return NULL;
-        
-        /* Check if primary key column. */
-        if (meta_column->is_primary) 
-            row->key = copy_value(key_value->value, key_value->data_type);
 
         append_list(row->data, key_value);
-        i++;
     }
 
-    supple_reserved_column(row);
+    /* Make up the reserved columns. */
+    makeup_reserved_columns(row, meta_table->table_name);
 
     return row;
 }
@@ -286,22 +250,21 @@ static List *generate_insert_row(InsertNode *insert_node) {
 
 /* Convert to insert row. */
 static Row *convert_insert_row(Row *row, Table *table) {
-    MetaColumn *primary_meta_column = get_primary_key_meta_column(table->meta_table);
-    Row *insert_row = instance(Row);
-    strcpy(insert_row->table_name, GET_TABLE_NAME(table));
-    insert_row->data = create_list(NODE_KEY_VALUE);
+    Row *insert_row = new_row();
 
     /* Copy data. */
     ListCell *lc;
     foreach (lc, row->data) {
-        KeyValue *key_value = copy_key_value(lfirst(lc));
+        KeyValue *current = (KeyValue *)lfirst(lc);
+        KeyValue *key_value = new_key_value(current->key, 
+                                            current->value, 
+                                            current->data_type, 
+                                            GET_TABLE_NAME(table));
         append_list(insert_row->data, key_value);
-
-        if (streq(key_value->key, primary_meta_column->column_name))
-            insert_row->key = copy_value(key_value->value, primary_meta_column->column_type);
     }
 
-    supple_reserved_column(insert_row);
+    /* Make up the reserved columns. */
+    makeup_reserved_columns(insert_row, GET_TABLE_NAME(table));
 
     return insert_row;
 }
@@ -313,14 +276,16 @@ static Row *convert_insert_row(Row *row, Table *table) {
 Refer *insert_one_row(Table *table, Row *row) {
     MetaColumn *primary_key_meta_column = get_primary_key_meta_column(table->meta_table);
     Assert(primary_key_meta_column);
-
-    Cursor *cursor = define_cursor(table, row->key);
+    
+    void *key = RowFindKey(row, table->meta_table);
+    Assert(key != NULL);
+    Cursor *cursor = define_cursor(table, key);
     if (has_user_primary_key(table->meta_table) && 
-            check_duplicate_key(cursor, row->key) && 
+            check_duplicate_key(cursor, key) && 
                 !cursor_is_deleted(cursor)) {
         char *keyStr = primary_key_meta_column->column_type == T_STRING
-                ? QueryStringValue(row->key)
-                : get_key_str(row->key, primary_key_meta_column->column_type);
+                ? QueryStringValue(key)
+                : get_key_str(key, primary_key_meta_column->column_type);
         db_log(ERROR, "key '%s' in table '%s' already exists, not allow duplicate key.", 
                keyStr, GET_TABLE_NAME(table));
         return NULL;
@@ -371,7 +336,6 @@ List *insert_for_values(InsertNode *insert_node) {
 
 /* Insert for query spec case. */
 static List *insert_for_query_spec(InsertNode *insert_node) {
-
     /* Check if table exists. */
     Table *table = open_table(insert_node->table_name);
     if (!table) {
@@ -398,7 +362,7 @@ static List *insert_for_query_spec(InsertNode *insert_node) {
         /* Insert into rows. */
         QueueCell *qc;
         qforeach (qc, select_result->rows) {
-            Row *insert_row = convert_insert_row((Row *) qfirst(qc), table);
+            Row *insert_row = convert_insert_row((Row *)qfirst(qc), table);
             Refer *refer = insert_one_row(table, insert_row);
             append_list(list, refer);
             free_row(insert_row);

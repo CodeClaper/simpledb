@@ -12,6 +12,7 @@
 #include "delete.h"
 #include "mmgr.h"
 #include "data.h"
+#include "row.h"
 #include "table.h"
 #include "copy.h"
 #include "free.h"
@@ -29,19 +30,22 @@
 #include "instance.h"
 
 /* Delete row */
-void delete_row(void *destin, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg) {
+void delete_row(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg) {
+    void *key;
     Table *table;
     Cursor *cursor;
     Refer *refer;
     Row *row, *currentRow;
     
     table = open_table_inner(select_result->oid);
-    row = generate_row(destin, table->meta_table);
+    row = generate_row(tuple, table->meta_table);
     /* Only deal with row that is visible for current transaction. */
     if (RowIsVisible(row)) {
+        /* Get key in row. */
+        key = RowFindKey(row, table->meta_table);
 
         /* Define the cursor of the row. */
-        cursor = define_cursor(table, row->key);
+        cursor = define_cursor(table, key);
 
         /* Get refer and record xlog. */
         refer = convert_refer(cursor);

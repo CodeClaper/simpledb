@@ -36,7 +36,7 @@ ReferUpdateEntity *new_refer_update_entity(Refer *old_refer, Refer *new_refer);
 Cursor *define_cursor(Table *table, void *key);
 
 /* Define Refer. */
-Refer *define_refer(Row *row);
+Refer *define_refer(Table *table, void *key);
 
 /* Fetch Refer. */
 Refer *fetch_refer(MetaColumn *meta_column, ConditionNode *condition_node);

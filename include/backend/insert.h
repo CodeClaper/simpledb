@@ -3,8 +3,8 @@
 /* Insert one row. */
 Refer *insert_one_row(Table *table, Row *row);
 
-/* Supplement system reserved column. */
-void supple_reserved_column(Row *row);
+/* Makeup the system reserved column. */
+void makeup_reserved_columns(Row *row, char *table_name);
 
 /* Make a fake InsertNode. */
 InsertNode *fake_insert_node(char *table_name, List *value_item_set_node);

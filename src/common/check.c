@@ -20,6 +20,7 @@
 #include "asserts.h"
 #include "compare.h"
 #include "data.h"
+#include "row.h"
 #include "table.h"
 #include "log.h"
 #include "copy.h"
@@ -724,8 +725,10 @@ static bool check_unique_column(Table *table, MetaColumn *meta_column, void *val
         QueueCell *qc;
         qforeach(qc, result->rows) {
             Row *row = (Row *) qfirst(qc);
-            if (!equal(get_real_value(row->key, primary_column->column_type), 
-                       get_real_value(selected_row->key, primary_column->column_type), 
+            void *key = RowFindKey(row, table->meta_table);
+            void *target_key = RowFindKey(selected_row, table->meta_table);
+            if (!equal(get_real_value(key, primary_column->column_type), 
+                       get_real_value(target_key, primary_column->column_type), 
                        primary_column->column_type)) 
             {
                 db_log(ERROR, "Key '%s' already exists, not allowd duplicate key. ",

@@ -1,10 +1,10 @@
 #include "data.h"
 
 /* New KeyValue instance. */
-KeyValue *new_key_value(char *key, void *value, DataType data_type);
+KeyValue *new_key_value(char *key, void *value, DataType data_type, char *table_name);
 
 /* New row instance. */
-Row *new_row(void *key, char *table_name);
+Row *new_row();
 
 /* New ArrayValue instance. */
 ArrayValue *new_array_value(DataType data_type, uint32_t size);

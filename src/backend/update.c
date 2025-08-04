@@ -16,6 +16,7 @@
 #include "mmgr.h"
 #include "data.h"
 #include "meta.h"
+#include "row.h"
 #include "select.h"
 #include "delete.h"
 #include "insert.h"
@@ -45,8 +46,6 @@ static void update_cell(Row *row, AssignmentNode *assign_node, MetaColumn *meta_
         if (streq(key_value->key, assign_node->column->column_name)) {
             ValueItemNode *value_item = assign_node->value;
             key_value->value = assign_value_from_value_item_node(value_item, meta_column);
-            if (meta_column->is_primary)
-                row->key = key_value->value;
         }
     } 
 }
@@ -64,16 +63,20 @@ static void delete_row_for_update(Refer *refer, Row *row) {
 
 /* Insert row for update. */
 static void insert_row_for_update(Row *row, Table *table) {
+    void *key;
     Cursor *new_cur;
     Refer *new_ref;
 
-    new_cur = define_cursor(table, row->key);
+    key = RowFindKey(row, table->meta_table);
+    new_cur = define_cursor(table, key);
     new_ref = convert_refer(new_cur);
 
     /* Update old row. */
     UpdateTransactionState(row, TR_INSERT);
+
     /* Insert */
     insert_leaf_node_cell(new_cur, row);
+
     /* Record xlog for insert. */
     RecordXlog(new_ref, HEAP_UPDATE_INSERT);
 
@@ -83,16 +86,18 @@ static void insert_row_for_update(Row *row, Table *table) {
 
 
 /* Update row 
- * Update operation can be regarded as delete + re-insert operation. 
+ * ----------
+ * Update operation is divided into delete and re-insert operation. 
  * It makes transaction roll back simpler. */
-static void update_row(void *destin, SelectResult *select_result, 
+static void update_row(void *tuple, SelectResult *select_result, 
                        ROW_HANDLER_ARG_TYPE type, void *arg) {
     Table *table;
     Refer *oldRefer, *newRefer;
     Row *rawRow, *currentRow, *new_row;
+    void *old_key, *new_key;
         
     table = open_table_inner(select_result->oid);
-    rawRow = generate_row(destin, table->meta_table);
+    rawRow = generate_row(tuple, table->meta_table);
     /* Only update row that is visible for current transaction. */
     if (!RowIsVisible(rawRow)) 
         return;
@@ -100,7 +105,8 @@ static void update_row(void *destin, SelectResult *select_result,
     select_result->row_size++;
 
     /* Get old refer, and lock update refer. */
-    oldRefer = define_refer(rawRow);
+    old_key = RowFindKey(rawRow, table->meta_table);
+    oldRefer = define_refer(table, old_key);
     add_refer_update_lock(oldRefer);
     currentRow = define_row(oldRefer);
 
@@ -125,7 +131,8 @@ static void update_row(void *destin, SelectResult *select_result,
     insert_row_for_update(new_row, table);
 
     /* Recalculate Refer, because afer insert, row refer may be changed. */
-    newRefer = define_refer(new_row);
+    new_key = RowFindKey(new_row, table->meta_table);
+    newRefer = define_refer(table, new_key);
 
     /* Free Update refer lock. */
     free_refer_update_lock(oldRefer);

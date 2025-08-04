@@ -78,9 +78,6 @@ void free_refer_update_entity(ReferUpdateEntity *refer_update_entity) {
 /* Free Row. */
 void free_row(Row *row) {
     if (row) {
-        /* free key. */
-        if (row->key)
-            dfree(row->key);
         /* free row data. */
         if (row->data) 
             free_list_deep(row->data);
@@ -110,6 +107,9 @@ void free_select_result(SelectResult *select_result) {
 
         if (select_result->range_variable) 
             dfree(select_result->range_variable);
+        
+        if (select_result->tuples)
+            FreeQueue(select_result->tuples);
 
         if (select_result->rows) 
             /* free rows. */

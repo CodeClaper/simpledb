@@ -56,6 +56,7 @@
 #include "pager.h"
 #include "bufmgr.h"
 #include "meta.h"
+#include "row.h"
 #include "compare.h"
 #include "log.h"
 #include "index.h"
@@ -1158,6 +1159,7 @@ void insert_internal_node_cell(Table *table, uint32_t page_num, uint32_t new_chi
  * And half high cell in the old leaf will be moved to new leaf node. */
 static void insert_and_split_leaf_node(Cursor *cursor, Row *row) {
     /* Get cell key, value and cell lenght. */
+    void *key;
     Table *table;
     uint32_t key_len, value_len, default_value_len, cell_length;
     
@@ -1166,6 +1168,7 @@ static void insert_and_split_leaf_node(Cursor *cursor, Row *row) {
     value_len = table->index_value_len;
     default_value_len = table->heap_value_len;
     cell_length = key_len + value_len;
+    key = RowFindKey(row, table->meta_table);
     Oid oid = GET_TABLE_OID(table);
 
     /* Get table primary key meta info. */
@@ -1234,7 +1237,7 @@ static void insert_and_split_leaf_node(Cursor *cursor, Row *row) {
             /* Deposit cursor. */
             void *serial_data = seriable_index_value(row, cursor);
             memcpy(destination, serial_data, value_len);
-            set_leaf_node_cell_key(destination_node, index_at_node, key_len, value_len, default_value_len, row->key);
+            set_leaf_node_cell_key(destination_node, index_at_node, key_len, value_len, default_value_len, key);
             dfree(serial_data);
         } else if (i > cursor->cell_num) {
             /* Define new position, and right cells make cell space. */
@@ -1312,6 +1315,7 @@ static void insert_leaf_node_new_cell(Cursor *cursor, Row *row) {
     uint32_t cell_num, value_len, key_len, default_value_len, cell_length;
     Table *table = cursor->table;
     Oid oid = GET_TABLE_OID(table);
+    void *key = RowFindKey(row, table->meta_table);
 
     /* Get the node buffer. */
     Buffer buffer = ReadBuffer(oid, cursor->page_num);  
@@ -1350,7 +1354,7 @@ static void insert_leaf_node_new_cell(Cursor *cursor, Row *row) {
     }
     
     /* Insert the new row. */
-    set_leaf_node_cell_key(node, cursor->cell_num, key_len, value_len, default_value_len, row->key);
+    set_leaf_node_cell_key(node, cursor->cell_num, key_len, value_len, default_value_len, key);
     void *destination = seriable_index_value(row, cursor);
     memcpy(get_leaf_node_cell_value(node, key_len, value_len, default_value_len, cursor->cell_num), 
            destination, value_len);
@@ -1361,14 +1365,14 @@ static void insert_leaf_node_new_cell(Cursor *cursor, Row *row) {
         void *old_max_key = get_leaf_node_cell_key(node, cell_num - 1, key_len, value_len, default_value_len);
         MetaColumn *primary_key_meta_column = get_primary_key_meta_column(cursor->table->meta_table);
         /* Logic check.*/
-        Assert(greater_equal(get_real_value(row->key, primary_key_meta_column->column_type), 
+        Assert(greater_equal(get_real_value(key, primary_key_meta_column->column_type), 
                              get_real_value(old_max_key, primary_key_meta_column->column_type), 
                              primary_key_meta_column->column_type));
 
         /* Update internal node key. */
         update_internal_node_key(
             cursor->table, parent_page_num, 
-            old_max_key, row->key, 
+            old_max_key, key, 
             key_len, value_len, default_value_len, 
             primary_key_meta_column->column_type
         );

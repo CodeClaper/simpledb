@@ -17,14 +17,15 @@
 #include "select.h"
 #include "delete.h"
 #include "trans.h"
+#include "meta.h"
 #include "sysstate.h"
 #include "heaptable.h"
 
-/* System table meta column list. */
+/* System table meta column lisLEAF_NODE_CELL_NULL_FLAG_SIZE + MAX_COLUMN_SIZEt. */
 MetaColumn SYS_TABLE_COLUMNS[] = {
     {SYS_TABLE_NAME, SYS_TABLE_OID_NAME, T_LONG, "", (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), 0, true, false, false, false, 0, 0},
-    {SYS_TABLE_NAME, SYS_TABLE_RELNAME_NAME, T_VARCHAR, "", (LEAF_NODE_CELL_NULL_FLAG_SIZE + MAX_COLUMN_SIZE), 0, false, false, false, false, 0, 0},
-    {SYS_TABLE_NAME, SYS_TABLE_RELTYPE_NAME, T_INT, "", (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int32_t)), 0, false, false, false, false, 0, 0}
+    {SYS_TABLE_NAME, SYS_TABLE_RELNAME_NAME, T_VARCHAR, "", (LEAF_NODE_CELL_NULL_FLAG_SIZE + MAX_COLUMN_SIZE), (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), false, false, false, false, 0, 0},
+    {SYS_TABLE_NAME, SYS_TABLE_RELTYPE_NAME, T_INT, "", (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int32_t)), (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE + MAX_COLUMN_SIZE), false, false, false, false, 0, 0}
 };
 
 /* System reserved columns. */
@@ -34,7 +35,7 @@ MetaColumn SYS_RESERVED_COLUMNS[] = {
     { "", EXPIRED_XID_COLUMN_NAME, T_LONG, "", (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), 0, false, false, false, true, 0, 0 }
 }; 
 
-static Object RowConvertObject(Row *row);
+static Object TupleConvertObject(void *tuple);
 
 /* Find next Oid. */
 inline Oid FindNextOid() {
@@ -89,7 +90,6 @@ static MetaTable *CreateSysMetaTable() {
  * Panic if fail.
  * */
 void InitSysTable() {
-    
     /* Avoid repeat create system table. */
     if (SysTableFileExists()) 
         return;
@@ -176,7 +176,7 @@ static ConditionNode *RelnameTypeConvertCondition(char *relname, ObjectType type
  * Panic if not found or found more than one.
  * */
 static Object OidFindObjectInner(Oid oid) {
-    Row *row;
+    void *tuple;
     ConditionNode *condition;
     SelectResult *result;
 
@@ -186,7 +186,7 @@ static Object OidFindObjectInner(Oid oid) {
     /* Query. */
     query_with_condition_inner(
         SYS_ROOT_OID, condition, result, 
-        select_row, ARG_NULL, NULL
+        select_tuple, ARG_NULL, NULL
     );
 
     /* Logically, we will get one row data. */
@@ -195,9 +195,9 @@ static Object OidFindObjectInner(Oid oid) {
     if (result->row_size > 1)
         db_log(PANIC, "Logic error, found more than one object by oid %ld in system table.", oid);
     
-    row = (Row *) qfirst(QueueHead(result->rows));
+    tuple = (void *) qfirst(QueueHead(result->tuples));
 
-    return RowConvertObject(row);
+    return TupleConvertObject(tuple);
 }
 
 /* Find Object by oid */
@@ -228,7 +228,7 @@ static Oid RelnameAndReltypeFindOid(char *relname, ObjectType reltype) {
     Object entity;
     ConditionNode *condition;
     SelectResult *result;
-    Row *row;
+    void *tuple;
 
     condition = RelnameTypeConvertCondition(relname, reltype);
     result = new_select_result(SELECT_STMT, SYS_TABLE_NAME, true);
@@ -236,7 +236,7 @@ static Oid RelnameAndReltypeFindOid(char *relname, ObjectType reltype) {
     /* Query. */
     query_with_condition_inner(
         SYS_ROOT_OID, condition, result, 
-        select_row, ARG_NULL, NULL
+        select_tuple, ARG_NULL, NULL
     );
 
     /* The rows number maybe zero, which means the table not exists. 
@@ -248,9 +248,9 @@ static Oid RelnameAndReltypeFindOid(char *relname, ObjectType reltype) {
                "Logic error, found more than one object by relname '%s' and reltype '%d' in system table.", 
                relname, reltype);
     
-    row = (Row *) qfirst(QueueHead(result->rows));
+    tuple = (void *) qfirst(QueueHead(result->tuples));
 
-    entity = RowConvertObject(row);
+    entity = TupleConvertObject(tuple);
 
     return entity.oid;
 }
@@ -296,14 +296,14 @@ char *OidFindRelName(Oid oid) {
     return dstrdup(entity.relname);
 }
 
-/* Convert rows to object list. */
-static List *RowsConvertObjectList(Queue *qRow) {
+/* Convert tuples to object list. */
+static List *TuplesConvertObjectList(Queue *qTuples) {
     List *list = create_list(NODE_VOID);
     
     QueueCell *qc;
-    qforeach (qc, qRow) {
-        Row *row = (Row *) qfirst(qc);
-        Object entity = RowConvertObject(row);
+    qforeach (qc, qTuples) {
+        void *tuple = (void *) qfirst(qc);
+        Object entity = TupleConvertObject(tuple);
         Object *datum = instance(Object);
         memcpy(datum, &entity, sizeof(Object));
         append_list(list, datum);
@@ -321,9 +321,9 @@ List *FindAllObject() {
     /* Query. */
     query_with_condition_inner(
         SYS_ROOT_OID, NULL, result, 
-        select_row, ARG_NULL, NULL
+        select_tuple, ARG_NULL, NULL
     );
-    return RowsConvertObjectList(result->rows);
+    return TuplesConvertObjectList(result->tuples);
 }
 
 /* Geneate Object entity. 
@@ -372,14 +372,15 @@ static void *ObjectConvertKeyValue(Object entity, int i) {
     return NULL;
 }
 
-/* Convert row to object. */
-static Object RowConvertObject(Row *row) {
+/* Convert the tuple to object. */
+static Object TupleConvertObject(void *tuple) {
     Object entity;
 
-    char *relname = ((KeyValue *)lfirst(list_nth_cell(row->data, 1)))->value;
-    ObjectType *type = ((KeyValue *)lfirst(list_nth_cell(row->data, 2)))->value;
+    Oid *oid = (Oid *) get_value_in_tuple(tuple, SYS_TABLE_COLUMNS + 0);
+    char *relname = (char *) get_value_in_tuple(tuple, SYS_TABLE_COLUMNS + 1);
+    ObjectType *type = (ObjectType *) get_value_in_tuple(tuple, SYS_TABLE_COLUMNS + 2);
 
-    entity.oid = *(Oid *)row->key;
+    entity.oid = *oid;
     memset(entity.relname, 0, MAX_RELNAME_LEN);
     memcpy(entity.relname, relname, MAX_RELNAME_LEN);
     entity.reltype = *type;
@@ -391,26 +392,20 @@ static Object RowConvertObject(Row *row) {
  * Return a new row which need be freed by caller.
  * */
 static Row *ObjectConvertRow(Object entity) {
-    Row *row = instance(Row);
-
-    row->key = instance(Oid);
-    *(Oid *)(row->key) = entity.oid;
-    memcpy(row->table_name, SYS_TABLE_NAME, strlen(SYS_TABLE_NAME));
-    row->data = create_list(NODE_KEY_VALUE);
+    Row *row = new_row();
 
     int i;
     for (i = 0; i < SYS_TABLE_COLUMNS_LENGTH; i++) {
         MetaColumn meta_column = SYS_TABLE_COLUMNS[i];
-        KeyValue *key_value = new_key_value(
-            dstrdup(meta_column.column_name),
-            ObjectConvertKeyValue(entity, i),
-            meta_column.column_type
-        );
+        KeyValue *key_value = new_key_value(meta_column.column_name, 
+                                            ObjectConvertKeyValue(entity, i), 
+                                            meta_column.column_type, 
+                                            meta_column.own_table_name);
         append_list(row->data, key_value);
     }
     
     /* Make up the reserved columns. */
-    supple_reserved_column(row);
+    makeup_reserved_columns(row, SYS_TABLE_NAME);
 
     return row;
 }

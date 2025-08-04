@@ -29,7 +29,7 @@ void *get_value_from_value_item_node(ValueItemNode *value_item_node, MetaColumn 
 void *get_real_value(void *value, DataType type);
 
 /* Get value in tuple. */
-void *get_value_in_tuple(void *destin, MetaColumn *meta_column);
+void *get_value_in_tuple(void *tuple, MetaColumn *meta_column);
 
 /* Combine AtomNode by column and value. */
 AtomNode *combine_atom_node(MetaColumn *meta_column, void *value);
@@ -87,10 +87,10 @@ uint32_t calc_raw_meta_column_len(MetaColumn *meta_column);
 bool has_user_primary_key(MetaTable *meta_table);
 
 /* Get the created xid. */
-Xid get_created_xid(void *destinct, MetaTable *meta_table);
+Xid get_created_xid(void *tuple, MetaTable *meta_table);
 
 /* Get the expired xid. */
-Xid get_expired_xid(void *destinct, MetaTable *meta_table);
+Xid get_expired_xid(void *tuple, MetaTable *meta_table);
 
 /* Get the created xid. */
 uint32_t get_created_xid_offset(MetaTable *meta_table);
@@ -103,3 +103,4 @@ MetaColumn *TableColumnNameFindMetaColumn(List *meta_columns, char *table_name, 
 
 /* Find MetaColumn by column name. */
 MetaColumn *NameFindMetaColumn(List *meta_columns, char *column_name);
+

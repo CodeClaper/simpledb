@@ -20,9 +20,6 @@ Refer *copy_refer(Refer *refer);
 /* Copy row. */
 Row *copy_row(Row *row);
 
-/* Copy row igonore system reserved columns. */
-Row *copy_row_without_reserved(Row *row);
-
 /* Copy meta column. */
 MetaColumn *copy_meta_column(MetaColumn *meta_column);
 

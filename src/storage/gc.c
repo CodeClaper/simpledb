@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include "gc.h"
 #include "data.h"
+#include "row.h"
 #include "log.h"
 #include "free.h"
 #include "trans.h"
@@ -74,13 +75,17 @@ static bool allow_gc() {
 static void gc_row(void *destin, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg) {
     Table *table = open_table_inner(select_result->oid);
     Row *row = generate_row(destin, table->meta_table);
+    void *key = RowFindKey(row, table->meta_table);
+
     /* Only for deleted row. */
     if (!RowIsDeleted(row))
         return;
+
     /* Cursor */
-    Cursor * cursor = define_cursor(table, row->key);
+    Cursor * cursor = define_cursor(table, key);
+
     /* Delete row. */
-    delete_leaf_node_cell(cursor, row->key);
+    delete_leaf_node_cell(cursor, key);
 }
 
 /* Gc table */

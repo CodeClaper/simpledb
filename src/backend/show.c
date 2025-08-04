@@ -44,19 +44,19 @@ static List *gen_table_map_list() {
         /* oid */
         append_list(
             child_list, 
-            new_key_value(dstrdup(SYS_TABLE_OID_NAME ), &entity->oid, T_LONG)
+            new_key_value(SYS_TABLE_OID_NAME, &entity->oid, T_LONG, NULL)
         );
 
         /* relname */
         append_list(
             child_list, 
-            new_key_value(dstrdup(SYS_TABLE_RELNAME_NAME), entity->relname, T_VARCHAR)
+            new_key_value(SYS_TABLE_RELNAME_NAME, entity->relname, T_VARCHAR, NULL)
         );
 
         /* object type */
         append_list(
             child_list, 
-            new_key_value(dstrdup(SYS_TABLE_RELTYPE_NAME), GetObjectTypeName(entity->reltype), T_VARCHAR)
+            new_key_value(SYS_TABLE_RELTYPE_NAME, GetObjectTypeName(entity->reltype), T_VARCHAR, NULL)
         );
 
         append_list(list, child_list);

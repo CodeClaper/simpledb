@@ -8,6 +8,7 @@
 #include "free.h"
 #include "data.h"
 #include "index.h"
+#include "instance.h"
 #include "meta.h"
 #include "log.h"
 #include "asserts.h"
@@ -62,6 +63,8 @@ void *copy_value(void *value, DataType data_type) {
             return copy_strrefer((StrRefer *) value);
         case T_REFERENCE: 
             return copy_refer(value);
+        case T_ROW:
+            return copy_row(value);
         default: {
             UNEXPECTED_VALUE("Not supported data type occurs at <copy_value>.");
             return NULL;
@@ -146,60 +149,15 @@ Row *copy_row(Row *row) {
     /* check */
     if (row == NULL)
         return NULL;
-    Table *table = open_table(row->table_name);
-    if (table == NULL) {
-        db_log(ERROR, "Table '%s' not exists. ", row->table_name);
-        return NULL;
-    }
 
-    /* copy row */
-    Row *row_copy = instance(Row);
-    MetaColumn *primary_meta_column = get_primary_key_meta_column(table->meta_table);
-    row_copy->key = copy_value(row->key, primary_meta_column->column_type);
-    strcpy(row_copy->table_name, row->table_name);
-    row_copy->data = create_list(NODE_KEY_VALUE);
+    Row *duplica = new_row();
 
     ListCell *lc;
     foreach (lc, row->data) {
-        append_list(row_copy->data, copy_key_value(lfirst(lc)));
+        append_list(duplica->data, copy_key_value(lfirst(lc)));
     }
 
-    return row_copy;
-}
-
-/* Copy row igonore system reserved columns. */
-Row *copy_row_without_reserved(Row *row) {
-    /* check */
-    if (row == NULL)
-        return NULL;
-
-    Table *table = open_table(row->table_name);
-    if (table == NULL) {
-        db_log(ERROR, "Table '%s' not exists. ", row->table_name);
-        return NULL;
-    }
-
-    MetaColumn *primary_meta_column = get_primary_key_meta_column(table->meta_table);
-
-    /* copy row. */
-    Row *row_copy = instance(Row);
-    row_copy->key = copy_value(row->key, primary_meta_column->column_type);
-    strcpy(row_copy->table_name, row->table_name);
-    row_copy->data = create_list(NODE_KEY_VALUE);
-
-    ListCell *lc;
-    foreach (lc, row->data) {
-        KeyValue *key_value = lfirst(lc);
-
-        /* Skip system reserved columns. */
-        MetaColumn *meta_column = get_all_meta_column_by_name(table->meta_table, key_value->key);
-        if (meta_column && meta_column->sys_reserved) 
-            continue;
-
-        append_list(row_copy->data, copy_key_value(key_value));
-    }
-
-    return row_copy;
+    return duplica;
 }
 
 /* Copy refer. */

@@ -21,6 +21,7 @@
 #include "free.h"
 #include "select.h"
 #include "meta.h"
+#include "row.h"
 #include "index.h"
 #include "ltree.h"
 #include "xlog.h"
@@ -193,9 +194,8 @@ Cursor *define_cursor(Table *table, void *key) {
 }
 
 /* Define Refer */
-Refer *define_refer(Row *row) {
-    Table *table = open_table(row->table_name);
-    Cursor *cursor = define_cursor(table, row->key);
+Refer *define_refer(Table *table, void *key) {
+    Cursor *cursor = define_cursor(table, key);
     Refer *refer = convert_refer(cursor);
     free_cursor(cursor);
     return refer;
@@ -204,6 +204,7 @@ Refer *define_refer(Row *row) {
 /* Fetch Refer. 
  * If found no one or many one, return NULL.  */
 Refer *fetch_refer(MetaColumn *meta_column, ConditionNode *condition_node) {
+    Table *table = open_table(meta_column->table_name);
     /* Make a new SelectResult. */
     SelectResult *select_result = new_select_result(UNKONWN_STMT, meta_column->table_name, true);
 
@@ -220,9 +221,9 @@ Refer *fetch_refer(MetaColumn *meta_column, ConditionNode *condition_node) {
     else if (row_size == 1) {
         /* Take the first row as refered. Maybe row size should be one, but now there is no check. */
         Row *row = qfirst(QueueHead(select_result->rows));
-        refer = define_refer(row);
+        void *key = RowFindKey(row, table->meta_table);
+        refer = define_refer(table, key);
     }
-    // free_select_result(select_result);
 
     return refer;
 }
@@ -367,7 +368,8 @@ static void update_row_refer(void *destin, SelectResult *select_result,
     Assert(ref_table);
 
     Row *row = generate_row(destin, table->meta_table);
-    Cursor *cursor = define_cursor(table, row->key);
+    void *key = RowFindKey(row, table->meta_table);
+    Cursor *cursor = define_cursor(table, key);
 
     /* MetaTable */
     MetaTable *meta_table = table->meta_table;

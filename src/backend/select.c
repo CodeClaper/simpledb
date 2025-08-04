@@ -70,6 +70,7 @@ typedef struct SelectFromInternalChildTaskArgs {
 #define SUB_NAME "sub"
 #define MUL_NAME "mul"
 #define DIV_NAME "div"
+#define VALUE_NAME "value"
 
 static bool include_internal_node(SelectResult *select_result, void *min_key, void *max_key, ConditionNode *condition_node, MetaTable *meta_table);
 static bool include_leaf_node(SelectResult *select_result, List *meta_columns, void *destin, ConditionNode *condition_node);
@@ -525,7 +526,7 @@ static MetaColumn *get_cond_meta_column(PredicateNode *predicate, MetaTable *met
 
 /* Generate row by tuple. */
 Row *generate_display_row(void *tuple, List *meta_columns) {
-    Row *row = new_row(NULL, NULL);
+    Row *row = new_row();
 
     /* Assignment row data. */
     ListCell *lc;
@@ -533,17 +534,12 @@ Row *generate_display_row(void *tuple, List *meta_columns) {
         MetaColumn *meta_column = (MetaColumn *) lfirst(lc);
         /* Generate a key value pair. */
         KeyValue *key_value = is_null_cell(tuple + meta_column->offset) 
-                            ? new_key_value(meta_column->column_name, NULL, meta_column->column_type)
-                            : new_key_value(meta_column->column_name, get_value_in_tuple(tuple, meta_column), meta_column->column_type);
+                            ? new_key_value(meta_column->column_name, NULL, meta_column->column_type, meta_column->own_table_name)
+                            : new_key_value(meta_column->column_name, get_value_in_tuple(tuple, meta_column), meta_column->column_type, meta_column->own_table_name);
         key_value->is_array = meta_column->array_dim > 0;
-        key_value->table_name = meta_column->table_name;
 
         /* Append to row data. */
         append_list(row->data, key_value);
-
-        /* Assign primary key. */
-        if (meta_column->is_primary)
-            row->key = get_value_in_tuple(tuple, meta_column);
     }
 
     return row;
@@ -551,7 +547,7 @@ Row *generate_display_row(void *tuple, List *meta_columns) {
 
 /* Generate row by tuple. */
 Row *generate_row(void *tuple, MetaTable *meta_table) {
-    Row *row = new_row(NULL, meta_table->table_name);
+    Row *row = new_row();
     
     /* Assignment row data. */
     ListCell *lc;
@@ -559,17 +555,12 @@ Row *generate_row(void *tuple, MetaTable *meta_table) {
         MetaColumn *meta_column = (MetaColumn *) lfirst(lc);
         /* Generate a key value pair. */
         KeyValue *key_value = is_null_cell(tuple + meta_column->offset) 
-                            ? new_key_value(meta_column->column_name, NULL, meta_column->column_type)
-                            : new_key_value(meta_column->column_name, get_value_in_tuple(tuple, meta_column), meta_column->column_type);
+                            ? new_key_value(meta_column->column_name, NULL, meta_column->column_type, meta_column->own_table_name)
+                            : new_key_value(meta_column->column_name, get_value_in_tuple(tuple, meta_column), meta_column->column_type, meta_column->own_table_name);
         key_value->is_array = meta_column->array_dim > 0;
-        key_value->table_name = meta_column->table_name;
 
         /* Append to row data. */
         append_list(row->data, key_value);
-
-        /* Assign primary key. */
-        if (meta_column->is_primary)
-            row->key = get_value_in_tuple(tuple, meta_column);
     }
 
     return row;
@@ -1298,6 +1289,32 @@ static void* purge_row(Row *row) {
     return row;
 }
 
+/* Select tuple data. */
+void select_tuple(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg) {
+    /* If has limit clause. */
+    if (type == ARG_SELECT_PARAM && ((SelectParam *) arg)->limitClause != NULL) {
+        SelectParam *selectParam = (SelectParam *) arg;
+        LimitClauseNode *limit_clause = selectParam->limitClause;
+
+        /* If has limit clause, only append row whose pindex > offset and pindex < offset + rows. */
+        if (selectParam->offset >= limit_clause->offset && 
+                selectParam->offset < (limit_clause->offset + limit_clause->rows)) {
+            acquire_spin_lock(&selectParam->slock);
+            /* Double check for concurrency. */
+            if (selectParam->offset >= limit_clause->offset && 
+                    selectParam->offset < (limit_clause->offset + limit_clause->rows)) {
+                AppendQueue(select_result->tuples, tuple);
+                select_result->row_size++;
+            }
+            release_spin_lock(&selectParam->slock);
+        }
+        __sync_fetch_and_add(&selectParam->offset, 1);
+    } else {
+        AppendQueue(select_result->tuples, tuple);
+        select_result->row_size++;
+    }
+}
+
 /* Select row data. */
 void select_row(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg) {
     Table *table = open_table_inner(select_result->oid);
@@ -1410,7 +1427,7 @@ static KeyValue *calc_column_sum_value(ColumnNode *column, SelectResult *select_
             }
         }
     }
-    return new_key_value(dstrdup(SUM_NAME), copy_value(&sum, T_DOUBLE), T_DOUBLE);
+    return new_key_value(SUM_NAME, &sum, T_DOUBLE, select_result->table_name);
 }
 
 
@@ -1451,7 +1468,7 @@ static KeyValue *calc_column_avg_value(ColumnNode *column, SelectResult *select_
         }
     }
     avg = sum / (select_result->rows->size);
-    return new_key_value(dstrdup(AVG_NAME), copy_value(&avg, T_DOUBLE), T_DOUBLE);
+    return new_key_value(AVG_NAME, &avg, T_DOUBLE, select_result->table_name);
 }
 
 
@@ -1477,7 +1494,7 @@ static KeyValue *calc_column_max_value(ColumnNode *column, SelectResult *select_
         }
     }
 
-    return new_key_value(dstrdup(MAX_NAME), max_value, data_type);
+    return new_key_value(MAX_NAME, max_value, data_type, select_result->table_name);
 }
 
 /* Calulate column max value.*/
@@ -1502,14 +1519,14 @@ static KeyValue *calc_column_min_value(ColumnNode *column, SelectResult *select_
         }
     }
 
-    return new_key_value(dstrdup(MIN_NAME), min_value, data_type);
+    return new_key_value(MIN_NAME, min_value, data_type, select_result->table_name);
 }
 
 
 /* Query count function. */
 static KeyValue *query_count_function(FunctionValueNode *value, SelectResult *select_result) {
     uint32_t row_size = select_result->row_size;
-    return new_key_value(dstrdup("count"), copy_value(&row_size, T_INT), T_INT);
+    return new_key_value(COUNT_NAME, &row_size, T_INT, select_result->table_name);
 }
 
 /* Query sum function. */
@@ -1519,7 +1536,7 @@ static KeyValue *query_sum_function(FunctionValueNode *value, SelectResult *sele
             return calc_column_sum_value(value->column, select_result);
         case V_INT: {
             double sum = value->i_value * (select_result->rows->size);
-            return new_key_value(dstrdup(SUM_NAME), copy_value(&sum, T_DOUBLE), T_DOUBLE);
+            return new_key_value(SUM_NAME, &sum, T_DOUBLE, select_result->table_name);
         }
         case V_ALL: {
             db_log(ERROR, "Sum function not support '*'");
@@ -1539,7 +1556,7 @@ KeyValue *query_avg_function(FunctionValueNode *value, SelectResult *select_resu
         case V_COLUMN:
             return calc_column_avg_value(value->column, select_result);
         case V_INT: 
-            return new_key_value(dstrdup(AVG_NAME), copy_value(&value->i_value, T_DOUBLE), T_DOUBLE);
+            return new_key_value(AVG_NAME, &value->i_value, T_DOUBLE, select_result->table_name);
         case V_ALL: 
             db_log(ERROR, "Avg function not support '*'");
             return NULL;
@@ -1556,11 +1573,7 @@ KeyValue *query_max_function(FunctionValueNode *value, SelectResult *select_resu
         case V_COLUMN: 
             return calc_column_max_value(value->column, select_result);
         case V_INT: 
-            return new_key_value(
-                dstrdup(MAX_NAME), 
-                copy_value(&value->i_value, T_INT), 
-                T_INT
-            );
+            return new_key_value(MAX_NAME, &value->i_value, T_INT, select_result->table_name);
         case V_ALL: 
             db_log(ERROR, "Max function not support '*'.");
             return NULL;
@@ -1578,11 +1591,7 @@ KeyValue *query_min_function(FunctionValueNode *value, SelectResult *select_resu
         case V_COLUMN:
             return calc_column_min_value(value->column, select_result);
         case V_INT: 
-            return new_key_value(
-                dstrdup(MIN_NAME), 
-                copy_value(&value->i_value, T_INT), 
-                T_INT
-            );
+            return new_key_value(MIN_NAME, &value->i_value, T_INT, select_result->table_name);
         case V_ALL: 
             db_log(PANIC, "Min function not support '*'");
             return NULL;
@@ -1616,7 +1625,7 @@ static KeyValue *query_function_column_value(FunctionNode *function, SelectResul
 static KeyValue *query_plain_column_value(SelectResult *select_result, ColumnNode *column, Row *row) {
 
     if (row == NULL) 
-        return new_key_value(dstrdup(column->column_name), NULL, T_ROW);
+        return new_key_value(column->column_name, NULL, T_ROW, select_result->table_name);
 
     /* Get table name via alias name. */
     char *table_name = search_table_via_alias(select_result, column->range_variable);
@@ -1640,17 +1649,9 @@ static KeyValue *query_plain_column_value(SelectResult *select_result, ColumnNod
                     return sub_key_value;
                 } else if (column->has_sub_column && column->scalar_exp_list) {
                     Row *filtered_subrow = query_plain_row_selection(select_result, column->scalar_exp_list, sub_row);
-                    return new_key_value(
-                        dstrdup(column->column_name), 
-                        filtered_subrow, 
-                        T_ROW
-                    );
+                    return new_key_value(column->column_name, filtered_subrow, T_ROW, table_name);
                 } else if (!column->has_sub_column) {
-                    return new_key_value(
-                        dstrdup(column->column_name), 
-                        sub_row, 
-                        T_ROW
-                    );
+                    return new_key_value(column->column_name, sub_row, T_ROW, table_name); 
                 }
             }
             else if (column->has_sub_column) 
@@ -1666,39 +1667,28 @@ static KeyValue *query_plain_column_value(SelectResult *select_result, ColumnNod
 
 /* Calulate addition. */
 static KeyValue *calulate_addition(KeyValue *left, KeyValue *right) {
-    
     switch (left->data_type) {
         case T_INT: {
             switch (right->data_type) {
                 case T_INT: {
                     int32_t sum = *(int32_t *)left->value + *(int32_t *)right->value;
-                    return new_key_value(dstrdup(ADD_NAME), 
-                                         copy_value(&sum, T_INT), 
-                                         T_INT);
+                    return new_key_value(ADD_NAME, &sum, T_INT, NULL);
                 }
                 case T_LONG: {
                     int64_t sum = *(int32_t *)left->value + *(int64_t *)right->value;
-                    return new_key_value(dstrdup(ADD_NAME), 
-                                         copy_value(&sum, T_LONG), 
-                                         T_LONG);
+                    return new_key_value(ADD_NAME, &sum, T_LONG, NULL);
                 }
                 case T_FLOAT: {
                     float sum = *(int32_t *)left->value + *(float *)right->value;
-                    return new_key_value(dstrdup(ADD_NAME), 
-                                         copy_value(&sum, T_FLOAT), 
-                                         T_FLOAT);
+                    return new_key_value(ADD_NAME, &sum, T_FLOAT, NULL);
                 }
                 case T_DOUBLE: {
                     double sum = *(int32_t *)left->value + *(double *)right->value;
-                    return new_key_value(dstrdup(ADD_NAME), 
-                                         copy_value(&sum, T_DOUBLE), 
-                                         T_DOUBLE);
+                    return new_key_value(ADD_NAME, &sum, T_DOUBLE, NULL);
                 }
                 default: {
                     int zero = 0;
-                    return new_key_value(dstrdup(ADD_NAME), 
-                                         copy_value(&zero, T_DOUBLE), 
-                                         T_DOUBLE);
+                    return new_key_value(ADD_NAME, &zero, T_DOUBLE, NULL);
                 }
             }
             break;
@@ -1707,33 +1697,23 @@ static KeyValue *calulate_addition(KeyValue *left, KeyValue *right) {
             switch (right->data_type) {
                 case T_INT: {
                     int64_t sum = *(int64_t *)left->value + *(int32_t *)right->value;
-                    return new_key_value(dstrdup(ADD_NAME), 
-                                         copy_value(&sum, T_LONG), 
-                                         T_LONG);
+                    return new_key_value(ADD_NAME, &sum, T_LONG, NULL);
                 }
                 case T_LONG: {
                     int64_t sum = *(int64_t *)left->value + *(int64_t *)right->value;
-                    return new_key_value(dstrdup(ADD_NAME), 
-                                         copy_value(&sum, T_LONG), 
-                                         T_LONG);
+                    return new_key_value(ADD_NAME, &sum, T_LONG, NULL);
                 }
                 case T_FLOAT: {
                     float sum = *(int64_t *)left->value + *(float *)right->value;
-                    return new_key_value(dstrdup(ADD_NAME), 
-                                         copy_value(&sum, T_FLOAT), 
-                                         T_FLOAT);
+                    return new_key_value(ADD_NAME, &sum, T_FLOAT, NULL);
                 }
                 case T_DOUBLE: {
                     double sum = *(int64_t *)left->value + *(double *)right->value;
-                    return new_key_value(dstrdup(ADD_NAME), 
-                                         copy_value(&sum, T_DOUBLE), 
-                                         T_DOUBLE);
+                    return new_key_value(ADD_NAME, &sum, T_DOUBLE, NULL);
                 }
                 default: {
                     int zero = 0;
-                    return new_key_value(dstrdup(ADD_NAME), 
-                                         copy_value(&zero, T_INT), 
-                                         T_INT);
+                    return new_key_value(ADD_NAME, &zero, T_INT, NULL);
                 }
             }
             break;
@@ -1742,33 +1722,23 @@ static KeyValue *calulate_addition(KeyValue *left, KeyValue *right) {
             switch (right->data_type) {
                 case T_INT: {
                     float sum = *(float *)left->value + *(int32_t *)right->value;
-                    return new_key_value(dstrdup(ADD_NAME), 
-                                         copy_value(&sum, T_FLOAT), 
-                                         T_FLOAT);
+                    return new_key_value(ADD_NAME, &sum, T_FLOAT, NULL);
                 }
                 case T_LONG: {
                     float sum = *(float *)left->value + *(int64_t *)right->value;
-                    return new_key_value(dstrdup(ADD_NAME), 
-                                         copy_value(&sum, T_FLOAT), 
-                                         T_FLOAT);
+                    return new_key_value(ADD_NAME, &sum, T_FLOAT, NULL);
                 }
                 case T_FLOAT: {
                     float sum = *(float *)left->value + *(float *)right->value;
-                    return new_key_value(dstrdup(ADD_NAME), 
-                                         copy_value(&sum, T_FLOAT), 
-                                         T_FLOAT);
+                    return new_key_value(ADD_NAME, &sum, T_FLOAT, NULL);
                 }
                 case T_DOUBLE: {
                     double sum = *(float *)left->value + *(double *)right->value;
-                    return new_key_value(dstrdup(ADD_NAME), 
-                                         copy_value(&sum, T_DOUBLE), 
-                                         T_DOUBLE);
+                    return new_key_value(ADD_NAME, &sum, T_DOUBLE, NULL);
                 }
                 default: {
                     int zero = 0;
-                    return new_key_value(dstrdup(ADD_NAME), 
-                                         copy_value(&zero, T_INT), 
-                                         T_INT);
+                    return new_key_value(ADD_NAME, &zero, T_INT, NULL);
                 }
             }
             break;
@@ -1777,81 +1747,58 @@ static KeyValue *calulate_addition(KeyValue *left, KeyValue *right) {
             switch (right->data_type) {
                 case T_INT: {
                     double sum = *(double *)left->value + *(int32_t *)right->value;
-                    return new_key_value(dstrdup(ADD_NAME), 
-                                         copy_value(&sum, T_DOUBLE), 
-                                         T_DOUBLE);
+                    return new_key_value(ADD_NAME, &sum, T_DOUBLE, NULL);
                 }
                 case T_LONG: {
                     double sum = *(double *)left->value + *(int64_t *)right->value;
-                    return new_key_value(dstrdup(ADD_NAME), 
-                                         copy_value(&sum, T_DOUBLE), 
-                                         T_DOUBLE);
+                    return new_key_value(ADD_NAME, &sum, T_DOUBLE, NULL);
                 }
                 case T_FLOAT: {
                     double sum = *(double *)left->value + *(float *)right->value;
-                    return new_key_value(dstrdup(ADD_NAME), 
-                                         copy_value(&sum, T_DOUBLE), 
-                                         T_DOUBLE);
+                    return new_key_value(ADD_NAME, &sum, T_DOUBLE, NULL);
                 }
                 case T_DOUBLE: {
                     double sum = *(double *)left->value + *(double *)right->value;
-                    return new_key_value(dstrdup(ADD_NAME), 
-                                         copy_value(&sum, T_DOUBLE), 
-                                         T_DOUBLE);
+                    return new_key_value(ADD_NAME, &sum, T_DOUBLE, NULL);
                 }
                 default: {
                     int zero = 0;
-                    return new_key_value(dstrdup(ADD_NAME), 
-                                         copy_value(&zero, T_INT), 
-                                         T_INT);
+                    return new_key_value(ADD_NAME, &zero, T_INT, NULL);
                 }
             }
             break;
         }
         default: {
             int zero = 0;
-            return new_key_value(dstrdup(ADD_NAME), 
-                                 copy_value(&zero, T_INT), 
-                                 T_INT);
+            return new_key_value(ADD_NAME, &zero, T_INT, NULL);
         }
     }
 }
 
 /* Calulate substraction .*/
 static KeyValue *calulate_substraction(KeyValue *left, KeyValue *right) {
-    
     switch (left->data_type) {
         case T_INT: {
             switch (right->data_type) {
                 case T_INT: {
                     int32_t sub = *(int32_t *)left->value - *(int32_t *)right->value;
-                    return new_key_value(dstrdup(SUB_NAME), 
-                                         copy_value(&sub, T_INT), 
-                                         T_INT);
+                    return new_key_value(SUB_NAME, &sub, T_INT, NULL);
                 }
                 case T_LONG: {
                     int64_t sub = *(int32_t *)left->value - *(int64_t *)right->value;
-                    return new_key_value(dstrdup(SUB_NAME), 
-                                         copy_value(&sub, T_LONG), 
-                                         T_LONG);
+                    return new_key_value(SUB_NAME, &sub, T_LONG, NULL);
                 }
                 case T_FLOAT: {
                     float sub = *(int32_t *)left->value - *(float *)right->value;
-                    return new_key_value(dstrdup(SUB_NAME), 
-                                         copy_value(&sub, T_FLOAT), 
-                                         T_FLOAT);
+                    return new_key_value(SUB_NAME, &sub, T_FLOAT, NULL);
                 }
                 case T_DOUBLE: {
                     double sub = *(int32_t *)left->value - *(double *)right->value;
-                    return new_key_value(dstrdup(SUB_NAME), 
-                                         copy_value(&sub, T_DOUBLE), 
-                                         T_DOUBLE);
+                    return new_key_value(SUB_NAME, &sub, T_DOUBLE, NULL);
                 }
                 default: {
                     int zero = 0;
-                    return new_key_value(dstrdup(SUB_NAME), 
-                                         copy_value(&zero, T_INT), 
-                                         T_INT);
+                    return new_key_value(SUB_NAME, &zero, T_INT, NULL);
                 }
             }
             break;
@@ -1860,33 +1807,23 @@ static KeyValue *calulate_substraction(KeyValue *left, KeyValue *right) {
             switch (right->data_type) {
                 case T_INT: {
                     int64_t sub = *(int64_t *)left->value - *(int32_t *)right->value;
-                    return new_key_value(dstrdup(SUB_NAME), 
-                                         copy_value(&sub, T_LONG), 
-                                         T_LONG);
+                    return new_key_value(SUB_NAME, &sub, T_LONG, NULL);
                 }
                 case T_LONG: {
                     int64_t sub = *(int64_t *)left->value - *(int64_t *)right->value;
-                    return new_key_value(dstrdup(SUB_NAME), 
-                                         copy_value(&sub, T_LONG), 
-                                         T_LONG);
+                    return new_key_value(SUB_NAME, &sub, T_LONG, NULL);
                 }
                 case T_FLOAT: {
                     float sub = *(int64_t *)left->value - *(float *)right->value;
-                    return new_key_value(dstrdup(SUB_NAME), 
-                                         copy_value(&sub, T_FLOAT), 
-                                         T_FLOAT);
+                    return new_key_value(SUB_NAME, &sub, T_FLOAT, NULL);
                 }
                 case T_DOUBLE: {
                     double sub = *(int64_t *)left->value - *(double *)right->value;
-                    return new_key_value(dstrdup(SUB_NAME), 
-                                         copy_value(&sub, T_DOUBLE), 
-                                         T_DOUBLE);
+                    return new_key_value(SUB_NAME, &sub, T_DOUBLE, NULL);
                 }
                 default: {
                     int zero = 0;
-                    return new_key_value(dstrdup(SUB_NAME), 
-                                         copy_value(&zero, T_INT), 
-                                         T_INT);
+                    return new_key_value(SUB_NAME, &zero, T_INT, NULL); 
                 }
             }
             break;
@@ -1895,33 +1832,23 @@ static KeyValue *calulate_substraction(KeyValue *left, KeyValue *right) {
             switch (right->data_type) {
                 case T_INT: {
                     float sub = *(float *)left->value - *(int32_t *)right->value;
-                    return new_key_value(dstrdup(SUB_NAME), 
-                                         copy_value(&sub, T_FLOAT), 
-                                         T_FLOAT);
+                    return new_key_value(SUB_NAME, &sub, T_FLOAT, NULL);
                 }
                 case T_LONG: {
                     float sub = *(float *)left->value - *(int64_t *)right->value;
-                    return new_key_value(dstrdup(SUB_NAME), 
-                                         copy_value(&sub, T_FLOAT), 
-                                         T_FLOAT);
+                    return new_key_value(SUB_NAME, &sub, T_FLOAT, NULL);
                 }
                 case T_FLOAT: {
                     float sub = *(float *)left->value - *(float *)right->value;
-                    return new_key_value(dstrdup(SUB_NAME), 
-                                         copy_value(&sub, T_FLOAT), 
-                                         T_FLOAT);
+                    return new_key_value(SUB_NAME, &sub, T_FLOAT, NULL);
                 }
                 case T_DOUBLE: {
                     double sub = *(float *)left->value - *(double *)right->value;
-                    return new_key_value(dstrdup(SUB_NAME), 
-                                         copy_value(&sub, T_DOUBLE), 
-                                         T_DOUBLE);
+                    return new_key_value(SUB_NAME, &sub, T_DOUBLE, NULL);
                 }
                 default: {
                     int zero = 0;
-                    return new_key_value(dstrdup(SUB_NAME), 
-                                         copy_value(&zero, T_INT), 
-                                         T_INT);
+                    return new_key_value(SUB_NAME, &zero, T_INT, NULL);
                 }
             }
             break;
@@ -1930,42 +1857,30 @@ static KeyValue *calulate_substraction(KeyValue *left, KeyValue *right) {
             switch (right->data_type) {
                 case T_INT: {
                     double sub = *(double *)left->value - *(int32_t *)right->value;
-                    return new_key_value(dstrdup(SUB_NAME), 
-                                         copy_value(&sub, T_DOUBLE), 
-                                         T_DOUBLE);
+                    return new_key_value(SUB_NAME, &sub, T_DOUBLE, NULL);
                 }
                 case T_LONG: {
                     double sub = *(double *)left->value - *(int64_t *)right->value;
-                    return new_key_value(dstrdup(SUB_NAME), 
-                                         copy_value(&sub, T_DOUBLE), 
-                                         T_DOUBLE);
+                    return new_key_value(SUB_NAME, &sub, T_DOUBLE, NULL);
                 }
                 case T_FLOAT: {
                     double sub = *(double *)left->value - *(float *)right->value;
-                    return new_key_value(dstrdup(SUB_NAME), 
-                                         copy_value(&sub, T_DOUBLE), 
-                                         T_DOUBLE);
+                    return new_key_value(SUB_NAME, &sub, T_DOUBLE, NULL);
                 }
                 case T_DOUBLE: {
                     double sub = *(double *)left->value - *(double *)right->value;
-                    return new_key_value(dstrdup(SUB_NAME), 
-                                         copy_value(&sub, T_DOUBLE), 
-                                         T_DOUBLE);
+                    return new_key_value(SUB_NAME, &sub, T_DOUBLE, NULL); 
                 }
                 default: {
                     int zero = 0;
-                    return new_key_value(dstrdup(SUB_NAME), 
-                                         copy_value(&zero, T_INT), 
-                                         T_INT);
+                    return new_key_value(SUB_NAME, &zero, T_INT, NULL);
                 }
             }
             break;
         }
         default: {
             int zero = 0;
-            return new_key_value(dstrdup(SUB_NAME), 
-                                 copy_value(&zero, T_INT), 
-                                 T_INT);
+            return new_key_value(SUB_NAME, &zero, T_INT, NULL);
         }
     }
 }
@@ -1978,33 +1893,23 @@ static KeyValue *calulate_multiplication(KeyValue *left, KeyValue *right) {
             switch (right->data_type) {
                 case T_INT: {
                     int64_t mul = (*(int32_t *)left->value) * (*(int32_t *)right->value);
-                    return new_key_value(dstrdup(MUL_NAME), 
-                                         copy_value(&mul, T_INT), 
-                                         T_INT);
+                    return new_key_value(MUL_NAME, &mul, T_INT, NULL);
                 }
                 case T_LONG: {
                     int64_t mul = (*(int32_t *)left->value) * (*(int64_t *)right->value);
-                    return new_key_value(dstrdup(MUL_NAME), 
-                                         copy_value(&mul, T_LONG), 
-                                         T_LONG);
+                    return new_key_value(MUL_NAME, &mul, T_LONG, NULL);
                 }
                 case T_FLOAT: {
                     float mul = (*(int32_t *)left->value) * (*(float *)right->value);
-                    return new_key_value(dstrdup(MUL_NAME), 
-                                         copy_value(&mul, T_FLOAT), 
-                                         T_FLOAT);
+                    return new_key_value(MUL_NAME, &mul, T_FLOAT, NULL);
                 }
                 case T_DOUBLE: {
                     double mul = (*(int32_t *)left->value) * (*(double *)right->value);
-                    return new_key_value(dstrdup(MUL_NAME), 
-                                         copy_value(&mul, T_DOUBLE), 
-                                         T_DOUBLE);
+                    return new_key_value(MUL_NAME, &mul, T_DOUBLE, NULL);
                 }
                 default: {
                     int zero = 0;
-                    return new_key_value(dstrdup(MUL_NAME), 
-                                         copy_value(&zero, T_INT), 
-                                         T_INT);
+                    return new_key_value(MUL_NAME, &zero, T_INT, NULL);
                 }
             }
             break;
@@ -2013,33 +1918,23 @@ static KeyValue *calulate_multiplication(KeyValue *left, KeyValue *right) {
             switch (right->data_type) {
                 case T_INT: {
                     int64_t mul = (*(int64_t *)left->value) * (*(int32_t *)right->value);
-                    return new_key_value(dstrdup(MUL_NAME), 
-                                         copy_value(&mul, T_LONG), 
-                                         T_LONG);
+                    return new_key_value(MUL_NAME, &mul, T_LONG, NULL);
                 }
                 case T_LONG: {
                     int64_t mul = (*(int64_t *)left->value) * (*(int64_t *)right->value);
-                    return new_key_value(dstrdup(MUL_NAME), 
-                                         copy_value(&mul, T_LONG), 
-                                         T_LONG);
+                    return new_key_value(MUL_NAME, &mul, T_LONG, NULL);
                 }
                 case T_FLOAT: {
                     float mul = (*(int64_t *)left->value) * (*(float *)right->value);
-                    return new_key_value(dstrdup(MUL_NAME), 
-                                         copy_value(&mul, T_FLOAT), 
-                                         T_FLOAT);
+                    return new_key_value(MUL_NAME, &mul,  T_FLOAT, NULL);
                 }
                 case T_DOUBLE: {
                     double mul = (*(int64_t *)left->value) * (*(double *)right->value);
-                    return new_key_value(dstrdup(MUL_NAME), 
-                                         copy_value(&mul, T_LONG), 
-                                         T_LONG);
+                    return new_key_value(MUL_NAME, &mul, T_LONG, NULL);
                 }
                 default: {
                     int zero = 0;
-                    return new_key_value(dstrdup(MUL_NAME), 
-                                         copy_value(&zero, T_LONG), 
-                                         T_LONG);
+                    return new_key_value(MUL_NAME, &zero, T_LONG, NULL);
                 }
             }
             break;
@@ -2048,33 +1943,23 @@ static KeyValue *calulate_multiplication(KeyValue *left, KeyValue *right) {
             switch (right->data_type) {
                 case T_INT: {
                     float mul = (*(float *)left->value) * (*(int32_t *)right->value);
-                    return new_key_value(dstrdup(MUL_NAME), 
-                                         copy_value(&mul, T_FLOAT), 
-                                         T_FLOAT);
+                    return new_key_value(MUL_NAME, &mul, T_FLOAT, NULL);
                 }
                 case T_LONG: {
                     float mul = (*(float *)left->value) * (*(int64_t *)right->value);
-                    return new_key_value(dstrdup(MUL_NAME), 
-                                         copy_value(&mul, T_FLOAT), 
-                                         T_FLOAT);
+                    return new_key_value(MUL_NAME, &mul, T_FLOAT, NULL);
                 }
                 case T_FLOAT: {
                     float mul = (*(float *)left->value) * (*(float *)right->value);
-                    return new_key_value(dstrdup(MUL_NAME), 
-                                         copy_value(&mul, T_FLOAT), 
-                                         T_FLOAT);
+                    return new_key_value(MUL_NAME, &mul, T_FLOAT, NULL); 
                 }
                 case T_DOUBLE: {
                     double mul = (*(float *)left->value) * (*(double *)right->value);
-                    return new_key_value(dstrdup(MUL_NAME), 
-                                         copy_value(&mul, T_DOUBLE), 
-                                         T_DOUBLE);
+                    return new_key_value(MUL_NAME, &mul, T_DOUBLE, NULL);
                 }
                 default: {
                     int zero = 0;
-                    return new_key_value(dstrdup(MUL_NAME), 
-                                         copy_value(&zero, T_INT), 
-                                         T_INT);
+                    return new_key_value(MUL_NAME, &zero, T_INT, NULL);
                 }
             }
             break;
@@ -2083,81 +1968,58 @@ static KeyValue *calulate_multiplication(KeyValue *left, KeyValue *right) {
             switch (right->data_type) {
                 case T_INT: {
                     double mul = (*(double *)left->value) * (*(int32_t *)right->value);
-                    return new_key_value(dstrdup(MUL_NAME), 
-                                         copy_value(&mul, T_DOUBLE), 
-                                         T_DOUBLE);
+                    return new_key_value(MUL_NAME, &mul, T_DOUBLE, NULL);
                 }
                 case T_LONG: {
                     double mul = (*(double *)left->value) * (*(int64_t *)right->value);
-                    return new_key_value(dstrdup(MUL_NAME), 
-                                         copy_value(&mul, T_DOUBLE), 
-                                         T_DOUBLE);
+                    return new_key_value(MUL_NAME, &mul, T_DOUBLE, NULL);
                 }
                 case T_FLOAT: {
                     double mul = (*(double *)left->value) * (*(float *)right->value);
-                    return new_key_value(dstrdup(MUL_NAME), 
-                                         copy_value(&mul, T_DOUBLE), 
-                                         T_DOUBLE);
+                    return new_key_value(MUL_NAME, &mul, T_DOUBLE, NULL);
                 }
                 case T_DOUBLE: {
                     double mul = (*(double *)left->value) * (*(double *)right->value);
-                    return new_key_value(dstrdup(MUL_NAME), 
-                                         copy_value(&mul, T_DOUBLE), 
-                                         T_DOUBLE);
+                    return new_key_value(MUL_NAME, &mul, T_DOUBLE, NULL);
                 }
                 default: {
                     int zero = 0;
-                    return new_key_value(dstrdup(MUL_NAME), 
-                                         copy_value(&zero, T_INT), 
-                                         T_INT);
+                    return new_key_value(MUL_NAME, &zero, T_INT, NULL);
                 }
             }
             break;
         }
         default: {
             int zero = 0;
-            return new_key_value(dstrdup(MUL_NAME), 
-                                 copy_value(&zero, T_INT), 
-                                 T_INT);
+            return new_key_value(MUL_NAME, &zero, T_INT, NULL);
         }
     }
 }
 
 /* Calulate division .*/
 static KeyValue *calulate_division(KeyValue *left, KeyValue *right) {
-    
     switch (left->data_type) {
         case T_INT: {
             switch (right->data_type) {
                 case T_INT: {
                     double div = (double)(*(int32_t *)left->value) / (*(int32_t *)right->value);
-                    return new_key_value(dstrdup(DIV_NAME), 
-                                         copy_value(&div, T_DOUBLE), 
-                                         T_DOUBLE);
+                    return new_key_value(DIV_NAME, &div, T_DOUBLE, NULL);
                 }
                 case T_LONG: {
                     double div = (double)(*(int64_t *)left->value) / (*(int64_t *)right->value);
-                    return new_key_value(dstrdup(DIV_NAME), 
-                                         copy_value(&div, T_DOUBLE), 
-                                         T_DOUBLE);
+                    return new_key_value(DIV_NAME, &div, T_DOUBLE, NULL);
                 }
                 case T_FLOAT: {
                     double div = (double)(*(int32_t *)left->value) / (*(float *)right->value);
-                    return new_key_value(dstrdup(DIV_NAME), 
-                                         copy_value(&div, T_DOUBLE), 
-                                         T_DOUBLE);
+                    return new_key_value(DIV_NAME, &div, T_DOUBLE, NULL);
                 }
                 case T_DOUBLE: {
                     double div = (double)(*(int32_t *)left->value) / *(double *)right->value;
-                    return new_key_value(dstrdup(DIV_NAME), 
-                                         copy_value(&div, T_DOUBLE), 
-                                         T_DOUBLE);
+                    return new_key_value(DIV_NAME, &div, T_DOUBLE, NULL);
                 }
                 default: {
                     int zero = 0;
-                    return new_key_value(dstrdup(DIV_NAME), 
-                                         copy_value(&zero, T_INT), 
-                                         T_INT);
+                    return new_key_value(DIV_NAME, &zero, T_INT, NULL);
                 }
             }
             break;
@@ -2166,33 +2028,23 @@ static KeyValue *calulate_division(KeyValue *left, KeyValue *right) {
             switch (right->data_type) {
                 case T_INT: {
                     double div = (double)*(int64_t *)left->value / *(int32_t *)right->value;
-                    return new_key_value(dstrdup(DIV_NAME), 
-                                         copy_value(&div, T_DOUBLE), 
-                                         T_DOUBLE);
+                    return new_key_value(DIV_NAME, &div, T_DOUBLE, NULL);
                 }
                 case T_LONG: {
                     double div = (double)*(int64_t *)left->value / *(int64_t *)right->value;
-                    return new_key_value(dstrdup(DIV_NAME), 
-                                         copy_value(&div, T_DOUBLE), 
-                                         T_DOUBLE);
+                    return new_key_value(DIV_NAME, &div, T_DOUBLE, NULL);
                 }
                 case T_FLOAT: {
                     double div = (double)*(int64_t *)left->value / *(float *)right->value;
-                    return new_key_value(dstrdup(DIV_NAME), 
-                                         copy_value(&div, T_DOUBLE), 
-                                         T_DOUBLE);
+                    return new_key_value(DIV_NAME, &div, T_DOUBLE, NULL);
                 }
                 case T_DOUBLE: {
                     double div = (double)*(int64_t *)left->value / *(double *)right->value;
-                    return new_key_value(dstrdup(DIV_NAME), 
-                                         copy_value(&div, T_DOUBLE), 
-                                         T_DOUBLE);
+                    return new_key_value(DIV_NAME, &div, T_DOUBLE, NULL);
                 }
                 default: {
                     int zero = 0;
-                    return new_key_value(dstrdup(DIV_NAME), 
-                                         copy_value(&zero, T_INT), 
-                                         T_INT);
+                    return new_key_value(DIV_NAME, &zero, T_INT, NULL);
                 }
             }
             break;
@@ -2201,33 +2053,23 @@ static KeyValue *calulate_division(KeyValue *left, KeyValue *right) {
             switch (right->data_type) {
                 case T_INT: {
                     double div = (double)*(float *)left->value / *(int32_t *)right->value;
-                    return new_key_value(dstrdup(DIV_NAME), 
-                                         copy_value(&div, T_DOUBLE), 
-                                         T_DOUBLE);
+                    return new_key_value(DIV_NAME, &div, T_DOUBLE, NULL);
                 }
                 case T_LONG: {
                     double div = (double)*(float *)left->value / *(int64_t *)right->value;
-                    return new_key_value(dstrdup(DIV_NAME), 
-                                         copy_value(&div, T_DOUBLE), 
-                                         T_DOUBLE);
+                    return new_key_value(DIV_NAME, &div, T_DOUBLE, NULL);
                 }
                 case T_FLOAT: {
                     double div = (double)*(float *)left->value / *(float *)right->value;
-                    return new_key_value(dstrdup(DIV_NAME), 
-                                         copy_value(&div, T_DOUBLE), 
-                                         T_DOUBLE);
+                    return new_key_value(DIV_NAME, &div, T_DOUBLE, NULL);
                 }
                 case T_DOUBLE: {
                     double div = (double)*(float *)left->value / *(double *)right->value;
-                    return new_key_value(dstrdup(DIV_NAME), 
-                                         copy_value(&div, T_DOUBLE), 
-                                         T_DOUBLE);
+                    return new_key_value(DIV_NAME, &div, T_DOUBLE, NULL);
                 }
                 default: {
                     int zero = 0;
-                    return new_key_value(dstrdup(DIV_NAME), 
-                                         copy_value(&zero, T_INT), 
-                                         T_INT);
+                    return new_key_value(DIV_NAME, &zero, T_INT, NULL);
                 }
             }
             break;
@@ -2236,42 +2078,30 @@ static KeyValue *calulate_division(KeyValue *left, KeyValue *right) {
             switch (right->data_type) {
                 case T_INT: {
                     double div = *(double *)left->value / *(int32_t *)right->value;
-                    return new_key_value(dstrdup(DIV_NAME), 
-                                         copy_value(&div, T_DOUBLE), 
-                                         T_DOUBLE);
+                    return new_key_value(DIV_NAME, &div, T_DOUBLE, NULL);
                 }
                 case T_LONG: {
                     double div = *(double *)left->value / *(int64_t *)right->value;
-                    return new_key_value(dstrdup(DIV_NAME), 
-                                         copy_value(&div, T_DOUBLE), 
-                                         T_DOUBLE);
+                    return new_key_value(DIV_NAME, &div, T_DOUBLE, NULL);
                 }
                 case T_FLOAT: {
                     double div = *(double *)left->value / *(float *)right->value;
-                    return new_key_value(dstrdup(DIV_NAME), 
-                                         copy_value(&div, T_DOUBLE), 
-                                         T_DOUBLE);
+                    return new_key_value(DIV_NAME, &div,  T_DOUBLE, NULL);
                 }
                 case T_DOUBLE: {
                     double div = *(double *)left->value / *(double *)right->value;
-                    return new_key_value(dstrdup(DIV_NAME), 
-                                         copy_value(&div, T_DOUBLE), 
-                                         T_DOUBLE);
+                    return new_key_value(DIV_NAME, &div, T_DOUBLE, NULL);
                 }
                 default: {
                     int zero = 0;
-                    return new_key_value(dstrdup(DIV_NAME), 
-                                         copy_value(&zero, T_INT), 
-                                         T_INT);
+                    return new_key_value(DIV_NAME, &zero, T_INT, NULL);
                 }
             }
             break;
         }
         default: {
             int zero = 0;
-            return new_key_value(dstrdup(DIV_NAME), 
-                                 copy_value(&zero, T_INT), 
-                                 T_INT);
+            return new_key_value(DIV_NAME, &zero, T_INT, NULL);
         }
     }
 }
@@ -2315,7 +2145,8 @@ static KeyValue *query_function_value(ScalarExpNode *scalar_exp, SelectResult *s
                 return new_key_value(
                     column->column_name, 
                     NULL, 
-                    meta_column->column_type
+                    meta_column->column_type,
+                    select_result->table_name
                 );
             }
             else {
@@ -2335,11 +2166,7 @@ static KeyValue *query_function_value(ScalarExpNode *scalar_exp, SelectResult *s
         case SCALAR_VALUE: {
             ValueItemNode *value = scalar_exp->value;
             if (QueueIsEmpty(select_result->rows)) 
-                return new_key_value(
-                    dstrdup("value"), 
-                    NULL, 
-                    convert_data_type(value->value.atom->type)
-                );
+                return new_key_value(VALUE_NAME, NULL, convert_data_type(value->value.atom->type), NULL);
             else
                 return query_value_item(value, qfirst(QueueHead(select_result->rows)));
         }
@@ -2352,7 +2179,7 @@ static KeyValue *query_function_value(ScalarExpNode *scalar_exp, SelectResult *s
 
 /* Query function data. */
 static void query_fuction_selecton(List *scalar_exp_list, SelectResult *select_result) {
-    Row *row = new_row(NULL, select_result->table_name);
+    Row *row = new_row();
 
     ListCell *lc;
     foreach (lc, scalar_exp_list) {
@@ -2399,25 +2226,15 @@ static KeyValue *query_value_item(ValueItemNode *value_item, Row *row) {
     AtomNode *atom_node = value_item->value.atom;
     switch (atom_node->type) {
         case A_INT:
-            return new_key_value(dstrdup("value"), 
-                                 copy_value(&atom_node->value.intval, T_LONG), 
-                                 T_LONG);
+            return new_key_value(VALUE_NAME, &atom_node->value.intval, T_LONG, NULL);
         case A_BOOL:
-            return new_key_value(dstrdup("value"), 
-                                 copy_value(&atom_node->value.boolval, T_BOOL), 
-                                 T_BOOL);
+            return new_key_value(VALUE_NAME, &atom_node->value.boolval, T_BOOL, NULL);
         case A_FLOAT:
-            return new_key_value(dstrdup("value"), 
-                                 copy_value(&atom_node->value.boolval, T_DOUBLE), 
-                                 T_DOUBLE);
+            return new_key_value(VALUE_NAME, &atom_node->value.boolval,  T_DOUBLE, NULL);
         case A_STRING:
-            return new_key_value(dstrdup("value"), 
-                                 copy_value(atom_node->value.strval, T_STRING), 
-                                 T_STRING);
+            return new_key_value(VALUE_NAME, atom_node->value.strval, T_STRING, NULL);
         case A_REFERENCE:
-            return new_key_value(dstrdup("value"), 
-                                 make_null_refer(),
-                                 T_STRING);
+            return new_key_value(VALUE_NAME, make_null_refer(), T_STRING, NULL);
         default:
             UNEXPECTED_VALUE(atom_node->type);
             return NULL;
@@ -2448,13 +2265,7 @@ static Row *query_plain_row_selection(SelectResult *select_result, List *scalar_
     if (is_null(row)) 
         return NULL;
     
-    Table *table;
-    MetaColumn *key_meta_column;
-    Row *sub_row;
-
-    table = open_table(row->table_name);
-    key_meta_column = get_primary_key_meta_column(table->meta_table);
-    sub_row = new_row(copy_value(row->key, key_meta_column->column_type), row->table_name);
+    Row *sub_row = new_row();
 
     ListCell *lc;
     foreach (lc, scalar_exp_list) {

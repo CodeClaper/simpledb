@@ -46,26 +46,26 @@ static List *gen_describe_result(MetaTable *meta_table) {
         /* filed */
         append_list(
             child_list, 
-            new_key_value(dstrdup("field"), dstrdup(meta_column->column_name), T_VARCHAR)
+            new_key_value("field", meta_column->column_name, T_VARCHAR, meta_table->table_name)
         );
     
         /* key */
         append_list(
             child_list, 
-            new_key_value(dstrdup("key"), dstrdup(key_type_name(meta_column)), T_VARCHAR)
+            new_key_value("key", key_type_name(meta_column), T_VARCHAR, meta_table->table_name)
         );
 
         /* type */
         append_list(
             child_list, 
-            new_key_value(dstrdup("type"), dstrdup(data_type_name(meta_column->column_type)), T_VARCHAR)
+            new_key_value("type", data_type_name(meta_column->column_type), T_VARCHAR, meta_table->table_name)
         );
 
         /* length */
         uint32_t column_length = calc_raw_meta_column_len(meta_column);
         append_list(
             child_list, 
-            new_key_value(dstrdup("length"), copy_value(&column_length, T_INT), T_INT)
+            new_key_value("length", &column_length, T_INT, meta_table->table_name)
         );
 
 
@@ -73,14 +73,14 @@ static List *gen_describe_result(MetaTable *meta_table) {
         bool is_array = meta_column->array_dim > 0;
         append_list(
             child_list, 
-            new_key_value(dstrdup("array"), copy_value(&is_array, T_BOOL), T_BOOL)
+            new_key_value("array", &is_array, T_BOOL, meta_table->table_name)
         );
 
         /* primary key */
         if (is_array)  {
             append_list(
                 child_list, 
-                new_key_value(dstrdup("array_dim"), copy_value(&meta_column->array_dim, T_BOOL), T_BOOL)
+                new_key_value("array_dim", &meta_column->array_dim, T_BOOL, meta_table->table_name)
             );
         }
 
@@ -91,13 +91,13 @@ static List *gen_describe_result(MetaTable *meta_table) {
             case DEFAULT_VALUE_NULL:
                 append_list(
                     child_list, 
-                    new_key_value(dstrdup("default"), copy_value(NULL, meta_column->column_type), meta_column->column_type)
+                    new_key_value("default", NULL, meta_column->column_type, meta_table->table_name)
                 );
                 break;
             case DEFAULT_VALUE:
                 append_list(
                     child_list, 
-                    new_key_value(dstrdup("default"), copy_value(meta_column->default_value, meta_column->column_type), meta_column->column_type)
+                    new_key_value("default", meta_column->default_value, meta_column->column_type, meta_table->table_name)
                 );
                 break;
                 
@@ -107,7 +107,7 @@ static List *gen_describe_result(MetaTable *meta_table) {
         if (meta_column->has_comment) {
             append_list(
                 child_list, 
-                new_key_value(dstrdup("comment"), dstrdup(meta_column->comment), T_VARCHAR)
+                new_key_value("comment", meta_column->comment, T_VARCHAR, meta_table->table_name)
             );
         }
 
