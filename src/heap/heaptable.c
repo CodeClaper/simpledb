@@ -166,8 +166,8 @@ Refer *HeapTableInsertRow(Cursor *cursor, Row *row) {
     return currentRefer;
 }
 
-/* Loop up destintion from heap table. */
-void *HeapTableLookup(Table *table, Refer *refer) {
+/* Loop up tuple from heap table. */
+void *HeapTableLookupTuple(Table *table, Refer *refer) {
     Buffer buffer;
     void *block;
     uint32_t row_len, cell_len;
@@ -189,8 +189,8 @@ void *HeapTableLookup(Table *table, Refer *refer) {
 
 /* Loop up row from heap table. */
 Row *HeapTableLookupRow(Table *table, Refer *refer) {
-    void *destintion = HeapTableLookup(table, refer);
-    return generate_row(destintion, table->meta_table);
+    void *tuple = HeapTableLookupTuple(table, refer);
+    return generate_row(tuple, table->meta_table);
 }
 
 /* Update the row in heap table. */

@@ -576,11 +576,11 @@ void *define_tuple(Refer *refer) {
     void *leaf_node = GetBufferPage(buffer);
 
     void *cell_value = get_leaf_node_cell_value(leaf_node, key_len, value_len, default_value_len, refer->cell_num);
-    void *destinct = HeapTableLookup(table, (Refer *) cell_value);
+    void *tuple = HeapTableLookupTuple(table, (Refer *) cell_value);
     
     UnlockBuffer(buffer);
     ReleaseBuffer(buffer);
-    return destinct;
+    return tuple;
 }
 
 /* Define row by refer. 
@@ -868,7 +868,7 @@ static void select_from_leaf_node(SelectResult *select_result, ConditionNode *co
             continue;
 
         /* If satisfied, exeucte row handler function. */
-        void *tuple = HeapTableLookup(table, (Refer *) destinct);
+        void *tuple = HeapTableLookupTuple(table, (Refer *) destinct);
         select_result->current_tuple = tuple;
 
         /* If has nested, deep seek nested. */
