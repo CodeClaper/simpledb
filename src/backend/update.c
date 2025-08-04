@@ -53,35 +53,30 @@ static void update_cell(Row *row, AssignmentNode *assign_node, MetaColumn *meta_
 /* Delete row for update */
 static void delete_row_for_update(Refer *refer, Row *row) {
     if (RowIsVisible(row)) {
-        Cursor *cursor = convert_cursor(refer);
         UpdateTransactionState(row, TR_DELETE);
-        update_row_data(row, cursor);
+        update_row_data(row, refer);
         RecordXlog(refer, HEAP_UPDATE_DELETE);
-        free_cursor(cursor);
     }
 }
 
 /* Insert row for update. */
 static void insert_row_for_update(Row *row, Table *table) {
     void *key;
-    Cursor *new_cur;
-    Refer *new_ref;
+    Refer *nrefer;
 
     key = RowFindKey(row, table->meta_table);
-    new_cur = define_cursor(table, key);
-    new_ref = convert_refer(new_cur);
+    nrefer = define_refer(table, key);
 
     /* Update old row. */
     UpdateTransactionState(row, TR_INSERT);
 
     /* Insert */
-    insert_leaf_node_cell(new_cur, row);
+    insert_leaf_node_cell(row, nrefer);
 
     /* Record xlog for insert. */
-    RecordXlog(new_ref, HEAP_UPDATE_INSERT);
+    RecordXlog(nrefer, HEAP_UPDATE_INSERT);
 
-    free_cursor(new_cur);
-    free_refer(new_ref);
+    free_refer(nrefer);
 }
 
 

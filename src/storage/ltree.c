@@ -66,10 +66,10 @@
 #include "systable.h"
 #include "heaptable.h"
 
-static void insert_leaf_node_new_cell(Cursor *cursor, Row *row);
+static void insert_leaf_node_new_cell(Row *row, Refer *refer);
 static void append_leaf_node_column(uint32_t page_num, Table *table, MetaColumn *new_column, int pos);
 static bool check_internal_node_cells_mass(void *internal_node, uint32_t keys_num, uint32_t key_len, uint32_t default_value_len, DataType data_type);
-static void *seriable_index_value(Row *row, Cursor *cursor);
+static void *seriable_index_value(Row *row, Refer *refer);
 static void update_index_system_content(void *destination, Row *row, Table *table);
 
 /* If obsolute node. */
@@ -1157,25 +1157,26 @@ void insert_internal_node_cell(Table *table, uint32_t page_num, uint32_t new_chi
 
 /* When page full, it will generate a new leaf node. 
  * And half high cell in the old leaf will be moved to new leaf node. */
-static void insert_and_split_leaf_node(Cursor *cursor, Row *row) {
-    /* Get cell key, value and cell lenght. */
+static void insert_and_split_leaf_node(Row *row, Refer *refer) {
+    /* cursorGet cell key, value and cell lenght. */
+    Oid oid;
     void *key;
     Table *table;
     uint32_t key_len, value_len, default_value_len, cell_length;
     
-    table = cursor->table;
+    oid = refer->oid;
+    table = open_table_inner(oid);
     key_len = table->key_len;
     value_len = table->index_value_len;
     default_value_len = table->heap_value_len;
     cell_length = key_len + value_len;
     key = RowFindKey(row, table->meta_table);
-    Oid oid = GET_TABLE_OID(table);
 
     /* Get table primary key meta info. */
     MetaColumn *primary_key_meta_column = get_primary_key_meta_column(table->meta_table);
 
     /* Get the old leaf node and lock. */
-    Buffer old_buffer = ReadBuffer(oid, cursor->page_num);
+    Buffer old_buffer = ReadBuffer(oid, refer->page_num);
     void *old_node = GetBufferPage(old_buffer);
     uint32_t parent_page_num = get_parent_pointer(old_node);
     /* Get the old leaf node cell count.*/
@@ -1184,7 +1185,7 @@ static void insert_and_split_leaf_node(Cursor *cursor, Row *row) {
     /* Double check for concurrency. */
     if (!overflow_leaf_node(old_node, key_len, value_len, default_value_len, cell_num)) {
         ReleaseBuffer(old_buffer);
-        insert_leaf_node_new_cell(cursor, row);
+        insert_leaf_node_new_cell(row, refer);
         return;
     }
 
@@ -1224,7 +1225,7 @@ static void insert_and_split_leaf_node(Cursor *cursor, Row *row) {
                             : old_node;
         uint32_t destination_page = (i >= LEFT_SPLIT_COUNT) 
                             ? next_unused_page_num 
-                            : cursor->page_num;
+                            : refer->page_num;
 
         /* New position. */
         uint32_t index_at_node = i % LEFT_SPLIT_COUNT;
@@ -1233,17 +1234,17 @@ static void insert_and_split_leaf_node(Cursor *cursor, Row *row) {
         /* The cursor rigth cells should move one cell to the right to make space for the cursor, 
          * include the cell having the old same num as cursor. The cursor leaf cells don`t need to make space.
          * Because i start with cell number and decrease, right cells firstly move and make space. */
-        if (i == cursor->cell_num) {
+        if (i == refer->cell_num) {
             /* Deposit cursor. */
-            void *serial_data = seriable_index_value(row, cursor);
+            void *serial_data = seriable_index_value(row, refer);
             memcpy(destination, serial_data, value_len);
             set_leaf_node_cell_key(destination_node, index_at_node, key_len, value_len, default_value_len, key);
             dfree(serial_data);
-        } else if (i > cursor->cell_num) {
+        } else if (i > refer->cell_num) {
             /* Define new position, and right cells make cell space. */
             memcpy(destination, get_leaf_node_cell(old_node, key_len, value_len, default_value_len, i - 1), cell_length);
             /* Update refer. */
-            update_refer(oid, cursor->page_num, i - 1, destination_page, index_at_node);
+            update_refer(oid, refer->page_num, i - 1, destination_page, index_at_node);
             HeapTableUpdateIndexRefer(
                 table, 
                 get_leaf_node_index_refer_value(old_node, key_len, value_len, default_value_len, i - 1), 
@@ -1253,7 +1254,7 @@ static void insert_and_split_leaf_node(Cursor *cursor, Row *row) {
             /* Define new position. */
             memcpy(destination, get_leaf_node_cell(old_node, key_len, value_len, default_value_len, i), cell_length);
             /* Update refer. */
-            update_refer(oid, cursor->page_num, i, destination_page, index_at_node);
+            update_refer(oid, refer->page_num, i, destination_page, index_at_node);
             HeapTableUpdateIndexRefer(
                 table, 
                 get_leaf_node_index_refer_value(old_node, key_len, value_len, default_value_len, i), 
@@ -1269,7 +1270,7 @@ static void insert_and_split_leaf_node(Cursor *cursor, Row *row) {
 
     /* If the old node is root, need to creat new root node. */
     if (is_root_node(old_node)) 
-        create_new_root_node(cursor->table, next_unused_page_num, key_len, value_len, default_value_len); 
+        create_new_root_node(table, next_unused_page_num, key_len, value_len, default_value_len); 
     else {
         /* Otherwise, it`s a normal leaf node. 
          * -----------------------------------
@@ -1278,9 +1279,9 @@ static void insert_and_split_leaf_node(Cursor *cursor, Row *row) {
          * so mass of parent internal node cells may be happen.
          * We'll resort parent internal node cells lately.
          * */
-        void *new_max_key = get_max_key(cursor->table, old_node, key_len, value_len, default_value_len);
+        void *new_max_key = get_max_key(table, old_node, key_len, value_len, default_value_len);
         update_internal_node_key(
-            cursor->table, parent_page_num, 
+            table, parent_page_num, 
             old_max_key, new_max_key, 
             key_len, value_len, default_value_len, 
             primary_key_meta_column->column_type
@@ -1289,13 +1290,13 @@ static void insert_and_split_leaf_node(Cursor *cursor, Row *row) {
         /* And insert a new cell about the new 
          * leaf node to the parent internal node. */
         insert_internal_node_cell(
-            cursor->table, parent_page_num, next_unused_page_num, 
+            table, parent_page_num, next_unused_page_num, 
             key_len, value_len, default_value_len
         );
 
         /* Parent internla node cells may mass, so resort the cells. */
         resort_internal_node_cells(
-            cursor->table, parent_page_num, key_len, value_len, 
+            table, parent_page_num, key_len, value_len, 
             default_value_len, primary_key_meta_column->column_type
         );
 
@@ -1311,14 +1312,16 @@ static void insert_and_split_leaf_node(Cursor *cursor, Row *row) {
 
 
 /* Insert leaf node a new cell. */
-static void insert_leaf_node_new_cell(Cursor *cursor, Row *row) {
+static void insert_leaf_node_new_cell(Row *row, Refer *refer) {
+    Table *table;
+    void *key;
     uint32_t cell_num, value_len, key_len, default_value_len, cell_length;
-    Table *table = cursor->table;
-    Oid oid = GET_TABLE_OID(table);
-    void *key = RowFindKey(row, table->meta_table);
+
+    table = open_table_inner(refer->oid);
+    key = RowFindKey(row, table->meta_table);
 
     /* Get the node buffer. */
-    Buffer buffer = ReadBuffer(oid, cursor->page_num);  
+    Buffer buffer = ReadBuffer(refer->oid, refer->page_num);  
     void *node = GetBufferPage(buffer);
     
     default_value_len = table->heap_value_len;
@@ -1327,13 +1330,13 @@ static void insert_leaf_node_new_cell(Cursor *cursor, Row *row) {
     cell_num = get_leaf_node_cell_num(node, default_value_len);
     cell_length = value_len + key_len;
 
-    if (cursor->cell_num < cell_num) {
+    if (refer->cell_num < cell_num) {
         /* Upgrade lock buffer to RW_WRITE. */
         UpgradeLockBuffer(buffer);
 
         /* Make room for new cell. */
         int i;
-        for (i = cell_num; i > cursor->cell_num; i--) {
+        for (i = cell_num; i > refer->cell_num; i--) {
             /* Movement. */
             memcpy(
                 get_leaf_node_cell(node, key_len, value_len, default_value_len, i), 
@@ -1341,11 +1344,11 @@ static void insert_leaf_node_new_cell(Cursor *cursor, Row *row) {
                 cell_length
             );
             /* Update refer. */
-            update_refer(oid, cursor->page_num, i - 1, cursor->page_num, i);
+            update_refer(refer->oid, refer->page_num, i - 1, refer->page_num, i);
             HeapTableUpdateIndexRefer(
                 table, 
                 get_leaf_node_index_refer_value(node, key_len, value_len, default_value_len, i - 1), 
-                new_refer(oid, cursor->page_num, i)
+                new_refer(refer->oid, refer->page_num, i)
             );
         }
         
@@ -1354,16 +1357,16 @@ static void insert_leaf_node_new_cell(Cursor *cursor, Row *row) {
     }
     
     /* Insert the new row. */
-    set_leaf_node_cell_key(node, cursor->cell_num, key_len, value_len, default_value_len, key);
-    void *destination = seriable_index_value(row, cursor);
-    memcpy(get_leaf_node_cell_value(node, key_len, value_len, default_value_len, cursor->cell_num), 
+    set_leaf_node_cell_key(node, refer->cell_num, key_len, value_len, default_value_len, key);
+    void *destination = seriable_index_value(row, refer);
+    memcpy(get_leaf_node_cell_value(node, key_len, value_len, default_value_len, refer->cell_num), 
            destination, value_len);
     
     /* Check if the max key in leaf node has changed, that may impact the parent internal node. */
-    if (!is_root_node(node) && cursor->cell_num == cell_num) {
+    if (!is_root_node(node) && refer->cell_num == cell_num) {
         uint32_t parent_page_num = get_parent_pointer(node);
         void *old_max_key = get_leaf_node_cell_key(node, cell_num - 1, key_len, value_len, default_value_len);
-        MetaColumn *primary_key_meta_column = get_primary_key_meta_column(cursor->table->meta_table);
+        MetaColumn *primary_key_meta_column = get_primary_key_meta_column(table->meta_table);
         /* Logic check.*/
         Assert(greater_equal(get_real_value(key, primary_key_meta_column->column_type), 
                              get_real_value(old_max_key, primary_key_meta_column->column_type), 
@@ -1371,7 +1374,7 @@ static void insert_leaf_node_new_cell(Cursor *cursor, Row *row) {
 
         /* Update internal node key. */
         update_internal_node_key(
-            cursor->table, parent_page_num, 
+            table, parent_page_num, 
             old_max_key, key, 
             key_len, value_len, default_value_len, 
             primary_key_meta_column->column_type
@@ -1391,14 +1394,15 @@ static void insert_leaf_node_new_cell(Cursor *cursor, Row *row) {
 }
 
 /* Insert a new cell in leaf node */
-void insert_leaf_node_cell(Cursor *cursor, Row *row) {
+void insert_leaf_node_cell(Row *row, Refer *refer) {
     Buffer buffer;
     void *node;
     uint32_t cell_num, value_len, key_len, default_value_len;
-    Table *table = cursor->table;
+    Table *table;;
 
     /* Get the node buffer. */
-    buffer = ReadBuffer(GET_TABLE_OID(table), cursor->page_num); 
+    table = open_table_inner(refer->oid);
+    buffer = ReadBuffer(refer->oid, refer->page_num); 
     LockBuffer(buffer, RW_READERS);
     node = GetBufferPage(buffer); 
     
@@ -1411,9 +1415,9 @@ void insert_leaf_node_cell(Cursor *cursor, Row *row) {
     /* Check if the leaf node overflow after inserting, 
      * If overflow, split the leaf node fist.*/
     if (overflow_leaf_node(node, key_len, value_len, default_value_len, cell_num)) 
-        insert_and_split_leaf_node(cursor, row);
+        insert_and_split_leaf_node(row, refer);
     else 
-        insert_leaf_node_new_cell(cursor, row);
+        insert_leaf_node_new_cell(row, refer);
 
     /* Unlock the buffer. */
     UnlockBuffer(buffer);
@@ -2149,18 +2153,18 @@ void drop_column(uint32_t page_num, Table *table, int pos) {
 }
 
 /* If row is deleted*/
-bool cursor_is_deleted(Cursor *cursor) {
+bool refer_is_deleted(Refer *refer) {
     uint32_t key_len, value_len, default_value_len;
 
-    Table *table = cursor->table;
+    Table *table = open_table_inner(refer->oid);
     key_len = table->key_len; 
     value_len = table->index_value_len; 
     default_value_len = table->heap_value_len;
 
     /* Get the leaf node buffer. */
-    Buffer buffer = ReadBuffer(GET_TABLE_OID(table), cursor->page_num);
+    Buffer buffer = ReadBuffer(refer->oid, refer->page_num);
     void *leaf_node = GetBufferPage(buffer);
-    void *destination = get_leaf_node_cell_value(leaf_node, key_len, value_len, default_value_len, cursor->cell_num);
+    void *destination = get_leaf_node_cell_value(leaf_node, key_len, value_len, default_value_len, refer->cell_num);
  
     int offset = REFER_SIZE;
     ListCell *lc;
@@ -2319,26 +2323,26 @@ void delete_internal_node_cell(Table *table, uint32_t page_num, void *key, DataT
 }
 
 /* Delete leaf node. */
-void delete_leaf_node_cell(Cursor *cursor, void *key) {
+void delete_leaf_node_cell(void *key, Refer *refer) {
+    Oid oid;
+    Table *table;
     Buffer buffer;
     void *leaf_node, *obs_key;
     uint32_t key_len, value_len, default_value_len, cell_length, cell_num;
-    Table *table;
     MetaColumn *primary_key_meta_column;
-    Oid oid;
 
-    table = cursor->table;
+    oid = refer->oid;
+    table = open_table_inner(refer->oid);
     key_len = table->key_len;
     value_len = table->index_value_len;
     default_value_len = table->heap_value_len;
     cell_length = value_len + key_len;
 
     /* Get leaf node and cell number. */
-    oid = GET_TABLE_OID(table);
-    buffer = ReadBuffer(oid, cursor->page_num);
+    buffer = ReadBuffer(oid, refer->page_num);
     leaf_node = GetBufferPage(buffer);
     cell_num = get_leaf_node_cell_num(leaf_node, default_value_len);
-    obs_key = get_leaf_node_cell_key(leaf_node, cursor->cell_num, key_len, value_len, default_value_len);
+    obs_key = get_leaf_node_cell_key(leaf_node, refer->cell_num, key_len, value_len, default_value_len);
     primary_key_meta_column = get_primary_key_meta_column(table->meta_table);
 
     /* Theoretically, key and obs_key should be equal. */
@@ -2347,7 +2351,7 @@ void delete_leaf_node_cell(Cursor *cursor, void *key) {
                  primary_key_meta_column->column_type));
 
     /* Need to check if the last cell in the leaf node. */
-    if (cursor->cell_num == cell_num - 1) {
+    if (refer->cell_num == cell_num - 1) {
         /* The last cell has the max key, so if it`s parent node is internal node, need to repalce key. */
         if (!is_root_node(leaf_node)) {
             /* Get parent node. */
@@ -2356,12 +2360,12 @@ void delete_leaf_node_cell(Cursor *cursor, void *key) {
             /* If cell num is zero, it means it`s the only one in the leaf node, 
              * after delete it we also need to delete the cell in internal node. 
              * If not zero, it means these are sibling cells, just replace it with its previous cell. */
-            if (cursor->cell_num == 0)
-                delete_internal_node_cell(cursor->table, parent_page, obs_key, primary_key_meta_column->column_type);
+            if (refer->cell_num == 0)
+                delete_internal_node_cell(table, parent_page, obs_key, primary_key_meta_column->column_type);
             else {
-                void *obs_previous_key = get_leaf_node_cell_key(leaf_node, cursor->cell_num - 1, key_len, value_len, default_value_len);
+                void *obs_previous_key = get_leaf_node_cell_key(leaf_node, refer->cell_num - 1, key_len, value_len, default_value_len);
                 update_internal_node_key(
-                    cursor->table, parent_page, obs_key, 
+                    table, parent_page, obs_key, 
                     obs_previous_key, key_len, value_len, default_value_len,
                     primary_key_meta_column->column_type
                 );
@@ -2375,7 +2379,7 @@ void delete_leaf_node_cell(Cursor *cursor, void *key) {
         );
 
         /* Update refer null. */
-        update_refer(oid, cursor->page_num, cell_num - 1, -1, -1);
+        update_refer(oid, refer->page_num, cell_num - 1, -1, -1);
         HeapTableUpdateIndexRefer(
             table, 
             get_leaf_node_index_refer_value(leaf_node, key_len, value_len, default_value_len, cell_num - 1), 
@@ -2383,7 +2387,7 @@ void delete_leaf_node_cell(Cursor *cursor, void *key) {
         );
     } else {
         /* Move right cell forward to cover the obsolute cell sapce. */
-        for (uint32_t i = cursor->cell_num; i < cell_num; i++) {
+        for (uint32_t i = refer->cell_num; i < cell_num; i++) {
             if (i == cell_num - 1) 
                 memset(get_leaf_node_cell(leaf_node, key_len, value_len, default_value_len, i), 0, cell_length);
             else {
@@ -2391,19 +2395,19 @@ void delete_leaf_node_cell(Cursor *cursor, void *key) {
                        get_leaf_node_cell(leaf_node, key_len, value_len, default_value_len, i + 1), 
                        cell_length);
                 /* Update postion-changed row refer. */
-                update_refer(oid, cursor->page_num, i + 1, cursor->page_num, i);
+                update_refer(oid, refer->page_num, i + 1, refer->page_num, i);
                 HeapTableUpdateIndexRefer(
                     table, 
                     get_leaf_node_index_refer_value(leaf_node, key_len, value_len, default_value_len, i + 1), 
-                    new_refer(oid, cursor->page_num, i)
+                    new_refer(oid, refer->page_num, i)
                 );
             }
         }
         /* Update deleted row refer. */
-        update_refer(oid, cursor->page_num, cursor->cell_num, -1, -1);
+        update_refer(oid, refer->page_num, refer->cell_num, -1, -1);
         HeapTableUpdateIndexRefer(
             table, 
-            get_leaf_node_index_refer_value(leaf_node, key_len, value_len, default_value_len, cursor->cell_num), 
+            get_leaf_node_index_refer_value(leaf_node, key_len, value_len, default_value_len, refer->cell_num), 
             new_refer(oid, -1, -1)
         );
     }
@@ -2575,23 +2579,23 @@ void *serialize_row_data(Row *row, Table *table) {
 }
 
 /* Serialize index value. */
-static void *seriable_index_value(Row *row, Cursor *cursor) {
+static void *seriable_index_value(Row *row, Refer *refer) {
     uint32_t value_len;
     void *destination;
     Table *table;
     MetaTable *meta_table;
-    Refer *refer;
+    Refer *heap_refer;
 
-    table = cursor->table;
+    table = open_table_inner(refer->oid);
     value_len = table->index_value_len;
     destination = dalloc(value_len);
     meta_table = table->meta_table;
 
     /* Insert into heap table. */
-    refer = HeapTableInsertRow(cursor, row);
+    heap_refer = HeapTableInsertRow(row, refer);
     
-    /* Assign refer value. */
-    memcpy(destination, refer, REFER_SIZE);
+    /* Assign the heap refer value. */
+    memcpy(destination, heap_refer, REFER_SIZE);
 
     uint32_t offset = REFER_SIZE;
     ListCell *lc;
@@ -2608,22 +2612,22 @@ static void *seriable_index_value(Row *row, Cursor *cursor) {
 }
 
 /* Update row system reserved columns. */
-void update_row_data(Row *row, Cursor *cursor) {
+void update_row_data(Row *row, Refer *refer) {
     Table *table;
     Buffer buffer;
     void *leaf_node, *destination;
     uint32_t key_len, value_len, default_value_len;
 
-    table = cursor->table;
+    table = open_table_inner(refer->oid);
     key_len = table->key_len; 
     value_len = table->index_value_len; 
     default_value_len = table->heap_value_len;
     
     /* Get leaf node. */
-    buffer = ReadBuffer(GET_TABLE_OID(table), cursor->page_num);
+    buffer = ReadBuffer(refer->oid, refer->page_num);
     LockBuffer(buffer, RW_WRITER);
     leaf_node = GetBufferPage(buffer);
-    destination = get_leaf_node_cell_value(leaf_node, key_len, value_len, default_value_len, cursor->cell_num);
+    destination = get_leaf_node_cell_value(leaf_node, key_len, value_len, default_value_len, refer->cell_num);
 
     /* Update heap table row. */
     HeapTableUpdateRow(table, (Refer *) destination, row);

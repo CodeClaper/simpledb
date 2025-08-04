@@ -43,9 +43,6 @@ void free_table(Table *table);
 /* Free TableBufferEntry. */
 void free_table_buffer_entry(TableBufferEntry *entry);
 
-/* Free cursor. */
-void free_cursor(Cursor *cursor);
-
 /* Free Refer. */
 void free_refer(Refer *refer);
 

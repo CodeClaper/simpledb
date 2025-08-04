@@ -199,14 +199,6 @@ void free_table_buffer_entry(TableBufferEntry *entry) {
     }
 }
 
-/* Free cursor. */
-void free_cursor(Cursor *cursor) {
-    if (cursor) {
-        /* Notice: Table is used for cache, not free here. */
-        dfree(cursor);
-    }
-} 
-
 /* Free AtomNode. */
 void free_atom_node(AtomNode *atom_node) {
     if (atom_node) {

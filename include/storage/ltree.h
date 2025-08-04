@@ -89,13 +89,13 @@ void initial_leaf_node(void *leaf_node, uint32_t default_value_len, bool is_root
 void insert_internal_node_cell(Table *table, uint32_t page_num, uint32_t new_child_page_num, uint32_t key_len, uint32_t value_len, uint32_t default_value_len);
 
 /* Insert a new leaf node cell. */
-void insert_leaf_node_cell(Cursor *cursor, Row *row);
+void insert_leaf_node_cell(Row *row, Refer *refer);
 
 /* Delete leaf node. */
-void delete_leaf_node_cell(Cursor *obs_cursor, void *key);
+void delete_leaf_node_cell(void *key, Refer *refer);
 
-/* If cursor is deleted*/
-bool cursor_is_deleted(Cursor *cursor);
+/* If the refer is deleted*/
+bool refer_is_deleted(Refer *refer);
 
 /* Deserialize meta column. */
 MetaColumn *deserialize_meta_column(void *destination);
@@ -113,7 +113,7 @@ void *serialize_row_data(Row *row, Table *table);
 void append_new_column(uint32_t page_num, Table *table, MetaColumn *new_column, int pos);
 
 /* Update row data. */
-void update_row_data(Row *row, Cursor *cursor);
+void update_row_data(Row *row, Refer *refer);
 
 /* Update row created_xid. */
 void update_row_created_xid(Refer *refer, Xid created_xid);

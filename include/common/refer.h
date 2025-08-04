@@ -26,14 +26,8 @@ static inline int CompareRefer(Refer srefer, Refer trefer) {
  * Note: if page_num is -1 and cell_num is -1 which means refer null. */
 Refer *new_refer(Oid oid, int32_t page_num, int32_t cell_num);
 
-/* Generate new cursor. */
-Cursor *new_cursor(Table *table, uint32_t page_num, uint32_t cell_num);
-
 /* Generate new ReferUpdateEntity. */
 ReferUpdateEntity *new_refer_update_entity(Refer *old_refer, Refer *new_refer);
-
-/* Define cursor. */
-Cursor *define_cursor(Table *table, void *key);
 
 /* Define Refer. */
 Refer *define_refer(Table *table, void *key);
@@ -41,17 +35,8 @@ Refer *define_refer(Table *table, void *key);
 /* Fetch Refer. */
 Refer *fetch_refer(MetaColumn *meta_column, ConditionNode *condition_node);
 
-/* Convert to refer from cursor. */
-Refer *convert_refer(Cursor *cursor);
-
-/* Convert to Cursor from Refer. */
-Cursor *convert_cursor(Refer *refer);
-
 /* Check if refer equals. */
 bool refer_equals(Refer *refer1, Refer *refer2);
-
-/* Check if cursor equals. */
-bool cursor_equals(Cursor *cursor1, Cursor *cursor2);
 
 /* Check if refer null.
  * If page number is -1 and cell number is -1, it means refer null. */

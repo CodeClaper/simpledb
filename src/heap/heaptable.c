@@ -101,14 +101,13 @@ bool CreateHeapTable(char *tableName) {
 }
 
 /* Insert into heap table. */
-static void HeapTableInsertRowInner(Refer *rootRefer, Cursor *cursor, Row *row) {
+static void HeapTableInsertRowInner(Refer *rootRefer, Refer *refer, Row *row) {
     Table *table;
     uint32_t row_len, cell_len, cell_num;
     Buffer buffer;
-    Refer *iRefer;
     void *block;
 
-    table = cursor->table;
+    table = open_table_inner(refer->oid);
     row_len = calc_table_row_length(table);
     cell_len = REFER_SIZE + row_len;
     /* Logically, will not overflow page size. */
@@ -117,12 +116,11 @@ static void HeapTableInsertRowInner(Refer *rootRefer, Cursor *cursor, Row *row) 
     LockBuffer(buffer, RW_WRITER);
     block = GetBufferBlock(buffer);
     cell_num = GetPageCellNum(block);
-    iRefer = convert_refer(cursor);
 
     void *data = serialize_row_data(row, table); 
     void *destintion = GetPageCellData(block, cell_len, rootRefer->cell_num);
     /* Assign index refer value. */
-    memcpy(destintion, iRefer, REFER_SIZE);
+    memcpy(destintion, refer, REFER_SIZE);
     /* Assign row ceontent value. */
     memcpy(destintion + REFER_SIZE, data, row_len);
     rootRefer->cell_num++;
@@ -141,13 +139,13 @@ static void HeapTableInsertRowInner(Refer *rootRefer, Cursor *cursor, Row *row) 
 }
 
 /* Insert row data to heap table. */
-Refer *HeapTableInsertRow(Cursor *cursor, Row *row) {
+Refer *HeapTableInsertRow(Row *row, Refer *refer) {
     Table *table;
     Buffer rootBuffer;
     void *root;
     Refer *rootRefer, *currentRefer;
 
-    table = cursor->table;
+    table = open_table_inner(refer->oid);
     rootBuffer = ReadBuffer(table->hoid, HEAP_TABLE_ROOT_PAGE);
     LockBuffer(rootBuffer, RW_WRITER);
     root = GetBufferBlock(rootBuffer);
@@ -157,7 +155,7 @@ Refer *HeapTableInsertRow(Cursor *cursor, Row *row) {
     memcpy(currentRefer, rootRefer, sizeof(Refer));
     
     /* Insert into heap table. */
-    HeapTableInsertRowInner(rootRefer, cursor, row);
+    HeapTableInsertRowInner(rootRefer, refer, row);
 
     MakeBufferDirty(rootBuffer);
     UnlockBuffer(rootBuffer);

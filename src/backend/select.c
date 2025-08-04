@@ -790,7 +790,10 @@ static bool allow_scan_index(ROW_HANDLER_ARG_TYPE type, void *arg) {
 }
 
 
-/* Scan from leaf node. */
+/* Scan from leaf node. 
+ * -------------------
+ * Note that: Scan-index operation only supports for one-table query.
+ * */
 static void scan_from_leaf_node(SelectResult *select_result, ConditionNode *condition, 
                                 uint32_t page_num, Table *table, ROW_HANDLER row_handler, 
                                 ROW_HANDLER_ARG_TYPE type, void *arg) {
@@ -886,6 +889,7 @@ static void select_from_leaf_node(SelectResult *select_result, ConditionNode *co
             columns = merge_meta_columns(head);
             head->columns = columns;
         }
+
         ntuple = merge_tuple(head);
         Assert(columns != NIL);
         Assert(ntuple != NULL);

@@ -33,7 +33,6 @@
 void delete_row(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg) {
     void *key;
     Table *table;
-    Cursor *cursor;
     Refer *refer;
     Row *row, *currentRow;
     
@@ -45,10 +44,7 @@ void delete_row(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE t
         key = RowFindKey(row, table->meta_table);
 
         /* Define the cursor of the row. */
-        cursor = define_cursor(table, key);
-
-        /* Get refer and record xlog. */
-        refer = convert_refer(cursor);
+        refer = define_refer(table, key);
 
         /* Get the current newest row. */
         currentRow = define_row(refer);
@@ -57,14 +53,13 @@ void delete_row(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE t
         UpdateTransactionState(currentRow, TR_DELETE);
 
         /* Sync row data */
-        update_row_data(currentRow, cursor);
+        update_row_data(currentRow, refer);
 
         RecordXlog(refer, HEAP_DELETE);
 
         select_result->row_size++;
 
         /* Free memeory. */
-        free_cursor(cursor);
         free_refer(refer);
     }
 }

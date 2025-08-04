@@ -171,10 +171,10 @@ static void HeapDeleteXLog(Refer *refer, TransEntry *transaction) {
     *(Xid *)expired_xid_col->value = 0;
 
     /* Repositioning. */
-    Cursor *new_cur = define_cursor(table, key);
+    Refer *nrefer = define_refer(table, key);
 
     /* Re-insert. */
-    insert_leaf_node_cell(new_cur, newRow);
+    insert_leaf_node_cell(newRow, nrefer);
 
     free_row(newRow);
 }
@@ -196,15 +196,14 @@ static void HeadUpdateDeleteXlog(Refer *refer, TransEntry *transaction) {
     *(Xid *)expired_xid_col->value = 0;
 
     /* Repositioning. */
-    Cursor *new_cur = define_cursor(table, key);
-    Refer *new_ref = convert_refer(new_cur);
+    Refer *nRefer = define_refer(table, key);
 
     /* Lock update refer. */
-    add_refer_update_lock(new_ref);
+    add_refer_update_lock(nRefer);
 
     /* Re-insert. */
-    insert_leaf_node_cell(new_cur, newRow);
+    insert_leaf_node_cell(newRow, nRefer);
 
     /* Free update refer lock. */
-    free_refer_update_lock(new_ref);
+    free_refer_update_lock(nRefer);
 }

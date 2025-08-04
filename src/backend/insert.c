@@ -180,7 +180,6 @@ static List *generate_insert_row_for_all(InsertNode *insert_node) {
  * Return a Row which need to be freed by caller.
  * */
 static Row *generate_insert_row_for_part_inner(MetaTable *meta_table, List *column_list, List *value_item_list) {
-
     /* Instance row. */
     Row *row = new_row();
     
@@ -286,10 +285,10 @@ Refer *insert_one_row(Table *table, Row *row) {
     
     void *key = RowFindKey(row, table->meta_table);
     Assert(key != NULL);
-    Cursor *cursor = define_cursor(table, key);
+    Refer *refer = define_refer(table, key);
     if (has_user_primary_key(table->meta_table) && 
-            check_duplicate_key(cursor, key) && 
-                !cursor_is_deleted(cursor)) {
+            check_duplicate_key(key, refer) && 
+                !refer_is_deleted(refer)) {
         char *keyStr = primary_key_meta_column->column_type == T_STRING
                 ? QueryStringValue(key)
                 : get_key_str(key, primary_key_meta_column->column_type);
@@ -299,16 +298,10 @@ Refer *insert_one_row(Table *table, Row *row) {
     }
 
     /* Insert into leaf node. */
-    insert_leaf_node_cell(cursor, row);
-
-    /* Convert to Refer. */
-    Refer *refer = convert_refer(cursor);
+    insert_leaf_node_cell(row, refer);
 
     /* Record xlog for insert operation. */
     RecordXlog(refer, HEAP_INSERT);
-
-    /* Free useless memeory */
-    free_cursor(cursor);
 
     return refer;    
 }

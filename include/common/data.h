@@ -630,11 +630,11 @@ typedef struct TableBufferEntry {
 } TableBufferEntry;
 
 /* Cursor */
-typedef struct Cursor {
-    Table *table;
-    uint32_t page_num;
-    uint32_t cell_num;
-} Cursor;
+//typedef struct Cursor {
+//    Table *table;
+//    uint32_t page_num;
+//    uint32_t cell_num;
+//} Cursor;
 
 /* KeyValue */
 typedef struct KeyValue {
@@ -647,8 +647,6 @@ typedef struct KeyValue {
 
 /* Row */
 typedef struct Row {
-   // void *key;                              /* Primary key. */
-   // char table_name[MAX_TABLE_NAME_LEN];    /* Table name. */
     List *data;                             /* List of KeyValue. */
 } Row;
 

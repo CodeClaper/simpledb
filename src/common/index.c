@@ -17,15 +17,15 @@
 #include "strheaptable.h"
 
 /* Check if key already exists  */
- bool check_duplicate_key(Cursor *cursor, void *key) {
+ bool check_duplicate_key(void *key, Refer *refer) {
     Buffer buffer;
     void *node, *target;
     uint32_t key_len, value_len, default_value_len;
     MetaColumn *primary_key_meta_column;
-    Table *table = cursor->table;
+    Table *table = open_table_inner(refer->oid);
 
     /* Get the buffer. */
-    buffer = ReadBuffer(GET_TABLE_OID(table), cursor->page_num); 
+    buffer = ReadBuffer(refer->oid, refer->page_num); 
     node = GetBufferPage(buffer);
 
     value_len = table->index_value_len;
@@ -33,11 +33,11 @@
     key_len = table->key_len;
 
     /* If overflow after the new tuple inserting, it not duplcate of course. */
-    if (overflow_leaf_node(node, key_len, value_len, default_value_len, cursor->cell_num))
+    if (overflow_leaf_node(node, key_len, value_len, default_value_len, refer->cell_num))
         return false;
 
     primary_key_meta_column = get_primary_key_meta_column(table->meta_table);
-    target = get_leaf_node_cell_key(node, cursor->cell_num, key_len, value_len, default_value_len);
+    target = get_leaf_node_cell_key(node, refer->cell_num, key_len, value_len, default_value_len);
     Assert(target < (void *) ((char *) node + PAGE_SIZE));
 
     /* Release the buffer. */

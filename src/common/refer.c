@@ -106,40 +106,36 @@ Refer *new_refer(Oid oid, int32_t page_num, int32_t cell_num) {
     return refer;
 }
 
-/* Generate new cursor. */
-Cursor *new_cursor(Table *table, uint32_t page_num, uint32_t cell_num) {
-    Cursor *cursor = instance(Cursor);
-    cursor->table = table;
-    cursor->page_num = page_num;
-    cursor->cell_num = cell_num;
-    return cursor;
+/* Define refer from a leaf node. */
+static Refer *define_refer_from_leaf_node(Table *table, void *leaf_node, uint32_t page_num, void *key) {
+    Refer *refer; 
+    MetaColumn *primary_meta_column;
+    uint32_t key_len, value_len, default_value_len, cell_num;
+
+    refer = new_refer(GET_TABLE_OID(table), page_num, 0);
+    primary_meta_column = get_primary_key_meta_column(table->meta_table);
+
+    key_len = table->key_len;
+    value_len = table->index_value_len;
+    default_value_len = table->heap_value_len;
+    cell_num = get_leaf_node_cell_num(leaf_node, default_value_len);
+    refer->cell_num = get_leaf_node_cell_index(leaf_node, key, cell_num, key_len, value_len, default_value_len, primary_meta_column->column_type);
+
+    return refer;
 }
 
-/* Define cursor when meet leaf node. */
-static Cursor *define_cursor_leaf_node(Table *table, void *leaf_node, uint32_t page_num, void *key) {
-    Cursor *cursor = instance(Cursor);
-    MetaColumn *primary_meta_column = get_primary_key_meta_column(table->meta_table);
-    uint32_t key_len = table->key_len;
-    uint32_t value_len = table->index_value_len;
-    uint32_t default_value_len = table->heap_value_len;
-    uint32_t cell_num = get_leaf_node_cell_num(leaf_node, default_value_len);
-    cursor->table = table;
-    cursor->page_num = page_num;
-    cursor->cell_num = get_leaf_node_cell_index(leaf_node, key, cell_num, key_len, value_len, default_value_len, primary_meta_column->column_type);
-    return cursor;
-}
-
-/* Define cursor when meet internal node. */
-static Cursor *define_cursor_internal_node(Table *table, void *internal_node, void *key) {
-    Cursor *cursor;
-    uint32_t key_len, default_value_len, keys_num;
+/* Define refer from an internal node. */
+static Refer *define_refer_from_internal_node(Table *table, void *internal_node, void *key) {
+    Refer *refer;
+    MetaColumn *primary_meta_column;
+    uint32_t key_len, default_value_len, keys_num, child_page_num;
 
     key_len = table->key_len;
     default_value_len = table->heap_value_len;
     keys_num = get_internal_node_keys_num(internal_node, default_value_len);
 
-    MetaColumn *primary_meta_column = get_primary_key_meta_column(table->meta_table);
-    uint32_t child_page_num = get_internal_node_cell_child_page_num(internal_node, key, keys_num, key_len, default_value_len, primary_meta_column->column_type);
+    primary_meta_column = get_primary_key_meta_column(table->meta_table);
+    child_page_num = get_internal_node_cell_child_page_num(internal_node, key, keys_num, key_len, default_value_len, primary_meta_column->column_type);
     Assert(child_page_num != -1);
 
     /* Get the child node buffer. */
@@ -148,10 +144,10 @@ static Cursor *define_cursor_internal_node(Table *table, void *internal_node, vo
     NodeType node_type = get_node_type(child_node);
     switch(node_type) {
         case LEAF_NODE:
-            cursor = define_cursor_leaf_node(table, child_node, child_page_num, key);
+            refer = define_refer_from_leaf_node(table, child_node, child_page_num, key);
             break;
         case INTERNAL_NODE:
-            cursor = define_cursor_internal_node(table, child_node, key);
+            refer = define_refer_from_internal_node(table, child_node, key);
             break;
         default:
             UNEXPECTED_VALUE(node_type);
@@ -161,12 +157,12 @@ static Cursor *define_cursor_internal_node(Table *table, void *internal_node, vo
     /* Release the child node buffer. */
     ReleaseBuffer(buffer);
 
-    return cursor;
+    return refer;
 }
 
-/* Define Cursor. */
-Cursor *define_cursor(Table *table, void *key) {
-    Cursor *cursor;
+/* Define Refer. */
+Refer *define_refer(Table *table, void *key) {
+    Refer *refer;
 
     Assert(table != NULL);
     Assert(key != NULL);
@@ -177,10 +173,10 @@ Cursor *define_cursor(Table *table, void *key) {
     NodeType node_type = get_node_type(root_node);
     switch(node_type) {
         case LEAF_NODE:
-            cursor = define_cursor_leaf_node(table, root_node, table->root_page_num, key);
+            refer = define_refer_from_leaf_node(table, root_node, table->root_page_num, key);
             break;
         case INTERNAL_NODE:
-            cursor = define_cursor_internal_node(table, root_node, key);
+            refer = define_refer_from_internal_node(table, root_node, key);
             break;
         default:
             UNEXPECTED_VALUE(node_type);
@@ -190,14 +186,6 @@ Cursor *define_cursor(Table *table, void *key) {
     /* Release the root buffer. */
     ReleaseBuffer(buffer);
 
-    return cursor;
-}
-
-/* Define Refer */
-Refer *define_refer(Table *table, void *key) {
-    Cursor *cursor = define_cursor(table, key);
-    Refer *refer = convert_refer(cursor);
-    free_cursor(cursor);
     return refer;
 }
 
@@ -250,28 +238,6 @@ ReferUpdateEntity *new_refer_update_entity(Refer *old_refer, Refer *new_refer) {
     return refer_update_entity;
 }
 
-/* Convert to refer from cursor. */
-Refer *convert_refer(Cursor *cursor) {
-    if (cursor == NULL) 
-        return NULL;
-
-    /* Generate new refer. */
-    Refer *refer = instance(Refer);
-    refer->oid = GET_TABLE_OID(cursor->table);
-    refer->page_num = cursor->page_num;
-    refer->cell_num = cursor->cell_num;
-
-    return refer;
-}
-
-/* Convert to Cursor from Refer. */
-Cursor *convert_cursor(Refer *refer) {
-    if (refer == NULL)
-        return NULL;
-    Table *table = open_table_inner(refer->oid);
-    return new_cursor(table, refer->page_num, refer->cell_num);
-}
-
 /* Check if table has column refer to. */
 static bool if_related_table(MetaTable *meta_table, Oid refer_oid) {
     Table *refer_table;
@@ -296,13 +262,6 @@ bool refer_equals(Refer *refer1, Refer *refer2) {
     return refer1->oid == refer2->oid && 
                 refer1->page_num == refer2->page_num && 
                     refer1->cell_num == refer2->cell_num;
-}
-
-/* Check if cursor equals. */
-bool cursor_equals(Cursor *cursor1, Cursor * cursor2) {
-    return GET_TABLE_OID(cursor1->table) == GET_TABLE_OID(cursor2->table) && 
-                cursor1->page_num == cursor2->page_num && 
-                cursor1->cell_num == cursor2->cell_num;
 }
 
 /* Update single key value refer. */
@@ -331,7 +290,7 @@ static bool update_array_key_value_refer(KeyValue *key_value, ReferUpdateEntity 
 }
 
 /* Update row key value. */
-static void update_key_value_refer(Row *row, MetaColumn *meta_column, Cursor *cursor, 
+static void update_key_value_refer(Row *row, MetaColumn *meta_column, Refer *refer, 
                                    ReferUpdateEntity *refer_update_entity) {
     bool flag = false;
     ListCell *lc;
@@ -351,7 +310,7 @@ static void update_key_value_refer(Row *row, MetaColumn *meta_column, Cursor *cu
     
     /* If satisfied above conditions, update the row. */
     if (flag)
-        update_row_data(row, cursor);
+        update_row_data(row, refer);
 }
 
 
@@ -369,7 +328,7 @@ static void update_row_refer(void *destin, SelectResult *select_result,
 
     Row *row = generate_row(destin, table->meta_table);
     void *key = RowFindKey(row, table->meta_table);
-    Cursor *cursor = define_cursor(table, key);
+    Refer *refer = define_refer(table, key);
 
     /* MetaTable */
     MetaTable *meta_table = table->meta_table;
@@ -379,7 +338,7 @@ static void update_row_refer(void *destin, SelectResult *select_result,
         MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
         if (meta_column->column_type == T_REFERENCE && 
                 streq(meta_column->table_name, GET_TABLE_NAME(ref_table))) 
-            update_key_value_refer(row, meta_column, cursor, refer_update_entity);
+            update_key_value_refer(row, meta_column, refer, refer_update_entity);
     }
 }
 
@@ -428,7 +387,6 @@ void update_related_tables_refer(ReferUpdateEntity *refer_update_entity) {
  * must to update row reference value which pointer to it. */
 void update_refer(Oid oid, int32_t old_page_num, int32_t old_cell_num, 
                   int32_t new_page_num, int32_t new_cell_num) {
-   
     Refer *old_one = new_refer(oid, old_page_num, old_cell_num);
     Refer *new_one = new_refer(oid, new_page_num, new_cell_num);
     ReferUpdateEntity *refer_update_entity = new_refer_update_entity(old_one, new_one);

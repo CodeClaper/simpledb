@@ -81,11 +81,11 @@ static void gc_row(void *destin, SelectResult *select_result, ROW_HANDLER_ARG_TY
     if (!RowIsDeleted(row))
         return;
 
-    /* Cursor */
-    Cursor * cursor = define_cursor(table, key);
+    /* Get refer. */
+    Refer *refer = define_refer(table, key);
 
     /* Delete row. */
-    delete_leaf_node_cell(cursor, key);
+    delete_leaf_node_cell(key, refer);
 }
 
 /* Gc table */
