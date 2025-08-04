@@ -114,7 +114,7 @@ void makeup_reserved_columns(Row *row, char *table_name) {
 /* Generate insert row for all columns. 
  * Return Row.
  * */
-static Row *generate_insert_row_for_all2(MetaTable *meta_table, List *value_item_list) {
+static Row *generate_insert_row_for_all_inner(MetaTable *meta_table, List *value_item_list) {
     /* Check NodeType. */
     Assert(value_item_list->type == NODE_VALUE_ITEM);
 
@@ -133,7 +133,11 @@ static Row *generate_insert_row_for_all2(MetaTable *meta_table, List *value_item
                                             NULL,
                                             meta_column->column_type, 
                                             meta_table->table_name);
+
+        /* Maybe array value, and the funciton <copy_value> 
+         * not support ArrayValue, so specially assign here.*/
         key_value->value = get_insert_value(value_item_list, __i, meta_column);
+
         append_list(row->data, key_value);
     }
 
@@ -163,7 +167,7 @@ static List *generate_insert_row_for_all(InsertNode *insert_node) {
     ListCell *lc;
     foreach (lc, value_list) {
         List *value_item_list = lfirst(lc);
-        Row *row = generate_insert_row_for_all2(meta_table, value_item_list);
+        Row *row = generate_insert_row_for_all_inner(meta_table, value_item_list);
         append_list(row_list, row);
     }
     
@@ -175,7 +179,7 @@ static List *generate_insert_row_for_all(InsertNode *insert_node) {
  * -------------------------------------
  * Return a Row which need to be freed by caller.
  * */
-static Row *generate_insert_row_for_part2(MetaTable *meta_table, List *column_list, List *value_item_list) {
+static Row *generate_insert_row_for_part_inner(MetaTable *meta_table, List *column_list, List *value_item_list) {
 
     /* Instance row. */
     Row *row = new_row();
@@ -195,6 +199,9 @@ static Row *generate_insert_row_for_part2(MetaTable *meta_table, List *column_li
                                             NULL,
                                             meta_column->column_type, 
                                             meta_table->table_name);
+
+        /* Maybe array value, and the funciton <copy_value> 
+         * not support ArrayValue, so specially assign here.*/
         key_value->value = get_insert_value(value_item_list, __i, meta_column);
 
         /* Value of KeyValue may be null when it is Refer. */
@@ -230,7 +237,7 @@ static List *generate_insert_row_for_part(InsertNode *insert_node) {
     ListCell *lc;
     foreach (lc, value_list) {
         List *value_item_list = lfirst(lc);
-        Row *row = generate_insert_row_for_part2(meta_table, column_list, value_item_list);
+        Row *row = generate_insert_row_for_part_inner(meta_table, column_list, value_item_list);
         append_list(row_list, row);
     }
 
