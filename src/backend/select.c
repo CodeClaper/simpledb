@@ -1327,13 +1327,11 @@ void select_row(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE t
     }
 }
 
-/* Query row data. 
+/* Output tuple data. 
  * --------------
- * Defferent with select_row, query_row will output the row 
- * data immediately and then free memory, not store the row 
- * data until selection. It works for query-rows operation.
+ * This funtion will directly output the tuple data instead of conveting to row data.
  * */
-void query_row(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg) {
+void output_tuple(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg) {
     List *display_columns;
 
     /* Define the display columns. */

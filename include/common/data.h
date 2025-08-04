@@ -638,8 +638,8 @@ typedef struct KeyValue {
     bool is_array;
 } KeyValue;
 
-/* Row. 
- * Differences between Row and tuple. 
+/* User-level Row. 
+ * Differences between Row and Tuple. 
  * (1) Row works in User-level and tuple works in System-lelve.
  * (2) Row used for data output to client or data input from client, 
  *     and tuple used for data write in page or data read from page.*/
@@ -724,10 +724,10 @@ typedef struct {
 
 /* TransactionHandle */
 typedef struct TransEntry {
-    Xid xid;                    /* transaction id. */ 
-    Pid pid;                    /* processor id. */
-    bool auto_commit;           /* auto commit. */
-    struct TransEntry *next;    /* next */
+    Xid xid;                    /* Transaction id. */ 
+    Pid pid;                    /* Processor id. */
+    bool auto_commit;           /* Auto commit. */
+    struct TransEntry *next;    /* Next */
 } TransEntry;
 
 /* AliasEntry */

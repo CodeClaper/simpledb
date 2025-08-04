@@ -35,8 +35,8 @@ void select_tuple(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE
 /* Select row data. */
 void select_row(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg);
 
-/* Query row data. */
-void query_row(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg);
+/* Output tuple data. */
+void output_tuple(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg);
 
 /* Define the tuple by refer. 
  * Return the tuple not matter if it is deleted and caller checks if deleted.

@@ -87,12 +87,12 @@ static LimitClauseNode *GetLimitClause(SelectNode *selectNode) {
 }
 
 /* Define which ROW_HANDLER. 
- * (1) if only all column, use query_row.
+ * (1) if only all column, use <output_tuple>.
  * (2) if only count, use count_row.
  * (3) otherwise, use select_row as default.
  * */
 static ROW_HANDLER DefineRowHandler(SelectParam *selectParam) {
    return selectParam->onlyAll && selectParam->stmt_type == SELECT_STMT
-            ? query_row
+            ? output_tuple
             : selectParam->onlyCount ? count_row : select_row;
 }
