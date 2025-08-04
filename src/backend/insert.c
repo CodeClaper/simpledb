@@ -119,7 +119,7 @@ static Row *generate_insert_row_for_all_inner(MetaTable *meta_table, List *value
     Assert(value_item_list->type == NODE_VALUE_ITEM);
 
     /* Instance row. */
-    Row *row = new_row();
+    Row *row = NewRow();
     
     /* Row data. */
     ListCell *lc;
@@ -181,7 +181,7 @@ static List *generate_insert_row_for_all(InsertNode *insert_node) {
  * */
 static Row *generate_insert_row_for_part_inner(MetaTable *meta_table, List *column_list, List *value_item_list) {
     /* Instance row. */
-    Row *row = new_row();
+    Row *row = NewRow();
     
     /* Row data. */
     ListCell *lc;
@@ -256,7 +256,7 @@ static List *generate_insert_row(InsertNode *insert_node) {
 
 /* Convert to insert row. */
 static Row *convert_insert_row(Row *row, Table *table) {
-    Row *insert_row = new_row();
+    Row *insert_row = NewRow();
 
     /* Copy data. */
     ListCell *lc;

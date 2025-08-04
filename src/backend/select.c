@@ -27,6 +27,7 @@
 #include "log.h"
 #include "mmgr.h"
 #include "meta.h"
+#include "row.h"
 #include "ltree.h"
 #include "pager.h"
 #include "table.h"
@@ -525,7 +526,7 @@ static MetaColumn *get_cond_meta_column(PredicateNode *predicate, MetaTable *met
 
 /* Generate row by tuple. */
 Row *generate_row_inner(void *tuple, List *meta_columns) {
-    Row *row = new_row();
+    Row *row = NewRow();
 
     /* Assignment row data. */
     ListCell *lc;
@@ -2160,7 +2161,7 @@ static KeyValue *query_function_value(ScalarExpNode *scalar_exp, SelectResult *s
 
 /* Query function data. */
 static void query_fuction_selecton(List *scalar_exp_list, SelectResult *select_result) {
-    Row *row = new_row();
+    Row *row = NewRow();
 
     ListCell *lc;
     foreach (lc, scalar_exp_list) {
@@ -2246,7 +2247,7 @@ static Row *query_plain_row_selection(SelectResult *select_result, List *scalar_
     if (is_null(row)) 
         return NULL;
     
-    Row *sub_row = new_row();
+    Row *sub_row = NewRow();
 
     ListCell *lc;
     foreach (lc, scalar_exp_list) {

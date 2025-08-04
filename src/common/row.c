@@ -1,5 +1,14 @@
 #include "row.h"
 #include "meta.h"
+#include "mmgr.h"
+#include "instance.h"
+
+/* New a row. */
+Row *NewRow() {
+    Row *row = instance(Row);
+    row->data = create_list(NODE_KEY_VALUE);
+    return row;
+}
 
 /* Find the key in a row. 
  * ---------------------

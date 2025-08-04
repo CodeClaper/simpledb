@@ -18,6 +18,7 @@
 #include "delete.h"
 #include "trans.h"
 #include "meta.h"
+#include "row.h"
 #include "sysstate.h"
 #include "heaptable.h"
 
@@ -392,7 +393,7 @@ static Object TupleConvertObject(void *tuple) {
  * Return a new row which need be freed by caller.
  * */
 static Row *ObjectConvertRow(Object entity) {
-    Row *row = new_row();
+    Row *row = NewRow();
 
     int i;
     for (i = 0; i < SYS_TABLE_COLUMNS_LENGTH; i++) {

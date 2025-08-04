@@ -9,6 +9,7 @@
 #include "data.h"
 #include "index.h"
 #include "instance.h"
+#include "row.h"
 #include "meta.h"
 #include "log.h"
 #include "asserts.h"
@@ -150,7 +151,7 @@ Row *copy_row(Row *row) {
     if (row == NULL)
         return NULL;
 
-    Row *duplica = new_row();
+    Row *duplica = NewRow();
 
     ListCell *lc;
     foreach (lc, row->data) {

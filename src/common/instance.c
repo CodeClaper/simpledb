@@ -18,13 +18,6 @@ KeyValue *new_key_value(char *key, void *value, DataType data_type, char *table_
     return key_value;
 }
 
-/* Generate new row instance. */
-Row *new_row() {
-    Row *row = instance(Row);
-    row->data = create_list(NODE_KEY_VALUE);
-    return row;
-}
-
 /* Generate new ArrayValue instance. */
 ArrayValue *new_array_value(DataType data_type, uint32_t size) {
     ArrayValue *array_value = instance(ArrayValue);
