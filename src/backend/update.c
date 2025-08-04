@@ -71,7 +71,7 @@ static void insert_row_for_update(Row *row, Table *table) {
     UpdateTransactionState(row, TR_INSERT);
 
     /* Insert */
-    insert_leaf_node_cell(row, nrefer);
+    insert_row_data(row, nrefer);
 
     /* Record xlog for insert. */
     RecordXlog(nrefer, HEAP_UPDATE_INSERT);

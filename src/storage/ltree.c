@@ -67,6 +67,7 @@
 #include "heaptable.h"
 
 static void insert_leaf_node_new_cell(Row *row, Refer *refer);
+static void insert_internal_node_cell(Table *table, uint32_t page_num, uint32_t new_child_page_num, uint32_t key_len, uint32_t value_len, uint32_t default_value_len);
 static void append_leaf_node_column(uint32_t page_num, Table *table, MetaColumn *new_column, int pos);
 static bool check_internal_node_cells_mass(void *internal_node, uint32_t keys_num, uint32_t key_len, uint32_t default_value_len, DataType data_type);
 static void *seriable_index_value(Row *row, Refer *refer);
@@ -1048,8 +1049,8 @@ static void insert_and_split_internal_node(Table *table, uint32_t old_internal_p
 }
 
 /* Insert new internal node cell. */
-void insert_internal_node_cell(Table *table, uint32_t page_num, uint32_t new_child_page_num, 
-                               uint32_t key_len, uint32_t value_len, uint32_t default_value_len) {
+static void insert_internal_node_cell(Table *table, uint32_t page_num, uint32_t new_child_page_num, 
+                                      uint32_t key_len, uint32_t value_len, uint32_t default_value_len) {
     /* Get buffer. */
     Oid oid = GET_TABLE_OID(table);
     Buffer buffer = ReadBuffer(oid, page_num);
@@ -1394,7 +1395,7 @@ static void insert_leaf_node_new_cell(Row *row, Refer *refer) {
 }
 
 /* Insert a new cell in leaf node */
-void insert_leaf_node_cell(Row *row, Refer *refer) {
+void insert_row_data(Row *row, Refer *refer) {
     Buffer buffer;
     void *node;
     uint32_t cell_num, value_len, key_len, default_value_len;
@@ -2322,8 +2323,8 @@ void delete_internal_node_cell(Table *table, uint32_t page_num, void *key, DataT
     ReleaseBuffer(buffer);
 }
 
-/* Delete leaf node. */
-void delete_leaf_node_cell(void *key, Refer *refer) {
+/* Delete row data. */
+void delete_row_data(void *key, Refer *refer) {
     Oid oid;
     Table *table;
     Buffer buffer;

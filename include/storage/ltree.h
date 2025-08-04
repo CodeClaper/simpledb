@@ -85,14 +85,11 @@ void *get_array_value(void *destination, uint32_t index, uint32_t span);
 /* Initialize leaf node. */
 void initial_leaf_node(void *leaf_node, uint32_t default_value_len, bool is_root);
 
-/* Insert new internal node cell. */
-void insert_internal_node_cell(Table *table, uint32_t page_num, uint32_t new_child_page_num, uint32_t key_len, uint32_t value_len, uint32_t default_value_len);
+/* Insert a new row data. */
+void insert_row_data(Row *row, Refer *refer);
 
-/* Insert a new leaf node cell. */
-void insert_leaf_node_cell(Row *row, Refer *refer);
-
-/* Delete leaf node. */
-void delete_leaf_node_cell(void *key, Refer *refer);
+/* Delete the row data. */
+void delete_row_data(void *key, Refer *refer);
 
 /* If the refer is deleted*/
 bool refer_is_deleted(Refer *refer);

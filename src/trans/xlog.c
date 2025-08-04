@@ -174,7 +174,7 @@ static void HeapDeleteXLog(Refer *refer, TransEntry *transaction) {
     Refer *nrefer = define_refer(table, key);
 
     /* Re-insert. */
-    insert_leaf_node_cell(newRow, nrefer);
+    insert_row_data(newRow, nrefer);
 
     free_row(newRow);
 }
@@ -202,7 +202,7 @@ static void HeadUpdateDeleteXlog(Refer *refer, TransEntry *transaction) {
     add_refer_update_lock(nRefer);
 
     /* Re-insert. */
-    insert_leaf_node_cell(newRow, nRefer);
+    insert_row_data(newRow, nRefer);
 
     /* Free update refer lock. */
     free_refer_update_lock(nRefer);

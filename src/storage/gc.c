@@ -85,7 +85,7 @@ static void gc_row(void *destin, SelectResult *select_result, ROW_HANDLER_ARG_TY
     Refer *refer = define_refer(table, key);
 
     /* Delete row. */
-    delete_leaf_node_cell(key, refer);
+    delete_row_data(key, refer);
 }
 
 /* Gc table */

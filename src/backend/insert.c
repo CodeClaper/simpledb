@@ -298,7 +298,7 @@ Refer *insert_one_row(Table *table, Row *row) {
     }
 
     /* Insert into leaf node. */
-    insert_leaf_node_cell(row, refer);
+    insert_row_data(row, refer);
 
     /* Record xlog for insert operation. */
     RecordXlog(refer, HEAP_INSERT);
