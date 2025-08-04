@@ -37,7 +37,7 @@ void delete_row(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE t
     Row *row, *currentRow;
     
     table = open_table_inner(select_result->oid);
-    row = generate_row(tuple, table->meta_table);
+    row = GenerateRow(tuple, table->meta_table);
     /* Only deal with row that is visible for current transaction. */
     if (RowIsVisible(row)) {
         /* Get key in row. */

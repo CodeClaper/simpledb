@@ -92,7 +92,7 @@ static void update_row(void *tuple, SelectResult *select_result,
     void *old_key, *new_key;
         
     table = open_table_inner(select_result->oid);
-    rawRow = generate_row(tuple, table->meta_table);
+    rawRow = GenerateRow(tuple, table->meta_table);
     /* Only update row that is visible for current transaction. */
     if (!RowIsVisible(rawRow)) 
         return;

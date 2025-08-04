@@ -53,9 +53,6 @@ Row *define_row(Refer *refer);
  * */
 Row *define_visible_row(Refer *refer);
 
-/* Deseriable row. 1*/
-Row *generate_row(void *destinct, MetaTable *meta_table);
-
 /* Query with column and value. */
 SelectResult *select_with_column_value(Oid oid, MetaColumn *meta_column, void *value);
 
@@ -66,7 +63,6 @@ void query_with_condition_inner(Oid oid, ConditionNode *condition, SelectResult 
 /* Query with condition. */
 void query_with_condition(ConditionNode *condition, SelectResult *select_result, 
                           ROW_HANDLER row_handler, ROW_HANDLER_ARG_TYPE type, void *arg);
-
 
 /* Execute select statement. */
 void exec_select_statement(SelectNode *select_node, DBResult *result);

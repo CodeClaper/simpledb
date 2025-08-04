@@ -10,6 +10,7 @@
 #include "sys.h"
 #include "systable.h"
 #include "defs.h"
+#include "row.h"
 #include "table.h"
 #include "log.h"
 #include "mmgr.h"
@@ -188,7 +189,7 @@ void *HeapTableLookupTuple(Table *table, Refer *refer) {
 /* Loop up row from heap table. */
 Row *HeapTableLookupRow(Table *table, Refer *refer) {
     void *tuple = HeapTableLookupTuple(table, refer);
-    return generate_row(tuple, table->meta_table);
+    return GenerateRow(tuple, table->meta_table);
 }
 
 /* Update the row in heap table. */

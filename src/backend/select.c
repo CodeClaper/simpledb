@@ -524,31 +524,6 @@ static MetaColumn *get_cond_meta_column(PredicateNode *predicate, MetaTable *met
     }
 }
 
-/* Generate row by tuple. */
-Row *generate_row_inner(void *tuple, List *meta_columns) {
-    Row *row = NewRow();
-
-    /* Assignment row data. */
-    ListCell *lc;
-    foreach (lc, meta_columns) {
-        MetaColumn *meta_column = (MetaColumn *) lfirst(lc);
-        /* Generate a key value pair. */
-        KeyValue *key_value = is_null_cell(tuple + meta_column->offset) 
-                            ? new_key_value(meta_column->column_name, NULL, meta_column->column_type, meta_column->own_table_name)
-                            : new_key_value(meta_column->column_name, get_value_in_tuple(tuple, meta_column), meta_column->column_type, meta_column->own_table_name);
-        key_value->is_array = meta_column->array_dim > 0;
-
-        /* Append to row data. */
-        append_list(row->data, key_value);
-    }
-
-    return row;
-}
-
-/* Generate row by tuple. */
-Row *generate_row(void *tuple, MetaTable *meta_table) {
-    return generate_row_inner(tuple, meta_table->meta_columns);
-}
 
 /* Define the tuple by refer. 
  * -------------------
@@ -1303,7 +1278,7 @@ void select_tuple(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE
 
 /* Select row data. */
 void select_row(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg) {
-    Row *row = generate_row_inner(tuple, select_result->columns);
+    Row *row = GenerateRowInner(tuple, select_result->columns);
     /* If has limit clause. */
     if (type == ARG_SELECT_PARAM && ((SelectParam *) arg)->limitClause != NULL) {
         SelectParam *selectParam = (SelectParam *) arg;

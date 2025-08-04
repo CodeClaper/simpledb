@@ -326,7 +326,7 @@ static void update_row_refer(void *destin, SelectResult *select_result,
     Table *ref_table = open_table_inner(oid);
     Assert(ref_table);
 
-    Row *row = generate_row(destin, table->meta_table);
+    Row *row = GenerateRow(destin, table->meta_table);
     void *key = RowFindKey(row, table->meta_table);
     Refer *refer = define_refer(table, key);
 
