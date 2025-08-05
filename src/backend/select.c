@@ -871,6 +871,10 @@ static void select_from_leaf_node(SelectResult *select_result, ConditionNode *co
         /* Filt the leaf node. */
         if (include_leaf_node(head, columns, ntuple, condition)) 
             row_handler(ntuple, head, type, arg);
+        
+        /* When nested not null, means ntuple dalloc new memory. */
+        if (head->nested != NULL)
+            dfree(ntuple);
     }
     
     /* Release the buffer. */
