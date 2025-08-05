@@ -42,6 +42,7 @@ SelectResult *new_select_result(StatementType stype, char *table_name, bool is_h
     select_result->head = NULL;
     select_result->columns = NIL;
     select_result->display_colums = NIL;
+    select_result->tuple_size = 0;
     if (is_head)
         select_result->head = select_result;
     return select_result;

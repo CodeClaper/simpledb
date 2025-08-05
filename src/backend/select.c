@@ -624,21 +624,15 @@ static void *merge_tuple(SelectResult *head) {
     if (head->nested == NULL)
         return head->current_tuple;
     else {
-        Size size, offset;
+        Size offset;
         SelectResult *current;
         void *ntuple;
         
-        size = 0;
-        current = head;
-        while (current != NULL) {
-            Table *table = open_table(current->table_name);
-            size += table->heap_value_len;
-            current = current->nested;
-        }
-        
-        ntuple = dalloc(size);
+        Assert(head->tuple_size != 0);
+        ntuple = dalloc(head->tuple_size);
         offset = 0;
         current = head;
+
         while (current != NULL) {
             Table *table = open_table(current->table_name);
             memcpy(ntuple + offset, current->current_tuple, table->heap_value_len);
@@ -656,7 +650,7 @@ static List *merge_meta_columns(SelectResult *head) {
 
     List *meta_columns = create_list(NODE_META_COLUMN);
     SelectResult *current = head;
-    Size offset = 0;
+    Size offset = 0, tuple_size = 0;;
 
     while (current != NULL) {
         Table *table;
@@ -669,12 +663,16 @@ static List *merge_meta_columns(SelectResult *head) {
             duplica->offset = offset;
             append_list(meta_columns, duplica);
             offset += meta_column->column_length;
+            tuple_size += meta_column->column_length;
         }
         current = current->nested;
     }
+    head->tuple_size = tuple_size;
+
     return meta_columns;
 }
 
+/* Merge meta columns without system reserved columns. */
 static List *merge_meta_columns_without_sys(SelectResult *head) {
     Assert(head != NULL);
 

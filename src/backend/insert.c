@@ -199,7 +199,7 @@ static Row *generate_insert_row_for_part_inner(MetaTable *meta_table, List *colu
                                             meta_column->column_type, 
                                             meta_table->table_name);
 
-        /* Maybe array value, and the funciton <copy_value> 
+        /* Maybe the value is array value, and the funciton <copy_value> 
          * not support ArrayValue, so specially assign here.*/
         key_value->value = get_insert_value(value_item_list, __i, meta_column);
 

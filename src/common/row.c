@@ -19,7 +19,10 @@ Row *GenerateRowInner(void *tuple, List *meta_columns) {
     foreach (lc, meta_columns) {
         MetaColumn *meta_column = (MetaColumn *) lfirst(lc);
         /* Generate a key value pair. */
-        KeyValue *key_value = new_key_value(meta_column->column_name, get_value_in_tuple(tuple, meta_column), meta_column->column_type, meta_column->own_table_name);
+        KeyValue *key_value = new_key_value(meta_column->column_name, 
+                                            get_value_in_tuple(tuple, meta_column), 
+                                            meta_column->column_type, 
+                                            meta_column->own_table_name);
         key_value->is_array = meta_column->array_dim > 0;
 
         /* Append to row data. */

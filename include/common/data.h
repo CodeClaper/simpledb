@@ -662,6 +662,7 @@ typedef struct SelectResult {
     struct SelectResult *head;      /* The head select result, used for multi-table query. */
     List *columns;                  /* The columns which are list of meta column. Only works for head. */
     List *display_colums;           /* The display columns which are columns when output. */
+    Size tuple_size;                /* The tuple size. Only works for head. */
 } SelectResult;
 
 
