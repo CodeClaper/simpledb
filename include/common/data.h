@@ -258,7 +258,7 @@ typedef enum ColumnDefOptType {
 typedef struct ColumnDefOptNode {
     ColumnDefOptType opt_type;
     struct ValueItemNode *value;
-    struct ConditionNode *condition;
+    struct SearchConditionNode *condition;
     char *refer_table;
     char *comment;
 } ColumnDefOptNode;
@@ -276,7 +276,7 @@ typedef struct TableContraintDefNode {
     TableContraintType type;
     List *column_commalist;
     char *table;
-    struct ConditionNode *condition;
+    struct SearchConditionNode *condition;
 } TableContraintDefNode;
 
 /* ColumnDefName */
@@ -323,7 +323,7 @@ typedef struct ReferValue {
         /* For directly. */
         List *nest_value_list;
         /* For indirectly. */
-        struct ConditionNode *condition;
+        struct SearchConditionNode *condition;
     };
 } ReferValue;
 
@@ -383,13 +383,13 @@ typedef struct {
     ValueItemNode *value;
 } AssignmentNode;
 
-/* ConditionNode */
-typedef struct ConditionNode {
+/* SearchConditionNode */
+typedef struct SearchConditionNode {
     ConnType conn_type;
-    struct ConditionNode *left;
-    struct ConditionNode *right;
+    struct SearchConditionNode *left;
+    struct SearchConditionNode *right;
     struct PredicateNode *predicate;
-} ConditionNode;
+} SearchConditionNode;
 
 /* PredicateType */
 typedef enum PredicateType {
@@ -446,7 +446,7 @@ typedef struct FromClauseNode {
 
 /* WhereClauseNode. */
 typedef struct WhereClauseNode {
-    ConditionNode *condition; 
+    SearchConditionNode *condition; 
 } WhereClauseNode;
 
 /* TableExpNode */
@@ -491,7 +491,7 @@ typedef struct UpdateNode {
 /* DeleteNode */
 typedef struct DeleteNode {
     char *table_name;
-    ConditionNode *condition_node;
+    SearchConditionNode *condition_node;
 } DeleteNode;
 
 /* DescribeNode */

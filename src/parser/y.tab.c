@@ -314,7 +314,7 @@ union YYSTYPE
    FunctionNode                 *function_node;
    CalculateNode                *calculate_node;
    AssignmentNode               *assignment_node;
-   ConditionNode                *condition_node;
+   SearchConditionNode          *search_condition_node;
    PredicateNode                *predicate_node;
    ComparisonNode               *comparison_node;
    LikeNode                     *like_node;
@@ -518,7 +518,7 @@ enum yysymbol_kind_t
   YYSYMBOL_BOOLVALUE = 139,                /* BOOLVALUE  */
   YYSYMBOL_assignments = 140,              /* assignments  */
   YYSYMBOL_assignment = 141,               /* assignment  */
-  YYSYMBOL_condition = 142,                /* condition  */
+  YYSYMBOL_search_condition = 142,         /* search_condition  */
   YYSYMBOL_predicate = 143,                /* predicate  */
   YYSYMBOL_comparison_predicate = 144,     /* comparison_predicate  */
   YYSYMBOL_like_predicate = 145,           /* like_predicate  */
@@ -984,10 +984,10 @@ yysymbol_name (yysymbol_kind_t yysymbol)
   "column_def_name_commalist", "column_def_name", "data_type",
   "array_dim_clause", "column_def_opt_list", "column_def_opt",
   "table_contraint_def", "column", "value_items", "value_item", "atom",
-  "REFERVALUE", "BOOLVALUE", "assignments", "assignment", "condition",
-  "predicate", "comparison_predicate", "like_predicate", "in_predicate",
-  "limit_clause", "compare", "function", "function_value",
-  "non_all_function_value", "end", YY_NULLPTR
+  "REFERVALUE", "BOOLVALUE", "assignments", "assignment",
+  "search_condition", "predicate", "comparison_predicate",
+  "like_predicate", "in_predicate", "limit_clause", "compare", "function",
+  "function_value", "non_all_function_value", "end", YY_NULLPTR
   };
   return yy_sname[yysymbol];
 }
@@ -2297,12 +2297,12 @@ yyreduce:
 #line 2298 "y.tab.c"
     break;
 
-  case 26: /* delete_statement: DELETE FROM table WHERE condition end  */
+  case 26: /* delete_statement: DELETE FROM table WHERE search_condition end  */
 #line 349 "sql.y"
         {
             DeleteNode *node = instance(DeleteNode);
             node->table_name = (yyvsp[-3].strVal);
-            node->condition_node = (yyvsp[-1].condition_node);
+            node->condition_node = (yyvsp[-1].search_condition_node);
             (yyval.delete_node) = node;
         }
 #line 2309 "y.tab.c"
@@ -2545,11 +2545,11 @@ yyreduce:
 #line 2546 "y.tab.c"
     break;
 
-  case 51: /* where_clause: WHERE condition  */
+  case 51: /* where_clause: WHERE search_condition  */
 #line 532 "sql.y"
         {
             WhereClauseNode *where_clause_node = instance(WhereClauseNode);
-            where_clause_node->condition = (yyvsp[0].condition_node);
+            where_clause_node->condition = (yyvsp[0].search_condition_node);
             (yyval.where_clause_node) = where_clause_node;
         }
 #line 2556 "y.tab.c"
@@ -3062,12 +3062,12 @@ yyreduce:
 #line 3063 "y.tab.c"
     break;
 
-  case 102: /* column_def_opt: CHECK '(' condition ')'  */
+  case 102: /* column_def_opt: CHECK '(' search_condition ')'  */
 #line 890 "sql.y"
         {
             ColumnDefOptNode *node = instance(ColumnDefOptNode);
             node->opt_type = OPT_CHECK_CONDITION;
-            node->condition = (yyvsp[-1].condition_node);
+            node->condition = (yyvsp[-1].search_condition_node);
             (yyval.column_def_opt) = node;
         }
 #line 3074 "y.tab.c"
@@ -3118,12 +3118,12 @@ yyreduce:
 #line 3119 "y.tab.c"
     break;
 
-  case 107: /* table_contraint_def: CHECK '(' condition ')'  */
+  case 107: /* table_contraint_def: CHECK '(' search_condition ')'  */
 #line 928 "sql.y"
         {
             TableContraintDefNode *node = instance(TableContraintDefNode);
             node->type = TCONTRAINT_CHECK;
-            node->condition = (yyvsp[-1].condition_node);
+            node->condition = (yyvsp[-1].search_condition_node);
             (yyval.table_contraint_def) = node;
         }
 #line 3130 "y.tab.c"
@@ -3290,12 +3290,12 @@ yyreduce:
 #line 3291 "y.tab.c"
     break;
 
-  case 123: /* REFERVALUE: REF '(' condition ')'  */
+  case 123: /* REFERVALUE: REF '(' search_condition ')'  */
 #line 1048 "sql.y"
         {
             ReferValue *refer = instance(ReferValue);
             refer->type = INDIRECTLY;
-            refer->condition = (yyvsp[-1].condition_node);
+            refer->condition = (yyvsp[-1].search_condition_node);
             (yyval.referVal) = refer;
         }
 #line 3302 "y.tab.c"
@@ -3347,45 +3347,45 @@ yyreduce:
 #line 3348 "y.tab.c"
     break;
 
-  case 129: /* condition: condition OR condition  */
+  case 129: /* search_condition: search_condition OR search_condition  */
 #line 1089 "sql.y"
         {
-            ConditionNode *condition = instance(ConditionNode);
+            SearchConditionNode *condition = instance(SearchConditionNode);
             condition->conn_type = C_OR;
-            condition->left = (yyvsp[-2].condition_node);
-            condition->right = (yyvsp[0].condition_node);
-            (yyval.condition_node) = condition;
+            condition->left = (yyvsp[-2].search_condition_node);
+            condition->right = (yyvsp[0].search_condition_node);
+            (yyval.search_condition_node) = condition;
         }
 #line 3360 "y.tab.c"
     break;
 
-  case 130: /* condition: condition AND condition  */
+  case 130: /* search_condition: search_condition AND search_condition  */
 #line 1097 "sql.y"
         {
-            ConditionNode *condition = instance(ConditionNode);
+            SearchConditionNode *condition = instance(SearchConditionNode);
             condition->conn_type = C_AND;
-            condition->left = (yyvsp[-2].condition_node);
-            condition->right = (yyvsp[0].condition_node);
-            (yyval.condition_node) = condition;
+            condition->left = (yyvsp[-2].search_condition_node);
+            condition->right = (yyvsp[0].search_condition_node);
+            (yyval.search_condition_node) = condition;
         }
 #line 3372 "y.tab.c"
     break;
 
-  case 131: /* condition: '(' condition ')'  */
+  case 131: /* search_condition: '(' search_condition ')'  */
 #line 1105 "sql.y"
         {
-            (yyval.condition_node) = (yyvsp[-1].condition_node);
+            (yyval.search_condition_node) = (yyvsp[-1].search_condition_node);
         }
 #line 3380 "y.tab.c"
     break;
 
-  case 132: /* condition: predicate  */
+  case 132: /* search_condition: predicate  */
 #line 1109 "sql.y"
         {
-            ConditionNode *condition = instance(ConditionNode);
+            SearchConditionNode *condition = instance(SearchConditionNode);
             condition->conn_type = C_NONE;
             condition->predicate = (yyvsp[0].predicate_node);
-            (yyval.condition_node) = condition;
+            (yyval.search_condition_node) = condition;
         }
 #line 3391 "y.tab.c"
     break;

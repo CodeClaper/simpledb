@@ -50,8 +50,8 @@ static inline DataType get_column_def_data_type(ColumnDefNode *column_def) {
     return column_def->data_type->type;
 }
 
-/* Get ConditionNode from WhereClauseNode. */
-static ConditionNode *get_condition_from_where_clause(WhereClauseNode *where_clause) {
+/* Get SearchConditionNode from WhereClauseNode. */
+static SearchConditionNode *get_condition_from_where_clause(WhereClauseNode *where_clause) {
     if (!where_clause)
         return NULL;
     return where_clause->condition;
@@ -613,7 +613,7 @@ static bool check_predicate_node(PredicateNode *predicate_node, AliasMap alias_m
 }
 
 /* Check condition node. */
-static bool check_condition_node(ConditionNode *condition_node, AliasMap alias_entry) {
+static bool check_condition_node(SearchConditionNode *condition_node, AliasMap alias_entry) {
 
     if (!condition_node)
         return true;
@@ -710,7 +710,7 @@ static bool check_unique_column(Table *table, MetaColumn *meta_column, void *val
     Assert(meta_column->is_unique);
     /* Although this cehck update node, but new select result is SELECT_STMT. */
     SelectResult *select_result = new_select_result(SELECT_STMT, update_node->table_name, true);
-    ConditionNode *condition_node = get_condition_from_where_clause(update_node->where_clause);
+    SearchConditionNode *condition_node = get_condition_from_where_clause(update_node->where_clause);
     query_with_condition(condition_node, select_result, select_row, ARG_NULL, NULL);
     /* If selected rows more than one, 
      * which means at least two rows has same value.*/

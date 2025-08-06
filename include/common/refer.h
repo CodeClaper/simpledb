@@ -33,7 +33,7 @@ ReferUpdateEntity *new_refer_update_entity(Refer *old_refer, Refer *new_refer);
 Refer *define_refer(Table *table, void *key);
 
 /* Fetch Refer. */
-Refer *fetch_refer(MetaColumn *meta_column, ConditionNode *condition_node);
+Refer *fetch_refer(MetaColumn *meta_column, SearchConditionNode *condition_node);
 
 /* Check if refer equals. */
 bool refer_equals(Refer *refer1, Refer *refer2);

@@ -143,8 +143,8 @@ static void update_row(void *tuple, SelectResult *select_result,
     }
 }
 
-/* Get ConditionNode form WhereClause.. */
-static ConditionNode *get_condition_from_where(WhereClauseNode *where_clause) {
+/* Get SearchConditionNode form WhereClause.. */
+static SearchConditionNode *get_condition_from_where(WhereClauseNode *where_clause) {
     if (where_clause)
         return where_clause->condition;
     else
@@ -155,7 +155,7 @@ static ConditionNode *get_condition_from_where(WhereClauseNode *where_clause) {
 void exec_update_statment(UpdateNode *update_node, DBResult *result) {
     Table *table;
     SelectResult *select_result;
-    ConditionNode *condition_node;
+    SearchConditionNode *condition_node;
 
     table = open_table(update_node->table_name);
     /* Check table exists. */

@@ -41,7 +41,7 @@ extern char *current_token;
    FunctionNode                 *function_node;
    CalculateNode                *calculate_node;
    AssignmentNode               *assignment_node;
-   ConditionNode                *condition_node;
+   SearchConditionNode          *search_condition_node;
    PredicateNode                *predicate_node;
    ComparisonNode               *comparison_node;
    LikeNode                     *like_node;
@@ -128,7 +128,7 @@ extern char *current_token;
 %type <table_contraint_def> table_contraint_def
 %type <column_def_node> column_def
 %type <list> column_defs
-%type <condition_node> condition
+%type <search_condition_node> search_condition
 %type <predicate_node> predicate
 %type <comparison_node> comparison_predicate
 %type <like_node> like_predicate
@@ -345,7 +345,7 @@ delete_statement:
             node->table_name = $3;
             $$ = node;
         }
-    | DELETE FROM table WHERE condition end
+    | DELETE FROM table WHERE search_condition end
         {
             DeleteNode *node = instance(DeleteNode);
             node->table_name = $3;
@@ -528,7 +528,7 @@ opt_where_clause:
         }
     ;
 where_clause:
-    WHERE condition
+    WHERE search_condition
         {
             WhereClauseNode *where_clause_node = instance(WhereClauseNode);
             where_clause_node->condition = $2;
@@ -886,7 +886,7 @@ column_def_opt:
             node->comment = $2;
             $$ = node;
         }
-    | CHECK '(' condition ')'
+    | CHECK '(' search_condition ')'
         {
             ColumnDefOptNode *node = instance(ColumnDefOptNode);
             node->opt_type = OPT_CHECK_CONDITION;
@@ -924,7 +924,7 @@ table_contraint_def:
             node->table = $7;
             $$ = node;
         }
-    | CHECK '(' condition ')'
+    | CHECK '(' search_condition ')'
         {
             TableContraintDefNode *node = instance(TableContraintDefNode);
             node->type = TCONTRAINT_CHECK;
@@ -1044,7 +1044,7 @@ REFERVALUE:
             $$ = refer;
         }
     /* Indirectly fetch already row refer. */
-    | REF '(' condition ')' 
+    | REF '(' search_condition ')' 
         {
             ReferValue *refer = instance(ReferValue);
             refer->type = INDIRECTLY;
@@ -1084,30 +1084,30 @@ assignment:
             $$ = node;
         }
     ;
-condition: 
-    condition OR condition
+search_condition: 
+    search_condition OR search_condition
         {
-            ConditionNode *condition = instance(ConditionNode);
+            SearchConditionNode *condition = instance(SearchConditionNode);
             condition->conn_type = C_OR;
             condition->left = $1;
             condition->right = $3;
             $$ = condition;
         }
-    | condition AND condition
+    | search_condition AND search_condition
         {
-            ConditionNode *condition = instance(ConditionNode);
+            SearchConditionNode *condition = instance(SearchConditionNode);
             condition->conn_type = C_AND;
             condition->left = $1;
             condition->right = $3;
             $$ = condition;
         }
-    | '(' condition ')'
+    | '(' search_condition ')'
         {
             $$ = $2;
         }
     | predicate
         {
-            ConditionNode *condition = instance(ConditionNode);
+            SearchConditionNode *condition = instance(SearchConditionNode);
             condition->conn_type = C_NONE;
             condition->predicate = $1;
             $$ = condition;

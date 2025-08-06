@@ -237,7 +237,7 @@ union YYSTYPE
    FunctionNode                 *function_node;
    CalculateNode                *calculate_node;
    AssignmentNode               *assignment_node;
-   ConditionNode                *condition_node;
+   SearchConditionNode          *search_condition_node;
    PredicateNode                *predicate_node;
    ComparisonNode               *comparison_node;
    LikeNode                     *like_node;

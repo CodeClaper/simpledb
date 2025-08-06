@@ -398,7 +398,7 @@ void free_predicate_node(PredicateNode *predicate_node) {
 }
 
 /* Free condition node. */
-void free_condition_node(ConditionNode *condition_node) {
+void free_condition_node(SearchConditionNode *condition_node) {
     if (condition_node) {
         switch(condition_node->conn_type) {
             case C_OR:

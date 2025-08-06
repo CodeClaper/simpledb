@@ -51,7 +51,7 @@ typedef struct SelectFromInternalChildTaskArgs {
     SelectResult *select_result;
     uint32_t page_num;
     uint32_t keys_num;
-    ConditionNode *condition;
+    SearchConditionNode *condition;
     Table *table;
     ROW_HANDLER row_handler;
     ROW_HANDLER_ARG_TYPE type;
@@ -73,8 +73,8 @@ typedef struct SelectFromInternalChildTaskArgs {
 #define DIV_NAME "div"
 #define VALUE_NAME "value"
 
-static bool include_internal_node(SelectResult *select_result, void *min_key, void *max_key, ConditionNode *condition_node, MetaTable *meta_table);
-static bool include_leaf_node(SelectResult *select_result, List *meta_columns, void *destin, ConditionNode *condition_node);
+static bool include_internal_node(SelectResult *select_result, void *min_key, void *max_key, SearchConditionNode *condition_node, MetaTable *meta_table);
+static bool include_leaf_node(SelectResult *select_result, List *meta_columns, void *destin, SearchConditionNode *condition_node);
 static MetaColumn *get_cond_meta_column(PredicateNode *predicate, MetaTable *meta_table);
 static KeyValue *query_function_value(ScalarExpNode *scalar_exp, SelectResult *select_result);
 static KeyValue *query_value_item(ValueItemNode *value_item, Row *row);
@@ -197,7 +197,7 @@ static bool include_internal_predicate(SelectResult *select_result, void *min_ke
 
 /* Check if include the internal node if condition is logic condition. */
 static bool include_logic_internal_node(SelectResult *select_result, void *min_key, void *max_key, 
-                                        ConditionNode *condition_node, MetaTable *meta_table) {
+                                        SearchConditionNode *condition_node, MetaTable *meta_table) {
     /* For logic condition node, check left node and right node. */
     switch(condition_node->conn_type) {
         case C_AND:
@@ -217,7 +217,7 @@ static bool include_logic_internal_node(SelectResult *select_result, void *min_k
 
 /* Check if include the internal node if condition is exec condition. */
 static bool include_exec_internal_node(SelectResult *select_result, void *min_key, void *max_key, 
-                                       ConditionNode *condition_node, MetaTable *meta_table) {
+                                       SearchConditionNode *condition_node, MetaTable *meta_table) {
     Assert(condition_node->conn_type == C_NONE);
     MetaColumn *cond_meta_column = get_cond_meta_column(condition_node->predicate, meta_table);
 
@@ -232,7 +232,7 @@ static bool include_exec_internal_node(SelectResult *select_result, void *min_ke
 
 /* Check if include the internal node. */
 static bool include_internal_node(SelectResult *select_result, void *min_key, void *max_key, 
-                                  ConditionNode *condition_node, MetaTable *meta_table) {
+                                  SearchConditionNode *condition_node, MetaTable *meta_table) {
     /* If without condition, of course return true. */
     if (condition_node == NULL)
         return true;
@@ -257,7 +257,7 @@ static bool include_internal_node(SelectResult *select_result, void *min_key, vo
 }
 
 /* Check if include leaf node if the condition is logic condition. */
-static bool include_logic_leaf_node(SelectResult *select_result, List *meta_columns, void *tuple, ConditionNode *condition_node) {
+static bool include_logic_leaf_node(SelectResult *select_result, List *meta_columns, void *tuple, SearchConditionNode *condition_node) {
     switch (condition_node->conn_type) {
         case C_AND:
             return include_leaf_node(select_result, meta_columns, tuple, condition_node->left) && 
@@ -467,7 +467,7 @@ static bool include_leaf_like_predicate(SelectResult *select_result, void *tuple
 
 /* Check if include leaf node if the condition is exec condition. */
 static bool include_exec_leaf_node(SelectResult *select_result, List *meta_columns, 
-                                   void *tuple, ConditionNode *condition_node) {
+                                   void *tuple, SearchConditionNode *condition_node) {
     /* If without condition, of course the key include, so just return true. */
     if (condition_node == NULL)
         return true;
@@ -490,7 +490,7 @@ static bool include_exec_leaf_node(SelectResult *select_result, List *meta_colum
 }
 
 /* Check if the key include the leaf node. */
-static bool include_leaf_node(SelectResult *select_result, List *meta_columns, void *tuple, ConditionNode *condition_node) {
+static bool include_leaf_node(SelectResult *select_result, List *meta_columns, void *tuple, SearchConditionNode *condition_node) {
     /* If without condition, of course the key include, so just return true. */
     if (condition_node == NULL) 
           return true;
@@ -768,7 +768,7 @@ static bool allow_scan_index(ROW_HANDLER_ARG_TYPE type, void *arg) {
  * -------------------
  * Note that: Scan-index operation only supports for one-table query.
  * */
-static void scan_from_leaf_node(SelectResult *select_result, ConditionNode *condition, 
+static void scan_from_leaf_node(SelectResult *select_result, SearchConditionNode *condition, 
                                 uint32_t page_num, Table *table, ROW_HANDLER row_handler, 
                                 ROW_HANDLER_ARG_TYPE type, void *arg) {
     /* Get cell number, key length and value lenght. */
@@ -805,7 +805,7 @@ static void scan_from_leaf_node(SelectResult *select_result, ConditionNode *cond
 }
 
 /* Select through leaf node. */
-static void select_from_leaf_node(SelectResult *select_result, ConditionNode *condition, 
+static void select_from_leaf_node(SelectResult *select_result, SearchConditionNode *condition, 
                                   uint32_t page_num, Table *table, ROW_HANDLER row_handler, 
                                   ROW_HANDLER_ARG_TYPE type, void *arg) {
     /* Get cell number, key length and value lenght. */
@@ -882,7 +882,7 @@ static void select_from_leaf_node(SelectResult *select_result, ConditionNode *co
 }
 
 /* Select through internal node. */
-static void select_from_internal_node(SelectResult *select_result, ConditionNode *condition, 
+static void select_from_internal_node(SelectResult *select_result, SearchConditionNode *condition, 
                                       uint32_t page_num, Table *table, 
                                       ROW_HANDLER row_handler, ROW_HANDLER_ARG_TYPE type, void *arg) {
     /* If LimitClauseNode full, not continue. */
@@ -1003,7 +1003,7 @@ static void select_from_internal_node_child_task(void *taskArg) {
     SelectFromInternalChildTaskArgs *args = (SelectFromInternalChildTaskArgs *) taskArg;
     uint32_t child_page_num = args->page_num;
     SelectResult *select_result = args->select_result;
-    ConditionNode *condition = args->condition;
+    SearchConditionNode *condition = args->condition;
     Table *table = args->table;
     ROW_HANDLER row_handler = args->row_handler;
     ROW_HANDLER_ARG_TYPE type = args->type;
@@ -1037,7 +1037,7 @@ static void select_from_internal_node_child_task(void *taskArg) {
 }
 
 /* Select through internal node. */
-static void select_from_internal_node_async(SelectResult *select_result, ConditionNode *condition, 
+static void select_from_internal_node_async(SelectResult *select_result, SearchConditionNode *condition, 
                                             uint32_t page_num, Table *table, 
                                             ROW_HANDLER row_handler, ROW_HANDLER_ARG_TYPE type, void *arg) {
 
@@ -1130,7 +1130,7 @@ static bool async_condition(SelectResult *select_result) {
 }
 
 /* Query with condition inner. */
-void query_with_condition_inner(Oid oid, ConditionNode *condition, SelectResult *select_result, 
+void query_with_condition_inner(Oid oid, SearchConditionNode *condition, SelectResult *select_result, 
                                 ROW_HANDLER row_handler, ROW_HANDLER_ARG_TYPE type, void *arg) {
     Table *table;
     Buffer buffer;
@@ -1180,7 +1180,7 @@ void query_with_condition_inner(Oid oid, ConditionNode *condition, SelectResult 
 }
 
 /* Query with condition. */
-void query_with_condition(ConditionNode *condition, SelectResult *select_result, 
+void query_with_condition(SearchConditionNode *condition, SelectResult *select_result, 
                           ROW_HANDLER row_handler, ROW_HANDLER_ARG_TYPE type, void *arg) {
     /* Check if table exists. */
     Table *table = open_table(select_result->table_name);
@@ -1191,8 +1191,8 @@ void query_with_condition(ConditionNode *condition, SelectResult *select_result,
     query_with_condition_inner(GET_TABLE_OID(table), condition, select_result, row_handler, type, arg);
 }
 
-static ConditionNode *ColumnValueConvertCondition(MetaColumn *meta_column, void *value) {
-    ConditionNode *condition = instance(ConditionNode);
+static SearchConditionNode *ColumnValueConvertCondition(MetaColumn *meta_column, void *value) {
+    SearchConditionNode *condition = instance(SearchConditionNode);
     condition->conn_type = C_NONE;
     condition->left = NULL;
     condition->right = NULL;
@@ -1220,7 +1220,7 @@ SelectResult *select_with_column_value(Oid oid, MetaColumn *meta_column, void *v
     /* Check if table exists. */
     Table *table = open_table_inner(oid);
     Assert(table != NULL);
-    ConditionNode *condtion = ColumnValueConvertCondition(meta_column, value);
+    SearchConditionNode *condtion = ColumnValueConvertCondition(meta_column, value);
     SelectResult *result = new_select_result(SELECT_STMT, GET_TABLE_NAME(table), true);
     query_with_condition_inner(oid, condtion, result, select_row, ARG_NULL, NULL);
     return result;
@@ -2295,7 +2295,7 @@ static void query_with_selection(SelectionNode *selection, SelectResult *select_
  * If exists where clause, return its condition.
  * Else, return NULL.
  * */
-static inline ConditionNode *get_table_exp_condition(TableExpNode *table_exp) {
+static inline SearchConditionNode *get_table_exp_condition(TableExpNode *table_exp) {
     WhereClauseNode *where_clause = table_exp->where_clause;
     if (where_clause)
         return where_clause->condition;
@@ -2329,7 +2329,7 @@ static void after_query_condition(SelectParam *selectParam, SelectResult *select
 static SelectResult *query_multi_table_with_condition(SelectNode *select_node, DBResult *dbresult) {
     List *table_list;
     SelectResult *head, *pres;
-    ConditionNode *condition;
+    SearchConditionNode *condition;
     SelectParam *selectParam;
 
     /* If no from clause, return an empty select result. */

@@ -380,26 +380,28 @@ PredicateNode *copy_predicate_node(PredicateNode *predicate_node) {
 }
 
 /* Copy condition node. */
-ConditionNode *copy_condition_node(ConditionNode *condition_node) {
+SearchConditionNode *copy_condition_node(SearchConditionNode *condition_node) {
     if (condition_node == NULL)
         return NULL;
-    ConditionNode *condition_node_copy = instance(ConditionNode);
-    condition_node_copy->conn_type = condition_node->conn_type;
+
+    SearchConditionNode *duplica = instance(SearchConditionNode);
+    duplica->conn_type = condition_node->conn_type;
     switch(condition_node->conn_type) {
         case C_OR:
         case C_AND:
-            condition_node_copy->left = copy_condition_node(condition_node->left);
-            condition_node_copy->right = copy_condition_node(condition_node->right);
-            condition_node_copy->conn_type = condition_node->conn_type;
+            duplica->left = copy_condition_node(condition_node->left);
+            duplica->right = copy_condition_node(condition_node->right);
+            duplica->conn_type = condition_node->conn_type;
             break;
         case C_NONE:
-            condition_node_copy->predicate = copy_predicate_node(condition_node->predicate);
+            duplica->predicate = copy_predicate_node(condition_node->predicate);
             break;
         default:
             db_log(ERROR, "Unknown conn type");
             return NULL;
     }
-    return condition_node_copy;
+
+    return duplica;
 }
 
 /* Copy a ComparisonNode. */

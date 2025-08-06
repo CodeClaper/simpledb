@@ -191,7 +191,7 @@ Refer *define_refer(Table *table, void *key) {
 
 /* Fetch Refer. 
  * If found no one or many one, return NULL.  */
-Refer *fetch_refer(MetaColumn *meta_column, ConditionNode *condition_node) {
+Refer *fetch_refer(MetaColumn *meta_column, SearchConditionNode *condition_node) {
     Table *table = open_table(meta_column->table_name);
     /* Make a new SelectResult. */
     SelectResult *select_result = new_select_result(UNKONWN_STMT, meta_column->table_name, true);

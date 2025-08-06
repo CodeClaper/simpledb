@@ -105,8 +105,8 @@ void InitSysTable() {
  * -------------------------
  * Generate a condition which filtered by the oid.
  * */
-static ConditionNode *OidConvertCondition(Oid oid) {
-    ConditionNode *condition = instance(ConditionNode);
+static SearchConditionNode *OidConvertCondition(Oid oid) {
+    SearchConditionNode *condition = instance(SearchConditionNode);
     condition->conn_type = C_NONE;
     condition->left = NULL;
     condition->right = NULL;
@@ -131,12 +131,12 @@ static ConditionNode *OidConvertCondition(Oid oid) {
  * -------------------------
  * Generate a condition which filtered by relname and reltype.
  * */
-static ConditionNode *RelnameTypeConvertCondition(char *relname, ObjectType type) {
-    ConditionNode *condition = instance(ConditionNode);
+static SearchConditionNode *RelnameTypeConvertCondition(char *relname, ObjectType type) {
+    SearchConditionNode *condition = instance(SearchConditionNode);
     condition->conn_type = C_AND;
     condition->predicate = NULL;
-    condition->left = instance(ConditionNode);
-    condition->right = instance(ConditionNode);
+    condition->left = instance(SearchConditionNode);
+    condition->right = instance(SearchConditionNode);
 
     condition->left->conn_type = C_NONE;
     condition->left->predicate = instance(PredicateNode);
@@ -178,7 +178,7 @@ static ConditionNode *RelnameTypeConvertCondition(char *relname, ObjectType type
  * */
 static Object OidFindObjectInner(Oid oid) {
     void *tuple;
-    ConditionNode *condition;
+    SearchConditionNode *condition;
     SelectResult *result;
 
     condition = OidConvertCondition(oid);
@@ -227,7 +227,7 @@ Object OidFindObject(Oid oid) {
  * */
 static Oid RelnameAndReltypeFindOid(char *relname, ObjectType reltype) {
     Object entity;
-    ConditionNode *condition;
+    SearchConditionNode *condition;
     SelectResult *result;
     void *tuple;
 
@@ -429,7 +429,7 @@ bool SaveObject(Object entity) {
 /* Remove the object. */
 bool RemoveObject(Oid oid) {
     SelectResult *result;
-    ConditionNode *condition;
+    SearchConditionNode *condition;
 
     result = new_select_result(DELETE_STMT, SYS_TABLE_NAME, true);
     condition = OidConvertCondition(oid);

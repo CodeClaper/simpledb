@@ -57,11 +57,11 @@ Row *define_visible_row(Refer *refer);
 SelectResult *select_with_column_value(Oid oid, MetaColumn *meta_column, void *value);
 
 /* Query with condition inner. */
-void query_with_condition_inner(Oid oid, ConditionNode *condition, SelectResult *select_result, 
+void query_with_condition_inner(Oid oid, SearchConditionNode *condition, SelectResult *select_result, 
                                 ROW_HANDLER row_handler, ROW_HANDLER_ARG_TYPE type, void *arg);
 
 /* Query with condition. */
-void query_with_condition(ConditionNode *condition, SelectResult *select_result, 
+void query_with_condition(SearchConditionNode *condition, SelectResult *select_result, 
                           ROW_HANDLER row_handler, ROW_HANDLER_ARG_TYPE type, void *arg);
 
 /* Execute select statement. */

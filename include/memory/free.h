@@ -89,7 +89,7 @@ void free_select_items_node(SelectItemsNode *select_items_node);
 void free_assignment_node(AssignmentNode *assignment_node);
 
 /* Free condition node. */
-void free_condition_node(ConditionNode *condition_node);
+void free_condition_node(SearchConditionNode *condition_node);
 
 /* Free TableRefNode. */
 void free_table_ref_node(TableRefNode *table_ref_node);
