@@ -118,5 +118,6 @@ Conf *load_conf() {
     conf->account = read_conf("auth", "account");
     conf->password = read_conf("auth", "password");
     conf->first_user_oid = atoi(read_conf("file", "first_user_oid"));
+    conf->time_zone = read_conf("env", "time_zone");
     return conf;
 }

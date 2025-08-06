@@ -2381,7 +2381,6 @@ static SelectResult *query_multi_table_with_condition(SelectNode *select_node, D
 
 /* Execute select statement. */
 void exec_select_statement(SelectNode *select_node, DBResult *result) {
-
     /* Check SelectNode valid. */
     check_select_node(select_node);
 

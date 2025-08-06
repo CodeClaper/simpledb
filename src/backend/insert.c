@@ -277,8 +277,7 @@ static Row *convert_insert_row(Row *row, Table *table) {
 
 /* Insert one row. 
  * Return the row refer, 
- * Throw error by log if fail.
- * */
+ * Throw error by log if fail. */
 Refer *insert_one_row(Table *table, Row *row) {
     MetaColumn *primary_key_meta_column = get_primary_key_meta_column(table->meta_table);
     Assert(primary_key_meta_column);
@@ -286,6 +285,8 @@ Refer *insert_one_row(Table *table, Row *row) {
     void *key = RowFindKey(row, table->meta_table);
     Assert(key != NULL);
     Refer *refer = define_refer(table, key);
+
+    /* Check if duplicate key. */
     if (has_user_primary_key(table->meta_table) && 
             check_duplicate_key(key, refer) && 
                 !refer_is_deleted(refer)) {
@@ -310,26 +311,29 @@ Refer *insert_one_row(Table *table, Row *row) {
  * Return list of Refer.
  * */
 List *insert_for_values(InsertNode *insert_node) {
-    Table *table = open_table(insert_node->table_name);
+    Table *table;
+    List *row_list, *refer_list;
+
+    table = open_table(insert_node->table_name);
     Assert(table);
     
     /* Generate insert row. */
-    List *list_row = generate_insert_row(insert_node);
-    AssertFalse(list_empty(list_row));
+    row_list = generate_insert_row(insert_node);
+    AssertFalse(list_empty(row_list));
 
     /* Create refer list. */
-    List *refer_list = create_list(NODE_REFER);
+    refer_list = create_list(NODE_REFER);
 
     /* Insert to page. */
     ListCell *lc;
-    foreach (lc, list_row) {
+    foreach (lc, row_list) {
         Row *row = lfirst(lc);
         Refer *refer = insert_one_row(table, row);
         append_list(refer_list, refer);
     }
 
     /* Free refer list. */
-    free_list_deep(list_row);
+    free_list_deep(row_list);
 
     return refer_list;
 }
@@ -386,7 +390,6 @@ List *combine_single_refer_list(Refer *refer) {
  * otherwise, return NULL.
  * */
 List *exec_insert_statement(InsertNode *insert_node) {
-
     /* Check if insert node valid. */
     if (!check_insert_node(insert_node)) 
         return NULL;

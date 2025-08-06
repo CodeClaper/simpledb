@@ -58,6 +58,13 @@ static inline void sigchild() {
     while (waitpid(-1, NULL, WNOHANG) > 0);
 }
 
+
+/* Init environment. */
+static void init_env() {
+    setenv("TZ", conf->time_zone, 1);
+    tzset();
+}
+
 /* DB Start. */
 static void init_db() {
 
@@ -65,6 +72,9 @@ static void init_db() {
     conf = load_conf();
 
     MakeSysState(SYS_READY);
+
+    /* Init environment. */
+    init_env();
 
     /* MemoryContext init.*/
     MemoryContextInit();

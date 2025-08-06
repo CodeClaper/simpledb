@@ -694,6 +694,7 @@ typedef struct {
     char *account;                          /* Account. */
     char *password;                         /* password. */
     uint32_t first_user_oid;                /* First user oid. */
+    char *time_zone;                        /* The time zone. */
 } Conf;
 
 /* Refer */

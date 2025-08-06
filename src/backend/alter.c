@@ -44,15 +44,20 @@ static void release_table(Oid oid) {
 
 /* Add new Column. */
 static void add_new_column(AddColumnDef *add_column_def, char *table_name, DBResult *result) {
-    Oid oid = TableNameFindOid(table_name);
-    MetaColumn *new_meta_column = combine_user_meta_column(add_column_def->column_def, table_name);        
+    Oid oid;
+    MetaColumn *new_meta_column;
 
+    oid = TableNameFindOid(table_name);
+    new_meta_column = combine_user_meta_column(add_column_def->column_def, table_name);        
+
+    /* By now, not support primary key alter operation. */
     if (new_meta_column->is_primary)
         db_log(ERROR, "Not support add primary-key column through alter table.");
 
     /* Capture table exclusively. */
     try_capture_table(oid);
 
+    /* Try to add new column. */
     if (add_new_meta_column(table_name, new_meta_column, add_column_def->position_def)) {
         result->success = true;
         result->message = format("Add column '%s' for table '%s' successfully.", 

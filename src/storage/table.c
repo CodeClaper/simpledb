@@ -158,16 +158,21 @@ static int get_column_position(MetaTable *meta_table, ColumnPositionDef *pos_def
 }
 
 /* Add new MetaColumn to table.
- * This function is actually bottom-level routine for alter-table-add-column action.
- * */
+ * ---------------------------
+ * This function is actually bottom-level routine for alter-table-add-column action. */
 bool add_new_meta_column(char *table_name, MetaColumn *new_meta_column, ColumnPositionDef *post_def) {
-    Table *table = open_table(table_name);
-    MetaTable *meta_table = table->meta_table;
-    int pos = get_column_position(meta_table, post_def);
+    Table *table;
+    int pos;
+
+    table = open_table(table_name);
+    pos = get_column_position(table->meta_table, post_def);
+
     /* Append index table new column. */
     append_new_column(table->root_page_num, table, new_meta_column, pos);
+
     /* Append heap table new column. */
     HeapTableAppendColumn(table, new_meta_column, pos);
+
     return true;
 }
 

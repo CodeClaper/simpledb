@@ -16,3 +16,5 @@ account=root
 password=Zc120130211
 [file]
 first_user_oid=16384
+[env]
+time_zone=Asia/Shanghai
