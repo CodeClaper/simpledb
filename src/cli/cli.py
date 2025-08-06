@@ -3,10 +3,10 @@ import os
 import sys
 import json
 import socket
-from sourcer import Source
 import dbclient
 import getpass
 import readline
+from sourcer import Source
 
 client = dbclient.DbClient('127.0.0.1', 4083)
 
@@ -174,9 +174,7 @@ def exec_cmd(cmd):
 def login() -> bool:
     account = input("Your account: ")
     password = getpass.getpass("Your password: ")
-    clear()
-    ret = client.execute(f"{account}/{password}")
-    return ret["success"]
+    return client.login(account, password)
 
 
 ## Print out the Slogan.
@@ -208,6 +206,7 @@ if __name__ == "__main__":
     if client.hasConnected:
         try:
             if login():
+                clear()
                 printSlogan()
                 fetchTables(False)
                 while True:
