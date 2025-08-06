@@ -314,7 +314,7 @@ static void *get_value_from_atom(AtomNode *atom_node, MetaColumn *meta_column) {
         case T_VARCHAR: 
             return copy_value(atom_node->value.strval, meta_column->column_type);
         case T_DATE: {
-            struct tm tmp_time;
+            struct tm tmp_time = {0};
             time_t *time = instance(time_t);  
             strptime(atom_node->value.strval, "%Y-%m-%d", &tmp_time);
             tmp_time.tm_sec = 0;
@@ -325,7 +325,7 @@ static void *get_value_from_atom(AtomNode *atom_node, MetaColumn *meta_column) {
             return time;
         }
         case T_TIMESTAMP: {
-            struct tm tmp_time;
+            struct tm tmp_time = {0};
             time_t *time = instance(time_t);  
             strptime(atom_node->value.strval, "%Y-%m-%d %H:%M:%S", &tmp_time);
             time_t tmp = mktime(&tmp_time);

@@ -47,6 +47,7 @@ int64_t get_timestamp(TIME_LEVEL level) {
             value = round(atof(time_str) * 1e9);
             break;
     }
+
     return value;
 }
 

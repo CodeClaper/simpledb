@@ -271,6 +271,7 @@ Table *open_table(char *table_name) {
     Oid oid = TableNameFindOid(table_name);
     if (ZERO_OID(oid))
         return NULL;
+
     return open_table_inner(oid);
 }
 
