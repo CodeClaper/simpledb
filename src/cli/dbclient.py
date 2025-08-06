@@ -12,9 +12,12 @@ class DbClient:
         try:
             self.client.connect((ip, port))
             self.client.settimeout(3000)
+            self.hasConnected = True
         except socket.timeout:
+            self.hasConnected = False
             print(f"Connect to {ip}:{port} timeout.")
         except socket.error as e:
+            self.hasConnected = False
             print(f"Socket error: {e}")
 
     def show_bytes(self, byte_data):

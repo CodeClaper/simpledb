@@ -20,6 +20,7 @@ keywords = [
     'SOURCE'
 ]
 
+## Complete automatically, give user some tips.
 def get_path_completions():
     line = readline.get_line_buffer()
     if (line.startswith('source ')):
@@ -204,20 +205,21 @@ def fetchTables(ifPrint: bool):
 
 ## Main.
 if __name__ == "__main__":
-    try:
-        if login():
-            printSlogan()
-            fetchTables(False)
-            while True:
-                cmd = readCmd()
-                exec_cmd(cmd)
-        else:
-            print("The account or passowrd is wrong.")
-    except KeyboardInterrupt:
-        exit()
-    except socket.timeout:
-        print("timout.")
-        exit()
-    except Exception as e:
-        print(f"Error:{e}")
-        exit()
+    if client.hasConnected:
+        try:
+            if login():
+                printSlogan()
+                fetchTables(False)
+                while True:
+                    cmd = readCmd()
+                    exec_cmd(cmd)
+            else:
+                print("The account or passowrd is wrong.")
+        except KeyboardInterrupt:
+            exit()
+        except socket.timeout:
+            print("timout.")
+            exit()
+        except Exception as e:
+            print(f"Error:{e}")
+            exit()
