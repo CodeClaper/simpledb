@@ -73,9 +73,6 @@ typedef struct SelectFromInternalChildTaskArgs {
 #define DIV_NAME "div"
 #define VALUE_NAME "value"
 
-static bool include_internal_node(SelectResult *select_result, void *min_key, void *max_key, SearchConditionNode *condition_node, MetaTable *meta_table);
-static bool include_leaf_node(SelectResult *select_result, List *meta_columns, void *destin, SearchConditionNode *condition_node);
-static MetaColumn *get_cond_meta_column(PredicateNode *predicate, MetaTable *meta_table);
 static KeyValue *query_function_value(ScalarExpNode *scalar_exp, SelectResult *select_result);
 static KeyValue *query_value_item(ValueItemNode *value_item, Row *row);
 static KeyValue *query_row_value(SelectResult *select_result, ScalarExpNode *scalar_exp, Row *row);
@@ -83,6 +80,7 @@ static Row *query_plain_row_selection(SelectResult *select_result, List *scalar_
 static char *search_table_via_alias(SelectResult *select_result, char *range_variable);
 static KeyValue *query_plain_column_value(SelectResult *select_result, ColumnNode *column, Row *row);
 static bool InternalNodeForSearchCondition(SelectResult *select_result, void *min_key, void *max_key, SearchConditionNode *condition_node, MetaTable *meta_table);
+static bool LeafNodeForSearchCondition(SelectResult *select_result, List *meta_columns, void *tuple, SearchConditionNode *search_condition);
 
 
 /* Check if LimitClauseNode is full. 
@@ -202,6 +200,9 @@ static bool InternalNodeForBooleanPrimary(SelectResult *select_result, void *min
             return InternalNodeForPredicata(select_result, min_key, max_key, boolean_primary->predicate, meta_table);
         case SEARCH_CONDITION_BOOLEAN_PRIMAYR:
             return InternalNodeForSearchCondition(select_result, min_key, max_key, boolean_primary->search_condition, meta_table);
+        default:
+            UNEXPECTED_VALUE(boolean_primary->type);
+            return false;
     } 
 }
 
@@ -210,12 +211,15 @@ static bool InternalNodeForBooleanTest(SelectResult *select_result, void *min_ke
                                        BooleanTestNode *boolean_test, MetaTable *meta_table) {
     bool bool_primary_value = InternalNodeForBooleanPrimary(select_result, min_key, max_key, boolean_test->boolean_primary, meta_table);
     switch (boolean_test->type) {
-        case NONE_TRUE_VALUE:
-           return bool_primary_value;
-        case IS_TRUTH_VALUE:
-           return bool_primary_value == boolean_test->truth_value;
-        case IS_NOT_TRUTH_VALUE:
-           return bool_primary_value != boolean_test->truth_value;
+        case NONE_TRUE_VALUE: 
+            return bool_primary_value;
+        case IS_TRUTH_VALUE: 
+            return bool_primary_value == boolean_test->truth_value;
+        case IS_NOT_TRUTH_VALUE: 
+            return bool_primary_value != boolean_test->truth_value;
+        default:
+            UNEXPECTED_VALUE(boolean_test->type);
+            return false;
     }
 }
 
@@ -243,7 +247,7 @@ static bool InternalNodeForSearchCondition(SelectResult *select_result, void *mi
     if (condition_node == NULL)
         return true;
 
-    return condition_node->or_search_condition == NULL
+    return condition_node->or_search_condition == NULL 
         ? InternalNodeForBooleanTerm(select_result,  min_key, max_key,  condition_node->boolean_term,  meta_table)
         : InternalNodeForBooleanTerm(select_result,  min_key, max_key,  condition_node->boolean_term,  meta_table) || 
              InternalNodeForSearchCondition(select_result,  min_key, max_key,  condition_node->or_search_condition,  meta_table);
@@ -440,16 +444,9 @@ static bool include_leaf_like_predicate(SelectResult *select_result, void *tuple
     return false;
 }
 
-/* Check if include leaf node if the condition is exec condition. */
-static bool include_exec_leaf_node(SelectResult *select_result, List *meta_columns, 
-                                   void *tuple, SearchConditionNode *condition_node) {
-    /* If without condition, of course the key include, so just return true. */
-    if (condition_node == NULL)
-        return true;
-
-    Assert(condition_node->conn_type == C_NONE);
-
-    PredicateNode *predicate = condition_node->predicate;
+/* Check if the leaf node meets predicate. */
+static bool LeafNodeForPredicate(SelectResult *select_result, List *meta_columns, 
+                                 void *tuple, PredicateNode *predicate) {
     switch (predicate->type) {
         case PRE_COMPARISON:
             return include_leaf_comparison_predicate(select_result, meta_columns, tuple, predicate->comparison);
@@ -461,12 +458,51 @@ static bool include_exec_leaf_node(SelectResult *select_result, List *meta_colum
             UNEXPECTED_VALUE(predicate->type);
             return false;
     }
+}
 
+/* If the leaf node meets boolean primary. */
+static bool LeafNodeForBooleanPrimary(SelectResult *select_result, List *meta_columns, void *tuple, BooleanPrimaryNode *boolean_primary) {
+    switch (boolean_primary->type) {
+        case PREDICATE_BOOLEAN_PRIMAYR:
+            return LeafNodeForPredicate(select_result, meta_columns, tuple, boolean_primary->predicate);
+        case SEARCH_CONDITION_BOOLEAN_PRIMAYR:
+            return LeafNodeForSearchCondition(select_result, meta_columns, tuple, boolean_primary->search_condition);
+        default:
+            UNEXPECTED_VALUE(boolean_primary->type);
+            return false;
+    }
+}
+
+/* If the leaf node meets the boolean test. */
+static bool LeafNodeForBooleanTest(SelectResult *select_result, List *meta_columns, void *tuple, BooleanTestNode *boolean_test) {
+    bool boolean_primary_value = LeafNodeForBooleanPrimary(select_result, meta_columns, tuple, boolean_test->boolean_primary);
+    switch (boolean_test->type) {
+        case NONE_TRUE_VALUE:
+            return boolean_primary_value;
+        case IS_TRUTH_VALUE:
+            return boolean_primary_value == boolean_test->truth_value;
+        case IS_NOT_TRUTH_VALUE:
+            return boolean_primary_value != boolean_test->truth_value;
+        default:
+            UNEXPECTED_VALUE(boolean_test->type);
+            return false;
+    }
+}
+
+/* If the leaf node meets the boolean factor. */
+static bool LeafNodeForBooleanFactor(SelectResult *select_result, List *meta_columns, void *tuple, BooleanFactorNode *boolean_factor) {
+    return boolean_factor->is_not
+        ? !LeafNodeForBooleanTest(select_result, meta_columns,tuple, boolean_factor->boolean_test)
+        : LeafNodeForBooleanTest(select_result, meta_columns,tuple, boolean_factor->boolean_test);
 }
 
 /* Check if the leaf node meets boolean term. */
 static bool LeafNodeForBooleanTerm(SelectResult *select_result, List *meta_columns, void *tuple, BooleanTermNode *boolean_term) {
-
+    return boolean_term->and_boolean_term == NULL
+        ? LeafNodeForBooleanFactor(select_result, meta_columns, tuple, boolean_term->boolean_factor)
+        : LeafNodeForBooleanTerm(select_result, meta_columns, tuple, boolean_term->and_boolean_term) &&
+             LeafNodeForBooleanFactor(select_result, meta_columns, tuple, boolean_term->boolean_factor);
+            
 }
 
 /* Check if the leaf node meets search condition. */
@@ -479,24 +515,6 @@ static bool LeafNodeForSearchCondition(SelectResult *select_result, List *meta_c
         : LeafNodeForSearchCondition(select_result,  meta_columns,  tuple,  search_condition->or_search_condition) ||
              LeafNodeForBooleanTerm(select_result,  meta_columns,  tuple,  search_condition->boolean_term);
 }
-
-/* Get meta column by condition name. */
-static MetaColumn *get_cond_meta_column(PredicateNode *predicate, MetaTable *meta_table) {
-    if (predicate == NULL)
-        return NULL;
-    switch (predicate->type)  {
-        case PRE_COMPARISON:
-            return get_meta_column_by_name(meta_table, predicate->comparison->column->column_name);
-        case PRE_LIKE:
-            return get_meta_column_by_name(meta_table, predicate->like->column->column_name);
-        case PRE_IN:
-            return get_meta_column_by_name(meta_table, predicate->in->column->column_name);
-        default:
-            UNEXPECTED_VALUE(predicate->type);
-            return NULL;
-    }
-}
-
 
 /* Define the tuple by refer. 
  * -------------------------
@@ -842,7 +860,7 @@ static void select_from_leaf_node(SelectResult *select_result, SearchConditionNo
         Assert(ntuple != NULL);
         
         /* Filt the leaf node. */
-        if (include_leaf_node(head, columns, ntuple, condition)) 
+        if (LeafNodeForSearchCondition(head, columns, ntuple, condition)) 
             row_handler(ntuple, head, type, arg);
         
         /* When nested not null, means ntuple dalloc new memory. */
@@ -1041,7 +1059,7 @@ static void select_from_internal_node_async(SelectResult *select_result, SearchC
         void *min_key = (i == 0) 
                     ? NULL 
                     : get_real_value(get_internal_node_key(internal_node, i - 1, key_len, value_len), primary_key_type);
-        if (!include_internal_node(select_result, min_key, max_key, condition, table->meta_table))
+        if (!InternalNodeForSearchCondition(select_result, min_key, max_key, condition, table->meta_table))
             continue;
         
         uint32_t child_page_num = get_internal_node_child(internal_node, i, key_len, value_len);
@@ -1165,22 +1183,36 @@ void query_with_condition(SearchConditionNode *condition, SelectResult *select_r
 }
 
 static SearchConditionNode *ColumnValueConvertCondition(MetaColumn *meta_column, void *value) {
-    SearchConditionNode *condition = instance(SearchConditionNode);
-    condition->conn_type = C_NONE;
-    condition->left = NULL;
-    condition->right = NULL;
-    condition->predicate = instance(PredicateNode);
-    condition->predicate->type = PRE_COMPARISON;
-    condition->predicate->comparison = instance(ComparisonNode);
-    condition->predicate->comparison->type = O_EQ;
-    condition->predicate->comparison->column = instance(ColumnNode);
-    condition->predicate->comparison->column->column_name = dstrdup(meta_column->column_name);
-    condition->predicate->comparison->value = instance(ScalarExpNode);
-    condition->predicate->comparison->value->type = SCALAR_VALUE;
-    condition->predicate->comparison->value->value = instance(ValueItemNode);
-    condition->predicate->comparison->value->value->type = V_ATOM;
-    condition->predicate->comparison->value->value->value.atom = combine_atom_node(meta_column, value);
-    return condition;
+    SearchConditionNode *search_condition = instance(SearchConditionNode);
+    BooleanTermNode *boolean_term = instance(BooleanTermNode);
+    BooleanFactorNode *boolean_factor = instance(BooleanFactorNode);
+    BooleanTestNode *boolean_test = instance(BooleanTestNode);
+    BooleanPrimaryNode *boolean_primary = instance(BooleanPrimaryNode);
+    PredicateNode *predicate = instance(PredicateNode);
+
+    /* Assemble the predicate. */
+    predicate->type = PRE_COMPARISON;
+    predicate->comparison = instance(ComparisonNode);
+    predicate->comparison->type = O_EQ;
+    predicate->comparison->column = instance(ColumnNode);
+    predicate->comparison->column->column_name = dstrdup(meta_column->column_name);
+    predicate->comparison->value = instance(ScalarExpNode);
+    predicate->comparison->value->type = SCALAR_VALUE;
+    predicate->comparison->value->value = instance(ValueItemNode);
+    predicate->comparison->value->value->type = V_ATOM;
+    predicate->comparison->value->value->value.atom = combine_atom_node(meta_column, value);
+
+    /* Assemble All. */
+    boolean_primary->type = PREDICATE_BOOLEAN_PRIMAYR; 
+    boolean_primary->predicate = predicate;
+    boolean_test->type = NONE_TRUE_VALUE;
+    boolean_test->boolean_primary = boolean_primary;
+    boolean_factor->is_not = false;
+    boolean_factor->boolean_test = boolean_test;
+    boolean_term->boolean_factor = boolean_factor;
+    search_condition->boolean_term = boolean_term;
+
+    return search_condition;
 }
 
 

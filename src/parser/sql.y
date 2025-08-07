@@ -134,9 +134,9 @@ extern char *current_token;
 %type <list> column_defs
 %type <search_condition_node> search_condition
 %type <boolean_term_node> boolean_term
-%type <boolean_factor> boolean_factor
-%type <boolean_test> boolean_test
-%type <boolean_primary> boolean_primary
+%type <boolean_factor_node> boolean_factor
+%type <boolean_test_node> boolean_test
+%type <boolean_primary_node> boolean_primary
 %type <predicate_node> predicate
 %type <comparison_node> comparison_predicate
 %type <like_node> like_predicate
@@ -1096,7 +1096,7 @@ search_condition:
     boolean_term
         {
             SearchConditionNode *condition = instance(SearchConditionNode);
-            condition->boolean_term = $1
+            condition->boolean_term = $1;
             $$ = condition;
         }
     | search_condition OR boolean_term
@@ -1123,7 +1123,7 @@ boolean_term:
         }
     ;
 boolean_factor:
-    bool_test
+    boolean_test
         {
             BooleanFactorNode *factor_node = instance(BooleanFactorNode);
             factor_node->boolean_test = $1;
@@ -1133,7 +1133,7 @@ boolean_factor:
     | NOT boolean_test
         {
             BooleanFactorNode *factor_node = instance(BooleanFactorNode);
-            factor_node->boolean_test = $1;
+            factor_node->boolean_test = $2;
             factor_node->is_not = true;
             $$ = factor_node;
         }
@@ -1167,15 +1167,17 @@ boolean_primary:
     predicate
         {
             BooleanPrimaryNode *primary_node = instance(BooleanPrimaryNode);
-            predicate_node->predicate = $1;
-            predicate_node->search_condition = NULL;
+            primary_node->type = PREDICATE_BOOLEAN_PRIMAYR;
+            primary_node->predicate = $1;
+            primary_node->search_condition = NULL;
             $$ = primary_node;
         }
     | '(' search_condition ')'
         {
             BooleanPrimaryNode *primary_node = instance(BooleanPrimaryNode);
-            predicate_node->search_condition = $2;
-            predicate_node->search_condition = NULL;
+            primary_node->type = SEARCH_CONDITION_BOOLEAN_PRIMAYR;
+            primary_node->search_condition = $2;
+            primary_node->predicate = NULL;
             $$ = primary_node;
         }
 predicate:

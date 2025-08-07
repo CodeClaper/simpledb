@@ -12,6 +12,8 @@
 #include "list.h"
 #include "free.h"
 
+static void free_search_condition_node(SearchConditionNode *condition_node);
+
 /* Free value */
 void free_value(void *value, DataType data_type) {
     if (value) {
@@ -266,7 +268,7 @@ void free_function_node(FunctionNode *function_node) {
 void free_column_def_opt_node(ColumnDefOptNode *column_def_opt) {
     if (column_def_opt) {
         free_value_item_node(column_def_opt->value);
-        free_condition_node(column_def_opt->condition);
+        free_search_condition_node(column_def_opt->condition);
         if (column_def_opt->refer_table)
             dfree(column_def_opt->refer_table);
         if (column_def_opt->comment)
@@ -351,7 +353,7 @@ void free_assignment_node(AssignmentNode *assignment_node) {
 }
 
 /* Free ComparisonNode. */
-void free_comparison_node(ComparisonNode *comparison_node) {
+static void free_comparison_node(ComparisonNode *comparison_node) {
     if (comparison_node) {
         free_column_node(comparison_node->column);
         free_scalar_exp_node(comparison_node->value);
@@ -360,7 +362,7 @@ void free_comparison_node(ComparisonNode *comparison_node) {
 }
 
 /* Free InNode. */
-void free_in_node(InNode *in_node) {
+static void free_in_node(InNode *in_node) {
     if (in_node) {
         free_column_node(in_node->column);
         free_list_deep(in_node->value_list);
@@ -368,16 +370,15 @@ void free_in_node(InNode *in_node) {
 }
 
 /* Free LikeNode. */
-void free_like_node(LikeNode *like_node) {
+static void free_like_node(LikeNode *like_node) {
     if (like_node) {
         free_column_node(like_node->column);
         free_value_item_node(like_node->value);
     }
 }
 
-
 /* Free PredicateNode. */
-void free_predicate_node(PredicateNode *predicate_node) {
+static void free_predicate_node(PredicateNode *predicate_node) {
     if (predicate_node) {
         switch (predicate_node->type) {
             case PRE_COMPARISON:
@@ -397,23 +398,46 @@ void free_predicate_node(PredicateNode *predicate_node) {
     }
 }
 
-/* Free condition node. */
-void free_condition_node(SearchConditionNode *condition_node) {
-    if (condition_node) {
-        switch(condition_node->conn_type) {
-            case C_OR:
-            case C_AND:
-                free_condition_node(condition_node->left);
-                free_condition_node(condition_node->right);
-                break;
-            case C_NONE:
-                free_predicate_node(condition_node->predicate);
-                break;
-            default:
-                UNEXPECTED_VALUE(condition_node->conn_type);
-                break;
-        }
-        dfree(condition_node);
+/* Free boolean primary. */
+static void free_boolean_primary_node(BooleanPrimaryNode *boolean_primary) {
+    if (boolean_primary) {
+        free_search_condition_node(boolean_primary->search_condition);
+        free_predicate_node(boolean_primary->predicate);
+        dfree(boolean_primary);
+    }
+}
+
+/* Free boolean test. */
+static void free_boolean_test_node(BooleanTestNode *boolean_test) {
+    if (boolean_test) {
+        free_boolean_primary_node(boolean_test->boolean_primary);
+        dfree(boolean_test);
+    }
+}
+
+/* Free boolean factor. */
+static void free_boolean_factor_node(BooleanFactorNode *boolean_factor) {
+    if (boolean_factor) {
+        free_boolean_test_node(boolean_factor->boolean_test);
+        dfree(boolean_factor);
+    }
+}
+
+/* Free boolean term. */
+static void free_boolean_term_node(BooleanTermNode *boolean_term) {
+    if (boolean_term) {
+        free_boolean_factor_node(boolean_term->boolean_factor);
+        free_boolean_term_node(boolean_term->and_boolean_term);
+        dfree(boolean_term);
+    }
+}
+
+/* Free search condition . */
+static void free_search_condition_node(SearchConditionNode *search_condition) {
+    if (search_condition) {
+        free_boolean_term_node(search_condition->boolean_term);
+        free_search_condition_node(search_condition->or_search_condition);
+        dfree(search_condition);
     }
 }
 
@@ -432,7 +456,7 @@ void free_refer_value(ReferValue *refer_value) {
                 free_list_deep(refer_value->nest_value_list);
                 break;
             case INDIRECTLY:
-                free_condition_node(refer_value->condition);
+                free_search_condition_node(refer_value->condition);
                 break;
         }
     }
@@ -485,7 +509,7 @@ void free_table_contraint_def_node(TableContraintDefNode *table_contraint) {
     if (table_contraint) {
         if (table_contraint->table)
             dfree(table_contraint->table);
-        free_condition_node(table_contraint->condition);
+        free_search_condition_node(table_contraint->condition);
         free_list_deep(table_contraint->column_commalist);
         dfree(table_contraint);
     }
@@ -561,7 +585,7 @@ void free_from_clause_node(FromClauseNode *from_clause_node) {
 /* Free WhereClauseNode. */
 void free_where_clause_node(WhereClauseNode *where_clause_node) {
     if (where_clause_node) {
-        free_condition_node(where_clause_node->condition);
+        free_search_condition_node(where_clause_node->condition);
         dfree(where_clause_node);
     }
 }
@@ -622,7 +646,7 @@ void free_delete_node(DeleteNode *delete_node) {
     if (delete_node) {
         if (delete_node->table_name)
             dfree(delete_node->table_name);
-        free_condition_node(delete_node->condition_node);
+        free_search_condition_node(delete_node->condition_node);
         dfree(delete_node);
     } 
 }

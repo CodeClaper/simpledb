@@ -39,6 +39,7 @@
 
 static bool check_value_item_set_node(MetaTable *meta_table, char *column_name, List *value_list);
 static bool check_scalar_exp(ScalarExpNode *scalar_exp, AliasMap alias_map);
+static bool check_search_condition_node(SearchConditionNode *condition_node, AliasMap alias_map);
 
 /* Get column name in ColumnDefNode. */
 static inline char *get_column_def_name(ColumnDefNode *column_def) {
@@ -612,23 +613,46 @@ static bool check_predicate_node(PredicateNode *predicate_node, AliasMap alias_m
     }
 }
 
-/* Check condition node. */
-static bool check_condition_node(SearchConditionNode *condition_node, AliasMap alias_entry) {
+/* Check boolean primary. */
+static bool check_boolean_primary_node(BooleanPrimaryNode *boolean_primary, AliasMap alias_map) {
+    switch (boolean_primary->type) {
+        case PREDICATE_BOOLEAN_PRIMAYR:
+            return check_predicate_node(boolean_primary->predicate, alias_map);
+        case SEARCH_CONDITION_BOOLEAN_PRIMAYR:
+            return check_search_condition_node(boolean_primary->search_condition, alias_map);
+        default:
+            UNEXPECTED_VALUE(boolean_primary->type);
+            return false;
+    }
+}
 
+/* Check boolean test. */
+static bool check_boolean_test_node(BooleanTestNode *boolean_test, AliasMap alias_map) {
+    return check_boolean_primary_node(boolean_test->boolean_primary, alias_map);
+}
+
+/* Check boolean factor. */
+static bool check_boolean_factor_node(BooleanFactorNode *boolean_factor, AliasMap alias_map) {
+    return check_boolean_test_node(boolean_factor->boolean_test, alias_map);
+}
+
+/* Check boolean term. */
+static bool check_boolean_term_node(BooleanTermNode *boolean_term, AliasMap alias_map) {
+    return boolean_term->and_boolean_term == NULL
+        ? check_boolean_factor_node(boolean_term->boolean_factor, alias_map)
+        : check_boolean_term_node(boolean_term->and_boolean_term, alias_map) &&
+            check_boolean_factor_node(boolean_term->boolean_factor, alias_map);
+}
+
+/* Check condition node. */
+static bool check_search_condition_node(SearchConditionNode *condition_node, AliasMap alias_map) {
     if (!condition_node)
         return true;
 
-    switch(condition_node->conn_type) {
-        case C_AND:
-        case C_OR:
-            return check_condition_node(condition_node->left, alias_entry) && 
-                        check_condition_node(condition_node->right, alias_entry);
-        case C_NONE: 
-            return check_predicate_node(condition_node->predicate, alias_entry);
-        default:
-            UNEXPECTED_VALUE(condition_node->conn_type);
-            return false;
-    }
+    return condition_node->or_search_condition == NULL
+        ? check_boolean_term_node(condition_node->boolean_term, alias_map)
+        : check_boolean_term_node(condition_node->boolean_term, alias_map) &&
+            check_search_condition_node(condition_node->or_search_condition, alias_map);
 }
 
 
@@ -680,7 +704,7 @@ static bool check_where_clause(WhereClauseNode *where_clause, AliasMap alias_map
     if (where_clause == NULL)
         return true;
 
-    return check_condition_node(where_clause->condition, alias_map);
+    return check_search_condition_node(where_clause->condition, alias_map);
 }
 
 /* Check LimitClauseNode. */
@@ -1273,7 +1297,7 @@ bool check_delete_node(DeleteNode *delete_node) {
     alias_map.map[0].alias = delete_node->table_name;
 
     return check_table(delete_node->table_name) && 
-                check_condition_node(delete_node->condition_node, alias_map);
+                check_search_condition_node(delete_node->condition_node, alias_map);
 }
 
 /* Check for create table node. */

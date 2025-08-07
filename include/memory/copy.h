@@ -38,9 +38,6 @@ FunctionValueNode *copy_function_value_node(FunctionValueNode *function_value_no
 /* Copy function node. */
 FunctionNode *copy_function_node(FunctionNode *function_node);
 
-/* Copy condition node. */
-SearchConditionNode *copy_condition_node(SearchConditionNode *condition_node);
-
 /* Copy a ComparisonNode. */
 ComparisonNode *copy_comparison_node(ComparisonNode *comparison_node);
 

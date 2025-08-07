@@ -113,20 +113,21 @@ extern int yydebug;
     LE = 314,                      /* LE  */
     IN = 315,                      /* IN  */
     LIKE = 316,                    /* LIKE  */
-    NOT = 317,                     /* NOT  */
-    ALTER = 318,                   /* ALTER  */
-    COLUMN = 319,                  /* COLUMN  */
-    ADD = 320,                     /* ADD  */
-    RENAME = 321,                  /* RENAME  */
-    BEFORE = 322,                  /* BEFORE  */
-    AFTER = 323,                   /* AFTER  */
-    SYSTEM = 324,                  /* SYSTEM  */
-    CONFIG = 325,                  /* CONFIG  */
-    MEMORY = 326,                  /* MEMORY  */
-    IDENTIFIER = 327,              /* IDENTIFIER  */
-    INTVALUE = 328,                /* INTVALUE  */
-    FLOATVALUE = 329,              /* FLOATVALUE  */
-    STRINGVALUE = 330              /* STRINGVALUE  */
+    IS = 317,                      /* IS  */
+    NOT = 318,                     /* NOT  */
+    ALTER = 319,                   /* ALTER  */
+    COLUMN = 320,                  /* COLUMN  */
+    ADD = 321,                     /* ADD  */
+    RENAME = 322,                  /* RENAME  */
+    BEFORE = 323,                  /* BEFORE  */
+    AFTER = 324,                   /* AFTER  */
+    SYSTEM = 325,                  /* SYSTEM  */
+    CONFIG = 326,                  /* CONFIG  */
+    MEMORY = 327,                  /* MEMORY  */
+    IDENTIFIER = 328,              /* IDENTIFIER  */
+    INTVALUE = 329,                /* INTVALUE  */
+    FLOATVALUE = 330,              /* FLOATVALUE  */
+    STRINGVALUE = 331              /* STRINGVALUE  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -194,20 +195,21 @@ extern int yydebug;
 #define LE 314
 #define IN 315
 #define LIKE 316
-#define NOT 317
-#define ALTER 318
-#define COLUMN 319
-#define ADD 320
-#define RENAME 321
-#define BEFORE 322
-#define AFTER 323
-#define SYSTEM 324
-#define CONFIG 325
-#define MEMORY 326
-#define IDENTIFIER 327
-#define INTVALUE 328
-#define FLOATVALUE 329
-#define STRINGVALUE 330
+#define IS 317
+#define NOT 318
+#define ALTER 319
+#define COLUMN 320
+#define ADD 321
+#define RENAME 322
+#define BEFORE 323
+#define AFTER 324
+#define SYSTEM 325
+#define CONFIG 326
+#define MEMORY 327
+#define IDENTIFIER 328
+#define INTVALUE 329
+#define FLOATVALUE 330
+#define STRINGVALUE 331
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
@@ -238,6 +240,10 @@ union YYSTYPE
    CalculateNode                *calculate_node;
    AssignmentNode               *assignment_node;
    SearchConditionNode          *search_condition_node;
+   BooleanTermNode              *boolean_term_node;
+   BooleanFactorNode            *boolean_factor_node;
+   BooleanTestNode              *boolean_test_node;
+   BooleanPrimaryNode           *boolean_primary_node;
    PredicateNode                *predicate_node;
    ComparisonNode               *comparison_node;
    LikeNode                     *like_node;
@@ -265,7 +271,7 @@ union YYSTYPE
    Statement                    *statement;
    List                         *list;
 
-#line 269 "y.tab.h"
+#line 275 "y.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

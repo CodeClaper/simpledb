@@ -106,68 +106,112 @@ void InitSysTable() {
  * Generate a condition which filtered by the oid.
  * */
 static SearchConditionNode *OidConvertCondition(Oid oid) {
-    SearchConditionNode *condition = instance(SearchConditionNode);
-    condition->conn_type = C_NONE;
-    condition->left = NULL;
-    condition->right = NULL;
-    condition->predicate = instance(PredicateNode);
-    condition->predicate->type = PRE_COMPARISON;
-    condition->predicate->comparison = instance(ComparisonNode);
-    condition->predicate->comparison->type = O_EQ;
-    condition->predicate->comparison->column = instance(ColumnNode);
-    condition->predicate->comparison->column->column_name = dstrdup(SYS_TABLE_OID_NAME);
-    condition->predicate->comparison->value = instance(ScalarExpNode);
-    condition->predicate->comparison->value->type = SCALAR_VALUE;
-    condition->predicate->comparison->value->value = instance(ValueItemNode);
-    condition->predicate->comparison->value->value->type = V_ATOM;
-    condition->predicate->comparison->value->value->value.atom = instance(AtomNode);
-    condition->predicate->comparison->value->value->value.atom->type = A_INT;
-    condition->predicate->comparison->value->value->value.atom->value.intval = oid;
-    return condition;
+    SearchConditionNode *search_condition = instance(SearchConditionNode);
+    BooleanTermNode *boolean_term = instance(BooleanTermNode);
+    BooleanFactorNode *boolean_factor = instance(BooleanFactorNode);
+    BooleanTestNode *boolean_test = instance(BooleanTestNode);
+    BooleanPrimaryNode *boolean_primary = instance(BooleanPrimaryNode);
+    PredicateNode *predicate = instance(PredicateNode);
+
+    /* Assemble the predicate. */
+    predicate = instance(PredicateNode);
+    predicate->type = PRE_COMPARISON;
+    predicate->comparison = instance(ComparisonNode);
+    predicate->comparison->type = O_EQ;
+    predicate->comparison->column = instance(ColumnNode);
+    predicate->comparison->column->column_name = dstrdup(SYS_TABLE_OID_NAME);
+    predicate->comparison->value = instance(ScalarExpNode);
+    predicate->comparison->value->type = SCALAR_VALUE;
+    predicate->comparison->value->value = instance(ValueItemNode);
+    predicate->comparison->value->value->type = V_ATOM;
+    predicate->comparison->value->value->value.atom = instance(AtomNode);
+    predicate->comparison->value->value->value.atom->type = A_INT;
+    predicate->comparison->value->value->value.atom->value.intval = oid;
+
+    /* Assemble All. */
+    boolean_primary->type = PREDICATE_BOOLEAN_PRIMAYR; 
+    boolean_primary->predicate = predicate;
+    boolean_test->type = NONE_TRUE_VALUE;
+    boolean_test->boolean_primary = boolean_primary;
+    boolean_factor->is_not = false;
+    boolean_factor->boolean_test = boolean_test;
+    boolean_term->boolean_factor = boolean_factor;
+    search_condition->boolean_term = boolean_term;
+
+    return search_condition;
 }
 
 
 /* Convert relname and reltype to a condition.
- * -------------------------
+ * ------------------------------------------
  * Generate a condition which filtered by relname and reltype.
  * */
 static SearchConditionNode *RelnameTypeConvertCondition(char *relname, ObjectType type) {
-    SearchConditionNode *condition = instance(SearchConditionNode);
-    condition->conn_type = C_AND;
-    condition->predicate = NULL;
-    condition->left = instance(SearchConditionNode);
-    condition->right = instance(SearchConditionNode);
+    SearchConditionNode *search_condition = instance(SearchConditionNode);
+    BooleanTermNode *boolean_term = instance(BooleanTermNode);
+    BooleanFactorNode *boolean_factor = instance(BooleanFactorNode);
+    BooleanTestNode *boolean_test = instance(BooleanTestNode);
+    BooleanPrimaryNode *boolean_primary = instance(BooleanPrimaryNode);
+    PredicateNode *predicate = instance(PredicateNode);
 
-    condition->left->conn_type = C_NONE;
-    condition->left->predicate = instance(PredicateNode);
-    condition->left->predicate->type = PRE_COMPARISON;
-    condition->left->predicate->comparison = instance(ComparisonNode);
-    condition->left->predicate->comparison->type = O_EQ;
-    condition->left->predicate->comparison->column = instance(ColumnNode);
-    condition->left->predicate->comparison->column->column_name = dstrdup(SYS_TABLE_RELNAME_NAME);
-    condition->left->predicate->comparison->value = instance(ScalarExpNode);
-    condition->left->predicate->comparison->value->type = SCALAR_VALUE;
-    condition->left->predicate->comparison->value->value = instance(ValueItemNode);
-    condition->left->predicate->comparison->value->value->type = V_ATOM;
-    condition->left->predicate->comparison->value->value->value.atom = instance(AtomNode);
-    condition->left->predicate->comparison->value->value->value.atom->type = A_STRING;
-    condition->left->predicate->comparison->value->value->value.atom->value.strval = relname;
+    BooleanTermNode *and_boolean_term = instance(BooleanTermNode);
+    BooleanFactorNode *and_boolean_factor = instance(BooleanFactorNode);
+    BooleanTestNode *and_boolean_test = instance(BooleanTestNode);
+    BooleanPrimaryNode *and_boolean_primary = instance(BooleanPrimaryNode);
+    PredicateNode *and_predicate = instance(PredicateNode);
 
-    condition->right->conn_type = C_NONE;
-    condition->right->predicate = instance(PredicateNode);
-    condition->right->predicate->type = PRE_COMPARISON;
-    condition->right->predicate->comparison = instance(ComparisonNode);
-    condition->right->predicate->comparison->type = O_EQ;
-    condition->right->predicate->comparison->column = instance(ColumnNode);
-    condition->right->predicate->comparison->column->column_name = dstrdup(SYS_TABLE_RELTYPE_NAME);
-    condition->right->predicate->comparison->value = instance(ScalarExpNode);
-    condition->right->predicate->comparison->value->type = SCALAR_VALUE;
-    condition->right->predicate->comparison->value->value = instance(ValueItemNode);
-    condition->right->predicate->comparison->value->value->type = V_ATOM;
-    condition->right->predicate->comparison->value->value->value.atom = instance(AtomNode);
-    condition->right->predicate->comparison->value->value->value.atom->type = A_INT;
-    condition->right->predicate->comparison->value->value->value.atom->value.intval = type;
-    return condition;
+    /* Assemble one predicate. */
+    predicate = instance(PredicateNode);
+    predicate->type = PRE_COMPARISON;
+    predicate->comparison = instance(ComparisonNode);
+    predicate->comparison->type = O_EQ;
+    predicate->comparison->column = instance(ColumnNode);
+    predicate->comparison->column->column_name = dstrdup(SYS_TABLE_RELNAME_NAME);
+    predicate->comparison->value = instance(ScalarExpNode);
+    predicate->comparison->value->type = SCALAR_VALUE;
+    predicate->comparison->value->value = instance(ValueItemNode);
+    predicate->comparison->value->value->type = V_ATOM;
+    predicate->comparison->value->value->value.atom = instance(AtomNode);
+    predicate->comparison->value->value->value.atom->type = A_STRING;
+    predicate->comparison->value->value->value.atom->value.strval = relname;
+
+    /* Assemble another predicate. */
+    and_predicate = instance(PredicateNode);
+    and_predicate->type = PRE_COMPARISON;
+    and_predicate->comparison = instance(ComparisonNode);
+    and_predicate->comparison->type = O_EQ;
+    and_predicate->comparison->column = instance(ColumnNode);
+    and_predicate->comparison->column->column_name = dstrdup(SYS_TABLE_RELTYPE_NAME);
+    and_predicate->comparison->value = instance(ScalarExpNode);
+    and_predicate->comparison->value->type = SCALAR_VALUE;
+    and_predicate->comparison->value->value = instance(ValueItemNode);
+    and_predicate->comparison->value->value->type = V_ATOM;
+    and_predicate->comparison->value->value->value.atom = instance(AtomNode);
+    and_predicate->comparison->value->value->value.atom->type = A_INT;
+    and_predicate->comparison->value->value->value.atom->value.intval = type;
+    
+    /* Assemble All. */
+    boolean_primary->type = PREDICATE_BOOLEAN_PRIMAYR; 
+    boolean_primary->predicate = predicate;
+    boolean_test->type = NONE_TRUE_VALUE;
+    boolean_test->boolean_primary = boolean_primary;
+    boolean_factor->is_not = false;
+    boolean_factor->boolean_test = boolean_test;
+    boolean_term->boolean_factor = boolean_factor;
+    search_condition->boolean_term = boolean_term;
+
+    and_boolean_primary->type = PREDICATE_BOOLEAN_PRIMAYR; 
+    and_boolean_primary->predicate = and_predicate;
+    and_boolean_test->type = NONE_TRUE_VALUE;
+    and_boolean_test->boolean_primary = and_boolean_primary;
+    and_boolean_factor->is_not = false;
+    and_boolean_factor->boolean_test = and_boolean_test;
+    and_boolean_term->boolean_factor = and_boolean_factor;
+
+    /* Relation the and boolean term. */
+    boolean_term->and_boolean_term = and_boolean_term;
+
+    return search_condition;
 }
 
 

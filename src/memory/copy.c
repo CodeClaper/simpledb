@@ -19,6 +19,7 @@
 #include "strheaptable.h"
 
 static StrRefer *copy_strrefer(StrRefer *strRefer);
+static SearchConditionNode *copy_search_condition_node(SearchConditionNode *search_condition);
 
 /* Copy value. */
 void *copy_value(void *value, DataType data_type) {
@@ -379,27 +380,63 @@ PredicateNode *copy_predicate_node(PredicateNode *predicate_node) {
     return copy;
 }
 
+/* Copy boolean primary. */
+static BooleanPrimaryNode *copy_boolean_primary_node(BooleanPrimaryNode *boolean_primary) {
+    if (boolean_primary == NULL)
+        return NULL;
+
+    BooleanPrimaryNode *duplica = instance(BooleanPrimaryNode);
+    duplica->type = boolean_primary->type;
+    duplica->search_condition = copy_search_condition_node(boolean_primary->search_condition);
+    duplica->predicate = copy_predicate_node(boolean_primary->predicate);
+
+    return duplica;
+}
+
+/* Copy boolean test. */
+static BooleanTestNode *copy_boolean_test_node(BooleanTestNode *boolean_test) {
+    if (boolean_test == NULL)
+        return NULL;
+
+    BooleanTestNode *duplica = instance(BooleanTestNode);
+    duplica->boolean_primary = copy_boolean_primary_node(boolean_test->boolean_primary);
+    duplica->type = boolean_test->type;
+    duplica->truth_value = boolean_test->truth_value;
+
+    return duplica;
+}
+
+/* Copy boolean factor. */
+static BooleanFactorNode *copy_boolean_factor_node(BooleanFactorNode *boolean_factor) {
+    if (boolean_factor == NULL)
+        return NULL;
+
+    BooleanFactorNode *duplica = instance(BooleanFactorNode);
+    duplica->boolean_test = copy_boolean_test_node(boolean_factor->boolean_test);
+    duplica->is_not = boolean_factor->is_not;
+
+    return duplica;
+}
+
+/* Copy boolean term. */
+static BooleanTermNode *copy_boolean_term_node(BooleanTermNode *boolean_term) {
+    if (boolean_term == NULL)
+        return NULL;
+    BooleanTermNode *duplica = instance(BooleanTermNode);
+    duplica->boolean_factor = copy_boolean_factor_node(boolean_term->boolean_factor);
+    duplica->and_boolean_term = copy_boolean_term_node(boolean_term->and_boolean_term);
+
+    return duplica;
+}
+
 /* Copy condition node. */
-SearchConditionNode *copy_condition_node(SearchConditionNode *condition_node) {
-    if (condition_node == NULL)
+static SearchConditionNode *copy_search_condition_node(SearchConditionNode *search_condition) {
+    if (search_condition == NULL)
         return NULL;
 
     SearchConditionNode *duplica = instance(SearchConditionNode);
-    duplica->conn_type = condition_node->conn_type;
-    switch(condition_node->conn_type) {
-        case C_OR:
-        case C_AND:
-            duplica->left = copy_condition_node(condition_node->left);
-            duplica->right = copy_condition_node(condition_node->right);
-            duplica->conn_type = condition_node->conn_type;
-            break;
-        case C_NONE:
-            duplica->predicate = copy_predicate_node(condition_node->predicate);
-            break;
-        default:
-            db_log(ERROR, "Unknown conn type");
-            return NULL;
-    }
+    duplica->boolean_term = copy_boolean_term_node(search_condition->boolean_term);
+    duplica->or_search_condition = copy_search_condition_node(search_condition->or_search_condition);
 
     return duplica;
 }
@@ -463,7 +500,7 @@ ReferValue *copy_refer_value(ReferValue *refer_value) {
             refer_value_copy->nest_value_list = list_copy_deep(refer_value->nest_value_list);
             break;
         case INDIRECTLY:
-            refer_value_copy->condition = copy_condition_node(refer_value->condition);
+            refer_value_copy->condition = copy_search_condition_node(refer_value->condition);
             break;
     }
     return refer_value_copy;
@@ -538,9 +575,9 @@ FromClauseNode *copy_from_clause_node(FromClauseNode *from_clause_node) {
 WhereClauseNode *copy_where_clause_node(WhereClauseNode *where_clause) {
     if (!where_clause)
         return NULL;
-    WhereClauseNode *where_clause_copy = instance(WhereClauseNode);
-    where_clause_copy->condition = copy_condition_node(where_clause->condition);
-    return where_clause_copy;
+    WhereClauseNode *duplica = instance(WhereClauseNode);
+    duplica->condition = copy_search_condition_node(where_clause->condition);
+    return duplica;
 }
 
 /* Copy TableExpNode. */
