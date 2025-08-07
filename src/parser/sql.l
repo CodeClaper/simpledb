@@ -46,6 +46,7 @@ TABLES                  return TABLES;
 AS                      return AS;
 AND                     return AND;
 OR                      return OR;
+IS                      return IS;
 NOT                     return NOT;
 INTO                    return INTO;
 SET                     return SET;

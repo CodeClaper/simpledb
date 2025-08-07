@@ -82,6 +82,7 @@ static KeyValue *query_row_value(SelectResult *select_result, ScalarExpNode *sca
 static Row *query_plain_row_selection(SelectResult *select_result, List *scalar_exp_set, Row *row);
 static char *search_table_via_alias(SelectResult *select_result, char *range_variable);
 static KeyValue *query_plain_column_value(SelectResult *select_result, ColumnNode *column, Row *row);
+static bool InternalNodeForSearchCondition(SelectResult *select_result, void *min_key, void *max_key, SearchConditionNode *condition_node, MetaTable *meta_table);
 
 
 /* Check if LimitClauseNode is full. 
@@ -172,10 +173,9 @@ static bool include_internal_comparison_predicate(SelectResult *select_result, v
     }
 }
 
-
-/* Check if include the internal predicate. */
-static bool include_internal_predicate(SelectResult *select_result, void *min_key, void *max_key, 
-                                       PredicateNode *predicate, MetaTable *meta_table) {
+/* Check if the internal meets predicate. */
+static bool InternalNodeForPredicata(SelectResult *select_result, void *min_key, void *max_key, 
+                                     PredicateNode *predicate, MetaTable *meta_table) {
     switch (predicate->type) {
         case PRE_COMPARISON:
             return include_internal_comparison_predicate(
@@ -194,84 +194,59 @@ static bool include_internal_predicate(SelectResult *select_result, void *min_ke
     }
 }
 
-
-/* Check if include the internal node if condition is logic condition. */
-static bool include_logic_internal_node(SelectResult *select_result, void *min_key, void *max_key, 
-                                        SearchConditionNode *condition_node, MetaTable *meta_table) {
-    /* For logic condition node, check left node and right node. */
-    switch(condition_node->conn_type) {
-        case C_AND:
-           return include_internal_node(select_result, min_key, max_key, condition_node->left, meta_table) && 
-                        include_internal_node(select_result, max_key, max_key, condition_node->right, meta_table);
-        case C_OR:
-           return include_internal_node(select_result, min_key, max_key, condition_node->left, meta_table) || 
-                        include_internal_node(select_result, max_key, max_key, condition_node->right, meta_table);
-        case C_NONE:
-            db_log(PANIC, "System logic error.");
-            return false;
-        default:
-            UNEXPECTED_VALUE(condition_node->conn_type);
-            return false;
+/* Check if the internal node meets the boolean primary. */
+static bool InternalNodeForBooleanPrimary(SelectResult *select_result, void *min_key, void *max_key, 
+                                          BooleanPrimaryNode *boolean_primary, MetaTable *meta_table) {
+    switch (boolean_primary->type) {
+        case PREDICATE_BOOLEAN_PRIMAYR:
+            return InternalNodeForPredicata(select_result, min_key, max_key, boolean_primary->predicate, meta_table);
+        case SEARCH_CONDITION_BOOLEAN_PRIMAYR:
+            return InternalNodeForSearchCondition(select_result, min_key, max_key, boolean_primary->search_condition, meta_table);
     } 
 }
 
-/* Check if include the internal node if condition is exec condition. */
-static bool include_exec_internal_node(SelectResult *select_result, void *min_key, void *max_key, 
-                                       SearchConditionNode *condition_node, MetaTable *meta_table) {
-    Assert(condition_node->conn_type == C_NONE);
-    MetaColumn *cond_meta_column = get_cond_meta_column(condition_node->predicate, meta_table);
-
-    /* Skipped the internal node must satisfy flowing factors: 
-     * (1) Current condition is current table columns.
-     * (2) It is primary key
-     * (3) not satisfied internal node condition. */
-    return !cond_meta_column || 
-                !cond_meta_column->is_primary || 
-                    include_internal_predicate(select_result, min_key, max_key, condition_node->predicate, meta_table);
-}
-
-/* Check if include the internal node. */
-static bool include_internal_node(SelectResult *select_result, void *min_key, void *max_key, 
-                                  SearchConditionNode *condition_node, MetaTable *meta_table) {
-    /* If without condition, of course return true. */
-    if (condition_node == NULL)
-        return true;
-
-    /* According to condition node type, has different way. */
-    switch(condition_node->conn_type) {
-        case C_OR:
-        case C_AND:
-            return include_logic_internal_node(
-                select_result, min_key, max_key, 
-                condition_node, meta_table
-            );
-        case C_NONE:
-            return include_exec_internal_node(
-                select_result, min_key, max_key, 
-                condition_node, meta_table
-            );
-        default:
-            UNEXPECTED_VALUE(condition_node->conn_type);
-            return false;
+/* Check if the internal node meets the boolean test. */
+static bool InternalNodeForBooleanTest(SelectResult *select_result, void *min_key, void *max_key, 
+                                       BooleanTestNode *boolean_test, MetaTable *meta_table) {
+    bool bool_primary_value = InternalNodeForBooleanPrimary(select_result, min_key, max_key, boolean_test->boolean_primary, meta_table);
+    switch (boolean_test->type) {
+        case NONE_TRUE_VALUE:
+           return bool_primary_value;
+        case IS_TRUTH_VALUE:
+           return bool_primary_value == boolean_test->truth_value;
+        case IS_NOT_TRUTH_VALUE:
+           return bool_primary_value != boolean_test->truth_value;
     }
 }
 
-/* Check if include leaf node if the condition is logic condition. */
-static bool include_logic_leaf_node(SelectResult *select_result, List *meta_columns, void *tuple, SearchConditionNode *condition_node) {
-    switch (condition_node->conn_type) {
-        case C_AND:
-            return include_leaf_node(select_result, meta_columns, tuple, condition_node->left) && 
-                        include_leaf_node(select_result, meta_columns, tuple, condition_node->right);
-        case C_OR:
-            return include_leaf_node(select_result, meta_columns, tuple, condition_node->left) || 
-                        include_leaf_node(select_result, meta_columns, tuple, condition_node->right);
-        case C_NONE:
-            db_log(PANIC, "System Logic Error");
-            return false;
-        default:
-            UNEXPECTED_VALUE(condition_node->conn_type);
-            return false;
-    } 
+/* Check if the internal node meets the boolean fator. */
+static bool InternalNodeForBooleanFactor(SelectResult *select_result, void *min_key, void *max_key, 
+                                         BooleanFactorNode *boolean_factor, MetaTable *meta_table) {
+    return boolean_factor->is_not
+        ? !InternalNodeForBooleanTest(select_result, min_key,  max_key, boolean_factor->boolean_test, meta_table)
+        : InternalNodeForBooleanTest(select_result, min_key,  max_key, boolean_factor->boolean_test, meta_table);
+}
+
+/* Check if the internal node meets the boolean term. */
+static bool InternalNodeForBooleanTerm(SelectResult *select_result, void *min_key, void *max_key, 
+                                       BooleanTermNode *boolean_term, MetaTable *meta_table) {
+    return boolean_term->and_boolean_term == NULL 
+        ? InternalNodeForBooleanFactor(select_result, min_key,  max_key, boolean_term->boolean_factor, meta_table)
+        : InternalNodeForBooleanTerm(select_result,  min_key, max_key,  boolean_term->and_boolean_term,  meta_table) && 
+            InternalNodeForBooleanFactor(select_result, min_key,  max_key, boolean_term->boolean_factor, meta_table);
+}
+
+/* Check if the internal node meet the search condition. */
+static bool InternalNodeForSearchCondition(SelectResult *select_result, void *min_key, void *max_key, 
+                                           SearchConditionNode *condition_node, MetaTable *meta_table) {
+    /* If there is no condition, of course meets, so just return true. */
+    if (condition_node == NULL)
+        return true;
+
+    return condition_node->or_search_condition == NULL
+        ? InternalNodeForBooleanTerm(select_result,  min_key, max_key,  condition_node->boolean_term,  meta_table)
+        : InternalNodeForBooleanTerm(select_result,  min_key, max_key,  condition_node->boolean_term,  meta_table) || 
+             InternalNodeForSearchCondition(select_result,  min_key, max_key,  condition_node->or_search_condition,  meta_table);
 }
 
 /* Check the row predicate for column. */
@@ -489,22 +464,20 @@ static bool include_exec_leaf_node(SelectResult *select_result, List *meta_colum
 
 }
 
-/* Check if the key include the leaf node. */
-static bool include_leaf_node(SelectResult *select_result, List *meta_columns, void *tuple, SearchConditionNode *condition_node) {
-    /* If without condition, of course the key include, so just return true. */
-    if (condition_node == NULL) 
-          return true;
+/* Check if the leaf node meets boolean term. */
+static bool LeafNodeForBooleanTerm(SelectResult *select_result, List *meta_columns, void *tuple, BooleanTermNode *boolean_term) {
 
-    switch(condition_node->conn_type) {
-        case C_OR:
-        case C_AND:
-            return include_logic_leaf_node(select_result, meta_columns, tuple, condition_node);
-        case C_NONE:
-            return include_exec_leaf_node(select_result, meta_columns, tuple, condition_node);
-        default:
-            UNEXPECTED_VALUE(condition_node->conn_type);
-            return false;
-    }
+}
+
+/* Check if the leaf node meets search condition. */
+static bool LeafNodeForSearchCondition(SelectResult *select_result, List *meta_columns, void *tuple, SearchConditionNode *search_condition) {
+    /* If there is no condition, of course meets, so just return true. */
+    if (search_condition == NULL) 
+          return true;
+    return search_condition->or_search_condition == NULL 
+        ? LeafNodeForBooleanTerm(select_result,  meta_columns,  tuple,  search_condition->boolean_term) 
+        : LeafNodeForSearchCondition(select_result,  meta_columns,  tuple,  search_condition->or_search_condition) ||
+             LeafNodeForBooleanTerm(select_result,  meta_columns,  tuple,  search_condition->boolean_term);
 }
 
 /* Get meta column by condition name. */
@@ -917,7 +890,7 @@ static void select_from_internal_node(SelectResult *select_result, SearchConditi
                         ? NULL 
                         : get_real_value(get_internal_node_key(internal_node, i - 1, key_len, default_value_len), primary_key_type);
             /* Filter the internal node. */
-            if (!include_internal_node(select_result, min_key, max_key, condition, table->meta_table))
+            if (!InternalNodeForSearchCondition(select_result, min_key, max_key, condition, table->meta_table))
                 continue;
         }
 

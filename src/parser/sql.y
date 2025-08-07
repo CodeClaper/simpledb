@@ -42,6 +42,10 @@ extern char *current_token;
    CalculateNode                *calculate_node;
    AssignmentNode               *assignment_node;
    SearchConditionNode          *search_condition_node;
+   BooleanTermNode              *boolean_term_node;
+   BooleanFactorNode            *boolean_factor_node;
+   BooleanTestNode              *boolean_test_node;
+   BooleanPrimaryNode           *boolean_primary_node;
    PredicateNode                *predicate_node;
    ComparisonNode               *comparison_node;
    LikeNode                     *like_node;
@@ -99,7 +103,7 @@ extern char *current_token;
 %token <keyword> COMMENT
 %token <keyword> CHAR INT LONG VARCHAR STRING BOOL FLOAT DOUBLE DATE TIMESTAMP
 %token <keyword> EQ NE GT GE LT LE IN LIKE
-%token <keyword> NOT
+%token <keyword> IS NOT
 %token <keyword> ALTER COLUMN ADD RENAME
 %token <keyword> BEFORE AFTER
 %token <keyword> SYSTEM CONFIG MEMORY
@@ -129,6 +133,10 @@ extern char *current_token;
 %type <column_def_node> column_def
 %type <list> column_defs
 %type <search_condition_node> search_condition
+%type <boolean_term_node> boolean_term
+%type <boolean_factor> boolean_factor
+%type <boolean_test> boolean_test
+%type <boolean_primary> boolean_primary
 %type <predicate_node> predicate
 %type <comparison_node> comparison_predicate
 %type <like_node> like_predicate
@@ -1085,34 +1093,91 @@ assignment:
         }
     ;
 search_condition: 
-    search_condition OR search_condition
+    boolean_term
         {
             SearchConditionNode *condition = instance(SearchConditionNode);
-            condition->conn_type = C_OR;
-            condition->left = $1;
-            condition->right = $3;
+            condition->boolean_term = $1
             $$ = condition;
         }
-    | search_condition AND search_condition
+    | search_condition OR boolean_term
         {
             SearchConditionNode *condition = instance(SearchConditionNode);
-            condition->conn_type = C_AND;
-            condition->left = $1;
-            condition->right = $3;
-            $$ = condition;
-        }
-    | '(' search_condition ')'
-        {
-            $$ = $2;
-        }
-    | predicate
-        {
-            SearchConditionNode *condition = instance(SearchConditionNode);
-            condition->conn_type = C_NONE;
-            condition->predicate = $1;
+            condition->or_search_condition = $1;
+            condition->boolean_term = $3;
             $$ = condition;
         }
     ;
+boolean_term:
+    boolean_factor
+        {
+            BooleanTermNode *term_node = instance(BooleanTermNode);
+            term_node->boolean_factor = $1;
+            $$ = term_node;
+        }
+    | boolean_term AND boolean_factor 
+        {
+            BooleanTermNode *term_node = instance(BooleanTermNode);
+            term_node->and_boolean_term = $1;
+            term_node->boolean_factor = $3;
+            $$ = term_node;
+        }
+    ;
+boolean_factor:
+    bool_test
+        {
+            BooleanFactorNode *factor_node = instance(BooleanFactorNode);
+            factor_node->boolean_test = $1;
+            factor_node->is_not = false;
+            $$ = factor_node;
+        }
+    | NOT boolean_test
+        {
+            BooleanFactorNode *factor_node = instance(BooleanFactorNode);
+            factor_node->boolean_test = $1;
+            factor_node->is_not = true;
+            $$ = factor_node;
+        }
+    ;
+boolean_test:
+    boolean_primary
+        {
+            BooleanTestNode *test_node = instance(BooleanTestNode);
+            test_node->boolean_primary = $1;
+            test_node->type = NONE_TRUE_VALUE;
+            $$ = test_node;
+        }
+    | boolean_primary IS BOOLVALUE
+        {
+            BooleanTestNode *test_node = instance(BooleanTestNode);
+            test_node->boolean_primary = $1;
+            test_node->type = IS_TRUTH_VALUE;
+            test_node->truth_value = $3;
+            $$ = test_node;
+        }
+    | boolean_primary IS NOT BOOLVALUE
+        {
+            BooleanTestNode *test_node = instance(BooleanTestNode);
+            test_node->boolean_primary = $1;
+            test_node->type = IS_NOT_TRUTH_VALUE;
+            test_node->truth_value = $3;
+            $$ = test_node;
+        }
+    ;
+boolean_primary:
+    predicate
+        {
+            BooleanPrimaryNode *primary_node = instance(BooleanPrimaryNode);
+            predicate_node->predicate = $1;
+            predicate_node->search_condition = NULL;
+            $$ = primary_node;
+        }
+    | '(' search_condition ')'
+        {
+            BooleanPrimaryNode *primary_node = instance(BooleanPrimaryNode);
+            predicate_node->search_condition = $2;
+            predicate_node->search_condition = NULL;
+            $$ = primary_node;
+        }
 predicate:
     comparison_predicate
         {

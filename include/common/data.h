@@ -385,10 +385,8 @@ typedef struct {
 
 /* SearchConditionNode */
 typedef struct SearchConditionNode {
-    ConnType conn_type;
-    struct SearchConditionNode *left;
-    struct SearchConditionNode *right;
-    struct PredicateNode *predicate;
+    struct BooleanTermNode *boolean_term;
+    struct SearchConditionNode *or_search_condition;
 } SearchConditionNode;
 
 /* BooleanTermNode */
@@ -407,21 +405,27 @@ typedef struct BooleanFactorNode {
 typedef enum TruthValueType {
     NONE_TRUE_VALUE,
     IS_TRUTH_VALUE,
-    NOT_TRUTH_VALUE,
+    IS_NOT_TRUTH_VALUE,
 } TruthValueType;
 
 /* BooleanTestNode */
 typedef struct BooleanTestNode {
-    struct BooleanPrimary  *boolean_primary;
+    struct BooleanPrimaryNode  *boolean_primary;
     TruthValueType type;
     bool truth_value;
 } BooleanTestNode;
 
+typedef enum BooleanPrimaryType {
+    PREDICATE_BOOLEAN_PRIMAYR,
+    SEARCH_CONDITION_BOOLEAN_PRIMAYR
+} BooleanPrimaryType;
+
 /* BooleanPrimary */
-typedef struct BooleanPrimary {
+typedef struct BooleanPrimaryNode {
+    BooleanPrimaryType type;
     struct PredicateNode *predicate;
     struct SearchConditionNode *search_condition;
-} BooleanPrimary;
+} BooleanPrimaryNode;
 
 /* PredicateType */
 typedef enum PredicateType {
