@@ -112,10 +112,19 @@ def test_add_refer_type_column():
 
 
 # add refer type new column.
-def test_add_refer_type_column2():
+def test_add_nonexist_refer_type_column():
     sql = "alter table `Student` add column `master` Teacher default ref(id = 'T005') after `birth`;"
     ret = client.execute(sql)
-    assert ret['success'] == True
+    assert ret['success'] == False
+    assert ret['message'] == "Try to use refer value as default value, but it does not exist."
+
+
+# add refer type new column.
+def test_add_subrow_type_column():
+    sql = "alter table `Student` add column `master` Teacher default ('T005', 'wangqiang', 'C003') after `birth`;"
+    ret = client.execute(sql)
+    assert ret['success'] == False
+    assert ret['message'] == "Default value does not support directly subrow value. You can try indirect refer value, but make sure the referenct exists."
 
 
 ##  query data
@@ -129,8 +138,6 @@ def test_query_data_after_add_column3():
         assert row["score"] == None
         assert row["birth"] == '2000-01-02'
         assert row["teacher"] == { "id": "T001", "name": "sunqing", "class": "C01" }
-        assert row["master"] == None
-
 
 ## drop column.
 def test_drop_column():

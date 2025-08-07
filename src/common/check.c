@@ -856,10 +856,19 @@ static bool check_default_atom_value_type(AtomNode *atom_node, DataType data_typ
                 return true;
             break;
         }
-        case T_REFERENCE: 
-            /* For Reference, it`s complicate, user can pass a refer or subrow column, 
-             * to be simple, just make flag true. */
-            return true;
+        case T_REFERENCE:  {
+            /* For Reference, it`s complicate. We not support subrow value. 
+             * The logic is not appended sub row by the system instead of users. 
+             * But we support for refer value, but it must exist. */
+            ReferValue *refer_value = atom_node->value.referval;
+            switch (refer_value->type) {
+                case DIRECTLY: 
+                    db_log(ERROR, "Default value does not support directly subrow value. You can try indirect refer value, but make sure the referenct exists.");
+                    return false;
+                case INDIRECTLY: 
+                    return true;
+            }
+        }
         default:
             UNEXPECTED_VALUE(data_type);
     }
@@ -939,9 +948,7 @@ static bool check_column_def_opt_list(ColumnDefNode *column_def) {
 
 /* Check if exists duplicate column name. */
 static bool check_table_element_commalist(List *base_table_element_commalist) {
-
     List *list = create_list(NODE_COLUMN_DEF);
-
     bool primary_key_flag = false;
 
     ListCell *lc;
@@ -996,7 +1003,6 @@ static bool check_table_element_commalist(List *base_table_element_commalist) {
 
 /* Check InsertNode for value items. */
 static bool check_insert_node_for_value_items(InsertNode *insert_node, List *value_item_list) {
-
     /* Check table exist.*/
     Table *table = open_table(insert_node->table_name);
     if (table == NULL)
@@ -1006,7 +1012,6 @@ static bool check_insert_node_for_value_items(InsertNode *insert_node, List *val
 
     /* According to all column flag, determine the number of column set. */
     if (insert_node->all_column) {
-        
         /* Check column number equals the insert values number. */
         if (meta_table->column_size != len_list(value_item_list)) {
             db_log(ERROR, "Column count doesn`t match value count: %d != %d.", 
@@ -1065,7 +1070,6 @@ static bool check_insert_node_for_values(InsertNode *insert_node, List *value_li
 
 /* Check InsertNode for QUERY_SPEC. */
 static bool check_insert_node_for_query_spec(InsertNode *insert_node, QuerySpecNode *query_spec) {
-
     /* Check table exist.*/
     Table *table = open_table(insert_node->table_name);
     if (table == NULL)
@@ -1129,6 +1133,11 @@ static bool check_alter_table_add_column_action(char *table_name, AddColumnDef *
         db_log(ERROR, "Unknown column '%s' in table '%s'.", 
                add_column->position_def->column, 
                table_name);
+        return false;
+    }
+    
+    /* Check the column def. */
+    if (!check_column_def_opt_list(add_column->column_def)) {
         return false;
     }
 
@@ -1268,7 +1277,7 @@ bool check_delete_node(DeleteNode *delete_node) {
 }
 
 /* Check for create table node. */
-bool check_create_table_node(CreateTableNode *create_table_node) {
+bool check_create_table(CreateTableNode *create_table_node) {
     return check_sys_reserved_table(create_table_node->table_name) &&
                 check_duplicate_table(create_table_node->table_name) && 
                     check_table_element_commalist(create_table_node->base_table_element_commalist);

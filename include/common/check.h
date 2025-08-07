@@ -18,7 +18,7 @@ bool check_update_node(UpdateNode *update_node);
 bool check_delete_node(DeleteNode *delete_node);
 
 /* Check for create table node. */
-bool check_create_table_node(CreateTableNode *create_table_node);
+bool check_create_table(CreateTableNode *create_table_node);
 
 /* Chech allowed to drop table. */
 bool check_drop_table(char *table_name);

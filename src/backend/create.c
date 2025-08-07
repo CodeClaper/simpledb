@@ -88,6 +88,11 @@ static void operate_column(MetaColumn *meta_column, List *column_def_opt_list) {
             case OPT_DEFAULT_VALUE:
                 meta_column->default_value_type = DEFAULT_VALUE;
                 meta_column->default_value = get_value_from_value_item_node(column_def_opt->value, meta_column);
+                /* You can use indirect refer value as default value, but is must exist. */
+                if (meta_column->column_type == T_REFERENCE) {
+                    if (meta_column->default_value == NULL)
+                        db_log(ERROR, "Try to use refer value as default value, but it does not exist.");
+                }
                 break;
             case OPT_DEFAULT_NULL: 
                 meta_column->default_value_type = DEFAULT_VALUE_NULL;
@@ -293,7 +298,7 @@ void exec_create_table_statement(CreateTableNode *create_table_node, DBResult *r
     Oid oid = FindNextOid();
 
     /* Check valid. */
-    if (!check_create_table_node(create_table_node)) 
+    if (!check_create_table(create_table_node)) 
         return;
 
     /* Combine MetaTable. */
