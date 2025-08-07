@@ -6,10 +6,12 @@ client.login("root", "Zc120130211")
 
 ## Firstly create table.
 def test_create_table():
-    sql = "CREATE TABLE Student(id varchar(32) primary key comment 'Student Id', name varchar(32) not null comment 'Student full name', \
-           age int comment 'Student age', address varchar(64) default 'unknown' comment 'Student address');"
+    sql = "CREATE TABLE Class(id varchar(32) primary key, grade varchar(32) unique, master_id varchar(32));\n"\
+          "CREATE TABLE Student(id varchar(32) primary key comment 'Student Id', name varchar(32) not null comment 'Student full name', \
+           age int comment 'Student age', address varchar(64) default 'unknown' comment 'Student address', class Class comment 'Student class');\n"
     ret = client.execute(sql)
-    assert ret["success"] == True
+    assert ret[0]["success"] == True
+    assert ret[1]["success"] == True
 
 ## Test for desc table after creating table.
 def test_desc_table():
@@ -20,7 +22,8 @@ def test_desc_table():
         { "field": "id", "type": "varchar", "length": 32, "array": False, "key": "primary", "comment": "Student Id" },
         { "field": "name", "type": "varchar", "length": 32, "array": False, "key": None, "comment": "Student full name" },
         { "field": "age", "type": "int", "length": 4, "array": False, "key": None, "comment": "Student age" },
-        { "field": "address", "type": "varchar", "length": 64, "array": False, "key": None, "comment": "Student address", "default": "unknown" }
+        { "field": "address", "type": "varchar", "length": 64, "array": False, "key": None, "comment": "Student address", "default": "unknown" },
+        { "field": "class", "type": "Class", "length": 48, "array": False, "key": None, "comment": "Student class" }
     ]
 
 ## Test for desc non-existen table.
@@ -32,8 +35,10 @@ def test_desc_non_existen_table():
 
 ## Test for drop table Student. 
 def test_drop_table():
-    sql = "DROP TABLE Student;"
+    sql = "DROP TABLE Student;" \
+          "DROP TABLE Class;"
     ret = client.execute(sql)
-    assert ret["success"] == True
+    assert ret[0]["success"] == True
+    assert ret[1]["success"] == True
 
 

@@ -526,7 +526,7 @@ static MetaColumn *get_cond_meta_column(PredicateNode *predicate, MetaTable *met
 
 
 /* Define the tuple by refer. 
- * -------------------
+ * -------------------------
  * Return the tuple not matter if it is deleted and caller checks if deleted.
  * */
 void *define_tuple(Refer *refer) {
