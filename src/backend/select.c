@@ -73,12 +73,12 @@ typedef struct SelectFromInternalChildTaskArgs {
 #define DIV_NAME "div"
 #define VALUE_NAME "value"
 
-static KeyValue *query_function_value(ScalarExpNode *scalar_exp, SelectResult *select_result);
-static KeyValue *query_value_item(ValueItemNode *value_item, Row *row);
-static KeyValue *query_row_value(SelectResult *select_result, ScalarExpNode *scalar_exp, Row *row);
-static Row *query_plain_row_selection(SelectResult *select_result, List *scalar_exp_set, Row *row);
-static char *search_table_via_alias(SelectResult *select_result, char *range_variable);
-static KeyValue *query_plain_column_value(SelectResult *select_result, ColumnNode *column, Row *row);
+static KeyValue *QueryFunctionValue(ScalarExpNode *scalar_exp, SelectResult *select_result);
+static KeyValue *QueryRowValueItem(ValueItemNode *value_item, Row *row);
+static KeyValue *QueryRowValue(SelectResult *select_result, ScalarExpNode *scalar_exp, Row *row);
+static Row *QueryColumnsSelectOneRow(SelectResult *select_result, List *scalar_exp_set, Row *row);
+static char *SearchTableViaAlias(SelectResult *select_result, char *range_variable);
+static KeyValue *QueryRowColumnValue(SelectResult *select_result, ColumnNode *column, Row *row);
 static bool InternalNodeForSearchCondition(SelectResult *select_result, void *min_key, void *max_key, SearchConditionNode *condition_node, MetaTable *meta_table);
 static bool LeafNodeForSearchCondition(SelectResult *select_result, List *meta_columns, void *tuple, SearchConditionNode *search_condition);
 
@@ -134,7 +134,7 @@ static bool InternalNodeForComparisonPredicate(SelectResult *select_result, void
 
     /* Other table query condition regard as true. */
     if (column->range_variable) {
-        char *table_mame = search_table_via_alias(select_result, column->range_variable);
+        char *table_mame = SearchTableViaAlias(select_result, column->range_variable);
         if (is_empty(table_mame)) {
             db_log(ERROR, "Unknown column '%s.%s' in where clause. ", 
                    column->range_variable, column->column_name);
@@ -261,7 +261,7 @@ static bool ValueForPredicateColumn(SelectResult *select_result, List *meta_colu
     
     /* Find table name. Maybe not found when sing-table query, 
      * there is no range_variable. */
-    table_name = search_table_via_alias(select_result, column->range_variable);
+    table_name = SearchTableViaAlias(select_result, column->range_variable);
 
     /* Find meta column. */
     target_meta_column = is_empty(table_name) 
@@ -302,7 +302,7 @@ static bool TupleForPredicate(SelectResult *select_result, List *meta_columns, v
         meta_column = column->meta_column;
     else {
         if (column->range_variable) {
-            char *rtable_name = search_table_via_alias(select_result, column->range_variable);
+            char *rtable_name = SearchTableViaAlias(select_result, column->range_variable);
             if (is_empty(rtable_name)) {
                 db_log(ERROR, "Unknown column '%s.%s' in where clause. ", 
                        column->range_variable, column->column_name);
@@ -714,9 +714,8 @@ static void DuplicateColumnNameHandler(List *meta_columns) {
 
 
 /* Search table via alias name in SelectResult. 
- * Note: range variable may be table name or table alias name.
- * */
-static char *search_table_via_alias(SelectResult *select_result, char *range_variable) {
+ * Note: range variable may be table name or table alias name. */
+static char *SearchTableViaAlias(SelectResult *select_result, char *range_variable) {
     Assert(select_result != NULL);
 
     /* Either table name or range variable is equal. */
@@ -725,7 +724,7 @@ static char *search_table_via_alias(SelectResult *select_result, char *range_var
         return select_result->table_name;
 
     if (select_result->nested)
-        return search_table_via_alias(select_result->nested, range_variable);
+        return SearchTableViaAlias(select_result->nested, range_variable);
 
     return NULL;
 }
@@ -736,7 +735,7 @@ static char *search_table_via_alias(SelectResult *select_result, char *range_var
  * (1) ROW_HANDLER_ARG_TYPE type.
  * (2) only count.
  * */
-static bool allow_read_raw_page(ROW_HANDLER_ARG_TYPE type, void *arg) {
+static bool AllowReaRawPage(ROW_HANDLER_ARG_TYPE type, void *arg) {
     if (type == ARG_SELECT_PARAM) {
         SelectParam *selectParam = (SelectParam *) arg;
         return selectParam->onlyCount;
@@ -745,7 +744,7 @@ static bool allow_read_raw_page(ROW_HANDLER_ARG_TYPE type, void *arg) {
 }
 
 /* If allowed scan index. */
-static bool allow_scan_index(ROW_HANDLER_ARG_TYPE type, void *arg) {
+static bool AllowScanIndex(ROW_HANDLER_ARG_TYPE type, void *arg) {
     if (type == ARG_SELECT_PARAM) {
         SelectParam *selectParam = (SelectParam *) arg;
         return selectParam->onlyScanIndex;
@@ -756,9 +755,8 @@ static bool allow_scan_index(ROW_HANDLER_ARG_TYPE type, void *arg) {
 
 /* Scan from leaf node. 
  * -------------------
- * Note that: Scan-index operation only supports for one-table query.
- * */
-static void scan_from_leaf_node(SelectResult *select_result, SearchConditionNode *condition, 
+ * Note that: Scan-index operation only supports for one-table query. */
+static void ScanLeafNode(SelectResult *select_result, SearchConditionNode *condition, 
                                 uint32_t page_num, Table *table, ROW_HANDLER row_handler, 
                                 ROW_HANDLER_ARG_TYPE type, void *arg) {
     /* Get cell number, key length and value lenght. */
@@ -795,7 +793,7 @@ static void scan_from_leaf_node(SelectResult *select_result, SearchConditionNode
 }
 
 /* Select through leaf node. */
-static void select_from_leaf_node(SelectResult *select_result, SearchConditionNode *condition, 
+static void SelectLeafNode(SelectResult *select_result, SearchConditionNode *condition, 
                                   uint32_t page_num, Table *table, ROW_HANDLER row_handler, 
                                   ROW_HANDLER_ARG_TYPE type, void *arg) {
     /* Get cell number, key length and value lenght. */
@@ -812,7 +810,7 @@ static void select_from_leaf_node(SelectResult *select_result, SearchConditionNo
     /* Get leaf node buffer. */
     buffer = ReadBuffer(GET_TABLE_OID(table), page_num);
     LockBuffer(buffer, RW_READERS);
-    leaf_node = allow_read_raw_page(type, arg) 
+    leaf_node = AllowReaRawPage(type, arg) 
             ? GetBufferPage(buffer) 
             : GetBufferPageCopy(buffer);
     UnlockBuffer(buffer);
@@ -872,7 +870,7 @@ static void select_from_leaf_node(SelectResult *select_result, SearchConditionNo
 }
 
 /* Select through internal node. */
-static void select_from_internal_node(SelectResult *select_result, SearchConditionNode *condition, 
+static void SelectInternalNode(SelectResult *select_result, SearchConditionNode *condition, 
                                       uint32_t page_num, Table *table, 
                                       ROW_HANDLER row_handler, ROW_HANDLER_ARG_TYPE type, void *arg) {
     /* If LimitClauseNode full, not continue. */
@@ -919,20 +917,20 @@ static void select_from_internal_node(SelectResult *select_result, SearchConditi
 
         switch (get_node_type(node)) {
             case LEAF_NODE: {
-                if (allow_scan_index(type, arg))
-                    scan_from_leaf_node(
+                if (AllowScanIndex(type, arg))
+                    ScanLeafNode(
                         select_result, condition, child_page_num, 
                         table, row_handler, type, arg
                     );
                 else
-                    select_from_leaf_node(
+                    SelectLeafNode(
                         select_result, condition, child_page_num, 
                         table, row_handler, type, arg
                     );
                 break;
             }
             case INTERNAL_NODE:
-                select_from_internal_node(
+                SelectInternalNode(
                     select_result, condition, child_page_num, 
                     table, row_handler, type, arg
                 );
@@ -953,14 +951,14 @@ static void select_from_internal_node(SelectResult *select_result, SearchConditi
     void *right_child = GetBufferPage(right_child_buffer);
     switch (get_node_type(right_child)) {
         case LEAF_NODE: {
-            if (allow_scan_index(type, arg))
-                scan_from_leaf_node(
+            if (AllowScanIndex(type, arg))
+                ScanLeafNode(
                     select_result, 
                     condition, right_child_page_num, 
                     table, row_handler, type, arg
                 );
             else
-                select_from_leaf_node(
+                SelectLeafNode(
                     select_result, 
                     condition, right_child_page_num, 
                     table, row_handler, type, arg
@@ -968,7 +966,7 @@ static void select_from_internal_node(SelectResult *select_result, SearchConditi
             break;
         }
         case INTERNAL_NODE:
-            select_from_internal_node(
+            SelectInternalNode(
                 select_result, 
                 condition, right_child_page_num, 
                 table, row_handler, type, arg
@@ -987,7 +985,7 @@ static void select_from_internal_node(SelectResult *select_result, SearchConditi
 }
 
 /* The task for select internal node in async. */
-static void select_from_internal_node_child_task(void *taskArg) {
+static void SelectInternalNodeChildTask(void *taskArg) {
     Assert(taskArg != NULL);
 
     SelectFromInternalChildTaskArgs *args = (SelectFromInternalChildTaskArgs *) taskArg;
@@ -1006,13 +1004,13 @@ static void select_from_internal_node_child_task(void *taskArg) {
 
     switch (get_node_type(child_node)) {
         case LEAF_NODE:
-            select_from_leaf_node(
+            SelectLeafNode(
                 select_result, condition, child_page_num, 
                 table, row_handler, type, arg
             );
             break;
         case INTERNAL_NODE:
-            select_from_internal_node(
+            SelectInternalNode(
                 select_result, condition, child_page_num, 
                 table, row_handler, type, arg
             );
@@ -1027,7 +1025,7 @@ static void select_from_internal_node_child_task(void *taskArg) {
 }
 
 /* Select through internal node. */
-static void select_from_internal_node_async(SelectResult *select_result, SearchConditionNode *condition, 
+static void SelectInternalNodeAsync(SelectResult *select_result, SearchConditionNode *condition, 
                                             uint32_t page_num, Table *table, 
                                             ROW_HANDLER row_handler, ROW_HANDLER_ARG_TYPE type, void *arg) {
 
@@ -1090,7 +1088,7 @@ static void select_from_internal_node_async(SelectResult *select_result, SearchC
     taskNum++;
 
     /* Parallel compute. */
-    ParallelCompute(4, taskNum, select_from_internal_node_child_task, (void **)taskArgs);
+    ParallelCompute(4, taskNum, SelectInternalNodeChildTask, (void **)taskArgs);
 
     /* Summary select result. */
     for (i = 0; i < taskNum; i++) {
@@ -1113,7 +1111,7 @@ static void select_from_internal_node_async(SelectResult *select_result, SearchC
  * improve the performance. On the contrary, the frequent switch of context
  * will affects the performance.
  * */
-static bool async_condition(SelectResult *select_result) {
+static bool AsyncCondition(SelectResult *select_result) {
     return false;
     /*return select_result->stype == SELECT_STMT && */
     /*            TableNameExistsInCache(select_result->table_name);*/
@@ -1136,26 +1134,26 @@ void query_with_condition_inner(Oid oid, SearchConditionNode *condition, SelectR
 
     switch (get_node_type(root)) {
         case LEAF_NODE: {
-            if (allow_scan_index(type, arg))
-                scan_from_leaf_node(
+            if (AllowScanIndex(type, arg))
+                ScanLeafNode(
                     select_result, condition, table->root_page_num, 
                     table, row_handler, type, arg
                 );
             else
-                select_from_leaf_node(
+                SelectLeafNode(
                     select_result, condition, table->root_page_num, 
                     table, row_handler, type, arg
                 );
             break;
         }
         case INTERNAL_NODE: {
-            if (async_condition(select_result)) 
-                select_from_internal_node_async(
+            if (AsyncCondition(select_result)) 
+                SelectInternalNodeAsync(
                     select_result, condition, table->root_page_num,
                     table, row_handler, type, arg
                 );
             else
-                select_from_internal_node(
+                SelectInternalNode(
                     select_result, condition, table->root_page_num,
                     table, row_handler, type, arg
                 );
@@ -1181,6 +1179,8 @@ void query_with_condition(SearchConditionNode *condition, SelectResult *select_r
     query_with_condition_inner(GET_TABLE_OID(table), condition, select_result, row_handler, type, arg);
 }
 
+
+/* Convert column value to search condition. */
 static SearchConditionNode *ColumnValueConvertCondition(MetaColumn *meta_column, void *value) {
     SearchConditionNode *search_condition = instance(SearchConditionNode);
     BooleanTermNode *boolean_term = instance(BooleanTermNode);
@@ -1355,14 +1355,13 @@ void output_tuple(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE
     }
 }
 
-
 /* Calulate column sum value. */
-static KeyValue *calc_column_sum_value(ColumnNode *column, SelectResult *select_result) {
+static KeyValue *CalcSumValue(ColumnNode *column, SelectResult *select_result) {
     double sum = 0;
     QueueCell *qc;
     qforeach (qc, select_result->rows) {
         Row *row = qfirst(qc);
-        KeyValue *key_value = query_plain_column_value(select_result, column, row);
+        KeyValue *key_value = QueryRowColumnValue(select_result, column, row);
         switch (key_value->data_type) {
             case T_INT: {
                 sum += *(int32_t *)key_value->value;
@@ -1396,13 +1395,13 @@ static KeyValue *calc_column_sum_value(ColumnNode *column, SelectResult *select_
 
 
 /* Calulate column avg value. */
-static KeyValue *calc_column_avg_value(ColumnNode *column, SelectResult *select_result) {
+static KeyValue *CalcAvgValue(ColumnNode *column, SelectResult *select_result) {
     double sum = 0;
     double avg = 0;
     QueueCell *qc;
     qforeach (qc, select_result->rows) {
         Row *row = qfirst(qc);
-        KeyValue *key_value = query_plain_column_value(select_result, column, row);
+        KeyValue *key_value = QueryRowColumnValue(select_result, column, row);
         switch (key_value->data_type) {
             case T_INT: {
                 sum += *(int32_t *)key_value->value;
@@ -1437,14 +1436,14 @@ static KeyValue *calc_column_avg_value(ColumnNode *column, SelectResult *select_
 
 
 /* Calulate column max value.*/
-static KeyValue *calc_column_max_value(ColumnNode *column, SelectResult *select_result) {
+static KeyValue *CalcMaxValue(ColumnNode *column, SelectResult *select_result) {
     void *max_value = NULL;
     DataType data_type = T_UNKNOWN;
 
     QueueCell *qc;
     qforeach (qc, select_result->rows) {
         Row *row = qfirst(qc);
-        KeyValue *current = query_plain_column_value(select_result, column, row);
+        KeyValue *current = QueryRowColumnValue(select_result, column, row);
         data_type = current->data_type;
         void *current_value = current->value;
         if (!max_value || greater(
@@ -1462,14 +1461,14 @@ static KeyValue *calc_column_max_value(ColumnNode *column, SelectResult *select_
 }
 
 /* Calulate column max value.*/
-static KeyValue *calc_column_min_value(ColumnNode *column, SelectResult *select_result) {
+static KeyValue *CalcMinValue(ColumnNode *column, SelectResult *select_result) {
     void *min_value = NULL;
     DataType data_type = T_UNKNOWN;
 
     QueueCell *qc;
     qforeach (qc, select_result->rows) {
         Row *row = qfirst(qc);
-        KeyValue *current = query_plain_column_value(select_result, column, row);
+        KeyValue *current = QueryRowColumnValue(select_result, column, row);
         data_type = current->data_type;
         void *current_value = current->value;
         if (min_value == NULL || less(
@@ -1488,16 +1487,16 @@ static KeyValue *calc_column_min_value(ColumnNode *column, SelectResult *select_
 
 
 /* Query count function. */
-static KeyValue *query_count_function(FunctionValueNode *value, SelectResult *select_result) {
+static KeyValue *QueryCountFunctionValue(FunctionValueNode *value, SelectResult *select_result) {
     uint32_t row_size = select_result->row_size;
     return new_key_value(COUNT_NAME, &row_size, T_INT, select_result->table_name);
 }
 
 /* Query sum function. */
-static KeyValue *query_sum_function(FunctionValueNode *value, SelectResult *select_result) {
+static KeyValue *QuerySumFunctionValue(FunctionValueNode *value, SelectResult *select_result) {
     switch (value->value_type) {
         case V_COLUMN: 
-            return calc_column_sum_value(value->column, select_result);
+            return CalcSumValue(value->column, select_result);
         case V_INT: {
             double sum = value->i_value * (select_result->rows->size);
             return new_key_value(SUM_NAME, &sum, T_DOUBLE, select_result->table_name);
@@ -1514,11 +1513,11 @@ static KeyValue *query_sum_function(FunctionValueNode *value, SelectResult *sele
 }
 
 /* Query avg function. */
-KeyValue *query_avg_function(FunctionValueNode *value, SelectResult *select_result) {
+KeyValue *QueryAvgFunctionValue(FunctionValueNode *value, SelectResult *select_result) {
 
     switch (value->value_type) {
         case V_COLUMN:
-            return calc_column_avg_value(value->column, select_result);
+            return CalcAvgValue(value->column, select_result);
         case V_INT: 
             return new_key_value(AVG_NAME, &value->i_value, T_DOUBLE, select_result->table_name);
         case V_ALL: 
@@ -1531,11 +1530,11 @@ KeyValue *query_avg_function(FunctionValueNode *value, SelectResult *select_resu
 }
 
 /* Query max function. */
-KeyValue *query_max_function(FunctionValueNode *value, SelectResult *select_result) {
+KeyValue *QueryMaxFunctionValue(FunctionValueNode *value, SelectResult *select_result) {
 
     switch (value->value_type) {
         case V_COLUMN: 
-            return calc_column_max_value(value->column, select_result);
+            return CalcMaxValue(value->column, select_result);
         case V_INT: 
             return new_key_value(MAX_NAME, &value->i_value, T_INT, select_result->table_name);
         case V_ALL: 
@@ -1549,11 +1548,10 @@ KeyValue *query_max_function(FunctionValueNode *value, SelectResult *select_resu
 
 
 /* Query min function. */
-KeyValue *query_min_function(FunctionValueNode *value, SelectResult *select_result) {
-
+KeyValue *QueryMinFunctionValue(FunctionValueNode *value, SelectResult *select_result) {
     switch (value->value_type) {
         case V_COLUMN:
-            return calc_column_min_value(value->column, select_result);
+            return CalcMinValue(value->column, select_result);
         case V_INT: 
             return new_key_value(MIN_NAME, &value->i_value, T_INT, select_result->table_name);
         case V_ALL: 
@@ -1566,32 +1564,31 @@ KeyValue *query_min_function(FunctionValueNode *value, SelectResult *select_resu
 } 
 
 /* Query scalar function */
-static KeyValue *query_function_column_value(FunctionNode *function, SelectResult *select_result) {
+static KeyValue *QueryFunctionColumnValue(FunctionNode *function, SelectResult *select_result) {
     switch (function->type) { 
         case F_COUNT:
-            return query_count_function(function->value, select_result);
+            return QueryCountFunctionValue(function->value, select_result);
         case F_SUM:
-            return query_sum_function(function->value, select_result);
+            return QuerySumFunctionValue(function->value, select_result);
         case F_AVG:
-            return query_avg_function(function->value, select_result);
+            return QueryAvgFunctionValue(function->value, select_result);
         case F_MAX:
-            return query_max_function(function->value, select_result);
+            return QueryMaxFunctionValue(function->value, select_result);
         case F_MIN:
-            return query_min_function(function->value, select_result);
+            return QueryMinFunctionValue(function->value, select_result);
         default:
             UNEXPECTED_VALUE("Not implement function yet.");
             return NULL;
     }
 }
 
-
 /* Query column value. */
-static KeyValue *query_plain_column_value(SelectResult *select_result, ColumnNode *column, Row *row) {
+static KeyValue *QueryRowColumnValue(SelectResult *select_result, ColumnNode *column, Row *row) {
     if (row == NULL) 
         return new_key_value(column->column_name, NULL, T_ROW, select_result->table_name);
 
     /* Get table name via alias name. */
-    char *table_name = search_table_via_alias(select_result, column->range_variable);
+    char *table_name = SearchTableViaAlias(select_result, column->range_variable);
     if (column->range_variable && table_name == NULL) {
         db_log(ERROR, "Unknown table alias '%s' in select items. ", 
                column->range_variable);
@@ -1608,10 +1605,10 @@ static KeyValue *query_plain_column_value(SelectResult *select_result, ColumnNod
                 Refer *refer = (Refer *)key_value->value;
                 Row *sub_row = define_visible_row(refer);
                 if (column->has_sub_column && column->sub_column) {
-                    KeyValue *sub_key_value = query_plain_column_value(select_result, column->sub_column, sub_row);
+                    KeyValue *sub_key_value = QueryRowColumnValue(select_result, column->sub_column, sub_row);
                     return sub_key_value;
                 } else if (column->has_sub_column && column->scalar_exp_list) {
-                    Row *filtered_subrow = query_plain_row_selection(select_result, column->scalar_exp_list, sub_row);
+                    Row *filtered_subrow = QueryColumnsSelectOneRow(select_result, column->scalar_exp_list, sub_row);
                     return new_key_value(column->column_name, filtered_subrow, T_ROW, table_name);
                 } else if (!column->has_sub_column) {
                     return new_key_value(column->column_name, sub_row, T_ROW, table_name); 
@@ -1629,7 +1626,7 @@ static KeyValue *query_plain_column_value(SelectResult *select_result, ColumnNod
 }
 
 /* Calulate addition. */
-static KeyValue *calulate_addition(KeyValue *left, KeyValue *right) {
+static KeyValue *CalcAddition(KeyValue *left, KeyValue *right) {
     switch (left->data_type) {
         case T_INT: {
             switch (right->data_type) {
@@ -1739,7 +1736,7 @@ static KeyValue *calulate_addition(KeyValue *left, KeyValue *right) {
 }
 
 /* Calulate substraction .*/
-static KeyValue *calulate_substraction(KeyValue *left, KeyValue *right) {
+static KeyValue *CalcSubstraction(KeyValue *left, KeyValue *right) {
     switch (left->data_type) {
         case T_INT: {
             switch (right->data_type) {
@@ -1850,7 +1847,7 @@ static KeyValue *calulate_substraction(KeyValue *left, KeyValue *right) {
 
 
 /* Calulate multiplication .*/
-static KeyValue *calulate_multiplication(KeyValue *left, KeyValue *right) {
+static KeyValue *CalcMultplication(KeyValue *left, KeyValue *right) {
     switch (left->data_type) {
         case T_INT: {
             switch (right->data_type) {
@@ -1960,7 +1957,7 @@ static KeyValue *calulate_multiplication(KeyValue *left, KeyValue *right) {
 }
 
 /* Calulate division .*/
-static KeyValue *calulate_division(KeyValue *left, KeyValue *right) {
+static KeyValue *CalcDivision(KeyValue *left, KeyValue *right) {
     switch (left->data_type) {
         case T_INT: {
             switch (right->data_type) {
@@ -2070,24 +2067,24 @@ static KeyValue *calulate_division(KeyValue *left, KeyValue *right) {
 }
 
 /* Query function calculate. */
-static KeyValue *query_function_calculate_column_value(CalculateNode *calculate, SelectResult *select_result) {
+static KeyValue *QueryFunctionCalcValue(CalculateNode *calculate, SelectResult *select_result) {
     KeyValue *result = NULL;
 
-    KeyValue *left = query_function_value(calculate->left, select_result);
-    KeyValue *right = query_function_value(calculate->right, select_result);
+    KeyValue *left = QueryFunctionValue(calculate->left, select_result);
+    KeyValue *right = QueryFunctionValue(calculate->right, select_result);
     
     switch (calculate->type) {
         case CAL_ADD:
-            result = calulate_addition(left, right);
+            result = CalcAddition(left, right);
             break;
         case CAL_SUB:
-            result = calulate_substraction(left, right);
+            result = CalcSubstraction(left, right);
             break;
         case CAL_MUL:
-            result = calulate_multiplication(left, right);
+            result = CalcMultplication(left, right);
             break;
         case CAL_DIV:
-            result = calulate_division(left, right);
+            result = CalcDivision(left, right);
             break;
         default:
             UNEXPECTED_VALUE(calculate->type);
@@ -2098,7 +2095,7 @@ static KeyValue *query_function_calculate_column_value(CalculateNode *calculate,
 
 
 /* Query column value. */
-static KeyValue *query_function_value(ScalarExpNode *scalar_exp, SelectResult *select_result) {
+static KeyValue *QueryFunctionValue(ScalarExpNode *scalar_exp, SelectResult *select_result) {
     Table *table = open_table(select_result->table_name);
     switch (scalar_exp->type) {
         case SCALAR_COLUMN: {
@@ -2115,7 +2112,7 @@ static KeyValue *query_function_value(ScalarExpNode *scalar_exp, SelectResult *s
             else {
                 /* Default, when query function and column data, 
                  * column only return first data. */
-                return query_plain_column_value(
+                return QueryRowColumnValue(
                     select_result, 
                     column, 
                     qfirst(QueueHead(select_result->rows))
@@ -2123,15 +2120,15 @@ static KeyValue *query_function_value(ScalarExpNode *scalar_exp, SelectResult *s
             }
         }
         case SCALAR_FUNCTION:
-            return query_function_column_value(scalar_exp->function, select_result);
+            return QueryFunctionColumnValue(scalar_exp->function, select_result);
         case SCALAR_CALCULATE:
-            return query_function_calculate_column_value(scalar_exp->calculate, select_result);
+            return QueryFunctionCalcValue(scalar_exp->calculate, select_result);
         case SCALAR_VALUE: {
             ValueItemNode *value = scalar_exp->value;
             if (QueueIsEmpty(select_result->rows)) 
                 return new_key_value(VALUE_NAME, NULL, convert_data_type(value->value.atom->type), NULL);
             else
-                return query_value_item(value, qfirst(QueueHead(select_result->rows)));
+                return QueryRowValueItem(value, qfirst(QueueHead(select_result->rows)));
         }
         default: {
             UNEXPECTED_VALUE("Unknown scalar type");
@@ -2141,13 +2138,13 @@ static KeyValue *query_function_value(ScalarExpNode *scalar_exp, SelectResult *s
 }
 
 /* Query function data. */
-static void query_fuction_selecton(List *scalar_exp_list, SelectResult *select_result) {
+static void QueryFunctionSelection(List *scalar_exp_list, SelectResult *select_result) {
     Row *row = NewRow();
 
     ListCell *lc;
     foreach (lc, scalar_exp_list) {
         ScalarExpNode *scalar_exp = lfirst(lc);
-        KeyValue *key_value = query_function_value(scalar_exp, select_result);        
+        KeyValue *key_value = QueryFunctionValue(scalar_exp, select_result);        
         if (scalar_exp->alias) {
             // free_value(key_value->key, T_STRING);
             key_value->key = dstrdup(scalar_exp->alias);
@@ -2160,31 +2157,31 @@ static void query_fuction_selecton(List *scalar_exp_list, SelectResult *select_r
 }
 
 /* Query all-columns calcuate column value. */
-static KeyValue *query_all_columns_calculate_column_value(SelectResult *select_result, CalculateNode *calculate, Row *row) {
+static KeyValue *QueryRowCalcValue(SelectResult *select_result, CalculateNode *calculate, Row *row) {
     KeyValue *result = NULL;
 
-    KeyValue *left = query_row_value(select_result, calculate->left, row);
-    KeyValue *right = query_row_value(select_result, calculate->right, row);
+    KeyValue *left = QueryRowValue(select_result, calculate->left, row);
+    KeyValue *right = QueryRowValue(select_result, calculate->right, row);
 
     switch (calculate->type) {
         case CAL_ADD:
-            result = calulate_addition(left, right);
+            result = CalcAddition(left, right);
             break;
         case CAL_SUB:
-            result = calulate_substraction(left, right);
+            result = CalcSubstraction(left, right);
             break;
         case CAL_MUL:
-            result = calulate_multiplication(left, right);
+            result = CalcMultplication(left, right);
             break;
         case CAL_DIV:
-            result = calulate_division(left, right);
+            result = CalcDivision(left, right);
             break;
     }
     return result;
 }
 
 /* Query value item in scalar_exp. */
-static KeyValue *query_value_item(ValueItemNode *value_item, Row *row) {
+static KeyValue *QueryRowValueItem(ValueItemNode *value_item, Row *row) {
     Assert(value_item->type == V_ATOM);
     AtomNode *atom_node = value_item->value.atom;
     switch (atom_node->type) {
@@ -2205,16 +2202,16 @@ static KeyValue *query_value_item(ValueItemNode *value_item, Row *row) {
 }
 
 /* Query row value. */
-static KeyValue *query_row_value(SelectResult *select_result, ScalarExpNode *scalar_exp, Row *row) {
+static KeyValue *QueryRowValue(SelectResult *select_result, ScalarExpNode *scalar_exp, Row *row) {
     switch (scalar_exp->type) {
         case SCALAR_COLUMN:
-            return query_plain_column_value(select_result, scalar_exp->column, row);
+            return QueryRowColumnValue(select_result, scalar_exp->column, row);
         case SCALAR_CALCULATE:
-            return query_all_columns_calculate_column_value(select_result, scalar_exp->calculate, row);            
+            return QueryRowCalcValue(select_result, scalar_exp->calculate, row);            
         case SCALAR_VALUE:
-            return query_value_item(scalar_exp->value, row);
+            return QueryRowValueItem(scalar_exp->value, row);
         case SCALAR_FUNCTION:
-            db_log(PANIC, "System logic error at <query_row_value>");
+            db_log(PANIC, "System logic error at <QueryRowValue>");
             return NULL;
         default:
             UNEXPECTED_VALUE(scalar_exp->type);
@@ -2224,7 +2221,7 @@ static KeyValue *query_row_value(SelectResult *select_result, ScalarExpNode *sca
 
 /* Query a Row of Selection,
  * Actually, the Selection is pure-column scalars. */
-static Row *query_plain_row_selection(SelectResult *select_result, List *scalar_exp_list, Row *row) {
+static Row *QueryColumnsSelectOneRow(SelectResult *select_result, List *scalar_exp_list, Row *row) {
     if (is_null(row)) 
         return NULL;
     
@@ -2233,7 +2230,7 @@ static Row *query_plain_row_selection(SelectResult *select_result, List *scalar_
     ListCell *lc;
     foreach (lc, scalar_exp_list) {
         ScalarExpNode *scalar_exp = lfirst(lc);
-        KeyValue *key_value = query_row_value(select_result, scalar_exp, row);
+        KeyValue *key_value = QueryRowValue(select_result, scalar_exp, row);
         if (scalar_exp->alias) {
             /* Rename as alias. */
             key_value->key = dstrdup(scalar_exp->alias);
@@ -2244,17 +2241,17 @@ static Row *query_plain_row_selection(SelectResult *select_result, List *scalar_
 }
 
 /* Query all columns data. */
-static void query_columns_selection(List *scalar_exp_list, SelectResult *select_result) {
+static void QueryColumnsSelection(List *scalar_exp_list, SelectResult *select_result) {
     QueueCell *qc;
     qforeach (qc, select_result->rows) {
         Row *row = qfirst(qc);
-        qfirst(qc) = query_plain_row_selection(select_result, scalar_exp_list, row);
+        qfirst(qc) = QueryColumnsSelectOneRow(select_result, scalar_exp_list, row);
     }
 }
 
 /* Check if ScalarExpNode is Function. 
  * If CALCULATE, will check its children. */
-static bool is_function_scalar_exp(ScalarExpNode *scalar_exp) {
+static bool IsFunctionScalarExp(ScalarExpNode *scalar_exp) {
     switch (scalar_exp->type) {
         case SCALAR_FUNCTION:
             return true;
@@ -2263,8 +2260,8 @@ static bool is_function_scalar_exp(ScalarExpNode *scalar_exp) {
         case SCALAR_VALUE:
             return false;
         case SCALAR_CALCULATE:
-            return is_function_scalar_exp(scalar_exp->calculate->left) 
-                || is_function_scalar_exp(scalar_exp->calculate->right);
+            return IsFunctionScalarExp(scalar_exp->calculate->left) 
+                || IsFunctionScalarExp(scalar_exp->calculate->right);
         default:
             UNEXPECTED_VALUE(scalar_exp->type);
             return false;
@@ -2272,12 +2269,12 @@ static bool is_function_scalar_exp(ScalarExpNode *scalar_exp) {
 }
 
 /* Check if exists function type scalar exp. */
-static bool exists_function_scalar_exp(List *scalar_exp_list) {
+static bool FunctionScalarExpExists(List *scalar_exp_list) {
     ListCell *lc;
     foreach (lc, scalar_exp_list) {
         /* Check self if SCALAR_FUNCTION. */
         ScalarExpNode *scalar_exp = lfirst(lc);
-        if (is_function_scalar_exp(scalar_exp))
+        if (IsFunctionScalarExp(scalar_exp))
             return true;
     }
     return false;
@@ -2285,21 +2282,20 @@ static bool exists_function_scalar_exp(List *scalar_exp_list) {
 
 
 /* Query selection. */
-static void query_with_selection(SelectionNode *selection, SelectResult *select_result) {
+static void QueryWithSelection(SelectionNode *selection, SelectResult *select_result) {
     /* For all column, data has stream out by <query_row>*/
     if (selection->all_column)
         return;
-    if (exists_function_scalar_exp(selection->scalar_exp_list)) 
-        query_fuction_selecton(selection->scalar_exp_list, select_result);
+    if (FunctionScalarExpExists(selection->scalar_exp_list)) 
+        QueryFunctionSelection(selection->scalar_exp_list, select_result);
     else 
-        query_columns_selection(selection->scalar_exp_list, select_result);
+        QueryColumnsSelection(selection->scalar_exp_list, select_result);
 }
 
 /* Get TableExpNode condition. 
  * If exists where clause, return its condition.
- * Else, return NULL.
- * */
-static inline SearchConditionNode *get_table_exp_condition(TableExpNode *table_exp) {
+ * Else, return NULL. */
+static inline SearchConditionNode *GetTableExpSeachCondition(TableExpNode *table_exp) {
     WhereClauseNode *where_clause = table_exp->where_clause;
     if (where_clause)
         return where_clause->condition;
@@ -2308,7 +2304,7 @@ static inline SearchConditionNode *get_table_exp_condition(TableExpNode *table_e
 }
 
 /* Do before query condition. */
-static void before_query_condition(SelectParam *selectParam) {
+static void DoBeforeQuerySeachCondition(SelectParam *selectParam) {
     if (selectParam->onlyAll && selectParam->stmt_type == SELECT_STMT) {
         db_send("{ \"success\": true, ");
         db_send("\"data\": [");
@@ -2316,7 +2312,7 @@ static void before_query_condition(SelectParam *selectParam) {
 }
 
 /* Do after query condition. */
-static void after_query_condition(SelectParam *selectParam, SelectResult *selectResult, DBResult *dbresult) {
+static void DoAfterQuerySearchCondition(SelectParam *selectParam, SelectResult *selectResult, DBResult *dbresult) {
     if (selectParam->onlyAll && selectParam->stmt_type == SELECT_STMT) {
         dbresult->hasOutput = true;
         /* Calulate duration. */
@@ -2330,7 +2326,7 @@ static void after_query_condition(SelectParam *selectParam, SelectResult *select
 }
 
 /* Query with condition when multiple table. */
-static SelectResult *query_multi_table_with_condition(SelectNode *select_node, DBResult *dbresult) {
+static SelectResult *QueryMultiTableUnderSearchCondition(SelectNode *select_node, DBResult *dbresult) {
     List *table_list;
     SelectResult *head, *pres;
     SearchConditionNode *condition;
@@ -2345,7 +2341,7 @@ static SelectResult *query_multi_table_with_condition(SelectNode *select_node, D
     head = NULL;
     pres = NULL;
     selectParam = optimizeSelect(select_node, dbresult->stmt_type);
-    condition = get_table_exp_condition(select_node->table_exp);
+    condition = GetTableExpSeachCondition(select_node->table_exp);
 
     /* Build the chain of SelectResult. */
     ListCell *lc;
@@ -2368,7 +2364,7 @@ static SelectResult *query_multi_table_with_condition(SelectNode *select_node, D
     }
 
     /* Do before query condition. */
-    before_query_condition(selectParam);
+    DoBeforeQuerySeachCondition(selectParam);
 
     /* Do query condition. */
     query_with_condition(
@@ -2378,7 +2374,7 @@ static SelectResult *query_multi_table_with_condition(SelectNode *select_node, D
     );
 
     /* Do after query condition. */
-    after_query_condition(selectParam, head, dbresult);
+    DoAfterQuerySearchCondition(selectParam, head, dbresult);
 
     return head;
 }
@@ -2389,10 +2385,10 @@ void exec_select_statement(SelectNode *select_node, DBResult *result) {
     check_select_node(select_node);
 
     /* Query multiple table with conditon and get select result which is after row filtered. */
-    SelectResult *select_result = query_multi_table_with_condition(select_node, result);
+    SelectResult *select_result = QueryMultiTableUnderSearchCondition(select_node, result);
 
     /* Query Selection to define row content. */
-    query_with_selection(select_node->selection, select_result);
+    QueryWithSelection(select_node->selection, select_result);
 
     /* If select all, return all row data. */
     result->rows = select_result->row_size;
