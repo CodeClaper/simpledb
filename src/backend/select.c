@@ -635,7 +635,7 @@ static void *merge_tuple(SelectResult *head) {
 }
 
 /* Merge meta columns. */
-static List *merge_meta_columns(SelectResult *head) {
+static List *MergeMetaColumns(SelectResult *head) {
     Assert(head != NULL);
 
     List *meta_columns = create_list(NODE_META_COLUMN);
@@ -663,7 +663,7 @@ static List *merge_meta_columns(SelectResult *head) {
 }
 
 /* Merge meta columns without system reserved columns. */
-static List *merge_meta_columns_without_sys(SelectResult *head) {
+static List *MergeMetaColumnsWithoutSys(SelectResult *head) {
     Assert(head != NULL);
 
     List *meta_columns = create_list(NODE_META_COLUMN);
@@ -848,7 +848,7 @@ static void SelectLeafNode(SelectResult *select_result, SearchConditionNode *con
         if (head->columns != NULL) {
             columns = head->columns;
         } else {
-            columns = merge_meta_columns(head);
+            columns = MergeMetaColumns(head);
             head->columns = columns;
         }
 
@@ -1320,7 +1320,7 @@ void output_tuple(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE
     if (select_result->display_colums != NIL) 
         display_columns = select_result->display_colums;
     else {
-        display_columns = merge_meta_columns_without_sys(select_result);
+        display_columns = MergeMetaColumnsWithoutSys(select_result);
         DuplicateColumnNameHandler(display_columns);
         select_result->display_colums = display_columns;
     }
