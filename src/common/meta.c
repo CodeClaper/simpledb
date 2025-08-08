@@ -196,7 +196,7 @@ static void *assign_value_from_atom(AtomNode *atom_node, MetaColumn *meta_column
             ReferValue *refer_value = atom_node->value.referval;
             switch (refer_value->type) {
                 case DIRECTLY: {
-                    InsertNode *insert_node = fake_insert_node(meta_column->table_name, refer_value->nest_value_list);
+                    InsertNode *insert_node = GenerateInsertNode(meta_column->table_name, refer_value->nest_value_list);
                     List *refer_list = insert_for_values(insert_node);
                     AssertFalse(list_empty(refer_list));
                     free_insert_node(insert_node);

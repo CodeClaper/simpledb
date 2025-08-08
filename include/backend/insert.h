@@ -7,7 +7,7 @@ Refer *insert_one_row(Table *table, Row *row);
 void makeup_reserved_columns(Row *row, char *table_name);
 
 /* Make a fake InsertNode. */
-InsertNode *fake_insert_node(char *table_name, List *value_item_set_node);
+InsertNode *GenerateInsertNode(char *table_name, List *value_list);
 
 /* Insert for values case. */
 List *insert_for_values(InsertNode *insert_node);

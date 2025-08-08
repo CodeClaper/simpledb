@@ -43,7 +43,7 @@
 #include "strheaptable.h"
 
 /* Get value in insert node to assign column at index. */
-static void *get_insert_value(List *value_item_list, uint32_t index, MetaColumn *meta_column) {
+static void *GetInsertValue(List *value_item_list, uint32_t index, MetaColumn *meta_column) {
     /* Not out of boundary. */
     Assert(index < len_list(value_item_list));
     /* Get value item node at index. */
@@ -52,7 +52,7 @@ static void *get_insert_value(List *value_item_list, uint32_t index, MetaColumn 
 }
 
 /* Fake ValuesOrQuerySpecNode for VALUES type. */
-static ValuesOrQuerySpecNode *fake_values_or_query_spec_node(List *value_list) {
+static ValuesOrQuerySpecNode *GenerateValuesOrQuerySpc(List *value_list) {
     ValuesOrQuerySpecNode *values_or_query_spec = instance(ValuesOrQuerySpecNode);
     values_or_query_spec->type = VQ_VALUES;
     values_or_query_spec->values = create_list(NODE_LIST);
@@ -61,17 +61,17 @@ static ValuesOrQuerySpecNode *fake_values_or_query_spec_node(List *value_list) {
 }
 
 /* Make a fake InsertNode. */
-InsertNode *fake_insert_node(char *table_name, List *value_list) {
+InsertNode *GenerateInsertNode(char *table_name, List *value_list) {
     InsertNode *insert_node = instance(InsertNode);
     insert_node->table_name = dstrdup(table_name);
     insert_node->all_column = true;
-    insert_node->values_or_query_spec = fake_values_or_query_spec_node(value_list);
+    insert_node->values_or_query_spec = GenerateValuesOrQuerySpc(value_list);
     return insert_node;
 }
 
 /* Convert QuerySpecNode to SelectionNode. 
  * Notice: not need to free selection, table_exp in select_node. */
-static SelectNode *convert_select_node(QuerySpecNode *query_spec) {
+static SelectNode *QuerySpceToSelection(QuerySpecNode *query_spec) {
     SelectNode *select_node = instance(SelectNode);
     select_node->selection = query_spec->selection;
     select_node->table_exp = query_spec->table_exp;
@@ -79,14 +79,14 @@ static SelectNode *convert_select_node(QuerySpecNode *query_spec) {
 }
 
 /* Generate new sys_id column.*/
-static KeyValue *new_sys_id_column(char *table_name) {
+static KeyValue *NewSysIdKeyValue(char *table_name) {
     /* Automatically insert sys_id using current sys time. */
     int64_t sys_id = get_timestamp(NANOSECOND);
     return new_key_value(SYS_RESERVED_ID_COLUMN_NAME, &sys_id, T_LONG, table_name);
 }
 
 /* Generate new created_xid column.*/
-static KeyValue *new_created_xid_column(char *table_name) {
+static KeyValue *NewCreatedXidKeyValue(char *table_name) {
     /* Get current transaction. */
     TransEntry *current_trans = FindTransaction();
     Assert(current_trans);
@@ -94,7 +94,7 @@ static KeyValue *new_created_xid_column(char *table_name) {
 }
 
 /* Generate new expired_xid column. */
-static KeyValue *new_expired_xid_column(char *table_name) {
+static KeyValue *NewExpiredXidKeyValue(char *table_name) {
     /* For expired_xid */
     int64_t zero = 0;
     return new_key_value(EXPIRED_XID_COLUMN_NAME, &zero, T_LONG, table_name);
@@ -103,18 +103,17 @@ static KeyValue *new_expired_xid_column(char *table_name) {
 /* Makeup the system reserved column. */
 void makeup_reserved_columns(Row *row, char *table_name) {
     /* Append sys_id column key value. */
-    append_list(row->data, new_sys_id_column(table_name));
+    append_list(row->data, NewSysIdKeyValue(table_name));
     /* Append created_xid column key value. */
-    append_list(row->data, new_created_xid_column(table_name));
+    append_list(row->data, NewCreatedXidKeyValue(table_name));
     /* Append expired_xid column key value. */
-    append_list(row->data, new_expired_xid_column(table_name));
+    append_list(row->data, NewExpiredXidKeyValue(table_name));
 }
 
 
 /* Generate insert row for all columns. 
- * Return Row.
- * */
-static Row *generate_insert_row_for_all_inner(MetaTable *meta_table, List *value_item_list) {
+ * Return Row. */
+static Row *GenerateInsertRowForAllInner(MetaTable *meta_table, List *value_item_list) {
     /* Check NodeType. */
     Assert(value_item_list->type == NODE_VALUE_ITEM);
 
@@ -136,7 +135,7 @@ static Row *generate_insert_row_for_all_inner(MetaTable *meta_table, List *value
 
         /* Maybe array value, and the funciton <copy_value> 
          * not support ArrayValue, so specially assign here.*/
-        key_value->value = get_insert_value(value_item_list, __i, meta_column);
+        key_value->value = GetInsertValue(value_item_list, __i, meta_column);
 
         append_list(row->data, key_value);
     }
@@ -150,7 +149,7 @@ static Row *generate_insert_row_for_all_inner(MetaTable *meta_table, List *value
 /* Generate insert row for all columns. 
  * Return list of Row.
  * */
-static List *generate_insert_row_for_all(InsertNode *insert_node) {
+static List *GenerateInsertRowForAll(InsertNode *insert_node) {
     List *value_list = insert_node->values_or_query_spec->values;
 
     /* Table and MetaTable. */
@@ -167,7 +166,7 @@ static List *generate_insert_row_for_all(InsertNode *insert_node) {
     ListCell *lc;
     foreach (lc, value_list) {
         List *value_item_list = lfirst(lc);
-        Row *row = generate_insert_row_for_all_inner(meta_table, value_item_list);
+        Row *row = GenerateInsertRowForAllInner(meta_table, value_item_list);
         append_list(row_list, row);
     }
     
@@ -179,7 +178,7 @@ static List *generate_insert_row_for_all(InsertNode *insert_node) {
  * -------------------------------------
  * Return a Row which need to be freed by caller.
  * */
-static Row *generate_insert_row_for_part_inner(MetaTable *meta_table, List *column_list, List *value_item_list) {
+static Row *GenerateInsertRowForPartInner(MetaTable *meta_table, List *column_list, List *value_item_list) {
     /* Instance row. */
     Row *row = NewRow();
     
@@ -201,7 +200,7 @@ static Row *generate_insert_row_for_part_inner(MetaTable *meta_table, List *colu
 
         /* Maybe the value is array value, and the funciton <copy_value> 
          * not support ArrayValue, so specially assign here.*/
-        key_value->value = get_insert_value(value_item_list, __i, meta_column);
+        key_value->value = GetInsertValue(value_item_list, __i, meta_column);
 
         /* Value of KeyValue may be null when it is Refer. */
         if (key_value->data_type == T_REFERENCE && key_value->value == NULL)
@@ -219,7 +218,7 @@ static Row *generate_insert_row_for_part_inner(MetaTable *meta_table, List *colu
 /* Generate insert row for part columns.
  * Return list of Row.
  * */
-static List *generate_insert_row_for_part(InsertNode *insert_node) {
+static List *GenerateInsertRowForPart(InsertNode *insert_node) {
     List *column_list = insert_node->column_list;
     List *value_list = insert_node->values_or_query_spec->values;
 
@@ -236,7 +235,7 @@ static List *generate_insert_row_for_part(InsertNode *insert_node) {
     ListCell *lc;
     foreach (lc, value_list) {
         List *value_item_list = lfirst(lc);
-        Row *row = generate_insert_row_for_part_inner(meta_table, column_list, value_item_list);
+        Row *row = GenerateInsertRowForPartInner(meta_table, column_list, value_item_list);
         append_list(row_list, row);
     }
 
@@ -244,23 +243,22 @@ static List *generate_insert_row_for_part(InsertNode *insert_node) {
 }
 
 /* Generate insert row. 
- * Return list of Row.
- * */
-static List *generate_insert_row(InsertNode *insert_node) {
+ * Return list of Row. */
+static List *GenerateInsertRow(InsertNode *insert_node) {
     /* Check only for VQ_VALUES. */
     Assert(insert_node->values_or_query_spec->type == VQ_VALUES);
     return insert_node->all_column 
-            ? generate_insert_row_for_all(insert_node)
-            : generate_insert_row_for_part(insert_node);
+            ? GenerateInsertRowForAll(insert_node)
+            : GenerateInsertRowForPart(insert_node);
 }
 
 /* Convert to insert row. */
-static Row *convert_insert_row(Row *row, Table *table) {
+static Row *SelectRowToInsertRow(Row *select_row, Table *table) {
     Row *insert_row = NewRow();
 
     /* Copy data. */
     ListCell *lc;
-    foreach (lc, row->data) {
+    foreach (lc, select_row->data) {
         KeyValue *current = (KeyValue *)lfirst(lc);
         KeyValue *key_value = new_key_value(current->key, 
                                             current->value, 
@@ -308,8 +306,7 @@ Refer *insert_one_row(Table *table, Row *row) {
 }
 
 /* Insert for values case. 
- * Return list of Refer.
- * */
+ * Return list of Refer. */
 List *insert_for_values(InsertNode *insert_node) {
     Table *table;
     List *row_list, *refer_list;
@@ -318,7 +315,7 @@ List *insert_for_values(InsertNode *insert_node) {
     Assert(table);
     
     /* Generate insert row. */
-    row_list = generate_insert_row(insert_node);
+    row_list = GenerateInsertRow(insert_node);
     AssertFalse(list_empty(row_list));
 
     /* Create refer list. */
@@ -352,7 +349,7 @@ static List *insert_for_query_spec(InsertNode *insert_node) {
     ValuesOrQuerySpecNode *values_or_query_spec = insert_node->values_or_query_spec;
 
     /* Make select statement to get safisfied rows. */
-    SelectNode *select_node = convert_select_node(values_or_query_spec->query_spec);
+    SelectNode *select_node = QuerySpceToSelection(values_or_query_spec->query_spec);
 
     /* Make a DBResult to store query result. */
     DBResult *result = new_db_result();
@@ -366,7 +363,7 @@ static List *insert_for_query_spec(InsertNode *insert_node) {
         /* Insert into rows. */
         QueueCell *qc;
         qforeach (qc, select_result->rows) {
-            Row *insert_row = convert_insert_row((Row *)qfirst(qc), table);
+            Row *insert_row = SelectRowToInsertRow((Row *)qfirst(qc), table);
             Refer *refer = insert_one_row(table, insert_row);
             append_list(list, refer);
             free_row(insert_row);
@@ -374,14 +371,6 @@ static List *insert_for_query_spec(InsertNode *insert_node) {
     }
 
     dfree(select_node);
-    return list;
-}
-
-/* Combine Refer list with single refer. */
-List *combine_single_refer_list(Refer *refer) {
-    Assert(refer);
-    List *list = create_list(NODE_REFER);
-    append_list(list, refer);
     return list;
 }
 
