@@ -86,14 +86,14 @@ static bool LeafNodeForSearchCondition(SelectResult *select_result, List *meta_c
 /* Check if LimitClauseNode is full. 
  * LimitClauseNode full means the poffset is greater or equal the offset.
  * */
-inline static bool limit_clause_full(SelectParam *selectParam) {
+inline static bool LimitClauseIsFull(SelectParam *selectParam) {
     return non_null(selectParam->limitClause) && 
         (selectParam->offset >= selectParam->limitClause->offset + selectParam->limitClause->rows);
 }
 
 
 /* Check if include internal comparison predicate for Value type. */
-static bool include_internal_comparison_predicate_value(SelectResult *select_result, void *min_key, void *max_key, 
+static bool InternalNodeForComparisonPredicateValue(SelectResult *select_result, void *min_key, void *max_key, 
                                                         CompareType type, ValueItemNode *value_item, MetaColumn *meta_column) {
     bool result = false;
     void *target_key = get_value_from_value_item_node(value_item, meta_column);
@@ -128,8 +128,8 @@ static bool include_internal_comparison_predicate_value(SelectResult *select_res
 }
 
 /* Check if include internal comparison predicate. */
-static bool include_internal_comparison_predicate(SelectResult *select_result, void *min_key, void *max_key, 
-                                                  ComparisonNode *comparison, MetaTable *meta_table) {
+static bool InternalNodeForComparisonPredicate(SelectResult *select_result, void *min_key, void *max_key, 
+                                               ComparisonNode *comparison, MetaTable *meta_table) {
     ColumnNode *column = comparison->column;
 
     /* Other table query condition regard as true. */
@@ -153,7 +153,7 @@ static bool include_internal_comparison_predicate(SelectResult *select_result, v
     ScalarExpNode *comparsion_value = comparison->value;
     switch (comparsion_value->type) {
         case SCALAR_VALUE:
-            return include_internal_comparison_predicate_value(
+            return InternalNodeForComparisonPredicateValue(
                 select_result, 
                 min_key, max_key, comparison->type, 
                 comparsion_value->value, 
@@ -176,7 +176,7 @@ static bool InternalNodeForPredicata(SelectResult *select_result, void *min_key,
                                      PredicateNode *predicate, MetaTable *meta_table) {
     switch (predicate->type) {
         case PRE_COMPARISON:
-            return include_internal_comparison_predicate(
+            return InternalNodeForComparisonPredicate(
                 select_result, 
                 min_key, max_key, 
                 predicate->comparison, 
@@ -254,8 +254,8 @@ static bool InternalNodeForSearchCondition(SelectResult *select_result, void *mi
 }
 
 /* Check the row predicate for column. */
-static bool check_row_predicate_column(SelectResult *select_result, List *meta_columns, void *tuple, void *value, 
-                                       ColumnNode *column, CompareType type, MetaColumn *meta_column) {
+static bool ValueForPredicateColumn(SelectResult *select_result, List *meta_columns, void *tuple, void *value, 
+                                    ColumnNode *column, CompareType type, MetaColumn *meta_column) {
     char *table_name;
     MetaColumn *target_meta_column;
     
@@ -285,16 +285,15 @@ static bool check_row_predicate_column(SelectResult *select_result, List *meta_c
 }
 
 /* Check the row predicate for value. */
-static bool check_row_predicate_value(SelectResult *select_result, void *value, 
-                                      ValueItemNode *value_item, CompareType type, 
-                                      MetaColumn *meta_column) {
+static bool ValueForPredicateValue(SelectResult *select_result, void *value, ValueItemNode *value_item, 
+                                      CompareType type, MetaColumn *meta_column) {
     void *target = get_value_from_value_item_node(value_item, meta_column);
     return eval(type, value, target, meta_column->column_type);
 }
 
-/* Check the row predicate. */
-static bool check_row_predicate(SelectResult *select_result, List *meta_columns, void *tuple, 
-                                ColumnNode *column, ComparisonNode *comparison) {
+/* Check if the tuple meets predicate. */
+static bool TupleForPredicate(SelectResult *select_result, List *meta_columns, void *tuple, 
+                              ColumnNode *column, ComparisonNode *comparison) {
     MetaColumn *meta_column;
     void *value;
 
@@ -329,7 +328,7 @@ static bool check_row_predicate(SelectResult *select_result, List *meta_columns,
         /* Get subrow, and recursion. */
         void *sub_tuple = define_tuple((Refer *) value);
         Table *sub_table = open_table(meta_column->table_name);
-        return check_row_predicate(
+        return TupleForPredicate(
             select_result, 
             sub_table->meta_table->meta_columns,
             sub_tuple, 
@@ -343,7 +342,7 @@ static bool check_row_predicate(SelectResult *select_result, List *meta_columns,
         ScalarExpNode *comparison_value = comparison->value;
         switch (comparison_value->type) {
             case SCALAR_COLUMN:
-                return check_row_predicate_column(
+                return ValueForPredicateColumn(
                     select_result, meta_columns, tuple, 
                     get_real_value(value, meta_column->column_type), 
                     comparison_value->column, 
@@ -351,7 +350,7 @@ static bool check_row_predicate(SelectResult *select_result, List *meta_columns,
                     meta_column
                 );    
             case SCALAR_VALUE: 
-                return check_row_predicate_value(
+                return ValueForPredicateValue(
                     select_result, 
                     get_real_value(value, meta_column->column_type),
                     comparison_value->value,
@@ -376,13 +375,13 @@ static bool check_row_predicate(SelectResult *select_result, List *meta_columns,
 
 
 /* Check if include leaf node satisfy comparison predicate. */
-static bool include_leaf_comparison_predicate(SelectResult *select_result, List *meta_columns, 
-                                              void *tuple, ComparisonNode *comparison) {
-    return check_row_predicate(select_result, meta_columns, tuple, comparison->column, comparison);
+static bool LeafNodeForComparisonPredicate(SelectResult *select_result, List *meta_columns, 
+                                           void *tuple, ComparisonNode *comparison) {
+    return TupleForPredicate(select_result, meta_columns, tuple, comparison->column, comparison);
 }
 
-/* Check if include in value item set. */
-static bool check_in_value_item_set(List *value_list, void *value, MetaColumn *meta_column) {
+/* Check if value in value list. */
+static bool ValueInValueList(List *value_list, void *value, MetaColumn *meta_column) {
     ListCell *lc;
     foreach (lc, value_list) {
         void *target = get_value_from_value_item_node(lfirst(lc), meta_column);
@@ -393,12 +392,12 @@ static bool check_in_value_item_set(List *value_list, void *value, MetaColumn *m
 }
 
 /* Check if include leaf node satisfy in predicate. */
-static bool include_leaf_in_predicate(SelectResult *select_result, void *tuple, InNode *in_node) {
+static bool LeafNodeForInPredicate(SelectResult *select_result, void *tuple, InNode *in_node) {
     Table *table = open_table(select_result->table_name);
     Assert(table != NULL);
     MetaColumn *meta_column = get_meta_column_by_name(table->meta_table, in_node->column->column_name);
     if (meta_column != NULL)
-        return check_in_value_item_set(
+        return ValueInValueList(
             in_node->value_list, 
             get_real_value(get_value_in_tuple(tuple, meta_column), meta_column->column_type), 
             meta_column
@@ -406,8 +405,8 @@ static bool include_leaf_in_predicate(SelectResult *select_result, void *tuple, 
     return false;
 }
 
-/* Check if satisfy like string value. */
-static bool check_like_string_value(char *value, char *target) {
+/* Check if value is like string value. */
+static bool ValueLikeStringValue(char *value, char *target) {
     size_t value_len = strlen(value);
     size_t target_len = strlen(target);
     if (value_len == 0 || target_len == 0)
@@ -433,13 +432,13 @@ static bool check_like_string_value(char *value, char *target) {
 
 
 /* Check if include leaf node satisfy like predicate. */
-static bool include_leaf_like_predicate(SelectResult *select_result, void *tuple, LikeNode *like_node) {
+static bool LeafNodeForLikePredicate(SelectResult *select_result, void *tuple, LikeNode *like_node) {
     Table *table = open_table(select_result->table_name);
     MetaColumn *meta_column = get_meta_column_by_name(table->meta_table, like_node->column->column_name);
     if (meta_column != NULL) {
         void *target_value = get_value_from_value_item_node(like_node->value, meta_column);
         void *value = get_value_in_tuple(tuple, meta_column);
-        return check_like_string_value(get_real_value(value, meta_column->column_type), target_value);
+        return ValueLikeStringValue(get_real_value(value, meta_column->column_type), target_value);
     }
     return false;
 }
@@ -449,11 +448,11 @@ static bool LeafNodeForPredicate(SelectResult *select_result, List *meta_columns
                                  void *tuple, PredicateNode *predicate) {
     switch (predicate->type) {
         case PRE_COMPARISON:
-            return include_leaf_comparison_predicate(select_result, meta_columns, tuple, predicate->comparison);
+            return LeafNodeForComparisonPredicate(select_result, meta_columns, tuple, predicate->comparison);
         case PRE_IN:
-            return include_leaf_in_predicate(select_result, tuple, predicate->in);
+            return LeafNodeForInPredicate(select_result, tuple, predicate->in);
         case PRE_LIKE:
-            return include_leaf_like_predicate(select_result, tuple, predicate->like);
+            return LeafNodeForLikePredicate(select_result, tuple, predicate->like);
         default:
             UNEXPECTED_VALUE(predicate->type);
             return false;
@@ -807,7 +806,7 @@ static void select_from_leaf_node(SelectResult *select_result, SearchConditionNo
     SelectResult *head, *nested;
 
     /* If LimitClauseNode full, not continue. */
-    if (type == ARG_SELECT_PARAM && limit_clause_full(arg))
+    if (type == ARG_SELECT_PARAM && LimitClauseIsFull(arg))
         return;
 
     /* Get leaf node buffer. */
@@ -877,7 +876,7 @@ static void select_from_internal_node(SelectResult *select_result, SearchConditi
                                       uint32_t page_num, Table *table, 
                                       ROW_HANDLER row_handler, ROW_HANDLER_ARG_TYPE type, void *arg) {
     /* If LimitClauseNode full, not continue. */
-    if (type == ARG_SELECT_PARAM && limit_clause_full(arg))
+    if (type == ARG_SELECT_PARAM && LimitClauseIsFull(arg))
         return;
 
     /* Get the internal node buffer. */
@@ -1033,7 +1032,7 @@ static void select_from_internal_node_async(SelectResult *select_result, SearchC
                                             ROW_HANDLER row_handler, ROW_HANDLER_ARG_TYPE type, void *arg) {
 
     /* If LimitClauseNode full, not continue. */
-    if (non_null(arg) && limit_clause_full(arg))
+    if (non_null(arg) && LimitClauseIsFull(arg))
         return;
 
     /* Get the internal node buffer. */
