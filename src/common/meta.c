@@ -405,10 +405,9 @@ void *get_real_value(void *value, DataType type) {
     if (value == NULL)
         return NULL;
     switch (type) {
+        /* For STRING, convert to real string value instead of refer value. */
         case T_STRING:
             return QueryStringValue((StrRefer *) value);
-        case T_REFERENCE:
-            return define_row((Refer *) value);
         default:
             return value;
     }
