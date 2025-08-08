@@ -93,6 +93,6 @@ static LimitClauseNode *GetLimitClause(SelectNode *selectNode) {
  * */
 static ROW_HANDLER DefineRowHandler(SelectParam *selectParam) {
    return selectParam->onlyAll && selectParam->stmt_type == SELECT_STMT
-            ? output_tuple
-            : selectParam->onlyCount ? count_row : select_row;
+            ? OutputTuple
+            : selectParam->onlyCount ? CountRow : SelectRow;
 }

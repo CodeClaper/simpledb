@@ -229,9 +229,9 @@ static Object OidFindObjectInner(Oid oid) {
     result = new_select_result(SELECT_STMT, SYS_TABLE_NAME, true);
     
     /* Query. */
-    query_with_condition_inner(
+    QueryUnderSearchConditionInner(
         SYS_ROOT_OID, condition, result, 
-        select_tuple, ARG_NULL, NULL
+        SelectTuple, ARG_NULL, NULL
     );
 
     /* Logically, we will get one row data. */
@@ -279,9 +279,9 @@ static Oid RelnameAndReltypeFindOid(char *relname, ObjectType reltype) {
     result = new_select_result(SELECT_STMT, SYS_TABLE_NAME, true);
 
     /* Query. */
-    query_with_condition_inner(
+    QueryUnderSearchConditionInner(
         SYS_ROOT_OID, condition, result, 
-        select_tuple, ARG_NULL, NULL
+        SelectTuple, ARG_NULL, NULL
     );
 
     /* The rows number maybe zero, which means the table not exists. 
@@ -364,9 +364,9 @@ List *FindAllObject() {
 
     result = new_select_result(SELECT_STMT, SYS_TABLE_NAME, true);
     /* Query. */
-    query_with_condition_inner(
+    QueryUnderSearchConditionInner(
         SYS_ROOT_OID, NULL, result, 
-        select_tuple, ARG_NULL, NULL
+        SelectTuple, ARG_NULL, NULL
     );
     return TuplesConvertObjectList(result->tuples);
 }
@@ -479,7 +479,7 @@ bool RemoveObject(Oid oid) {
     condition = OidConvertCondition(oid);
     
     /* Query. */
-    query_with_condition_inner(
+    QueryUnderSearchConditionInner(
         SYS_ROOT_OID, condition, result, 
         delete_row, ARG_NULL, NULL
     );

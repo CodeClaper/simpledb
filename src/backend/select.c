@@ -326,7 +326,7 @@ static bool TupleForPredicate(SelectResult *select_result, List *meta_columns, v
         /* Just check, if column has sub column, it must be Reference type. */
         Assert(meta_column->column_type == T_REFERENCE);
         /* Get subrow, and recursion. */
-        void *sub_tuple = define_tuple((Refer *) value);
+        void *sub_tuple = DefineTuple((Refer *) value);
         Table *sub_table = open_table(meta_column->table_name);
         return TupleForPredicate(
             select_result, 
@@ -519,7 +519,7 @@ static bool LeafNodeForSearchCondition(SelectResult *select_result, List *meta_c
  * -------------------------
  * Return the tuple not matter if it is deleted and caller checks if deleted.
  * */
-void *define_tuple(Refer *refer) {
+void *DefineTuple(Refer *refer) {
     Assert(refer != NULL);
 
     /* Check table exists. */
@@ -554,7 +554,7 @@ void *define_tuple(Refer *refer) {
  * Return row not matter if it is deleted, caller check the row if deleted.
  * The row is raw, can`t be freed by caller.
  * */
-Row *define_row(Refer *refer) {
+Row *DefineRow(Refer *refer) {
     Assert(refer != NULL);
 
     /* Check table exists. */
@@ -587,7 +587,7 @@ Row *define_row(Refer *refer) {
 /* Purge row. 
  * Pruge means to remove the sys-reserved column.
  * */
-static void* purge_row(Row *row) {
+static void* PurgeRow(Row *row) {
     List *list = row->data;
     /* At least, more 3 sys-reserved column. */
     Assert(list->size > 3);
@@ -602,15 +602,15 @@ static void* purge_row(Row *row) {
 /* Define row by refer. 
  * Return undelted, filtered row, return NULL if deleted.
  * */
-Row *define_visible_row(Refer *refer) {
-    Row *row = define_row(refer);
+Row *DefineVisibleRow(Refer *refer) {
+    Row *row = DefineRow(refer);
     return (RowIsDeleted(row))
         ? NULL
-        : purge_row(row);
+        : PurgeRow(row);
 }
 
 /* Merge two tuples. */
-static void *merge_tuple(SelectResult *head) {
+static void *MergeTuple(SelectResult *head) {
     if (head->nested == NULL)
         return head->current_tuple;
     else {
@@ -838,7 +838,7 @@ static void SelectLeafNode(SelectResult *select_result, SearchConditionNode *con
 
         /* If has nested, deep seek nested. */
         if (nested != NULL) {
-            query_with_condition(condition, nested, row_handler, type, arg);
+            QueryUnderSearchCondition(condition, nested, row_handler, type, arg);
             continue;
         }
 
@@ -852,7 +852,7 @@ static void SelectLeafNode(SelectResult *select_result, SearchConditionNode *con
             head->columns = columns;
         }
 
-        ntuple = merge_tuple(head);
+        ntuple = MergeTuple(head);
         Assert(columns != NIL);
         Assert(ntuple != NULL);
         
@@ -1118,8 +1118,8 @@ static bool AsyncCondition(SelectResult *select_result) {
 }
 
 /* Query with condition inner. */
-void query_with_condition_inner(Oid oid, SearchConditionNode *condition, SelectResult *select_result, 
-                                ROW_HANDLER row_handler, ROW_HANDLER_ARG_TYPE type, void *arg) {
+void QueryUnderSearchConditionInner(Oid oid, SearchConditionNode *condition, SelectResult *select_result, 
+                                    ROW_HANDLER row_handler, ROW_HANDLER_ARG_TYPE type, void *arg) {
     Table *table;
     Buffer buffer;
     void *root;
@@ -1168,15 +1168,15 @@ void query_with_condition_inner(Oid oid, SearchConditionNode *condition, SelectR
 }
 
 /* Query with condition. */
-void query_with_condition(SearchConditionNode *condition, SelectResult *select_result, 
-                          ROW_HANDLER row_handler, ROW_HANDLER_ARG_TYPE type, void *arg) {
+void QueryUnderSearchCondition(SearchConditionNode *condition, SelectResult *select_result, 
+                               ROW_HANDLER row_handler, ROW_HANDLER_ARG_TYPE type, void *arg) {
     /* Check if table exists. */
     Table *table = open_table(select_result->table_name);
     if (table == NULL) {
         db_log(ERROR, "Table %s not exist.", select_result->table_name);
         return;
     }
-    query_with_condition_inner(GET_TABLE_OID(table), condition, select_result, row_handler, type, arg);
+    QueryUnderSearchConditionInner(GET_TABLE_OID(table), condition, select_result, row_handler, type, arg);
 }
 
 
@@ -1220,18 +1220,18 @@ static SearchConditionNode *ColumnValueConvertCondition(MetaColumn *meta_column,
  * This function will query table with column-value condition.
  * And return the SelectResult which freed by caller. 
  * */
-SelectResult *select_with_column_value(Oid oid, MetaColumn *meta_column, void *value) {
+SelectResult *SelectWithColumnValue(Oid oid, MetaColumn *meta_column, void *value) {
     /* Check if table exists. */
     Table *table = open_table_inner(oid);
     Assert(table != NULL);
     SearchConditionNode *condtion = ColumnValueConvertCondition(meta_column, value);
     SelectResult *result = new_select_result(SELECT_STMT, GET_TABLE_NAME(table), true);
-    query_with_condition_inner(oid, condtion, result, select_row, ARG_NULL, NULL);
+    QueryUnderSearchConditionInner(oid, condtion, result, SelectRow, ARG_NULL, NULL);
     return result;
 }
 
 /* Count number of row, used in the sql function count(1) */
-void count_row(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg) {
+void CountRow(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg) {
     if (type == ARG_SELECT_PARAM && ((SelectParam *) arg)->limitClause != NULL) {
         SelectParam *selectParam = (SelectParam *) arg;
         LimitClauseNode *limit_clause = selectParam->limitClause;
@@ -1257,7 +1257,7 @@ void count_row(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE ty
 }
 
 /* Select tuple data. */
-void select_tuple(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg) {
+void SelectTuple(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg) {
     /* If has limit clause. */
     if (type == ARG_SELECT_PARAM && ((SelectParam *) arg)->limitClause != NULL) {
         SelectParam *selectParam = (SelectParam *) arg;
@@ -1283,7 +1283,7 @@ void select_tuple(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE
 }
 
 /* Select row data. */
-void select_row(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg) {
+void SelectRow(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg) {
     Row *row = GenerateRowInner(tuple, select_result->columns);
     /* If has limit clause. */
     if (type == ARG_SELECT_PARAM && ((SelectParam *) arg)->limitClause != NULL) {
@@ -1313,7 +1313,7 @@ void select_row(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE t
  * --------------
  * This funtion will directly output the tuple data instead of conveting to row data.
  * */
-void output_tuple(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg) {
+void OutputTuple(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg) {
     List *display_columns;
 
     /* Define the display columns. */
@@ -1603,7 +1603,7 @@ static KeyValue *QueryRowColumnValue(SelectResult *select_result, ColumnNode *co
             /* Reference type and query sub column. */
             if (key_value->data_type == T_REFERENCE) {
                 Refer *refer = (Refer *)key_value->value;
-                Row *sub_row = define_visible_row(refer);
+                Row *sub_row = DefineVisibleRow(refer);
                 if (column->has_sub_column && column->sub_column) {
                     KeyValue *sub_key_value = QueryRowColumnValue(select_result, column->sub_column, sub_row);
                     return sub_key_value;
@@ -2367,7 +2367,7 @@ static SelectResult *QueryMultiTableUnderSearchCondition(SelectNode *select_node
     DoBeforeQuerySeachCondition(selectParam);
 
     /* Do query condition. */
-    query_with_condition(
+    QueryUnderSearchCondition(
         condition, head, 
         selectParam->rowHanler, 
         ARG_SELECT_PARAM, selectParam

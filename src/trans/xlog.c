@@ -157,7 +157,7 @@ static void HeapInsertXLog(Refer *refer, TransEntry *transaction) {
  * lies in the forefront of the same key cells.
  * */
 static void HeapDeleteXLog(Refer *refer, TransEntry *transaction) {
-    Row *rawRow = define_row(refer);
+    Row *rawRow = DefineRow(refer);
     Assert(RowIsDeleted(rawRow));
 
     Row *newRow = copy_row(rawRow);
@@ -181,7 +181,7 @@ static void HeapDeleteXLog(Refer *refer, TransEntry *transaction) {
 
 /* Reverse update delete transaction. */
 static void HeadUpdateDeleteXlog(Refer *refer, TransEntry *transaction) {
-    Row *rawRow = define_row(refer);
+    Row *rawRow = DefineRow(refer);
     Assert(RowIsDeleted(rawRow));
 
     Table *table = open_table_inner(refer->oid);

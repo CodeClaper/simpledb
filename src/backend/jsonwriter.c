@@ -89,7 +89,7 @@ static void json_key_value_inner(char *key, void *value, DataType type) {
             db_send("\"%s\": ", key);
             Refer *refer = (Refer *)value;
             assert_not_null(refer, "Try to get Reference type value fail.\n");
-            Row *subrow = define_visible_row(refer);
+            Row *subrow = DefineVisibleRow(refer);
             json_row(subrow);
             break;
         }
@@ -238,7 +238,7 @@ static void json_key_array_value_inner(char *key, ArrayValue *array_value, DataT
             ListCell *lc;
             foreach (lc, array_value->list) {
                 Refer *refer = (Refer *)lfirst(lc);
-                Row *subrow = define_visible_row(refer);
+                Row *subrow = DefineVisibleRow(refer);
                 json_row(subrow);
                 if (last_cell(array_value->list) != lc)
                     db_send(",");

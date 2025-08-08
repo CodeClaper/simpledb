@@ -735,7 +735,7 @@ static bool check_unique_column(Table *table, MetaColumn *meta_column, void *val
     /* Although this cehck update node, but new select result is SELECT_STMT. */
     SelectResult *select_result = new_select_result(SELECT_STMT, update_node->table_name, true);
     SearchConditionNode *condition_node = get_condition_from_where_clause(update_node->where_clause);
-    query_with_condition(condition_node, select_result, select_row, ARG_NULL, NULL);
+    QueryUnderSearchCondition(condition_node, select_result, SelectRow, ARG_NULL, NULL);
     /* If selected rows more than one, 
      * which means at least two rows has same value.*/
     if (select_result->row_size > 1) {
@@ -745,7 +745,7 @@ static bool check_unique_column(Table *table, MetaColumn *meta_column, void *val
     } else if (select_result->row_size == 1) {
         MetaColumn *primary_column = get_primary_key_meta_column(table->meta_table);
         Row *selected_row = qfirst(select_result->rows->head);
-        SelectResult *result = select_with_column_value(GET_TABLE_OID(table), meta_column, value);
+        SelectResult *result = SelectWithColumnValue(GET_TABLE_OID(table), meta_column, value);
         QueueCell *qc;
         qforeach(qc, result->rows) {
             Row *row = (Row *) qfirst(qc);

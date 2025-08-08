@@ -95,7 +95,7 @@ void gc_table(char *table_name) {
 #endif
     /* Query with condition, and delete satisfied condition row. */
     SelectResult *select_result = new_select_result(UNKONWN_STMT, table_name, true);
-    query_with_condition(NULL, select_result, gc_row, ARG_NULL, NULL);
+    QueryUnderSearchCondition(NULL, select_result, gc_row, ARG_NULL, NULL);
     free_select_result(select_result);
 }
 

@@ -103,7 +103,7 @@ static void update_row(void *tuple, SelectResult *select_result,
     old_key = RowFindKey(rawRow, table->meta_table);
     oldRefer = define_refer(table, old_key);
     add_refer_update_lock(oldRefer);
-    currentRow = define_row(oldRefer);
+    currentRow = DefineRow(oldRefer);
 
     /* Delete row for update. */
     delete_row_for_update(oldRefer, currentRow);
@@ -171,8 +171,9 @@ void exec_update_statment(UpdateNode *update_node, DBResult *result) {
     condition_node = get_condition_from_where(update_node->where_clause);
 
     /* Query with update row operation. */
-    query_with_condition(condition_node, select_result, update_row, 
-                         ARG_ASSIGNMENT_LIST, update_node->assignment_list);
+    QueryUnderSearchCondition(condition_node, select_result, 
+                              update_row, ARG_ASSIGNMENT_LIST, 
+                              update_node->assignment_list);
     
     /* Combine the result. */
     result->success = true;

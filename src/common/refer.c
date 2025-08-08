@@ -196,7 +196,7 @@ Refer *fetch_refer(MetaColumn *meta_column, SearchConditionNode *condition_node)
     /* Make a new SelectResult. */
     SelectResult *select_result = new_select_result(UNKONWN_STMT, meta_column->table_name, true);
 
-    query_with_condition(condition_node, select_result, select_row, ARG_NULL, NULL);
+    QueryUnderSearchCondition(condition_node, select_result, SelectRow, ARG_NULL, NULL);
 
     Refer *refer = NULL;
     uint32_t row_size = QueueSize(select_result->rows);
@@ -352,7 +352,7 @@ static void update_table_refer(MetaTable *meta_table, ReferUpdateEntity *refer_u
     SelectResult *select_result = new_select_result(UPDATE_STMT, meta_table->table_name, true);
 
     /* Traverse rows to update refer. */
-    query_with_condition(
+    QueryUnderSearchCondition(
         NULL, 
         select_result, 
         update_row_refer, 

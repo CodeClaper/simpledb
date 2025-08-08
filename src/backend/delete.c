@@ -47,7 +47,7 @@ void delete_row(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE t
         refer = define_refer(table, key);
 
         /* Get the current newest row. */
-        currentRow = define_row(refer);
+        currentRow = DefineRow(refer);
 
         /* Update transaction state. */
         UpdateTransactionState(currentRow, TR_DELETE);
@@ -81,7 +81,7 @@ void exec_delete_statement(DeleteNode *delete_node, DBResult *result) {
     SelectResult *select_result = new_select_result(DELETE_STMT, delete_node->table_name, true);
 
     /* Query with condition and delete satisfied row. */
-    query_with_condition(
+    QueryUnderSearchCondition(
         delete_node->condition_node, select_result, 
         delete_row, ARG_NULL, NULL
     );
