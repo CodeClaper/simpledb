@@ -53,6 +53,26 @@ def test_select_column_subcolumn():
     assert ret["success"] == True
     assert ret["data"] == [{ "id": "S001", "class" : {"cid": "C001"} }]
 
+## test comparion refer value. 
+def test_comparion_refer_value():
+    sql = "select * from Student where class = ref(id = 'C001');"
+    ret = client.execute(sql)
+    assert ret["success"] == True
+    assert ret["data"] == [
+        {'id': 'S001', 'name': 'kail', 'age': 10, 'birth': '2014-10-03', 'class': {'id': 'C001', 'location': 'Northwest corner', 'studentNum': 32}}, 
+        {'id': 'S002', 'name': 'sun', 'age': 11, 'birth': '2013-11-20', 'class': {'id': 'C001', 'location': 'Northwest corner', 'studentNum': 32}}
+    ]
+
+## test comparion sub row value.
+def test_comparion_sub_row_value():
+    sql = "select * from Student where (class).id = 'C001';"
+    ret = client.execute(sql)
+    assert ret["success"] == True
+    assert ret["data"] == [
+        {'id': 'S001', 'name': 'kail', 'age': 10, 'birth': '2014-10-03', 'class': {'id': 'C001', 'location': 'Northwest corner', 'studentNum': 32}}, 
+        {'id': 'S002', 'name': 'sun', 'age': 11, 'birth': '2013-11-20', 'class': {'id': 'C001', 'location': 'Northwest corner', 'studentNum': 32}}
+    ]
+
 ## test max for subcolumn.
 def test_max_subcolumn():
     ret = client.execute("select max((class).id) from Student;")
@@ -121,7 +141,6 @@ def test_select_deleted_subcolumn_json():
     assert ret["success"] == True
     assert ret["rows"] == 1
     assert ret["data"] == [{ "class": None }]
-
 
 ## test deleted subcolumn
 def test_select_deleted_subcolumn_json_detail():
