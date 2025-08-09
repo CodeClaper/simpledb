@@ -710,7 +710,7 @@ char *get_default_value_name(MetaColumn *meta_column) {
 }
 
 /* Check if table exists the column. */
-bool if_exists_column_in_table(char *column_name, char *table_name) {
+bool ColumnExistsInTable(char *column_name, char *table_name) {
     Table *table = open_table(table_name);
     MetaTable *meta_table = table->meta_table;
     ListCell *lc;
@@ -723,9 +723,9 @@ bool if_exists_column_in_table(char *column_name, char *table_name) {
 }
 
 
-/* Calculate Raw meta column length.
+/* Calculate User-level meta column length.
  * Notice, T_STRING data has added on extra char. */
-uint32_t calc_raw_meta_column_len(MetaColumn *meta_column) {
+uint32_t CalcUserMetaColumnLen(MetaColumn *meta_column) {
     switch (meta_column->column_type) {
         case T_CHAR:
         case T_STRING:
@@ -738,7 +738,7 @@ uint32_t calc_raw_meta_column_len(MetaColumn *meta_column) {
 
 
 /* Check if user has defined primary key.*/
-bool has_user_primary_key(MetaTable *meta_table) {
+bool UserPrimaryKeyExists(MetaTable *meta_table) {
     ListCell *lc;
     foreach (lc, meta_table->meta_columns) {
         MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
@@ -747,55 +747,6 @@ bool has_user_primary_key(MetaTable *meta_table) {
     }
     return false;
 }
-
-/* Get the created xid. */
-Xid get_created_xid(void *tuple, MetaTable *meta_table) {
-    ListCell *lc;
-    foreach (lc, meta_table->meta_columns) {
-        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
-        if (meta_column->sys_reserved && streq(meta_column->column_name, CREATED_XID_COLUMN_NAME))
-            return *(Xid *) get_value_in_tuple(tuple, meta_column);
-    }
-    return -1;
-}
-
-/* Get the expired xid. */
-Xid get_expired_xid(void *tuple, MetaTable *meta_table) {
-    ListCell *lc;
-    foreach (lc, meta_table->meta_columns) {
-        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
-        if (meta_column->sys_reserved && streq(meta_column->column_name, EXPIRED_XID_COLUMN_NAME))
-            return *(Xid *) get_value_in_tuple(tuple, meta_column);
-    }
-    return -1;
-}
-
-/* Get the created xid. */
-uint32_t get_created_xid_offset(MetaTable *meta_table) {
-    uint32_t offset = 0;
-    ListCell *lc;
-    foreach (lc, meta_table->meta_columns) {
-        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
-        if (meta_column->sys_reserved && streq(meta_column->column_name, CREATED_XID_COLUMN_NAME))
-            return offset;
-        offset += meta_column->column_length;
-    }
-    return -1;
-}
-
-/* Get the expired xid. */
-uint32_t get_expired_xid_offset(MetaTable *meta_table) {
-    uint32_t offset = 0;
-    ListCell *lc;
-    foreach (lc, meta_table->meta_columns) {
-        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
-        if (meta_column->sys_reserved && streq(meta_column->column_name, EXPIRED_XID_COLUMN_NAME))
-            return offset;
-        offset += meta_column->column_length;
-    }
-    return -1;
-}
-
 
 /* Find MetaColumn by table name and column name. */
 MetaColumn *TableColumnNameFindMetaColumn(List *meta_columns, char *table_name, char *column_name) {

@@ -65,7 +65,7 @@ static List *gen_describe_result(MetaTable *meta_table) {
         );
 
         /* length */
-        uint32_t column_length = calc_raw_meta_column_len(meta_column);
+        uint32_t column_length = CalcUserMetaColumnLen(meta_column);
         append_list(
             child_list, 
             new_key_value("length", &column_length, T_INT, meta_table->table_name)

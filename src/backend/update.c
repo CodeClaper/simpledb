@@ -39,7 +39,7 @@
 #include "instance.h"
 
 /* Update cell */
-static void update_cell(Row *row, AssignmentNode *assign_node, MetaColumn *meta_column) {
+static void UpdateCell(Row *row, AssignmentNode *assign_node, MetaColumn *meta_column) {
     ListCell *lc;
     foreach (lc, row->data) {
         KeyValue *key_value = lfirst(lc);
@@ -51,7 +51,7 @@ static void update_cell(Row *row, AssignmentNode *assign_node, MetaColumn *meta_
 }
 
 /* Delete row for update */
-static void delete_row_for_update(Refer *refer, Row *row) {
+static void DeleteRowForUpdate(Refer *refer, Row *row) {
     if (RowIsVisible(row)) {
         UpdateTransactionState(row, TR_DELETE);
         update_row_data(row, refer);
@@ -60,7 +60,7 @@ static void delete_row_for_update(Refer *refer, Row *row) {
 }
 
 /* Insert row for update. */
-static void insert_row_for_update(Row *row, Table *table) {
+static void InsertRowForUpdate(Row *row, Table *table) {
     void *key;
     Refer *nrefer;
 
@@ -84,7 +84,7 @@ static void insert_row_for_update(Row *row, Table *table) {
  * ----------
  * Update operation is divided into delete and re-insert operation. 
  * It makes transaction roll back simpler. */
-static void update_row(void *tuple, SelectResult *select_result, 
+static void UpdateTuple(void *tuple, SelectResult *select_result, 
                        ROW_HANDLER_ARG_TYPE type, void *arg) {
     Table *table;
     Refer *oldRefer, *newRefer;
@@ -106,7 +106,7 @@ static void update_row(void *tuple, SelectResult *select_result,
     currentRow = DefineRow(oldRefer);
 
     /* Delete row for update. */
-    delete_row_for_update(oldRefer, currentRow);
+    DeleteRowForUpdate(oldRefer, currentRow);
 
     new_row = copy_row(currentRow);
 
@@ -119,11 +119,11 @@ static void update_row(void *tuple, SelectResult *select_result,
     foreach (lc, assignment_list) {
         AssignmentNode *assign_node = lfirst(lc);
         MetaColumn *meta_column = get_meta_column_by_name(table->meta_table, assign_node->column->column_name);
-        update_cell(new_row, assign_node, meta_column);
+        UpdateCell(new_row, assign_node, meta_column);
     }
    
     /* Insert row for update. */
-    insert_row_for_update(new_row, table);
+    InsertRowForUpdate(new_row, table);
 
     /* Recalculate Refer, because afer insert, row refer may be changed. */
     new_key = RowFindKey(new_row, table->meta_table);
@@ -144,7 +144,7 @@ static void update_row(void *tuple, SelectResult *select_result,
 }
 
 /* Get SearchConditionNode form WhereClause.. */
-static SearchConditionNode *get_condition_from_where(WhereClauseNode *where_clause) {
+static SearchConditionNode *WhereClauseGetSearchCondition(WhereClauseNode *where_clause) {
     if (where_clause)
         return where_clause->condition;
     else
@@ -168,11 +168,11 @@ void exec_update_statment(UpdateNode *update_node, DBResult *result) {
 
     /* Query with conditon, and update satisfied condition row. */
     select_result = new_select_result(UPDATE_STMT, update_node->table_name, true);
-    condition_node = get_condition_from_where(update_node->where_clause);
+    condition_node = WhereClauseGetSearchCondition(update_node->where_clause);
 
     /* Query with update row operation. */
     QueryUnderSearchCondition(condition_node, select_result, 
-                              update_row, ARG_ASSIGNMENT_LIST, 
+                              UpdateTuple, ARG_ASSIGNMENT_LIST, 
                               update_node->assignment_list);
     
     /* Combine the result. */

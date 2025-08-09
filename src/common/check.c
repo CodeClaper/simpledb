@@ -1144,7 +1144,7 @@ static inline char *get_column_name_from_add_column_def(AddColumnDef *add_column
 static bool check_alter_table_add_column_action(char *table_name, AddColumnDef *add_column) {
     char *column_name = get_column_name_from_add_column_def(add_column);
     /* Check add column if exists. */
-    if (if_exists_column_in_table(column_name, table_name)) {
+    if (ColumnExistsInTable(column_name, table_name)) {
         db_log(ERROR, "Table '%s' already exists column '%s'.", 
                table_name, 
                column_name);
@@ -1153,7 +1153,7 @@ static bool check_alter_table_add_column_action(char *table_name, AddColumnDef *
 
     /* Check if the position column def exists. */
     if (!is_null(add_column->position_def) 
-            && !if_exists_column_in_table(add_column->position_def->column, table_name)) {
+            && !ColumnExistsInTable(add_column->position_def->column, table_name)) {
         db_log(ERROR, "Unknown column '%s' in table '%s'.", 
                add_column->position_def->column, 
                table_name);

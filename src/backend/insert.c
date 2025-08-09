@@ -285,7 +285,7 @@ Refer *insert_one_row(Table *table, Row *row) {
     Refer *refer = define_refer(table, key);
 
     /* Check if duplicate key. */
-    if (has_user_primary_key(table->meta_table) && 
+    if (UserPrimaryKeyExists(table->meta_table) && 
             check_duplicate_key(key, refer) && 
                 !refer_is_deleted(refer)) {
         char *keyStr = primary_key_meta_column->column_type == T_STRING
