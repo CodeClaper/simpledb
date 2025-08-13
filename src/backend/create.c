@@ -38,7 +38,7 @@
  * Note: when array cap more than zere, it means column is array, 
  * column length = data type length * array cap + reserved array number length (sizeof(uint32_t));
  * */
-static uint32_t calc_column_len(ColumnDefNode *column_def, uint32_t array_cap) {
+static uint32_t CalcMetaColumnLength(ColumnDefNode *column_def, uint32_t array_cap) {
     DataTypeNode *data_type = column_def->data_type;
     uint32_t column_length = 0;
     switch (data_type->type) {
@@ -66,7 +66,7 @@ static uint32_t calc_column_len(ColumnDefNode *column_def, uint32_t array_cap) {
 }
 
 /* Column Operation. */
-static void operate_column(MetaColumn *meta_column, List *column_def_opt_list) {
+static void ColumnDefOptListForMetaColumn(MetaColumn *meta_column, List *column_def_opt_list) {
     if (!column_def_opt_list) 
         return;
 
@@ -110,7 +110,7 @@ static void operate_column(MetaColumn *meta_column, List *column_def_opt_list) {
 }
 
 /* Combine user-level column. */
-MetaColumn *combine_user_meta_column(ColumnDefNode *column_def, char *table_name) {
+MetaColumn *ColumnDefNodeGenerateMetaColumn(ColumnDefNode *column_def, char *table_name) {
     MetaColumn *meta_column = instance(MetaColumn);
 
     /* Base info. */
@@ -123,7 +123,7 @@ MetaColumn *combine_user_meta_column(ColumnDefNode *column_def, char *table_name
     meta_column->sys_reserved = false;
     meta_column->array_dim = column_def->array_dim;
     meta_column->array_cap = column_def->array_dim * ARRAY_FLARE_FACTOR;
-    meta_column->column_length = calc_column_len(column_def, meta_column->array_cap);
+    meta_column->column_length = CalcMetaColumnLength(column_def, meta_column->array_cap);
     meta_column->default_value_type = DEFAULT_VALUE_NONE;
     meta_column->default_value = NULL;
 
@@ -142,20 +142,20 @@ MetaColumn *combine_user_meta_column(ColumnDefNode *column_def, char *table_name
     }
 
     /* Operate column. */
-    operate_column(meta_column, column_def->column_def_opt_list);
+    ColumnDefOptListForMetaColumn(meta_column, column_def->column_def_opt_list);
 
     return meta_column;
 }
 
 /* Combine sys-level column. */
-MetaColumn *combine_sys_meta_column(char *table_name, int index) {
+static MetaColumn *GenerateSystemMetaColumn(char *table_name, int index) {
     MetaColumn *meta_column = instance(MetaColumn);
     memcpy(meta_column, SYS_RESERVED_COLUMNS + index, sizeof(MetaColumn));
     return meta_column;
 }
 
 /* Get column def size in create table statement. */
-static uint32_t get_column_def_size(CreateTableNode *create_table_node) {
+static uint32_t CreateTableNodeColumnSize(CreateTableNode *create_table_node) {
     uint32_t size = 0;
     
     ListCell *lc;
@@ -169,7 +169,7 @@ static uint32_t get_column_def_size(CreateTableNode *create_table_node) {
 }
 
 /* Operate table about unique-key columns/ */
-static void operate_table_unique(MetaTable *meta_table, List *commalist) {
+static void OperateContraintForUnique(MetaTable *meta_table, List *commalist) {
     ListCell *lc;
     foreach (lc, commalist) {
         ColumnDefName *column_def_name = lfirst(lc);
@@ -180,7 +180,7 @@ static void operate_table_unique(MetaTable *meta_table, List *commalist) {
 }
 
 /* Operate table abount primary-key columns */
-static void operate_table_primary_key(MetaTable *meta_table, List *commalist) {
+static void OperateContraintForPrimaryKey(MetaTable *meta_table, List *commalist) {
     ListCell *lc;
     foreach (lc, commalist) {
         ColumnDefName *column_def_name = lfirst(lc);
@@ -193,13 +193,13 @@ static void operate_table_primary_key(MetaTable *meta_table, List *commalist) {
 }
 
 /* Operate table contraint. */
-static void table_operate_contraint(MetaTable *meta_table, TableContraintDefNode *table_contraint) {
+static void OperateContraint(MetaTable *meta_table, TableContraintDefNode *table_contraint) {
     switch (table_contraint->type) {
         case TCONTRAINT_UNIQUE:
-            operate_table_unique(meta_table, table_contraint->column_commalist);
+            OperateContraintForUnique(meta_table, table_contraint->column_commalist);
             break;
         case TCONTRAINT_PRIMARY_KEY: 
-            operate_table_primary_key(meta_table, table_contraint->column_commalist);
+            OperateContraintForPrimaryKey(meta_table, table_contraint->column_commalist);
             break;
         case TCONTRAINT_FOREIGN_KEY:
         case TCONTRAINT_CHECK:
@@ -211,7 +211,7 @@ static void table_operate_contraint(MetaTable *meta_table, TableContraintDefNode
 /* Handler user-level none define primary key 
  * In this case, use system reserved column 'sys_id' as primary key.
  * */
-void handler_user_none_priamry_key(MetaTable *meta_table) {
+static void GenerateSystemPrimaryKey(MetaTable *meta_table) {
     ListCell *lc;
     foreach (lc, meta_table->meta_columns) {
         MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
@@ -225,10 +225,10 @@ void handler_user_none_priamry_key(MetaTable *meta_table) {
 }
 
 /* Combine meta table by create table node. */
-static MetaTable *combine_meta_table(CreateTableNode *create_table_node) {
+static MetaTable *CreateTableNodeGenerateMetaTable(CreateTableNode *create_table_node) {
     MetaTable *meta_table = instance(MetaTable);
     meta_table->table_name = dstrdup(create_table_node->table_name);
-    meta_table->column_size = get_column_def_size(create_table_node); 
+    meta_table->column_size = CreateTableNodeColumnSize(create_table_node); 
     meta_table->all_column_size = meta_table->column_size + SYS_RESERVED_COLUMNS_LENGTH;
     meta_table->meta_columns = create_list(NODE_META_COLUMN);
 
@@ -239,7 +239,7 @@ static MetaTable *combine_meta_table(CreateTableNode *create_table_node) {
         BaseTableElementNode *base_table_element = lfirst(lc);
         switch (base_table_element->type) {
             case TELE_COLUMN_DEF: {
-                MetaColumn *current = combine_user_meta_column(base_table_element->column_def, create_table_node->table_name);
+                MetaColumn *current = ColumnDefNodeGenerateMetaColumn(base_table_element->column_def, create_table_node->table_name);
                 current->offset = offset;
                 append_list(meta_table->meta_columns, current);
                 offset += current->column_length;
@@ -247,7 +247,7 @@ static MetaTable *combine_meta_table(CreateTableNode *create_table_node) {
                 break;
             }
             case TELE_TABLE_CONTRAINT_DEF:
-                table_operate_contraint(meta_table, base_table_element->table_contraint_def);
+                OperateContraint(meta_table, base_table_element->table_contraint_def);
                 break;
         }
     }
@@ -255,20 +255,20 @@ static MetaTable *combine_meta_table(CreateTableNode *create_table_node) {
     /* System-level defination. */
     uint32_t k;
     for (k = j; k < meta_table->all_column_size; k++) {
-        MetaColumn *current = combine_sys_meta_column(meta_table->table_name, (k - j));
+        MetaColumn *current = GenerateSystemMetaColumn(meta_table->table_name, (k - j));
         current->offset = offset;
         append_list(meta_table->meta_columns, current);
         offset += current->column_length;
     }
     
     /* Handler if user not define priamry key. */
-    handler_user_none_priamry_key(meta_table);
+    GenerateSystemPrimaryKey(meta_table);
     
     return meta_table;
 }
 
 /* Save to table cache. */
-static bool save_table_cache(Oid oid, MetaTable *meta_table) {
+static bool PrepareSaveTableCache(Oid oid, MetaTable *meta_table) {
     /* Combine table. */
     Table *table = instance(Table);
     table->oid = oid;
@@ -288,7 +288,7 @@ static bool save_table_cache(Oid oid, MetaTable *meta_table) {
 }
 
 /* Save table object. */
-static bool save_table_object(Oid oid, char *relname) {
+static bool SaveTableObject(Oid oid, char *relname) {
     Object entity = GenerateObjectInner(oid, relname, OTABLE);
     return SaveObject(entity);
 }
@@ -302,7 +302,7 @@ void exec_create_table_statement(CreateTableNode *create_table_node, DBResult *r
         return;
 
     /* Combine MetaTable. */
-    MetaTable *meta_table = combine_meta_table(create_table_node);
+    MetaTable *meta_table = CreateTableNodeGenerateMetaTable(create_table_node);
     if (meta_table == NULL) 
         return;
 
@@ -317,10 +317,10 @@ void exec_create_table_statement(CreateTableNode *create_table_node, DBResult *r
      * */
     if (
         create_table(oid, meta_table) && 
-        save_table_object(oid, GET_METATABLE_NAME(meta_table)) &&
+        SaveTableObject(oid, GET_METATABLE_NAME(meta_table)) &&
         CreateHeapTable(meta_table->table_name) &&
         CreateStrHeapTable(meta_table->table_name) &&
-        save_table_cache(oid, meta_table)
+        PrepareSaveTableCache(oid, meta_table)
     ) {
         result->success = true;
         result->rows = 0;

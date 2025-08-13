@@ -25,13 +25,12 @@
 #include "log.h"
 
 /*Get table name.*/
-static inline char *get_desc_table_name(DescribeNode *describe_node) {
+static inline char *DescribeNodeFindTableName(DescribeNode *describe_node) {
     return describe_node->table_name;
 }
 
 /* Generate DescribeResult. */
-static List *gen_describe_result(MetaTable *meta_table) {
-
+static List *MetaTableGenerateDescribeResult(MetaTable *meta_table) {
     List *list = create_list(NODE_LIST);
 
     ListCell *lc;
@@ -123,11 +122,11 @@ static List *gen_describe_result(MetaTable *meta_table) {
 
 /* Execute describe statment. */
 List *exec_describe_statement(DescribeNode *describe_node) {
-    char *table_name = get_desc_table_name(describe_node); 
+    char *table_name = DescribeNodeFindTableName(describe_node); 
     Table *table = open_table(table_name);
     if (table == NULL) {
         db_log(ERROR, "Table '%s' not exists.", table_name);
         return NULL;
     }
-    return gen_describe_result(table->meta_table);
+    return MetaTableGenerateDescribeResult(table->meta_table);
 }

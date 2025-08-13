@@ -132,7 +132,6 @@ bool create_table(Oid oid, MetaTable *meta_table) {
 
 /* Get Column Position. */
 static int get_column_position(MetaTable *meta_table, ColumnPositionDef *pos_def) {
-    
     /* If not ColumnPositionDef, append column at last. */
     if (is_null(pos_def))
         return meta_table->column_size;

@@ -28,7 +28,7 @@
 /* Try to catpture table.
  * If these other session on the table, wait and test. 
  * */
-static void try_capture_table(Oid oid) {
+static void TryCaptureTable(Oid oid) {
     try_acquire_table(oid);
     /* Wait until capture the table exclusively. */
     while (if_shared_table(oid)) {
@@ -37,25 +37,25 @@ static void try_capture_table(Oid oid) {
 }
 
 /* Release Table. */
-static void release_table(Oid oid) {
+static void ReleaseTable(Oid oid) {
     RemoveTableCache(oid);
     try_release_table(oid);
 }
 
 /* Add new Column. */
-static void add_new_column(AddColumnDef *add_column_def, char *table_name, DBResult *result) {
+static void AlterAddNewColumn(AddColumnDef *add_column_def, char *table_name, DBResult *result) {
     Oid oid;
     MetaColumn *new_meta_column;
 
     oid = TableNameFindOid(table_name);
-    new_meta_column = combine_user_meta_column(add_column_def->column_def, table_name);        
+    new_meta_column = ColumnDefNodeGenerateMetaColumn(add_column_def->column_def, table_name);        
 
     /* By now, not support primary key alter operation. */
     if (new_meta_column->is_primary)
         db_log(ERROR, "Not support add primary-key column through alter table.");
 
     /* Capture table exclusively. */
-    try_capture_table(oid);
+    TryCaptureTable(oid);
 
     /* Try to add new column. */
     if (add_new_meta_column(table_name, new_meta_column, add_column_def->position_def)) {
@@ -71,15 +71,15 @@ static void add_new_column(AddColumnDef *add_column_def, char *table_name, DBRes
     free_meta_column(new_meta_column);
 
     /* Release table. */
-    release_table(oid);
+    ReleaseTable(oid);
 }
 
 /* Drop old column. */
-static void drop_old_column(DropColumnDef *drop_column_def, char *table_name, DBResult *result) {
+static void AlterDropOldColumn(DropColumnDef *drop_column_def, char *table_name, DBResult *result) {
     Oid oid = TableNameFindOid(table_name);
 
     /* Capture table exclusively. */
-    try_capture_table(oid);
+    TryCaptureTable(oid);
 
     /* Drop column.*/
     if (drop_meta_column(table_name, drop_column_def->column_name)) {
@@ -93,7 +93,7 @@ static void drop_old_column(DropColumnDef *drop_column_def, char *table_name, DB
     }
 
     /* Release table. */
-    release_table(oid);
+    ReleaseTable(oid);
 }
 
 /* Execute alter table statement. */
@@ -102,12 +102,12 @@ void exec_alter_statement(AlterTableNode *alter_table_node, DBResult *result) {
         AlterTableAction *alter_table_action = alter_table_node->action;
         switch (alter_table_action->type) {
             case ALTER_TO_ADD_COLUMN:
-                add_new_column(alter_table_action->action.add_column, 
+                AlterAddNewColumn(alter_table_action->action.add_column, 
                                alter_table_node->table_name, 
                                result);
                 break;
             case ALTER_TO_DROP_COLUMN:
-                drop_old_column(alter_table_action->action.drop_column, 
+                AlterDropOldColumn(alter_table_action->action.drop_column, 
                                 alter_table_node->table_name, 
                                 result);
                 break;
