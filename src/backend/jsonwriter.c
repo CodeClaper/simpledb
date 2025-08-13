@@ -326,7 +326,7 @@ void json_tuple(List *meta_columns, void *tuple) {
             MetaColumn *meta_column = (MetaColumn *) lfirst(lc);
             if (meta_column->sys_reserved)
                 continue;
-            void *value = get_value_in_tuple(tuple, meta_column);
+            void *value = TupeFindValue(tuple, meta_column);
             json_tuple_entry(meta_column, value);
             if (last_cell(meta_columns) != lc)
                 db_send(", ");

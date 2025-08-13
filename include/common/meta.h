@@ -23,10 +23,10 @@ bool built_in_primary_key(MetaTable *meta_table);
 void *assign_value_from_value_item_node(ValueItemNode *value_item_node, MetaColumn *meta_column);
 
 /* Get value from value item node. */
-void *get_value_from_value_item_node(ValueItemNode *value_item_node, MetaColumn *meta_column);
+void *ValueItemNodeFindValue(ValueItemNode *value_item_node, MetaColumn *meta_column);
 
-/* Get Really value. */
-void *get_real_value(void *value, DataType type);
+/* Get Comparable value. */
+void *GetComparableValue(void *value, DataType type);
 
 /* Calculate the length of table row. */
 uint32_t TableCalcRowLength(Table *table);

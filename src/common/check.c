@@ -751,8 +751,8 @@ static bool check_unique_column(Table *table, MetaColumn *meta_column, void *val
             Row *row = (Row *) qfirst(qc);
             void *key = RowFindKey(row, table->meta_table);
             void *target_key = RowFindKey(selected_row, table->meta_table);
-            if (!equal(get_real_value(key, primary_column->column_type), 
-                       get_real_value(target_key, primary_column->column_type), 
+            if (!equal(GetComparableValue(key, primary_column->column_type), 
+                       GetComparableValue(target_key, primary_column->column_type), 
                        primary_column->column_type)) 
             {
                 db_log(ERROR, "Key '%s' already exists, not allowd duplicate key. ",
@@ -785,7 +785,7 @@ static bool check_assignment_set_node(UpdateNode *update_node) {
                    GET_TABLE_NAME(table));
             return false;
         }
-        assign_value = get_value_from_value_item_node(value_node, meta_column);
+        assign_value = ValueItemNodeFindValue(value_node, meta_column);
 
         /* Check column, check type, check if value valid. */
         if (!(check_column_node(column_node, table->meta_table) && 

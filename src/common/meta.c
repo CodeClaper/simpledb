@@ -260,7 +260,7 @@ void *assign_value_from_value_item_node(ValueItemNode *value_item_node, MetaColu
 }
 
 /* Get value from atom. */
-static void *get_value_from_atom(AtomNode *atom_node, MetaColumn *meta_column) {
+static void *AtomNodeFindValue(AtomNode *atom_node, MetaColumn *meta_column) {
     /* User can use '%s' fromat in sql to pass multiple types value 
      * including char, string, date, timestamp. So we must use meta 
      * column data type to define which data type of the value. */
@@ -354,14 +354,14 @@ static void *get_value_from_atom(AtomNode *atom_node, MetaColumn *meta_column) {
  * Return pointer that needs be free`d by caller. 
  * And return null for V_NULL type ValueItemNode.
  * */
-void *get_value_from_value_item_node(ValueItemNode *value_item_node, MetaColumn *meta_column) {
+void *ValueItemNodeFindValue(ValueItemNode *value_item_node, MetaColumn *meta_column) {
     /* For array, return value set. */
     switch (value_item_node->type) {
         case V_ATOM: {
             AtomNode *atom_node = value_item_node->value.atom;
             /* Check default value valid. */
             check_value_valid(meta_column, atom_node);
-            return get_value_from_atom(atom_node, meta_column);
+            return AtomNodeFindValue(atom_node, meta_column);
         }
         case V_ARRAY:
             return list_copy_deep(value_item_node->value.value_list);
@@ -372,8 +372,14 @@ void *get_value_from_value_item_node(ValueItemNode *value_item_node, MetaColumn 
     }
 }
 
-/* Get Really value. */
-void *get_real_value(void *value, DataType type) {
+/* Get Comparable value. 
+ * ----------------------
+ * This function will convert value to comparable value.
+ * By now, it only works for T_STRING type value.
+ * For T_STRING value, we will compare the string value rather than the StrRefer value.
+ * But for T_REFERENCE, we will still compare its refer value. 
+ * */
+void *GetComparableValue(void *value, DataType type) {
     if (value == NULL)
         return NULL;
     switch (type) {

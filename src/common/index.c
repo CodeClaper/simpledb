@@ -45,8 +45,8 @@
 
     /* Get result. */
     return (target < node + PAGE_SIZE) && equal(
-        get_real_value(target, primary_key_meta_column->column_type), 
-        get_real_value(key, primary_key_meta_column->column_type), 
+        GetComparableValue(target, primary_key_meta_column->column_type), 
+        GetComparableValue(key, primary_key_meta_column->column_type), 
         primary_key_meta_column->column_type
     );
 }

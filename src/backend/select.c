@@ -97,7 +97,7 @@ inline static bool LimitClauseIsFull(SelectParam *selectParam) {
 static bool InternalNodeForComparisonPredicateValue(SelectResult *select_result, void *min_key, void *max_key, 
                                                         CompareType type, ValueItemNode *value_item, MetaColumn *meta_column) {
     bool result = false;
-    void *target_key = get_value_from_value_item_node(value_item, meta_column);
+    void *target_key = ValueItemNodeFindValue(value_item, meta_column);
     if (!target_key)
         return true;
 
@@ -281,14 +281,14 @@ static bool ValueForPredicateColumn(SelectResult *select_result, List *meta_colu
         return true;
     
     /* Get the target value and eval. */
-    void *target_value = get_value_in_tuple(tuple, target_meta_column);
+    void *target_value = TupeFindValue(tuple, target_meta_column);
     return eval(type, value, target_value, meta_column->column_type);
 }
 
 /* Check the row predicate for value. */
 static bool ValueForPredicateValue(SelectResult *select_result, void *value, ValueItemNode *value_item, 
                                       CompareType type, MetaColumn *meta_column) {
-    void *target = get_value_from_value_item_node(value_item, meta_column);
+    void *target = ValueItemNodeFindValue(value_item, meta_column);
     return eval(type, value, target, meta_column->column_type);
 }
 
@@ -321,7 +321,7 @@ static bool TupleForPredicate(SelectResult *select_result, List *meta_columns, v
     }
     
     /* Get value in tuple. */
-    value = get_value_in_tuple(tuple, meta_column);
+    value = TupeFindValue(tuple, meta_column);
 
     if (column->has_sub_column && column->sub_column) {
         /* Just check, if column has sub column, it must be Reference type. */
@@ -345,7 +345,7 @@ static bool TupleForPredicate(SelectResult *select_result, List *meta_columns, v
             case SCALAR_COLUMN:
                 return ValueForPredicateColumn(
                     select_result, meta_columns, tuple, 
-                    get_real_value(value, meta_column->column_type), 
+                    GetComparableValue(value, meta_column->column_type), 
                     comparison_value->column, 
                     comparison->type, 
                     meta_column
@@ -353,7 +353,7 @@ static bool TupleForPredicate(SelectResult *select_result, List *meta_columns, v
             case SCALAR_VALUE: 
                 return ValueForPredicateValue(
                     select_result, 
-                    get_real_value(value, meta_column->column_type),
+                    GetComparableValue(value, meta_column->column_type),
                     comparison_value->value,
                     comparison->type, 
                     meta_column
@@ -385,7 +385,7 @@ static bool LeafNodeForComparisonPredicate(SelectResult *select_result, List *me
 static bool ValueInValueList(List *value_list, void *value, MetaColumn *meta_column) {
     ListCell *lc;
     foreach (lc, value_list) {
-        void *target = get_value_from_value_item_node(lfirst(lc), meta_column);
+        void *target = ValueItemNodeFindValue(lfirst(lc), meta_column);
         if (equal(value, target, meta_column->column_type))
             return true;
     }
@@ -400,7 +400,7 @@ static bool LeafNodeForInPredicate(SelectResult *select_result, void *tuple, InN
     if (meta_column != NULL)
         return ValueInValueList(
             in_node->value_list, 
-            get_real_value(get_value_in_tuple(tuple, meta_column), meta_column->column_type), 
+            GetComparableValue(TupeFindValue(tuple, meta_column), meta_column->column_type), 
             meta_column
         );
     return false;
@@ -437,9 +437,9 @@ static bool LeafNodeForLikePredicate(SelectResult *select_result, void *tuple, L
     Table *table = open_table(select_result->table_name);
     MetaColumn *meta_column = NameFindMetaColumn(table->meta_table, like_node->column->column_name);
     if (meta_column != NULL) {
-        void *target_value = get_value_from_value_item_node(like_node->value, meta_column);
-        void *value = get_value_in_tuple(tuple, meta_column);
-        return ValueLikeStringValue(get_real_value(value, meta_column->column_type), target_value);
+        void *target_value = ValueItemNodeFindValue(like_node->value, meta_column);
+        void *value = TupeFindValue(tuple, meta_column);
+        return ValueLikeStringValue(GetComparableValue(value, meta_column->column_type), target_value);
     }
     return false;
 }
@@ -902,10 +902,10 @@ static void SelectInternalNode(SelectResult *select_result, SearchConditionNode 
         /* Check if index column, use index to avoid full text scanning. */
         {
             /* Current internal node cell key as max key, previous cell key as min key. */
-            void *max_key = get_real_value(get_internal_node_key(internal_node, i, key_len, default_value_len), primary_meta_column->column_type); 
+            void *max_key = GetComparableValue(get_internal_node_key(internal_node, i, key_len, default_value_len), primary_meta_column->column_type); 
             void *min_key = (i == 0) 
                         ? NULL 
-                        : get_real_value(get_internal_node_key(internal_node, i - 1, key_len, default_value_len), primary_meta_column->column_type);
+                        : GetComparableValue(get_internal_node_key(internal_node, i - 1, key_len, default_value_len), primary_meta_column->column_type);
             /* Filter the internal node. */
             if (!InternalNodeForSearchCondition(select_result, min_key, max_key, condition, table->meta_table))
                 continue;
@@ -1057,10 +1057,10 @@ static void SelectInternalNodeAsync(SelectResult *select_result, SearchCondition
 
     uint32_t i;
     for (i = 0; i < keys_num; i++) {
-        void *max_key = get_real_value(get_internal_node_key(internal_node, i, key_len, value_len), primary_meta_column->column_type); 
+        void *max_key = GetComparableValue(get_internal_node_key(internal_node, i, key_len, value_len), primary_meta_column->column_type); 
         void *min_key = (i == 0) 
                     ? NULL 
-                    : get_real_value(get_internal_node_key(internal_node, i - 1, key_len, value_len), primary_meta_column->column_type);
+                    : GetComparableValue(get_internal_node_key(internal_node, i - 1, key_len, value_len), primary_meta_column->column_type);
         if (!InternalNodeForSearchCondition(select_result, min_key, max_key, condition, table->meta_table))
             continue;
         
@@ -1490,8 +1490,8 @@ static KeyValue *CalcMaxValue(ColumnNode *column, SelectResult *select_result) {
         data_type = current->data_type;
         void *current_value = current->value;
         if (!max_value || greater(
-                get_real_value(current_value, data_type), 
-                get_real_value(max_value, data_type), 
+                GetComparableValue(current_value, data_type), 
+                GetComparableValue(max_value, data_type), 
                 data_type)) 
         {
             if (max_value)
@@ -1515,10 +1515,10 @@ static KeyValue *CalcMinValue(ColumnNode *column, SelectResult *select_result) {
         data_type = current->data_type;
         void *current_value = current->value;
         if (min_value == NULL || less(
-                get_real_value(current_value, data_type), 
-                get_real_value(min_value, data_type), 
-                data_type)) 
-        {
+                GetComparableValue(current_value, data_type), 
+                GetComparableValue(min_value, data_type), 
+                data_type)
+        ) {
             if (min_value)
                 free_value(min_value, data_type);
             min_value = copy_value(current_value, data_type);
