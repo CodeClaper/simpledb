@@ -35,28 +35,8 @@
 #define DEFAULT_TIMESTAMP_LENGTH    20
 #define DEFAULT_REFERENCE_LENGTH    48
 
-/* DataTypeNames */
-static char *DATA_TYPE_NAMES[] =  {
-    "unknown", 
-    "bool",  
-    "char", 
-    "varchar", 
-    "int", 
-    "long", 
-    "double", 
-    "float", 
-    "string", 
-    "date", 
-    "timestamp",  
-    "reference", 
-    "array" 
-};
-
-/* Function type names*/
-static char *FUNCTION_TYPE_NAMES[] = { "COUNT", "MAX", "MIN", "SUM", "AVG" };
-
 /* Column type length */
-uint32_t default_data_len(DataType column_type) {
+uint32_t DataTypeDefaultLength(DataType column_type) {
     switch (column_type) {
         case T_BOOL:
             return DEFAULT_BOOL_LENGTH;
@@ -88,7 +68,7 @@ uint32_t default_data_len(DataType column_type) {
 }
 
 /* Convert AtomType to DataType. */
-DataType convert_data_type(AtomType atom_type) {
+DataType AtomTypeConvertDataType(AtomType atom_type) {
     switch (atom_type) {
         case A_INT:
             return T_INT;
@@ -105,18 +85,8 @@ DataType convert_data_type(AtomType atom_type) {
     }
 }
 
-/* Data type name. */
-inline char *data_type_name(DataType data_type) {
-    return DATA_TYPE_NAMES[data_type];
-}
-
-/* Function type name. */
-inline char *function_type_name(FunctionType function_type) {
-    return FUNCTION_TYPE_NAMES[function_type];
-}
-
 /* Assign value from atom*/
-static void *assign_value_from_atom(AtomNode *atom_node, MetaColumn *meta_column) {
+static void *AtomNodeAssignValue(AtomNode *atom_node, MetaColumn *meta_column) {
     /* Assign new value. */
     switch(meta_column->column_type) {
         case T_BOOL: 
@@ -140,7 +110,7 @@ static void *assign_value_from_atom(AtomNode *atom_node, MetaColumn *meta_column
                     break;
                 default:
                     db_log(ERROR, "Can`t convert to data type [%s] for column '%s'", 
-                           convert_data_type(atom_node->type), 
+                           AtomTypeConvertDataType(atom_node->type), 
                            meta_column->column_name);
                     break;
             }
@@ -157,7 +127,7 @@ static void *assign_value_from_atom(AtomNode *atom_node, MetaColumn *meta_column
                     break;
                 default:
                     db_log(ERROR, "Can`t convert to data type [%s] for column '%s'", 
-                           convert_data_type(atom_node->type), 
+                           AtomTypeConvertDataType(atom_node->type), 
                            meta_column->column_name);
                     break;
             }
@@ -217,14 +187,8 @@ static void *assign_value_from_atom(AtomNode *atom_node, MetaColumn *meta_column
     }    
 }
 
-/* Check if system built-in primary key.*/
-bool built_in_primary_key(MetaTable *meta_table) {
-    MetaColumn *primary_meta_column = MetaTableFindPrimaryKey(meta_table);
-    return streq(primary_meta_column->column_name, SYS_RESERVED_ID_COLUMN_NAME);
-}
-
 /* Assign value from array. */
-void *assign_value_from_array(List *value_list, MetaColumn *meta_column) {
+static void *ValueListAssignValue(List *value_list, MetaColumn *meta_column) {
     ArrayValue *array_value = instance(ArrayValue);
     array_value->type = meta_column->column_type;
     array_value->list = create_list(NODE_VOID);
@@ -234,23 +198,28 @@ void *assign_value_from_array(List *value_list, MetaColumn *meta_column) {
         ValueItemNode *value_item = lfirst(lc);
         append_list(
             array_value->list, 
-            assign_value_from_value_item_node(value_item, meta_column)
+            ValueItemNodeAssignValue(value_item, meta_column)
         );
     }
 
     return array_value;
 }
 
-/* Assign value from ValueItemNode. */
-void *assign_value_from_value_item_node(ValueItemNode *value_item_node, MetaColumn *meta_column) {
+/* Assign value from ValueItemNode. 
+ * --------------------------------
+ * Notice: the difference between <ValueItemNodeAssignValue> and <ValueItemNodeFindValue> is that 
+ * <ValueItemNodeAssignValue> works for DML operation, like update, insert as value. 
+ * <ValueItemNodeFindValue> works for DQL operation, like select as search condition value.
+ * */
+void *ValueItemNodeAssignValue(ValueItemNode *value_item_node, MetaColumn *meta_column) {
     switch (value_item_node->type) {
         case V_ATOM: {
             AtomNode *atom_node = value_item_node->value.atom;
-            return assign_value_from_atom(atom_node, meta_column);
+            return AtomNodeAssignValue(atom_node, meta_column);
         }
         case V_ARRAY: {
             List *value_list = value_item_node->value.value_list;
-            return assign_value_from_array(value_list, meta_column);
+            return ValueListAssignValue(value_list, meta_column);
         }
         case V_NULL:
             return NULL;
@@ -286,7 +255,7 @@ static void *AtomNodeFindValue(AtomNode *atom_node, MetaColumn *meta_column) {
                     break;
                 default:
                     db_log(ERROR, "Can`t convert to data type [%s] for column '%s'", 
-                           convert_data_type(atom_node->type), 
+                           AtomTypeConvertDataType(atom_node->type), 
                            meta_column->column_name);
                     break;
             }
@@ -303,7 +272,7 @@ static void *AtomNodeFindValue(AtomNode *atom_node, MetaColumn *meta_column) {
                     break;
                 default:
                     db_log(ERROR, "Can`t convert to data type [%s] for column '%s'", 
-                           convert_data_type(atom_node->type), 
+                           AtomTypeConvertDataType(atom_node->type), 
                            meta_column->column_name);
                     break;
             }

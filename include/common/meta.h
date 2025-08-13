@@ -4,23 +4,27 @@
 #define GET_METATABLE_NAME(meta_table) \
     meta_table->table_name
 
+/* Function type names*/
+static char *FUNCTION_TYPE_NAMES[] = { "COUNT", "MAX", "MIN", "SUM", "AVG" };
+
+#define GET_FUNCTION_TYPE_NAME(function_type) \
+    FUNCTION_TYPE_NAMES[function_type]
+
+/* DataTypeNames */
+static char *DATA_TYPE_NAMES[] =  { "unknown", "bool",  "char", "varchar", "int", "long", "double", "float", "string", "date", "timestamp",  "reference", "array" };
+
+#define GET_DATA_TYPE_NAME(data_type)\
+    DATA_TYPE_NAMES[data_type]
+
+
 /* Default data length. */
-uint32_t default_data_len(DataType column_type);
+uint32_t DataTypeDefaultLength(DataType column_type);
 
 /* Convert AtomType to DataType. */
-DataType convert_data_type(AtomType atom_type);
-
-/* Data type name. */
-char *data_type_name(DataType data_type);
-
-/* Function type name. */
-char *function_type_name(FunctionType function_type);
-
-/* Check if system built-in primary key.*/
-bool built_in_primary_key(MetaTable *meta_table);
+DataType AtomTypeConvertDataType(AtomType atom_type);
 
 /* Assign value from ValueItemNode. */
-void *assign_value_from_value_item_node(ValueItemNode *value_item_node, MetaColumn *meta_column);
+void *ValueItemNodeAssignValue(ValueItemNode *value_item_node, MetaColumn *meta_column);
 
 /* Get value from value item node. */
 void *ValueItemNodeFindValue(ValueItemNode *value_item_node, MetaColumn *meta_column);

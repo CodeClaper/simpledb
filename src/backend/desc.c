@@ -59,7 +59,7 @@ static List *gen_describe_result(MetaTable *meta_table) {
         append_list(
             child_list, 
             new_key_value("type", 
-                          meta_column->column_type == T_REFERENCE ? meta_column->table_name : data_type_name(meta_column->column_type), 
+                          meta_column->column_type == T_REFERENCE ? meta_column->table_name : GET_DATA_TYPE_NAME(meta_column->column_type), 
                           T_VARCHAR, 
                           meta_table->table_name)
         );

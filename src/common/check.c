@@ -111,8 +111,8 @@ static bool include_column_for_query_spece(MetaColumn *meta_column, QuerySpecNod
         if (meta_column->column_type != target_meta_column->column_type) {
             db_log(ERROR, "Column '%s' data type is %s, but support data type %s in query spec.", 
                    meta_column->column_name,
-                   data_type_name(meta_column->column_type),
-                   data_type_name(target_meta_column->column_type));
+                   GET_DATA_TYPE_NAME(meta_column->column_type),
+                   GET_DATA_TYPE_NAME(target_meta_column->column_type));
             return false;
         }
         return true;
@@ -139,8 +139,8 @@ static bool include_column_for_query_spece(MetaColumn *meta_column, QuerySpecNod
         if (meta_column->column_type != target_meta_column->column_type) {
             db_log(ERROR, "Column '%s' data type is %s, but support data type %s in query spec.", 
                    meta_column->column_name,
-                   data_type_name(meta_column->column_type),
-                   data_type_name(target_meta_column->column_type));
+                   GET_DATA_TYPE_NAME(meta_column->column_type),
+                   GET_DATA_TYPE_NAME(target_meta_column->column_type));
             return false;
         }
         return true;
@@ -287,9 +287,9 @@ static bool check_value_data_type(DataType column_type, AtomNode *atom_node,
             UNEXPECTED_VALUE(column_type);
     }
     db_log(ERROR, "Incorrect %s value for column '%s' with type %s in table '%s'", 
-           data_type_name(convert_data_type(atom_node->type)),
+           GET_DATA_TYPE_NAME(AtomTypeConvertDataType(atom_node->type)),
            column_name, 
-           data_type_name(column_type), 
+           GET_DATA_TYPE_NAME(column_type), 
            table_name);
     return false;
 }
@@ -449,7 +449,7 @@ static bool check_funtion_value_type(FunctionType type, ColumnNode *column, Meta
             case F_MIN: {
                 if (meta_column->column_type == T_REFERENCE) {
                     db_log(ERROR, "Function %s not support for reference type column.", 
-                           function_type_name(type));
+                           GET_FUNCTION_TYPE_NAME(type));
                     return false;
                 }
                 break;
@@ -463,7 +463,7 @@ static bool check_funtion_value_type(FunctionType type, ColumnNode *column, Meta
         return check_funtion_value_type(type, column->sub_column, sub_meta_column);
     } else if (column->has_sub_column) {
         db_log(ERROR, "Function %s not support for reference type column.", 
-               function_type_name(type));
+               GET_FUNCTION_TYPE_NAME(type));
         return false;
     }
 
@@ -942,7 +942,7 @@ static bool check_column_def_opt_list(ColumnDefNode *column_def) {
                     if (!check_default_value_type(value_item_node, data_type)) {
                         db_log(ERROR, "Invalid default value for '%s', can`t convert to '%s'.", 
                                get_column_def_name(column_def),
-                               data_type_name(data_type));
+                               GET_DATA_TYPE_NAME(data_type));
                         return false;
                     }
                     break;

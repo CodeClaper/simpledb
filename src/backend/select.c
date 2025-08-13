@@ -95,7 +95,7 @@ inline static bool LimitClauseIsFull(SelectParam *selectParam) {
 
 /* Check if include internal comparison predicate for Value type. */
 static bool InternalNodeForComparisonPredicateValue(SelectResult *select_result, void *min_key, void *max_key, 
-                                                        CompareType type, ValueItemNode *value_item, MetaColumn *meta_column) {
+                                                    CompareType type, ValueItemNode *value_item, MetaColumn *meta_column) {
     bool result = false;
     void *target_key = ValueItemNodeFindValue(value_item, meta_column);
     if (!target_key)
@@ -2169,7 +2169,7 @@ static KeyValue *QueryFunctionValue(ScalarExpNode *scalar_exp, SelectResult *sel
         case SCALAR_VALUE: {
             ValueItemNode *value = scalar_exp->value;
             if (QueueIsEmpty(select_result->rows)) 
-                return new_key_value(VALUE_NAME, NULL, convert_data_type(value->value.atom->type), NULL);
+                return new_key_value(VALUE_NAME, NULL, AtomTypeConvertDataType(value->value.atom->type), NULL);
             else
                 return QueryRowValueItem(value, qfirst(QueueHead(select_result->rows)));
         }

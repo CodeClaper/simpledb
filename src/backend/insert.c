@@ -48,7 +48,7 @@ static void *GetInsertValue(List *value_item_list, uint32_t index, MetaColumn *m
     Assert(index < len_list(value_item_list));
     /* Get value item node at index. */
     ValueItemNode* value_item_node = lfirst(list_nth_cell(value_item_list, index));
-    return assign_value_from_value_item_node(value_item_node, meta_column);
+    return ValueItemNodeAssignValue(value_item_node, meta_column);
 }
 
 /* Fake ValuesOrQuerySpecNode for VALUES type. */

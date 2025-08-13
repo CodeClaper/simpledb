@@ -49,13 +49,13 @@ static uint32_t calc_column_len(ColumnDefNode *column_def, uint32_t array_cap) {
             break;
         }
         case T_CHAR: {
-            column_length = default_data_len(data_type->type);
+            column_length = DataTypeDefaultLength(data_type->type);
             /* Increase for reserving a char of '\0' as end of string. */
             column_length++;
             break;
         }
         default: {
-            column_length = default_data_len(data_type->type);
+            column_length = DataTypeDefaultLength(data_type->type);
             break;
         }
     }

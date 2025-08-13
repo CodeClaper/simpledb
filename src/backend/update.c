@@ -45,7 +45,7 @@ static void UpdateCell(Row *row, AssignmentNode *assign_node, MetaColumn *meta_c
         KeyValue *key_value = lfirst(lc);
         if (streq(key_value->key, assign_node->column->column_name)) {
             ValueItemNode *value_item = assign_node->value;
-            key_value->value = assign_value_from_value_item_node(value_item, meta_column);
+            key_value->value = ValueItemNodeAssignValue(value_item, meta_column);
         }
     } 
 }
