@@ -908,7 +908,7 @@ static void insert_and_split_internal_node(Table *table, uint32_t old_internal_p
     keys_num = get_internal_node_keys_num(old_internal_node, default_value_len);
     cell_len = key_len + INTERNAL_NODE_CELL_CHILD_SIZE;
 
-    MetaColumn *primary_key_meta_column = get_primary_key_meta_column(table->meta_table);
+    MetaColumn *primary_key_meta_column = MetaTableFindPrimaryKey(table->meta_table);
     
     /* Get new internal node. */
     next_unused_page_num = GetNextUnusedPageNum(table);
@@ -1061,7 +1061,7 @@ static void insert_internal_node_cell(Table *table, uint32_t page_num, uint32_t 
     void *new_child_node = GetBufferPage(new_child_buffer);
 
     /* Get primary key column meta info. */
-    MetaColumn *primary_key_meta_column = get_primary_key_meta_column(table->meta_table);
+    MetaColumn *primary_key_meta_column = MetaTableFindPrimaryKey(table->meta_table);
     uint32_t keys_num = get_internal_node_keys_num(internal_node, default_value_len);
 
     /* Upgrade buffer lock to RW_WRITE. */
@@ -1174,7 +1174,7 @@ static void insert_and_split_leaf_node(Row *row, Refer *refer) {
     key = RowFindKey(row, table->meta_table);
 
     /* Get table primary key meta info. */
-    MetaColumn *primary_key_meta_column = get_primary_key_meta_column(table->meta_table);
+    MetaColumn *primary_key_meta_column = MetaTableFindPrimaryKey(table->meta_table);
 
     /* Get the old leaf node and lock. */
     Buffer old_buffer = ReadBuffer(oid, refer->page_num);
@@ -1367,7 +1367,7 @@ static void insert_leaf_node_new_cell(Row *row, Refer *refer) {
     if (!is_root_node(node) && refer->cell_num == cell_num) {
         uint32_t parent_page_num = get_parent_pointer(node);
         void *old_max_key = get_leaf_node_cell_key(node, cell_num - 1, key_len, value_len, default_value_len);
-        MetaColumn *primary_key_meta_column = get_primary_key_meta_column(table->meta_table);
+        MetaColumn *primary_key_meta_column = MetaTableFindPrimaryKey(table->meta_table);
         /* Logic check.*/
         Assert(greater_equal(get_real_value(key, primary_key_meta_column->column_type), 
                              get_real_value(old_max_key, primary_key_meta_column->column_type), 
@@ -1483,7 +1483,7 @@ static void *gen_new_default_value_at_append_column(void *default_value, MetaTab
 
     /* Get value len, offset. */
     uint32_t value_len, offset;
-    value_len = calc_table_row_length2(meta_table);
+    value_len = MetaTableCalcRowLenght(meta_table);
     offset = calc_offset_new_column(meta_table, pos);
 
     /* Move memory behind the postion. */
@@ -1917,7 +1917,7 @@ void append_new_column(uint32_t page_num, Table *table, MetaColumn *new_column, 
 static void *gen_new_default_value_after_drop_column(void *default_value, MetaTable *meta_table, MetaColumn *meta_column, int pos) {
     uint32_t value_len, offset;
 
-    value_len = calc_table_row_length2(meta_table);
+    value_len = MetaTableCalcRowLenght(meta_table);
     offset = calc_offset_new_column(meta_table, pos);
 
     /* Move after offset memory. */
@@ -2196,7 +2196,7 @@ static void make_empty_root_node(Table *table) {
     buffer = ReadBuffer(GET_TABLE_OID(table), table->root_page_num); 
     root = GetBufferPage(buffer);
     Assert(get_node_type(root) == INTERNAL_NODE);
-    default_value_len = calc_table_row_length(table);
+    default_value_len = TableCalcRowLength(table);
 
     set_node_type(root, LEAF_NODE);
     set_leaf_node_cell_num(root, default_value_len, 0);
@@ -2344,7 +2344,7 @@ void delete_row_data(void *key, Refer *refer) {
     leaf_node = GetBufferPage(buffer);
     cell_num = get_leaf_node_cell_num(leaf_node, default_value_len);
     obs_key = get_leaf_node_cell_key(leaf_node, refer->cell_num, key_len, value_len, default_value_len);
-    primary_key_meta_column = get_primary_key_meta_column(table->meta_table);
+    primary_key_meta_column = MetaTableFindPrimaryKey(table->meta_table);
 
     /* Theoretically, key and obs_key should be equal. */
     Assert(equal(get_real_value(obs_key, primary_key_meta_column->column_type), 
@@ -2560,7 +2560,7 @@ void assign_row_value(void *destination, void *value, MetaColumn *meta_column) {
 
 /* Serialize row data */
 void *serialize_row_data(Row *row, Table *table) {
-    uint32_t row_length = calc_table_row_length(table);
+    uint32_t row_length = TableCalcRowLength(table);
     void *destination = dalloc(row_length);
     MetaTable *meta_table = table->meta_table;
     uint32_t offset = 0;

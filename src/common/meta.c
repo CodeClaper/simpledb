@@ -219,7 +219,7 @@ static void *assign_value_from_atom(AtomNode *atom_node, MetaColumn *meta_column
 
 /* Check if system built-in primary key.*/
 bool built_in_primary_key(MetaTable *meta_table) {
-    MetaColumn *primary_meta_column = get_primary_key_meta_column(meta_table);
+    MetaColumn *primary_meta_column = MetaTableFindPrimaryKey(meta_table);
     return streq(primary_meta_column->column_name, SYS_RESERVED_ID_COLUMN_NAME);
 }
 
@@ -372,34 +372,6 @@ void *get_value_from_value_item_node(ValueItemNode *value_item_node, MetaColumn 
     }
 }
 
-/* Get row array value. 
- * Return ArrayValue.
- * */
-static ArrayValue *get_row_array_value(void *destination, MetaColumn *meta_column) {
-    uint32_t array_num = get_array_number(destination);
-
-    /* Generate ArrayValue instance. */
-    ArrayValue *array_value = new_array_value(meta_column->column_type, array_num);
-    uint32_t span = (meta_column->column_length - LEAF_NODE_ARRAY_NUM_SIZE - LEAF_NODE_CELL_NULL_FLAG_SIZE) / meta_column->array_cap;
-
-    uint32_t i;
-    for (i = 0; i < array_num; i++) {
-        void *value = get_array_value(destination, i, span);
-        append_list(array_value->list, copy_value(value, meta_column->column_type));
-    }
-    return array_value;
-}
-
-/* Assignment row value. */ 
-static void *define_row_value(void *destination, MetaColumn *meta_column) {
-    return (meta_column->array_dim == 0)
-            /* For non-array data. */
-            ? destination + LEAF_NODE_CELL_NULL_FLAG_SIZE 
-            /* For array data. */
-            : get_row_array_value(destination, meta_column); 
-}
-
-
 /* Get Really value. */
 void *get_real_value(void *value, DataType type) {
     if (value == NULL)
@@ -413,54 +385,8 @@ void *get_real_value(void *value, DataType type) {
     }
 } 
 
-/* Get value in tuple. */
-void *get_value_in_tuple(void *tuple, MetaColumn *meta_column) {
-    bool nflag =  *(bool *)(tuple + meta_column->offset);
-    return nflag ? NULL : define_row_value((tuple + meta_column->offset), meta_column);
-}
-
-/* Combine AtomNode by column and value. */
-AtomNode *combine_atom_node(MetaColumn *meta_column, void *value) {
-    AtomNode *atom_node = instance(AtomNode);
-    switch (meta_column->column_type) {
-        case T_BOOL: {
-            atom_node->type = A_BOOL;
-            atom_node->value.boolval =  *(bool *)value;  
-            break;
-        }
-        case T_CHAR: 
-        case T_STRING:
-        case T_DATE:
-        case T_TIMESTAMP:
-        case T_VARCHAR: {
-            atom_node->type = A_STRING;
-            atom_node->value.strval = value;  
-            break;
-        }
-        case T_INT: 
-        case T_LONG: {
-            atom_node->type = A_INT;
-            atom_node->value.intval = *(int64_t *) value;  
-            break;
-        }
-        case T_DOUBLE:
-        case T_FLOAT: {
-            atom_node->type = A_INT;
-            atom_node->value.floatval = *(double *) value;  
-            break;
-        }
-        case T_REFERENCE:
-        case T_ROW:
-        case T_UNKNOWN:
-            panic("Cant convert type to AtomNode.");
-        break;
-    }   
-    return atom_node;
-}
-
-
 /* Calculate the length of table row. */
-uint32_t calc_table_row_length(Table *table) {
+uint32_t TableCalcRowLength(Table *table) {
     uint32_t row_len = 0;
     ListCell *lc;
     foreach (lc, table->meta_table->meta_columns) {
@@ -471,7 +397,7 @@ uint32_t calc_table_row_length(Table *table) {
 }
 
 /* Calculate the length of table row. */
-uint32_t calc_table_row_length2(MetaTable *meta_table) {
+uint32_t MetaTableCalcRowLenght(MetaTable *meta_table) {
     uint32_t row_len = 0;
     ListCell *lc;
     foreach (lc, meta_table->meta_columns) {
@@ -484,7 +410,7 @@ uint32_t calc_table_row_length2(MetaTable *meta_table) {
 /* Calculate primary key lenght. 
  * Return primary-key column length.
  * Panic if not found. */
-uint32_t calc_primary_key_length(Table *table) {
+uint32_t TableCalcPrimaryKeyLength(Table *table) {
     ListCell *lc;
     foreach(lc, table->meta_table->meta_columns) {
         MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
@@ -496,22 +422,8 @@ uint32_t calc_primary_key_length(Table *table) {
 }
 
 
-/* Calculate primary key lenght. 
- * Return primary-key column length.
- * Panic if not found. */
-uint32_t calc_primary_key_length2(MetaTable *meta_table) {
-    ListCell *lc;
-    foreach (lc, meta_table->meta_columns) {
-        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
-       if (meta_column->is_primary)
-           return meta_column->column_length;
-    }
-    panic("Not found primary key.");
-    return -1;
-}
-
 /* Calculate primary index value length. */
-uint32_t calc_primary_index_value_length(Table *table) {
+uint32_t TableCalcIndexLength(Table *table) {
     uint32_t value_len;
     value_len = REFER_SIZE;
     ListCell *lc;
@@ -522,21 +434,6 @@ uint32_t calc_primary_index_value_length(Table *table) {
     }
     return value_len;
 }
-
-
-/* Calculate primary index value length. */
-uint32_t calc_primary_index_value_length2(MetaTable *meta_table) {
-    uint32_t value_len;
-    value_len = REFER_SIZE;
-    ListCell *lc;
-    foreach (lc, meta_table->meta_columns) {
-        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
-        if (meta_column->sys_reserved)
-            value_len += meta_column->column_length;
-    }
-    return value_len;
-}
- 
 
 /* Get column meta info by index. */
 static MetaColumn *GetMetaColumnByIndex(void *root_node, uint32_t index, uint32_t offset) {
@@ -549,22 +446,39 @@ static MetaColumn *GetMetaColumnByIndex(void *root_node, uint32_t index, uint32_
     return meta_column;
 }
 
-/* Get meta column info by column name. */
-MetaColumn *get_meta_column_by_name(MetaTable *meta_table, char *column_name) {
+/* Find MetaColumn by column name. */
+MetaColumn *NameFindMetaColumnInner(List *meta_columns, char *column_name) {
+    Assert(meta_columns != NIL);
     ListCell *lc;
-    foreach (lc, meta_table->meta_columns) {
-        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
-        if (streq(meta_column->column_name, column_name))
-            return meta_column;
+    foreach (lc, meta_columns) {
+        MetaColumn *current = (MetaColumn *) lfirst(lc);
+        if (streq(current->column_name, column_name))
+            return current;
     }
     return NULL;
 }
 
+/* Find MetaColumn by table name and column name. */
+MetaColumn *TableColumnNameFindMetaColumn(List *meta_columns, char *table_name, char *column_name) {
+    Assert(meta_columns != NIL);
+    ListCell *lc;
+    foreach (lc, meta_columns) {
+        MetaColumn *current = (MetaColumn *) lfirst(lc);
+        if (streq(current->own_table_name, table_name) && streq(current->column_name, column_name))
+            return current;
+    }
+    return NULL;
+}
+
+/* Get meta column info by column name. */
+MetaColumn *NameFindMetaColumn(MetaTable *meta_table, char *column_name) {
+    return NameFindMetaColumnInner(meta_table->meta_columns, column_name);
+}
 
 /* Get meta columnn postion by column name.
  * Return -1 if missing. 
  * */
-int get_meta_column_pos_by_name(MetaTable *meta_table, char *column_name) {
+int NameFindMetaColumnPostion(MetaTable *meta_table, char *column_name) {
     uint32_t i = 0;
     ListCell *lc;
     foreach (lc, meta_table->meta_columns) {
@@ -577,7 +491,7 @@ int get_meta_column_pos_by_name(MetaTable *meta_table, char *column_name) {
 }
 
 /* Get meta column of primary key. */
-MetaColumn *get_primary_key_meta_column(MetaTable *meta_table) {
+MetaColumn *MetaTableFindPrimaryKey(MetaTable *meta_table) {
     ListCell *lc;
     foreach (lc, meta_table->meta_columns) {
         MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
@@ -587,12 +501,6 @@ MetaColumn *get_primary_key_meta_column(MetaTable *meta_table) {
     return NULL; 
 }
 
-/* Get meta column of primary key type. */
-DataType get_primary_key_type(MetaTable *meta_table) {
-    MetaColumn *primary_meta_column = get_primary_key_meta_column(meta_table);
-    Assert(primary_meta_column);
-    return primary_meta_column->column_type;
-}
 
 
 /* Get all meta column info by column name including system reserved column. 
@@ -680,26 +588,3 @@ bool UserPrimaryKeyExists(MetaTable *meta_table) {
     return false;
 }
 
-/* Find MetaColumn by table name and column name. */
-MetaColumn *TableColumnNameFindMetaColumn(List *meta_columns, char *table_name, char *column_name) {
-    Assert(meta_columns != NIL);
-    ListCell *lc;
-    foreach (lc, meta_columns) {
-        MetaColumn *current = (MetaColumn *) lfirst(lc);
-        if (streq(current->own_table_name, table_name) && streq(current->column_name, column_name))
-            return copy_meta_column(current);
-    }
-    return NULL;
-}
-
-/* Find MetaColumn by column name. */
-MetaColumn *NameFindMetaColumn(List *meta_columns, char *column_name) {
-    Assert(meta_columns != NIL);
-    ListCell *lc;
-    foreach (lc, meta_columns) {
-        MetaColumn *current = (MetaColumn *) lfirst(lc);
-        if (streq(current->column_name, column_name))
-            return copy_meta_column(current);
-    }
-    return NULL;
-}

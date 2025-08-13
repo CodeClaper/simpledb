@@ -90,7 +90,7 @@ static MetaColumn *find_meta_column_in_table_ref_list(List *list, char *column_n
             db_log(ERROR, "Table '%s' not exist.", table_ref->table);
             return NULL;
         }
-        MetaColumn *meta_column = get_meta_column_by_name(table->meta_table, column_name);
+        MetaColumn *meta_column = NameFindMetaColumn(table->meta_table, column_name);
         if (meta_column != NULL)
             return meta_column;
     }
@@ -459,7 +459,7 @@ static bool check_funtion_value_type(FunctionType type, ColumnNode *column, Meta
         }
     } else if (column->sub_column) {
         Table *table = open_table(meta_column->table_name);
-        MetaColumn *sub_meta_column = get_meta_column_by_name(table->meta_table, column->sub_column->column_name);
+        MetaColumn *sub_meta_column = NameFindMetaColumn(table->meta_table, column->sub_column->column_name);
         return check_funtion_value_type(type, column->sub_column, sub_meta_column);
     } else if (column->has_sub_column) {
         db_log(ERROR, "Function %s not support for reference type column.", 
@@ -480,7 +480,7 @@ static bool check_function_node(FunctionNode *function, AliasMap alias_map) {
         case V_COLUMN: {
             ColumnNode *column = value_node->column;
             MetaTable *meta_table = confirm_meta_table_via_column(column, alias_map);
-            MetaColumn *meta_column = get_meta_column_by_name(meta_table, column->column_name);
+            MetaColumn *meta_column = NameFindMetaColumn(meta_table, column->column_name);
             return check_funtion_value_type(function->type, column, meta_column) && 
                         check_column_node(column, meta_table); 
         }
@@ -560,7 +560,7 @@ static bool check_comparison_node(ComparisonNode *comparison, AliasMap alias_map
 
     /* Confirm MetaTable. */
     MetaTable *current_meta_table = confirm_meta_table_via_column(column, alias_map);
-    MetaColumn *meta_column = get_meta_column_by_name(current_meta_table, column->column_name);
+    MetaColumn *meta_column = NameFindMetaColumn(current_meta_table, column->column_name);
 
     return check_column_node(comparison->column, current_meta_table) // check select column
            && check_comparison_value(comparison->value, current_meta_table, meta_column);
@@ -591,7 +591,7 @@ static bool check_like_node(LikeNode *like_node, AliasMap alias_map) {
 
     /* Confirm MetaTable. */
     MetaTable *current_meta_table = confirm_meta_table_via_column(column, alias_map);
-    MetaColumn *meta_column = get_meta_column_by_name(current_meta_table, column->column_name);
+    MetaColumn *meta_column = NameFindMetaColumn(current_meta_table, column->column_name);
 
     return check_column_node(column, current_meta_table) && // check select column
                 check_like_data_type(meta_column) && 
@@ -743,7 +743,7 @@ static bool check_unique_column(Table *table, MetaColumn *meta_column, void *val
                meta_column->column_name);
         return false;
     } else if (select_result->row_size == 1) {
-        MetaColumn *primary_column = get_primary_key_meta_column(table->meta_table);
+        MetaColumn *primary_column = MetaTableFindPrimaryKey(table->meta_table);
         Row *selected_row = qfirst(select_result->rows->head);
         SelectResult *result = SelectWithColumnValue(GET_TABLE_OID(table), meta_column, value);
         QueueCell *qc;
@@ -778,7 +778,7 @@ static bool check_assignment_set_node(UpdateNode *update_node) {
         void *assign_value = NULL;
         Assert(column_node != NULL);
 
-        MetaColumn *meta_column = get_meta_column_by_name(table->meta_table, column_node->column_name);
+        MetaColumn *meta_column = NameFindMetaColumn(table->meta_table, column_node->column_name);
         if (is_null(meta_column)) {
             db_log(ERROR, "Not found column %s in table %s.", 
                    column_node->column_name, 
@@ -1065,7 +1065,7 @@ static bool check_insert_node_for_value_items(InsertNode *insert_node, List *val
         forboth (lc1, insert_node->column_list, lc2, value_item_list) {
             ColumnNode *column_node = lfirst(lc1);
             ValueItemNode *value_item_node = lfirst(lc2);
-            MetaColumn *meta_column = get_meta_column_by_name(meta_table, column_node->column_name);
+            MetaColumn *meta_column = NameFindMetaColumn(meta_table, column_node->column_name);
             if (is_null(meta_column)) {
                 db_log(ERROR, "Unknown column '%s'", column_node->column_name);
                 return false;
@@ -1111,7 +1111,7 @@ static bool check_insert_node_for_query_spec(InsertNode *insert_node, QuerySpecN
         ListCell *lc;
         foreach (lc, insert_node->column_list) {
             ColumnNode *column_node = lfirst(lc);
-            MetaColumn *meta_column = get_meta_column_by_name(table->meta_table, column_node->column_name);
+            MetaColumn *meta_column = NameFindMetaColumn(table->meta_table, column_node->column_name);
             if (!include_column_for_query_spece(meta_column, query_spec))
                 return false;
         }
@@ -1175,7 +1175,7 @@ static bool check_alter_table_drop_column(char *table_name, DropColumnDef *drop_
     Table *table = open_table(table_name);
     MetaTable *meta_table = table->meta_table;
 
-    MetaColumn *meta_column = get_meta_column_by_name(meta_table, drop_column_def->column_name);
+    MetaColumn *meta_column = NameFindMetaColumn(meta_table, drop_column_def->column_name);
 
     /* Check drop column if exists. */
     if (is_null(meta_column)) {

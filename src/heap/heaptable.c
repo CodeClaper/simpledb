@@ -109,7 +109,7 @@ static void HeapTableInsertRowInner(Refer *rootRefer, Refer *refer, Row *row) {
     void *block;
 
     table = open_table_inner(refer->oid);
-    row_len = calc_table_row_length(table);
+    row_len = TableCalcRowLength(table);
     cell_len = REFER_SIZE + row_len;
     /* Logically, will not overflow page size. */
     AssertFalse(OverflowPage(rootRefer, cell_len));
@@ -171,7 +171,7 @@ void *HeapTableLookupTuple(Table *table, Refer *refer) {
     void *block;
     uint32_t row_len, cell_len;
     
-    row_len = calc_table_row_length(table);
+    row_len = TableCalcRowLength(table);
     cell_len = row_len + REFER_SIZE;
     buffer = ReadBuffer(refer->oid, refer->page_num);
     LockBuffer(buffer, RW_READERS);
@@ -198,7 +198,7 @@ void HeapTableUpdateRow(Table *table, Refer *refer, Row *row) {
     void *block;
     uint32_t row_len, cell_len;
 
-    row_len = calc_table_row_length(table);
+    row_len = TableCalcRowLength(table);
     cell_len = row_len + REFER_SIZE;
     buffer = ReadBuffer(refer->oid, refer->page_num);
     LockBuffer(buffer, RW_WRITER);
@@ -220,7 +220,7 @@ void HeapTableUpdateIndexRefer(Table *table, Refer *refer, Refer *newIRefer) {
     void *block;
     uint32_t row_len, cell_len;
 
-    row_len = calc_table_row_length(table);
+    row_len = TableCalcRowLength(table);
     cell_len = row_len + REFER_SIZE;
     buffer = ReadBuffer(refer->oid, refer->page_num);
     LockBuffer(buffer, RW_WRITER);
@@ -241,7 +241,7 @@ void HeapTableUpdateRowCreatedXid(Table *table, Refer *refer, Xid createdXid) {
     uint32_t row_len, cell_len;
     void *block, *destintion;
 
-    row_len = calc_table_row_length(table);
+    row_len = TableCalcRowLength(table);
     cell_len = row_len + REFER_SIZE;
     buffer = ReadBuffer(refer->oid, refer->page_num);
     LockBuffer(buffer, RW_WRITER);
@@ -262,7 +262,7 @@ void HeapTableUpdateRowExpiredXid(Table *table, Refer *refer, Xid expiredXid) {
     uint32_t row_len, cell_len;
     void *block, *destintion;
 
-    row_len = calc_table_row_length(table);
+    row_len = TableCalcRowLength(table);
     cell_len = row_len + REFER_SIZE;
     buffer = ReadBuffer(refer->oid, refer->page_num);
     LockBuffer(buffer, RW_WRITER);
@@ -400,7 +400,7 @@ static Refer *HeapTableSplitReInsertRow(Refer *rootRefer, Table *table, void *da
     void *block;
     uint32_t cell_num, row_len, cell_len;
 
-    row_len = calc_table_row_length(table);
+    row_len = TableCalcRowLength(table);
     cell_len = REFER_SIZE + row_len;
     buffer = ReadBuffer(rootRefer->oid, rootRefer->page_num);
     LockBuffer(buffer, RW_WRITER);
@@ -467,7 +467,7 @@ static void HeapTableAppendColumnLoop(Refer *rootRefer, Table *table, MetaColumn
     Buffer buffer;
     uint32_t row_len, cell_len, cell_num;
 
-    row_len = calc_table_row_length(table);
+    row_len = TableCalcRowLength(table);
     cell_len = REFER_SIZE + row_len;
     buffer = ReadBuffer(oid, pageNum);
     LockBuffer(buffer, RW_WRITER);
@@ -513,7 +513,7 @@ static void HeapTableDropColumnLoop(Table *table, MetaColumn *oldColumn,
     Buffer buffer;
     uint32_t row_len, cell_len, cell_num;
 
-    row_len = calc_table_row_length(table);
+    row_len = TableCalcRowLength(table);
     cell_len = REFER_SIZE + row_len;
     buffer = ReadBuffer(oid, pageNum);
     LockBuffer(buffer, RW_WRITER);

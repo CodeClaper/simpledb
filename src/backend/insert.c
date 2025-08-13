@@ -186,7 +186,7 @@ static Row *GenerateInsertRowForPartInner(MetaTable *meta_table, List *column_li
     ListCell *lc;
     foreach (lc, column_list) {
         ColumnNode *column = lfirst(lc);
-        MetaColumn *meta_column = get_meta_column_by_name(meta_table, column->column_name);
+        MetaColumn *meta_column = NameFindMetaColumn(meta_table, column->column_name);
 
         if (!meta_table)
             db_log(ERROR, "Not found column '%s' in table '%s'.",
@@ -277,7 +277,7 @@ static Row *SelectRowToInsertRow(Row *select_row, Table *table) {
  * Return the row refer, 
  * Throw error by log if fail. */
 Refer *insert_one_row(Table *table, Row *row) {
-    MetaColumn *primary_key_meta_column = get_primary_key_meta_column(table->meta_table);
+    MetaColumn *primary_key_meta_column = MetaTableFindPrimaryKey(table->meta_table);
     Assert(primary_key_meta_column);
     
     void *key = RowFindKey(row, table->meta_table);

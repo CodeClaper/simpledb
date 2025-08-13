@@ -25,6 +25,7 @@
 #include "copy.h"
 #include "free.h"
 #include "list.h"
+#include "tuple.h"
 #include "trans.h"
 #include "select.h"
 #include "asserts.h"

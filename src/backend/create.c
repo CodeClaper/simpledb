@@ -173,7 +173,7 @@ static void operate_table_unique(MetaTable *meta_table, List *commalist) {
     ListCell *lc;
     foreach (lc, commalist) {
         ColumnDefName *column_def_name = lfirst(lc);
-        MetaColumn *meta_column = get_meta_column_by_name(meta_table, column_def_name->column);
+        MetaColumn *meta_column = NameFindMetaColumn(meta_table, column_def_name->column);
         meta_column->is_unique = true;
         break; /* Not support mult-columns as unique key. */
     }
@@ -184,7 +184,7 @@ static void operate_table_primary_key(MetaTable *meta_table, List *commalist) {
     ListCell *lc;
     foreach (lc, commalist) {
         ColumnDefName *column_def_name = lfirst(lc);
-        MetaColumn *meta_column = get_meta_column_by_name(meta_table, column_def_name->column);
+        MetaColumn *meta_column = NameFindMetaColumn(meta_table, column_def_name->column);
         meta_column->is_primary = true;
         meta_column->is_unique = true;
         meta_column->not_null = true;
@@ -277,9 +277,9 @@ static bool save_table_cache(Oid oid, MetaTable *meta_table) {
     table->root_page_num = ROOT_PAGE_NUM;
     table->page_size = 1;
     table->creator = getpid();
-    table->key_len = calc_primary_key_length(table);
-    table->index_value_len = calc_primary_index_value_length(table);
-    table->heap_value_len = calc_table_row_length(table);
+    table->key_len = TableCalcPrimaryKeyLength(table);
+    table->index_value_len = TableCalcIndexLength(table);
+    table->heap_value_len = TableCalcRowLength(table);
 
     /* Save into cache. */
     SaveTableCache(table);

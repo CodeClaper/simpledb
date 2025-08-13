@@ -36,7 +36,7 @@
     if (overflow_leaf_node(node, key_len, value_len, default_value_len, refer->cell_num))
         return false;
 
-    primary_key_meta_column = get_primary_key_meta_column(table->meta_table);
+    primary_key_meta_column = MetaTableFindPrimaryKey(table->meta_table);
     target = get_leaf_node_cell_key(node, refer->cell_num, key_len, value_len, default_value_len);
     Assert(target < (void *) ((char *) node + PAGE_SIZE));
 

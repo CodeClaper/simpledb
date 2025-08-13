@@ -28,47 +28,38 @@ void *get_value_from_value_item_node(ValueItemNode *value_item_node, MetaColumn 
 /* Get Really value. */
 void *get_real_value(void *value, DataType type);
 
-/* Get value in tuple. */
-void *get_value_in_tuple(void *tuple, MetaColumn *meta_column);
-
-/* Combine AtomNode by column and value. */
-AtomNode *combine_atom_node(MetaColumn *meta_column, void *value);
+/* Calculate the length of table row. */
+uint32_t TableCalcRowLength(Table *table);
 
 /* Calculate the length of table row. */
-uint32_t calc_table_row_length(Table *table);
-
-/* Calculate the length of table row. */
-uint32_t calc_table_row_length2(MetaTable *meta_table);
+uint32_t MetaTableCalcRowLenght(MetaTable *meta_table);
 
 /* Calculate primary key lenght. if not exist primary key , return -1; */
-uint32_t calc_primary_key_length(Table *table);
-
-/* Calculate primary key lenght. if not exist primary key , return -1; */
-uint32_t calc_primary_key_length2(MetaTable *meta_table);
+uint32_t TableCalcPrimaryKeyLength(Table *table);
 
 /* Calculate primary index value length. */
-uint32_t calc_primary_index_value_length(Table *table);
-
-/* Calculate primary index value length. */
-uint32_t calc_primary_index_value_length2(MetaTable *meta_table);
+uint32_t TableCalcIndexLength(Table *table);
 
 /* Genrate table meta info. */
 MetaTable *GenerateMetaTable(Oid oid);
 
+/* Find MetaColumn by column name. */
+MetaColumn *NameFindMetaColumnInner(List *meta_columns, char *column_name);
+
+/* Find MetaColumn by table name and column name. */
+MetaColumn *TableColumnNameFindMetaColumn(List *meta_columns, char *table_name, char *column_name);
+
 /* Get meta column info by column name. */
-MetaColumn *get_meta_column_by_name(MetaTable *meta_table, char *name);
+MetaColumn *NameFindMetaColumn(MetaTable *meta_table, char *name);
 
 /* Get meta columnn postion by column name. */
-int get_meta_column_pos_by_name(MetaTable *meta_table, char *column_name);
+int NameFindMetaColumnPostion(MetaTable *meta_table, char *column_name);
 
 /* Get all meta column info by column name including system reserved column. */
 MetaColumn *NameFindAllMetaColumn(MetaTable *meta_table, char *name);
 
 /* Get meta column of primary key. */
-MetaColumn *get_primary_key_meta_column(MetaTable *meta_table);
-
-/* Get meta column of primary key type. */
-DataType get_primary_key_type(MetaTable *meta_table);
+MetaColumn *MetaTableFindPrimaryKey(MetaTable *meta_table);
 
 /* Check if table exists the column. */
 bool ColumnExistsInTable(char *column_name, char *table_name);
@@ -79,10 +70,3 @@ uint32_t CalcUserMetaColumnLen(MetaColumn *meta_column);
 
 /* Check if user has defined primary key.*/
 bool UserPrimaryKeyExists(MetaTable *meta_table);
-
-/* Find MetaColumn by table name and column name. */
-MetaColumn *TableColumnNameFindMetaColumn(List *meta_columns, char *table_name, char *column_name);
-
-/* Find MetaColumn by column name. */
-MetaColumn *NameFindMetaColumn(List *meta_columns, char *column_name);
-

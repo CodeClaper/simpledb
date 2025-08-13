@@ -85,7 +85,7 @@ bool create_table(Oid oid, MetaTable *meta_table) {
 
     root_node = dalloc(PAGE_SIZE);
 
-    default_value_len = calc_table_row_length2(meta_table);
+    default_value_len = MetaTableCalcRowLenght(meta_table);
 
     /* Initialize root node */
     initial_leaf_node(root_node, default_value_len, true);
@@ -179,8 +179,8 @@ bool add_new_meta_column(char *table_name, MetaColumn *new_meta_column, ColumnPo
 /* Drop table`s meta_column. */
 bool drop_meta_column(char *table_name, char *column_name) {
     Table *table = open_table(table_name);
-    int pos = get_meta_column_pos_by_name(table->meta_table, column_name);
-    MetaColumn *oldColumn = get_meta_column_by_name(table->meta_table, column_name);
+    int pos = NameFindMetaColumnPostion(table->meta_table, column_name);
+    MetaColumn *oldColumn = NameFindMetaColumn(table->meta_table, column_name);
     Assert(pos >= 0);
     /* Drop index table column. */
     drop_column(table->root_page_num, table, pos);
@@ -201,9 +201,9 @@ Table *load_table(Oid oid) {
     table->meta_table = GenerateMetaTable(oid);
     table->page_size = GetPageSize(oid);
     table->hoid = TableNameFindHeapOid(GET_TABLE_NAME(table));
-    table->key_len = calc_primary_key_length(table);
-    table->index_value_len = calc_primary_index_value_length(table);
-    table->heap_value_len = calc_table_row_length(table);
+    table->key_len = TableCalcPrimaryKeyLength(table);
+    table->index_value_len = TableCalcIndexLength(table);
+    table->heap_value_len = TableCalcRowLength(table);
     return table;
 }
 

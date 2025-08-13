@@ -1,4 +1,5 @@
 #include "row.h"
+#include "tuple.h"
 #include "meta.h"
 #include "mmgr.h"
 #include "instance.h"
@@ -47,7 +48,7 @@ void *RowFindKey(Row *row, MetaTable *meta_table) {
     
     MetaColumn *primary_meta_column;
 
-    primary_meta_column = get_primary_key_meta_column(meta_table);
+    primary_meta_column = MetaTableFindPrimaryKey(meta_table);
 
     ListCell *lc;
     foreach (lc, row->data) {

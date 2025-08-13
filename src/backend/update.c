@@ -118,7 +118,7 @@ static void UpdateTuple(void *tuple, SelectResult *select_result,
     ListCell *lc;
     foreach (lc, assignment_list) {
         AssignmentNode *assign_node = lfirst(lc);
-        MetaColumn *meta_column = get_meta_column_by_name(table->meta_table, assign_node->column->column_name);
+        MetaColumn *meta_column = NameFindMetaColumn(table->meta_table, assign_node->column->column_name);
         UpdateCell(new_row, assign_node, meta_column);
     }
    

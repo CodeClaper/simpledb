@@ -113,7 +113,7 @@ static Refer *define_refer_from_leaf_node(Table *table, void *leaf_node, uint32_
     uint32_t key_len, value_len, default_value_len, cell_num;
 
     refer = new_refer(GET_TABLE_OID(table), page_num, 0);
-    primary_meta_column = get_primary_key_meta_column(table->meta_table);
+    primary_meta_column = MetaTableFindPrimaryKey(table->meta_table);
 
     key_len = table->key_len;
     value_len = table->index_value_len;
@@ -134,7 +134,7 @@ static Refer *define_refer_from_internal_node(Table *table, void *internal_node,
     default_value_len = table->heap_value_len;
     keys_num = get_internal_node_keys_num(internal_node, default_value_len);
 
-    primary_meta_column = get_primary_key_meta_column(table->meta_table);
+    primary_meta_column = MetaTableFindPrimaryKey(table->meta_table);
     child_page_num = get_internal_node_cell_child_page_num(internal_node, key, keys_num, key_len, default_value_len, primary_meta_column->column_type);
     Assert(child_page_num != -1);
 

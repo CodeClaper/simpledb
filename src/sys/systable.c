@@ -19,6 +19,7 @@
 #include "trans.h"
 #include "meta.h"
 #include "row.h"
+#include "tuple.h"
 #include "sysstate.h"
 #include "heaptable.h"
 

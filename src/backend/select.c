@@ -28,6 +28,7 @@
 #include "mmgr.h"
 #include "meta.h"
 #include "row.h"
+#include "tuple.h"
 #include "ltree.h"
 #include "pager.h"
 #include "table.h"
@@ -144,7 +145,7 @@ static bool InternalNodeForComparisonPredicate(SelectResult *select_result, void
             return true;
     }
 
-    MetaColumn *meta_column = get_meta_column_by_name(meta_table, column->column_name);
+    MetaColumn *meta_column = NameFindMetaColumn(meta_table, column->column_name);
     if (meta_table == NULL) {
         db_log(ERROR, "Not found column '%s'. ", column->column_name);
         return true;
@@ -265,7 +266,7 @@ static bool ValueForPredicateColumn(SelectResult *select_result, List *meta_colu
 
     /* Find meta column. */
     target_meta_column = is_empty(table_name) 
-            ? NameFindMetaColumn(meta_columns, column->column_name)
+            ? NameFindMetaColumnInner(meta_columns, column->column_name)
             : TableColumnNameFindMetaColumn(meta_columns, table_name, column->column_name);
     if (target_meta_column == NULL) {
         db_log(ERROR, "Unknown column '%s.%s' in where clause. ", 
@@ -310,8 +311,8 @@ static bool TupleForPredicate(SelectResult *select_result, List *meta_columns, v
             }
             meta_column = TableColumnNameFindMetaColumn(meta_columns, rtable_name, column->column_name);
         } else 
-            meta_column = NameFindMetaColumn(meta_columns, column->column_name);
-        column->meta_column = meta_column;
+            meta_column = NameFindMetaColumnInner(meta_columns, column->column_name);
+        column->meta_column = copy_meta_column(meta_column);
     }
 
     if (meta_column == NULL) {
@@ -395,7 +396,7 @@ static bool ValueInValueList(List *value_list, void *value, MetaColumn *meta_col
 static bool LeafNodeForInPredicate(SelectResult *select_result, void *tuple, InNode *in_node) {
     Table *table = open_table(select_result->table_name);
     Assert(table != NULL);
-    MetaColumn *meta_column = get_meta_column_by_name(table->meta_table, in_node->column->column_name);
+    MetaColumn *meta_column = NameFindMetaColumn(table->meta_table, in_node->column->column_name);
     if (meta_column != NULL)
         return ValueInValueList(
             in_node->value_list, 
@@ -434,7 +435,7 @@ static bool ValueLikeStringValue(char *value, char *target) {
 /* Check if include leaf node satisfy like predicate. */
 static bool LeafNodeForLikePredicate(SelectResult *select_result, void *tuple, LikeNode *like_node) {
     Table *table = open_table(select_result->table_name);
-    MetaColumn *meta_column = get_meta_column_by_name(table->meta_table, like_node->column->column_name);
+    MetaColumn *meta_column = NameFindMetaColumn(table->meta_table, like_node->column->column_name);
     if (meta_column != NULL) {
         void *target_value = get_value_from_value_item_node(like_node->value, meta_column);
         void *value = get_value_in_tuple(tuple, meta_column);
@@ -890,7 +891,7 @@ static void SelectInternalNode(SelectResult *select_result, SearchConditionNode 
     key_len = table->key_len;
     default_value_len = table->heap_value_len;
     keys_num = get_internal_node_keys_num(internal_node, default_value_len);
-    primary_meta_column = get_primary_key_meta_column(table->meta_table);
+    primary_meta_column = MetaTableFindPrimaryKey(table->meta_table);
 
     /* Loop each interanl node cell to check if satisfy condition. 
      * Note that: get the internal node keys number in each loop.
@@ -1047,7 +1048,7 @@ static void SelectInternalNodeAsync(SelectResult *select_result, SearchCondition
     key_len = table->key_len;
     value_len = table->index_value_len;
     keys_num = get_internal_node_keys_num(internal_node, value_len);
-    primary_meta_column = get_primary_key_meta_column(table->meta_table);
+    primary_meta_column = MetaTableFindPrimaryKey(table->meta_table);
 
     /* Prepare the parallel computing task args. */
     uint32_t taskNum = 0;
@@ -1183,6 +1184,44 @@ void QueryUnderSearchCondition(SearchConditionNode *condition, SelectResult *sel
     QueryUnderSearchConditionInner(GET_TABLE_OID(table), condition, select_result, row_handler, type, arg);
 }
 
+/* Combine AtomNode by column and value. */
+static AtomNode *GenerateAtomNode(MetaColumn *meta_column, void *value) {
+    AtomNode *atom_node = instance(AtomNode);
+    switch (meta_column->column_type) {
+        case T_BOOL: {
+            atom_node->type = A_BOOL;
+            atom_node->value.boolval =  *(bool *)value;  
+            break;
+        }
+        case T_CHAR: 
+        case T_STRING:
+        case T_DATE:
+        case T_TIMESTAMP:
+        case T_VARCHAR: {
+            atom_node->type = A_STRING;
+            atom_node->value.strval = value;  
+            break;
+        }
+        case T_INT: 
+        case T_LONG: {
+            atom_node->type = A_INT;
+            atom_node->value.intval = *(int64_t *) value;  
+            break;
+        }
+        case T_DOUBLE:
+        case T_FLOAT: {
+            atom_node->type = A_INT;
+            atom_node->value.floatval = *(double *) value;  
+            break;
+        }
+        case T_REFERENCE:
+        case T_ROW:
+        case T_UNKNOWN:
+            panic("Cant convert type to AtomNode.");
+        break;
+    }   
+    return atom_node;
+}
 
 /* Convert column value to search condition. */
 static SearchConditionNode *ColumnValueConvertCondition(MetaColumn *meta_column, void *value) {
@@ -1203,7 +1242,7 @@ static SearchConditionNode *ColumnValueConvertCondition(MetaColumn *meta_column,
     predicate->comparison->value->type = SCALAR_VALUE;
     predicate->comparison->value->value = instance(ValueItemNode);
     predicate->comparison->value->value->type = V_ATOM;
-    predicate->comparison->value->value->value.atom = combine_atom_node(meta_column, value);
+    predicate->comparison->value->value->value.atom = GenerateAtomNode(meta_column, value);
 
     /* Assemble All. */
     boolean_primary->type = PREDICATE_BOOLEAN_PRIMAYR; 
@@ -2104,7 +2143,7 @@ static KeyValue *QueryFunctionValue(ScalarExpNode *scalar_exp, SelectResult *sel
     switch (scalar_exp->type) {
         case SCALAR_COLUMN: {
             ColumnNode *column = scalar_exp->column;
-            MetaColumn *meta_column = get_meta_column_by_name(table->meta_table, column->column_name);
+            MetaColumn *meta_column = NameFindMetaColumn(table->meta_table, column->column_name);
             if (QueueIsEmpty(select_result->rows)) {
                 return new_key_value(
                     column->column_name, 
