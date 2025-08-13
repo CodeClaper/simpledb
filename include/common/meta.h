@@ -53,7 +53,7 @@ uint32_t calc_primary_index_value_length(Table *table);
 uint32_t calc_primary_index_value_length2(MetaTable *meta_table);
 
 /* Genrate table meta info. */
-MetaTable *gen_meta_table(Oid oid);
+MetaTable *GenerateMetaTable(Oid oid);
 
 /* Get meta column info by column name. */
 MetaColumn *get_meta_column_by_name(MetaTable *meta_table, char *name);
@@ -62,7 +62,7 @@ MetaColumn *get_meta_column_by_name(MetaTable *meta_table, char *name);
 int get_meta_column_pos_by_name(MetaTable *meta_table, char *column_name);
 
 /* Get all meta column info by column name including system reserved column. */
-MetaColumn *get_all_meta_column_by_name(MetaTable *meta_table, char *name);
+MetaColumn *NameFindAllMetaColumn(MetaTable *meta_table, char *name);
 
 /* Get meta column of primary key. */
 MetaColumn *get_primary_key_meta_column(MetaTable *meta_table);

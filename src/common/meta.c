@@ -539,7 +539,7 @@ uint32_t calc_primary_index_value_length2(MetaTable *meta_table) {
  
 
 /* Get column meta info by index. */
-static MetaColumn *get_meta_column_by_index(void *root_node, uint32_t index, uint32_t offset) {
+static MetaColumn *GetMetaColumnByIndex(void *root_node, uint32_t index, uint32_t offset) {
     void *destination = get_meta_column_pointer(root_node, index);
     MetaColumn *meta_column = deserialize_meta_column(destination);
     if (meta_column->default_value_type == DEFAULT_VALUE) {
@@ -596,9 +596,8 @@ DataType get_primary_key_type(MetaTable *meta_table) {
 
 
 /* Get all meta column info by column name including system reserved column. 
- * Return NULL if not found.
- * */
-MetaColumn *get_all_meta_column_by_name(MetaTable *meta_table, char *name) {
+ * Return NULL if not found. */
+MetaColumn *NameFindAllMetaColumn(MetaTable *meta_table, char *name) {
     ListCell *lc;
     foreach (lc, meta_table->meta_columns) {
         MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
@@ -609,7 +608,7 @@ MetaColumn *get_all_meta_column_by_name(MetaTable *meta_table, char *name) {
 }
 
 /* Generate table meta info. */
-MetaTable *gen_meta_table(Oid oid) {
+MetaTable *GenerateMetaTable(Oid oid) {
     MetaTable *meta_table = instance(MetaTable);
     Buffer buffer = ReadBuffer(oid, ROOT_PAGE_NUM);
     void *root_node = GetBufferPage(buffer);
@@ -623,7 +622,7 @@ MetaTable *gen_meta_table(Oid oid) {
     uint32_t offset = 0;
     uint32_t i;
     for (i = 0; i < column_size; i++) {
-        MetaColumn *current = get_meta_column_by_index(root_node, i, offset);
+        MetaColumn *current = GetMetaColumnByIndex(root_node, i, offset);
         memcpy(current->own_table_name, meta_table->table_name, MAX_COLUMN_NAME_LEN);
         append_list(meta_table->meta_columns, current);
         /* Skip to system reserved column. */

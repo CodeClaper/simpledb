@@ -219,7 +219,7 @@ void handler_user_none_priamry_key(MetaTable *meta_table) {
             return;
     }
     
-    MetaColumn *sys_id_column = get_all_meta_column_by_name(meta_table, SYS_RESERVED_ID_COLUMN_NAME);
+    MetaColumn *sys_id_column = NameFindAllMetaColumn(meta_table, SYS_RESERVED_ID_COLUMN_NAME);
     Assert(sys_id_column);
     sys_id_column->is_primary = true;
 }

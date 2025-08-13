@@ -877,19 +877,20 @@ static void SelectInternalNode(SelectResult *select_result, SearchConditionNode 
     if (type == ARG_SELECT_PARAM && LimitClauseIsFull(arg))
         return;
 
-    /* Get the internal node buffer. */
-    Buffer buffer = ReadBuffer(GET_TABLE_OID(table), page_num);
+    Buffer buffer;
+    void *internal_node;
+    MetaColumn *primary_meta_column;
+    uint32_t key_len, default_value_len, keys_num;
+
+    buffer = ReadBuffer(GET_TABLE_OID(table), page_num);
     LockBuffer(buffer, RW_READERS);
-    void *internal_node = GetBufferPageCopy(buffer);
+    internal_node = GetBufferPageCopy(buffer);
     UnlockBuffer(buffer);
 
-    /* Get variables. */
-    uint32_t key_len, default_value_len, keys_num;
     key_len = table->key_len;
     default_value_len = table->heap_value_len;
     keys_num = get_internal_node_keys_num(internal_node, default_value_len);
-
-    DataType primary_key_type = get_primary_key_type(table->meta_table);
+    primary_meta_column = get_primary_key_meta_column(table->meta_table);
 
     /* Loop each interanl node cell to check if satisfy condition. 
      * Note that: get the internal node keys number in each loop.
@@ -900,10 +901,10 @@ static void SelectInternalNode(SelectResult *select_result, SearchConditionNode 
         /* Check if index column, use index to avoid full text scanning. */
         {
             /* Current internal node cell key as max key, previous cell key as min key. */
-            void *max_key = get_real_value(get_internal_node_key(internal_node, i, key_len, default_value_len), primary_key_type); 
+            void *max_key = get_real_value(get_internal_node_key(internal_node, i, key_len, default_value_len), primary_meta_column->column_type); 
             void *min_key = (i == 0) 
                         ? NULL 
-                        : get_real_value(get_internal_node_key(internal_node, i - 1, key_len, default_value_len), primary_key_type);
+                        : get_real_value(get_internal_node_key(internal_node, i - 1, key_len, default_value_len), primary_meta_column->column_type);
             /* Filter the internal node. */
             if (!InternalNodeForSearchCondition(select_result, min_key, max_key, condition, table->meta_table))
                 continue;
@@ -1033,17 +1034,20 @@ static void SelectInternalNodeAsync(SelectResult *select_result, SearchCondition
     if (non_null(arg) && LimitClauseIsFull(arg))
         return;
 
+    Buffer buffer;
+    void *internal_node;
+    MetaColumn *primary_meta_column;
+    uint32_t key_len, value_len, keys_num;
+
     /* Get the internal node buffer. */
-    Buffer buffer = ReadBuffer(GET_TABLE_OID(table), page_num);
-    void *internal_node = GetBufferPage(buffer);
+    buffer = ReadBuffer(GET_TABLE_OID(table), page_num);
+    internal_node = GetBufferPage(buffer);
 
     /* Get variables. */
-    uint32_t key_len, value_len, keys_num;
     key_len = table->key_len;
     value_len = table->index_value_len;
     keys_num = get_internal_node_keys_num(internal_node, value_len);
-
-    DataType primary_key_type = get_primary_key_type(table->meta_table);
+    primary_meta_column = get_primary_key_meta_column(table->meta_table);
 
     /* Prepare the parallel computing task args. */
     uint32_t taskNum = 0;
@@ -1052,10 +1056,10 @@ static void SelectInternalNodeAsync(SelectResult *select_result, SearchCondition
 
     uint32_t i;
     for (i = 0; i < keys_num; i++) {
-        void *max_key = get_real_value(get_internal_node_key(internal_node, i, key_len, value_len), primary_key_type); 
+        void *max_key = get_real_value(get_internal_node_key(internal_node, i, key_len, value_len), primary_meta_column->column_type); 
         void *min_key = (i == 0) 
                     ? NULL 
-                    : get_real_value(get_internal_node_key(internal_node, i - 1, key_len, value_len), primary_key_type);
+                    : get_real_value(get_internal_node_key(internal_node, i - 1, key_len, value_len), primary_meta_column->column_type);
         if (!InternalNodeForSearchCondition(select_result, min_key, max_key, condition, table->meta_table))
             continue;
         

@@ -198,7 +198,7 @@ Table *load_table(Oid oid) {
     table->oid = oid;
     table->root_page_num = ROOT_PAGE_NUM; 
     table->creator = getpid();
-    table->meta_table = gen_meta_table(oid);
+    table->meta_table = GenerateMetaTable(oid);
     table->page_size = GetPageSize(oid);
     table->hoid = TableNameFindHeapOid(GET_TABLE_NAME(table));
     table->key_len = calc_primary_key_length(table);
