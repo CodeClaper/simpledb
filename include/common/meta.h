@@ -70,12 +70,6 @@ MetaColumn *get_primary_key_meta_column(MetaTable *meta_table);
 /* Get meta column of primary key type. */
 DataType get_primary_key_type(MetaTable *meta_table);
 
-/* Stringify the value according to data type. */
-char *stringify_value(void *value, DataType data_type);
-
-/* Get default value name from MetaColumn. */
-char *get_default_value_name(MetaColumn *meta_column);
-
 /* Check if table exists the column. */
 bool ColumnExistsInTable(char *column_name, char *table_name);
 

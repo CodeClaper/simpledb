@@ -144,7 +144,7 @@ static void UpdateTuple(void *tuple, SelectResult *select_result,
 }
 
 /* Get SearchConditionNode form WhereClause.. */
-static SearchConditionNode *WhereClauseGetSearchCondition(WhereClauseNode *where_clause) {
+static SearchConditionNode *WhereClauseFindSearchCondition(WhereClauseNode *where_clause) {
     if (where_clause)
         return where_clause->condition;
     else
@@ -168,7 +168,7 @@ void exec_update_statment(UpdateNode *update_node, DBResult *result) {
 
     /* Query with conditon, and update satisfied condition row. */
     select_result = new_select_result(UPDATE_STMT, update_node->table_name, true);
-    condition_node = WhereClauseGetSearchCondition(update_node->where_clause);
+    condition_node = WhereClauseFindSearchCondition(update_node->where_clause);
 
     /* Query with update row operation. */
     QueryUnderSearchCondition(condition_node, select_result, 
