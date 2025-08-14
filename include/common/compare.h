@@ -21,5 +21,8 @@ bool LE(void *source, void *target, DataType data_type);
 /* Eval */
 bool eval(CompareType compare_type, void *source, void *target, DataType data_type);
 
+/* Compare key values. */
+bool KeyValueEval(CompareType compare_type, KeyValue *left, KeyValue *right);
+
 /* Compare. */
 int compare(void *source, void *taget, DataType data_type);
