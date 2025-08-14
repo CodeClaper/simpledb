@@ -52,6 +52,9 @@ char *format(char *format, ...);
 /* Check both string if equal. */
 bool streq(char *str1, char *str2);
 
+/* Check if two strings are equal, ignoring case. */
+bool strcaseeq(char *str1, char *str2);
+
 /* Check both string if equal, 
  * if both is null, also return true. */
 bool streq_or_null(char *str1, char *str2);
@@ -84,21 +87,20 @@ char *dtos(double val);
 /* Convert time to string. */
 char *ttos(time_t val, char *frmt);
 
-
 /* Convert String value to int32_t value. */
 ST_FLAG stoi32(char *val,  int32_t *ret);
-
 
 /* Convert String value to int64 value.*/
 ST_FLAG stoi64(char *val,  int64_t *ret);
 
-
 /* Convert String value to float value. */
 ST_FLAG stof(char *val, float *ret);
 
-
 /* Convert String value to double value. */
 ST_FLAG stod(char *val, double *ret);
+
+/* Convert String value to bool value. */
+ST_FLAG stob(char *val, bool *ret);
 
 /* Escap the string value. */
 char *escap_str(const char *str);

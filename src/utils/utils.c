@@ -9,6 +9,7 @@
 #include <stdarg.h>
 #include <stdint.h>
 #include <string.h>
+#include <strings.h>
 #include <sys/socket.h>
 #include <time.h>
 #include <float.h>
@@ -179,6 +180,12 @@ bool streq(char *str1, char *str2) {
     return str1 && str2 && strcmp(str1, str2) == 0;
 }
 
+/* Check if two strings are equal, ignoring case. 
+ * Any of strings is NULL, return false. */
+bool strcaseeq(char *str1, char *str2) {
+    return str1 && str2 && strcasecmp(str1, str2) == 0;
+}
+
 size_t len(char *str) {
     return strlen(str);
 }
@@ -330,6 +337,18 @@ ST_FLAG stod(char *val, double *ret) {
     *ret = converted;
 
     return ST_SUCCESS;
+}
+
+/* Convert String value to bool value. */
+ST_FLAG stob(char *val, bool *ret) {
+    if (strcaseeq("TRUE", val) || strcaseeq("1", val)) {
+        *ret = true;
+        return ST_SUCCESS;
+    } else if (strcaseeq("FALSE", val) || strcaseeq("o", val)) {
+        *ret = false;
+        return ST_SUCCESS;
+    } else
+        return ST_INVALID;
 }
 
 /* Escap the string value. */
