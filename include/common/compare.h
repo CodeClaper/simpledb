@@ -1,22 +1,22 @@
 #include "data.h"
 
-/* Equal operation. */
-bool equal(void *source, void *target, DataType data_type);
+/* The EQ operation. */
+bool EQ(void *source, void *target, DataType data_type);
 
-/* Not equal operation. */
-bool not_equal(void *source, void *target, DataType data_type);
+/* The NE operation. */
+bool NE(void *source, void *target, DataType data_type);
 
-/* Not equal operation. */
-bool greater(void *source, void *target, DataType data_type);
+/* The GT operation. */
+bool GT(void *source, void *target, DataType data_type);
 
-/* Not equal operation. */
-bool greater_equal(void *source, void *target, DataType data_type);
+/* The GE operation. */
+bool GE(void *source, void *target, DataType data_type);
 
-/* Not equal operation. */
-bool less(void *source, void *target, DataType data_type);
+/* The LT operation. */
+bool LT(void *source, void *target, DataType data_type);
 
-/* Not equal operation. */
-bool less_equal(void *source, void *target, DataType data_type);
+/* The LE operation. */
+bool LE(void *source, void *target, DataType data_type);
 
 /* Eval */
 bool eval(CompareType compare_type, void *source, void *target, DataType data_type);

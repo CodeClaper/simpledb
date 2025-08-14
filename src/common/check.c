@@ -751,10 +751,10 @@ static bool check_unique_column(Table *table, MetaColumn *meta_column, void *val
             Row *row = (Row *) qfirst(qc);
             void *key = RowFindKey(row, table->meta_table);
             void *target_key = RowFindKey(selected_row, table->meta_table);
-            if (!equal(GetComparableValue(key, primary_column->column_type), 
-                       GetComparableValue(target_key, primary_column->column_type), 
-                       primary_column->column_type)) 
-            {
+            if (NE(GetComparableValue(key, primary_column->column_type), 
+                   GetComparableValue(target_key, primary_column->column_type), 
+                   primary_column->column_type)
+            ) {
                 db_log(ERROR, "Key '%s' already exists, not allowd duplicate key. ",
                        get_key_str(value, meta_column->column_type));
                 return false;

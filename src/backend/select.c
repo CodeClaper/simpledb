@@ -85,7 +85,7 @@ static bool LeafNodeForSearchCondition(SelectResult *select_result, List *meta_c
 
 
 /* Check if LimitClauseNode is full. 
- * LimitClauseNode full means the poffset is greater or equal the offset.
+ * LimitClauseNode full means the poffset is GT or EQ the offset.
  * */
 inline static bool LimitClauseIsFull(SelectParam *selectParam) {
     return non_null(selectParam->limitClause) && 
@@ -104,22 +104,22 @@ static bool InternalNodeForComparisonPredicateValue(SelectResult *select_result,
     DataType data_type = meta_column->column_type;
     switch (type) {
         case O_EQ:
-            result = less(min_key, target_key, data_type) && less_equal(target_key, max_key, data_type);
+            result = LT(min_key, target_key, data_type) && LE(target_key, max_key, data_type);
             break;
         case O_NE:
-            result = !(less(min_key, target_key, data_type) && less_equal(target_key, max_key, data_type));
+            result = !(LT(min_key, target_key, data_type) && LE(target_key, max_key, data_type));
             break;
         case O_GT:
-            result = greater(max_key, target_key, data_type);
+            result = GT(max_key, target_key, data_type);
             break;
         case O_GE:
-            result = greater_equal(max_key, target_key, data_type);
+            result = GE(max_key, target_key, data_type);
             break;
         case O_LT:
-            result = greater(target_key, min_key, data_type);
+            result = GT(target_key, min_key, data_type);
             break;
         case O_LE:
-            result = greater(target_key, min_key, data_type);
+            result = GT(target_key, min_key, data_type);
             break;
         default:
             UNEXPECTED_VALUE("Unknown compare type.");
@@ -275,7 +275,7 @@ static bool ValueForPredicateColumn(SelectResult *select_result, List *meta_colu
         return false;
     }
     
-    /* Check if the target column equals the meta column. 
+    /* Check if the target column EQs the meta column. 
      * If yes, it means compare itself, just return true. */
     if (target_meta_column == meta_column)
         return true;
@@ -386,7 +386,7 @@ static bool ValueInValueList(List *value_list, void *value, MetaColumn *meta_col
     ListCell *lc;
     foreach (lc, value_list) {
         void *target = ValueItemNodeFindValue(lfirst(lc), meta_column);
-        if (equal(value, target, meta_column->column_type))
+        if (EQ(value, target, meta_column->column_type))
             return true;
     }
     return false;
@@ -719,7 +719,7 @@ static void DuplicateColumnNameHandler(List *meta_columns) {
 static char *SearchTableViaAlias(SelectResult *select_result, char *range_variable) {
     Assert(select_result != NULL);
 
-    /* Either table name or range variable is equal. */
+    /* Either table name or range variable is EQ. */
     if (streq(select_result->table_name, range_variable) || 
             streq(select_result->range_variable, range_variable))
         return select_result->table_name;
@@ -1489,7 +1489,7 @@ static KeyValue *CalcMaxValue(ColumnNode *column, SelectResult *select_result) {
         KeyValue *current = QueryRowColumnValue(select_result, column, row);
         data_type = current->data_type;
         void *current_value = current->value;
-        if (!max_value || greater(
+        if (!max_value || GT(
                 GetComparableValue(current_value, data_type), 
                 GetComparableValue(max_value, data_type), 
                 data_type)) 
@@ -1514,7 +1514,7 @@ static KeyValue *CalcMinValue(ColumnNode *column, SelectResult *select_result) {
         KeyValue *current = QueryRowColumnValue(select_result, column, row);
         data_type = current->data_type;
         void *current_value = current->value;
-        if (min_value == NULL || less(
+        if (min_value == NULL || LT(
                 GetComparableValue(current_value, data_type), 
                 GetComparableValue(min_value, data_type), 
                 data_type)

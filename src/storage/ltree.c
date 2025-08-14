@@ -421,7 +421,7 @@ uint32_t get_internal_node_key_index(void *node, void *key, uint32_t keys_num, u
     while (min_index != max_index) {
         uint32_t index = (max_index + min_index) / 2;
         void* index_key = get_internal_node_key(node, index, key_len, default_value_len);
-        if (greater_equal(GetComparableValue(index_key, key_data_type), GetComparableValue(key, key_data_type), key_data_type)) {
+        if (GE(GetComparableValue(index_key, key_data_type), GetComparableValue(key, key_data_type), key_data_type)) {
             max_index = index;
         } else {
             min_index = index + 1;
@@ -440,9 +440,9 @@ uint32_t get_internal_node_cell_child_page_num(void *node, void *key,
     while (min_index != max_index) {
         uint32_t index = (max_index + min_index) / 2;
         void *index_key = get_internal_node_key(node, index, key_len, default_value_len);
-        /* Notice: Greate Equal opreator is really import for store data, 
+        /* Notice: Greate EQ opreator is really import for store data, 
          * when keep the prince: always keep visible row lie at the forefront of same key cells. */
-        if (greater_equal(GetComparableValue(index_key, key_data_type), GetComparableValue(key, key_data_type), key_data_type)) 
+        if (GE(GetComparableValue(index_key, key_data_type), GetComparableValue(key, key_data_type), key_data_type)) 
             max_index = index;
         else 
             min_index = index + 1;
@@ -470,9 +470,9 @@ uint32_t get_leaf_node_cell_index(void *node, void *key, uint32_t cell_num,
     while (min_index != max_index) {
         uint32_t index = (max_index + min_index) / 2;
         void *key_at_index = get_leaf_node_cell_key(node, index, key_len, value_len, default_value_len);
-        /* Notice: Greate Equal opreator is really import for store data, 
+        /* Notice: Greate EQ opreator is really import for store data, 
          * when keep the prince: always keep visible row lie at the forefront of same key cells. */
-        if (greater_equal(GetComparableValue(key_at_index, key_data_type), GetComparableValue(key, key_data_type), key_data_type)) {
+        if (GE(GetComparableValue(key_at_index, key_data_type), GetComparableValue(key, key_data_type), key_data_type)) {
             max_index = index;
         } else {
             min_index = index + 1; 
@@ -575,17 +575,17 @@ static void update_internal_node_key(Table *table, uint32_t page_num, void *old_
     max_key = get_internal_node_key(internal_node, keys_num - 1, key_len, default_value_len);
     absolute_max_key = get_max_key(table, internal_node, key_len, value_len, default_value_len);
     
-    /* If old key greater than the max key, it means it exist in the right child node. 
+    /* If old key GT than the max key, it means it exist in the right child node. 
      * No need to change cells key. Otherwise, it means the key in the cells, 
      * need to be replaced with new one. */
-    if (!greater(GetComparableValue(old_key, key_data_type), GetComparableValue(max_key, key_data_type), key_data_type)) {
+    if (!GT(GetComparableValue(old_key, key_data_type), GetComparableValue(max_key, key_data_type), key_data_type)) {
         UpgradeLockBuffer(buffer);
         uint32_t key_index = get_internal_node_key_index(internal_node, old_key, keys_num, key_len, default_value_len, key_data_type);
         void *key = get_internal_node_key(internal_node, key_index, key_len, default_value_len);
 
-        /* Theoretically equal, just for check. Lots of tricky bugs are caught by the check. */
-        if (!equal(GetComparableValue(old_key, key_data_type), GetComparableValue(key, key_data_type), key_data_type))
-            Assert(equal(GetComparableValue(old_key, key_data_type), GetComparableValue(key, key_data_type), key_data_type));
+        /* Theoretically EQ, just for check. Lots of tricky bugs are caught by the check. */
+        if (!EQ(GetComparableValue(old_key, key_data_type), GetComparableValue(key, key_data_type), key_data_type))
+            Assert(EQ(GetComparableValue(old_key, key_data_type), GetComparableValue(key, key_data_type), key_data_type));
         set_internal_node_key(internal_node, key_index, new_key, key_len, default_value_len);
         MakeBufferDirty(buffer);
         DowngradeLockBuffer(buffer);
@@ -594,8 +594,8 @@ static void update_internal_node_key(Table *table, uint32_t page_num, void *old_
     /* If internal has parent node, and change its absolute max key, 
      * also need to change its parent key. */
     if (!is_root_node(internal_node) && 
-            (equal(GetComparableValue(old_key, key_data_type), GetComparableValue(absolute_max_key, key_data_type), key_data_type) || 
-                equal(GetComparableValue(new_key, key_data_type), GetComparableValue(absolute_max_key, key_data_type), key_data_type))) { 
+            (EQ(GetComparableValue(old_key, key_data_type), GetComparableValue(absolute_max_key, key_data_type), key_data_type) || 
+                EQ(GetComparableValue(new_key, key_data_type), GetComparableValue(absolute_max_key, key_data_type), key_data_type))) { 
         /* Get parent node buffer and lock it. */
         uint32_t parent_page_num = get_parent_pointer(internal_node);
         update_internal_node_key(table, parent_page_num, old_key, new_key, key_len, value_len, default_value_len, key_data_type);
@@ -675,7 +675,7 @@ static bool check_internal_node_cells_mass(void *internal_node, uint32_t keys_nu
     for (uint32_t i = 0; i < keys_num; i++) {
         void *key = get_internal_node_key(internal_node, i, key_len, default_value_len);
         if (before) {
-            if (greater(GetComparableValue(before, data_type), GetComparableValue(key, data_type), data_type))
+            if (GT(GetComparableValue(before, data_type), GetComparableValue(key, data_type), data_type))
                 return true;
         }
         before = key;
@@ -937,8 +937,8 @@ static void insert_and_split_internal_node(Table *table, uint32_t old_internal_p
     void *right_node = GetBufferPage(right_buffer);
     void *right_node_max_key = get_max_key(table, right_node, key_len, value_len, default_value_len);
 
-    /* Maybe the new child is greater than max key, need to compare. */
-    if (greater(GetComparableValue(new_child_max_key, primary_key_meta_column->column_type), 
+    /* Maybe the new child is GT than max key, need to compare. */
+    if (GT(GetComparableValue(new_child_max_key, primary_key_meta_column->column_type), 
                 GetComparableValue(right_node_max_key, primary_key_meta_column->column_type), 
                 primary_key_meta_column->column_type)) 
     {
@@ -1082,7 +1082,7 @@ static void insert_internal_node_cell(Table *table, uint32_t page_num, uint32_t 
         void *right_child_max_key = get_max_key(table, right_child, key_len, value_len, default_value_len);
 
         /* Right child always is the node which has the maximum key. */
-        if (greater_equal(GetComparableValue(new_child_max_key, primary_key_meta_column->column_type), 
+        if (GE(GetComparableValue(new_child_max_key, primary_key_meta_column->column_type), 
                           GetComparableValue(right_child_max_key, primary_key_meta_column->column_type), 
                           primary_key_meta_column->column_type)) 
         {
@@ -1107,9 +1107,9 @@ static void insert_internal_node_cell(Table *table, uint32_t page_num, uint32_t 
                 primary_key_meta_column->column_type
             );
 
-            /* Check the default key if equals the inserting one. */
+            /* Check the default key if EQs the inserting one. */
             void *default_key = get_internal_node_key(internal_node, new_child_max_key_index, key_len, default_value_len);
-            if (equal(GetComparableValue(default_key, primary_key_meta_column->column_type), 
+            if (EQ(GetComparableValue(default_key, primary_key_meta_column->column_type), 
                       GetComparableValue(new_child_max_key, primary_key_meta_column->column_type), 
                       primary_key_meta_column->column_type)) 
             {
@@ -1219,7 +1219,7 @@ static void insert_and_split_leaf_node(Row *row, Refer *refer) {
      * when i = 0 and decrease, it still satisfy i >= 0. */
     int i; 
     for (i = cell_num; i >= 0; i--) {
-        /* If index greater than LEAF_SPLIT_COUNT, destination is new old, 
+        /* If index GT than LEAF_SPLIT_COUNT, destination is new old, 
          * othersize, stay in the old node. */
         void *destination_node = (i >= LEFT_SPLIT_COUNT) 
                             ? new_node 
@@ -1369,7 +1369,7 @@ static void insert_leaf_node_new_cell(Row *row, Refer *refer) {
         void *old_max_key = get_leaf_node_cell_key(node, cell_num - 1, key_len, value_len, default_value_len);
         MetaColumn *primary_key_meta_column = MetaTableFindPrimaryKey(table->meta_table);
         /* Logic check.*/
-        Assert(greater_equal(GetComparableValue(key, primary_key_meta_column->column_type), 
+        Assert(GE(GetComparableValue(key, primary_key_meta_column->column_type), 
                              GetComparableValue(old_max_key, primary_key_meta_column->column_type), 
                              primary_key_meta_column->column_type));
 
@@ -1549,7 +1549,7 @@ static void split_root_leaf_node_append_column(uint32_t page_num, Table *table, 
 
     int i; 
     for (i = cell_num; i >= 0; i--) {
-        /* If index greater than LEAF_SPLIT_COUNT, destination is new old, othersize, stay in the old node. */
+        /* If index GT than LEAF_SPLIT_COUNT, destination is new old, othersize, stay in the old node. */
         void *destination_node = i >= LEFT_SPLIT_COUNT ? new_node : leaf_node;
         uint32_t destination_page = i  >= LEFT_SPLIT_COUNT ? next_unused_page_num : page_num;
 
@@ -2227,8 +2227,8 @@ void delete_internal_node_cell(Table *table, uint32_t page_num, void *key, DataT
                 ? NULL 
                 : get_internal_node_key(internal_node, key_num - 1, key_len, default_value_len);
 
-    /* If the key greater than max key, it means it is in right child node. */
-    if (greater(GetComparableValue(key, key_data_type), 
+    /* If the key GT than max key, it means it is in right child node. */
+    if (GT(GetComparableValue(key, key_data_type), 
                 GetComparableValue(max_key, key_data_type), 
                 key_data_type)) 
     {
@@ -2346,8 +2346,8 @@ void delete_row_data(void *key, Refer *refer) {
     obs_key = get_leaf_node_cell_key(leaf_node, refer->cell_num, key_len, value_len, default_value_len);
     primary_key_meta_column = MetaTableFindPrimaryKey(table->meta_table);
 
-    /* Theoretically, key and obs_key should be equal. */
-    Assert(equal(GetComparableValue(obs_key, primary_key_meta_column->column_type), 
+    /* Theoretically, key and obs_key should be EQ. */
+    Assert(EQ(GetComparableValue(obs_key, primary_key_meta_column->column_type), 
                  GetComparableValue(key, primary_key_meta_column->column_type), 
                  primary_key_meta_column->column_type));
 
