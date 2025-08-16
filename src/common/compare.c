@@ -326,6 +326,7 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
                 case T_DATE:
                 case T_TIMESTAMP:
                     return *(time_t *)left->value == *(time_t *)right->value;
+                case T_VARCHAR:
                 case T_STRING: {
                     struct tm tmp_time;
                     memset(&tmp_time, 0, sizeof(struct tm));
@@ -346,6 +347,7 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
                 case T_DATE:
                 case T_TIMESTAMP:
                     return *(time_t *)left->value == *(time_t *)right->value;
+                case T_VARCHAR:
                 case T_STRING: {
                     struct tm tmp_time;
                     memset(&tmp_time, 0, sizeof(struct tm));
@@ -585,6 +587,7 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
                 case T_DATE:
                 case T_TIMESTAMP:
                     return *(time_t *)left->value > *(time_t *)right->value;
+                case T_VARCHAR:
                 case T_STRING: {
                     struct tm tmp_time;
                     memset(&tmp_time, 0, sizeof(struct tm));
@@ -605,6 +608,7 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
                 case T_DATE:
                 case T_TIMESTAMP:
                     return *(time_t *)left->value > *(time_t *)right->value;
+                case T_VARCHAR:
                 case T_STRING: {
                     struct tm tmp_time;
                     memset(&tmp_time, 0, sizeof(struct tm));
