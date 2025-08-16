@@ -99,6 +99,84 @@ def test_with_paren():
         {'id': 'S008', 'name': 'alice', 'age': 13, 'birth': '2011-08-08', 'class': {'id': 'C004', 'location': 'East side', 'studentNum': 30}}
     ]
 
+## test with comparing two int values. 
+def test_with_compare_values():
+    sql = "select * from Student where 1 = 1;"
+    ret = client.execute(sql )
+    assert ret["success"] == True
+    assert ret["data"] == [ 
+        {'id': 'S001', 'name': 'kail', 'age': 10, 'birth': '2014-10-03', 'class': {'id': 'C001', 'location': 'Northwest corner', 'studentNum': 32}}, 
+        {'id': 'S002', 'name': 'sun', 'age': 11, 'birth': '2013-11-20', 'class': {'id': 'C001', 'location': 'Northwest corner', 'studentNum': 32}}, 
+        {'id': 'S003', 'name': 'ben', 'age': 12, 'birth': '2012-04-23', 'class': {'id': 'C002', 'location': 'Middle', 'studentNum': 28}}, 
+        {'id': 'S004', 'name': 'david', 'age': 14, 'birth': '2010-01-05', 'class': {'id': 'C002', 'location': 'Middle', 'studentNum': 28}}, 
+        {'id': 'S005', 'name': 'kunting', 'age': 9, 'birth': '2015-06-23', 'class': {'id': 'C002', 'location': 'Middle', 'studentNum': 28}}, 
+        {'id': 'S006', 'name': 'bob', 'age': 9, 'birth': '2015-07-07', 'class': {'id': 'C003', 'location': 'South side', 'studentNum': 33}}, 
+        {'id': 'S007', 'name': 'july', 'age': 11, 'birth': '2013-03-05', 'class': {'id': 'C003', 'location': 'South side', 'studentNum': 33}}, 
+        {'id': 'S008', 'name': 'alice', 'age': 13, 'birth': '2011-08-08', 'class': {'id': 'C004', 'location': 'East side', 'studentNum': 30}}
+    ]
+
+## test with reverse 
+def test_with_reversed():
+    sql = "select * from Student where 9 = age;"
+    ret = client.execute(sql)
+    assert ret["success"] == True
+    assert ret["data"] == [
+        {'id': 'S005', 'name': 'kunting', 'age': 9, 'birth': '2015-06-23', 'class': {'id': 'C002', 'location': 'Middle', 'studentNum': 28}}, 
+        {'id': 'S006', 'name': 'bob', 'age': 9, 'birth': '2015-07-07', 'class': {'id': 'C003', 'location': 'South side', 'studentNum': 33}} 
+    ]
+
+
+## test with compare tow int vlaues
+def test_with_compare_values2():
+    sql = "select * from Student where 1 = 2;"
+    ret = client.execute(sql)
+    assert ret["success"] == True
+    assert ret["data"] == []
+
+## test with compare calculate
+def test_with_compare_calculate():
+    sql = "select * from Student where (1 + 1 ) = 2;"
+    ret = client.execute(sql )
+    assert ret["success"] == True
+    assert ret["data"] == [ 
+        {'id': 'S001', 'name': 'kail', 'age': 10, 'birth': '2014-10-03', 'class': {'id': 'C001', 'location': 'Northwest corner', 'studentNum': 32}}, 
+        {'id': 'S002', 'name': 'sun', 'age': 11, 'birth': '2013-11-20', 'class': {'id': 'C001', 'location': 'Northwest corner', 'studentNum': 32}}, 
+        {'id': 'S003', 'name': 'ben', 'age': 12, 'birth': '2012-04-23', 'class': {'id': 'C002', 'location': 'Middle', 'studentNum': 28}}, 
+        {'id': 'S004', 'name': 'david', 'age': 14, 'birth': '2010-01-05', 'class': {'id': 'C002', 'location': 'Middle', 'studentNum': 28}}, 
+        {'id': 'S005', 'name': 'kunting', 'age': 9, 'birth': '2015-06-23', 'class': {'id': 'C002', 'location': 'Middle', 'studentNum': 28}}, 
+        {'id': 'S006', 'name': 'bob', 'age': 9, 'birth': '2015-07-07', 'class': {'id': 'C003', 'location': 'South side', 'studentNum': 33}}, 
+        {'id': 'S007', 'name': 'july', 'age': 11, 'birth': '2013-03-05', 'class': {'id': 'C003', 'location': 'South side', 'studentNum': 33}}, 
+        {'id': 'S008', 'name': 'alice', 'age': 13, 'birth': '2011-08-08', 'class': {'id': 'C004', 'location': 'East side', 'studentNum': 30}}
+    ]
+
+## test with compare calculate
+def test_with_compare_calculate2():
+    sql = "select * from Student where age = (4 + 5);"
+    ret = client.execute(sql )
+    assert ret["success"] == True
+    assert ret["data"] == [ 
+        {'id': 'S005', 'name': 'kunting', 'age': 9, 'birth': '2015-06-23', 'class': {'id': 'C002', 'location': 'Middle', 'studentNum': 28}}, 
+        {'id': 'S006', 'name': 'bob', 'age': 9, 'birth': '2015-07-07', 'class': {'id': 'C003', 'location': 'South side', 'studentNum': 33}}
+    ]
+
+## test with compare calculate
+def test_with_compare_calculate3():
+    sql = "select * from Student where age / 3 = 3;"
+    ret = client.execute(sql )
+    assert ret["success"] == True
+    assert ret["data"] == [ 
+        {'id': 'S005', 'name': 'kunting', 'age': 9, 'birth': '2015-06-23', 'class': {'id': 'C002', 'location': 'Middle', 'studentNum': 28}}, 
+        {'id': 'S006', 'name': 'bob', 'age': 9, 'birth': '2015-07-07', 'class': {'id': 'C003', 'location': 'South side', 'studentNum': 33}}
+    ]
+
+## test with aggregate function.
+def test_with_compare_aggregate_function():
+    sql = "select * from Student where sum(age) > 10;"
+    ret = client.execute(sql )
+    assert ret["success"] == False
+    assert ret["message"] == "Aggregate function not allowd in where."
+    
+
 ## test complex search condition. 
 def test_complex_search_condition():
     sql = "select * from Student where age > 9 and age < 12 or (class).studentNum <= 32 and (class).studentNum >= 30;"
