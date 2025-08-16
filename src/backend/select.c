@@ -29,6 +29,7 @@
 #include "meta.h"
 #include "row.h"
 #include "tuple.h"
+#include "func.h"
 #include "ltree.h"
 #include "pager.h"
 #include "table.h"
@@ -61,7 +62,6 @@ typedef struct SelectFromInternalChildTaskArgs {
 
 /* Maximum number of rows fetched at once.*/
 #define MAX_FETCH_ROWS 100 
-
 /* Function name, also as key in out json. */
 #define COUNT_NAME "count"
 #define SUM_NAME "sum"
@@ -73,6 +73,7 @@ typedef struct SelectFromInternalChildTaskArgs {
 #define MUL_NAME "mul"
 #define DIV_NAME "div"
 #define VALUE_NAME "value"
+
 
 static KeyValue *QueryFunctionValue(ScalarExpNode *scalar_exp, SelectResult *select_result);
 static KeyValue *QueryRowValueItem(ValueItemNode *value_item, Row *row);
@@ -316,8 +317,9 @@ static KeyValue *QueryTupleValueItem(SelectResult *select_result, List *meta_col
 }
 
 /* Query tuple function value. */
-static KeyValue *QueryTupleFuncitonValue(SelectResult *select_result, List *meta_columns, ValueItemNode *value_item, void *tuple) {
-    db_log(PANIC, "Not support function");
+static KeyValue *QueryTupleFuncitonValue(SelectResult *select_result, List *meta_columns, FunctionNode *function, void *tuple) {
+    if (IsAggFuncion(function->type))
+        db_log(ERROR, "Aggregate function not allowd in where.");
     return NULL;
 }
 
@@ -331,7 +333,7 @@ static KeyValue *QueryTupleValue(SelectResult *select_result, List *meta_columns
         case SCALAR_VALUE:
             return QueryTupleValueItem(select_result, meta_columns, scalar_exp->value, tuple);
         case SCALAR_FUNCTION:
-            return QueryTupleFuncitonValue(select_result, meta_columns, scalar_exp->value, tuple);
+            return QueryTupleFuncitonValue(select_result, meta_columns, scalar_exp->function, tuple);
         default:
             UNEXPECTED_VALUE(scalar_exp->type);
             return NULL;
