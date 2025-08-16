@@ -1,6 +1,6 @@
 /********************************** Select Module ********************************************
  * Auth:        JerryZhou
- * Created:     2023/08/13
+ test/pytest/unit/test_null.py* Created:     2023/08/13
  * Modify:      2024/11/26
  * Locataion:   src/backend/select.c
  * Description: Select modeule support select statment. 
@@ -77,11 +77,17 @@ typedef struct SelectFromInternalChildTaskArgs {
 static KeyValue *QueryFunctionValue(ScalarExpNode *scalar_exp, SelectResult *select_result);
 static KeyValue *QueryRowValueItem(ValueItemNode *value_item, Row *row);
 static KeyValue *QueryRowValue(SelectResult *select_result, ScalarExpNode *scalar_exp, Row *row);
+static KeyValue *QueryTupleValue(SelectResult *select_result, List *meta_columns, ScalarExpNode *scalar_exp, void *tuple);
 static Row *QueryColumnsSelectOneRow(SelectResult *select_result, List *scalar_exp_set, Row *row);
 static char *SearchTableViaAlias(SelectResult *select_result, char *range_variable);
 static KeyValue *QueryRowColumnValue(SelectResult *select_result, ColumnNode *column, Row *row);
 static bool InternalNodeForSearchCondition(SelectResult *select_result, void *min_key, void *max_key, SearchConditionNode *condition_node, MetaTable *meta_table);
 static bool LeafNodeForSearchCondition(SelectResult *select_result, List *meta_columns, void *tuple, SearchConditionNode *search_condition);
+static KeyValue *CalcAddition(KeyValue *left, KeyValue *right);
+static KeyValue *CalcSubstraction(KeyValue *left, KeyValue *right);
+static KeyValue *CalcMultplication(KeyValue *left, KeyValue *right);
+static KeyValue *CalcDivision(KeyValue *left, KeyValue *right);
+static KeyValue *QueryTupleColumnValue(SelectResult *select_result, List *meta_columns, ColumnNode *column, void *tuple);
 
 
 /* Check if LimitClauseNode is full. 
@@ -92,84 +98,10 @@ inline static bool LimitClauseIsFull(SelectParam *selectParam) {
         (selectParam->offset >= selectParam->limitClause->offset + selectParam->limitClause->rows);
 }
 
-
-/* Check if include internal comparison predicate for Value type. */
-static bool InternalNodeForComparisonPredicateValue(SelectResult *select_result, void *min_key, void *max_key, 
-                                                    CompareType type, ValueItemNode *value_item, MetaColumn *meta_column) {
-    bool result = false;
-    void *target_key = ValueItemNodeFindValue(value_item, meta_column);
-    if (!target_key)
-        return true;
-
-    DataType data_type = meta_column->column_type;
-    switch (type) {
-        case O_EQ:
-            result = LT(min_key, target_key, data_type) && LE(target_key, max_key, data_type);
-            break;
-        case O_NE:
-            result = !(LT(min_key, target_key, data_type) && LE(target_key, max_key, data_type));
-            break;
-        case O_GT:
-            result = GT(max_key, target_key, data_type);
-            break;
-        case O_GE:
-            result = GE(max_key, target_key, data_type);
-            break;
-        case O_LT:
-            result = GT(target_key, min_key, data_type);
-            break;
-        case O_LE:
-            result = GT(target_key, min_key, data_type);
-            break;
-        default:
-            UNEXPECTED_VALUE("Unknown compare type.");
-            break;
-    }
-    return result;
-}
-
 /* Check if include internal comparison predicate. */
 static bool InternalNodeForComparisonPredicate(SelectResult *select_result, void *min_key, void *max_key, 
                                                ComparisonNode *comparison, MetaTable *meta_table) {
-    ColumnNode *column = comparison->column;
-
-    /* Other table query condition regard as true. */
-    if (column->range_variable) {
-        char *table_mame = SearchTableViaAlias(select_result, column->range_variable);
-        if (is_empty(table_mame)) {
-            db_log(ERROR, "Unknown column '%s.%s' in where clause. ", 
-                   column->range_variable, column->column_name);
-            return false;
-        }
-        if (!table_mame || !streq(table_mame, meta_table->table_name))
-            return true;
-    }
-
-    MetaColumn *meta_column = NameFindMetaColumn(meta_table, column->column_name);
-    if (meta_table == NULL) {
-        db_log(ERROR, "Not found column '%s'. ", column->column_name);
-        return true;
-    }
-
-    ScalarExpNode *comparsion_value = comparison->value;
-    switch (comparsion_value->type) {
-        case SCALAR_VALUE:
-            return InternalNodeForComparisonPredicateValue(
-                select_result, 
-                min_key, max_key, comparison->type, 
-                comparsion_value->value, 
-                meta_column
-            );
-        /* Other comparison value type, regarded as true 
-         * for including internal predicate. */
-        case SCALAR_COLUMN:
-        case SCALAR_FUNCTION:
-        case SCALAR_CALCULATE:
-            return true;
-        default:
-            UNEXPECTED_VALUE("Not support comparison value type.");
-            return false;
-    }
+    return true;
 }
 
 /* Check if the internal meets predicate. */
@@ -237,8 +169,8 @@ static bool InternalNodeForBooleanTerm(SelectResult *select_result, void *min_ke
                                        BooleanTermNode *boolean_term, MetaTable *meta_table) {
     return boolean_term->and_boolean_term == NULL 
         ? InternalNodeForBooleanFactor(select_result, min_key,  max_key, boolean_term->boolean_factor, meta_table)
-        : InternalNodeForBooleanTerm(select_result,  min_key, max_key,  boolean_term->and_boolean_term,  meta_table) && 
-            InternalNodeForBooleanFactor(select_result, min_key,  max_key, boolean_term->boolean_factor, meta_table);
+        : InternalNodeForBooleanFactor(select_result, min_key,  max_key, boolean_term->boolean_factor, meta_table) && 
+            InternalNodeForBooleanTerm(select_result,  min_key, max_key, boolean_term->and_boolean_term, meta_table);
 }
 
 /* Check if the internal node meet the search condition. */
@@ -254,138 +186,11 @@ static bool InternalNodeForSearchCondition(SelectResult *select_result, void *mi
              InternalNodeForSearchCondition(select_result,  min_key, max_key,  condition_node->or_search_condition,  meta_table);
 }
 
-/* Check the row predicate for column. */
-static bool ValueForPredicateColumn(SelectResult *select_result, List *meta_columns, void *tuple, void *value, 
-                                    ColumnNode *column, CompareType type, MetaColumn *meta_column) {
-    char *table_name;
-    MetaColumn *target_meta_column;
-    
-    /* Find table name. Maybe not found when sing-table query, 
-     * there is no range_variable. */
-    table_name = SearchTableViaAlias(select_result, column->range_variable);
-
-    /* Find meta column. */
-    target_meta_column = is_empty(table_name) 
-            ? NameFindMetaColumnInner(meta_columns, column->column_name)
-            : TableColumnNameFindMetaColumn(meta_columns, table_name, column->column_name);
-    if (target_meta_column == NULL) {
-        db_log(ERROR, "Unknown column '%s.%s' in where clause. ", 
-               column->range_variable, 
-               column->column_name);
-        return false;
-    }
-    
-    /* Check if the target column EQs the meta column. 
-     * If yes, it means compare itself, just return true. */
-    if (target_meta_column == meta_column)
-        return true;
-    
-    /* Get the target value and eval. */
-    void *target_value = TupeFindValue(tuple, target_meta_column);
-    return eval(type, value, target_value, meta_column->column_type);
-}
-
-/* Check the row predicate for value. */
-static bool ValueForPredicateValue(SelectResult *select_result, void *value, ValueItemNode *value_item, 
-                                      CompareType type, MetaColumn *meta_column) {
-    void *target = ValueItemNodeFindValue(value_item, meta_column);
-    return eval(type, value, target, meta_column->column_type);
-}
-
-/* Check if the tuple meets predicate. */
-static bool TupleForPredicate(SelectResult *select_result, List *meta_columns, void *tuple, 
-                              ColumnNode *column, ComparisonNode *comparison) {
-    MetaColumn *meta_column;
-    void *value;
-
-    /* Fint the corresponding meta column. */
-    if (column->meta_column != NULL)
-        meta_column = column->meta_column;
-    else {
-        if (column->range_variable) {
-            char *rtable_name = SearchTableViaAlias(select_result, column->range_variable);
-            if (is_empty(rtable_name)) {
-                db_log(ERROR, "Unknown column '%s.%s' in where clause. ", 
-                       column->range_variable, column->column_name);
-                return false;
-            }
-            meta_column = TableColumnNameFindMetaColumn(meta_columns, rtable_name, column->column_name);
-        } else 
-            meta_column = NameFindMetaColumnInner(meta_columns, column->column_name);
-        column->meta_column = copy_meta_column(meta_column);
-    }
-
-    if (meta_column == NULL) {
-        db_log(ERROR, "Not found column '%s'. ", column->column_name);
-        return false;
-    }
-    
-    /* Get value in tuple. */
-    value = TupeFindValue(tuple, meta_column);
-
-    if (column->has_sub_column && column->sub_column) {
-        /* Just check, if column has sub column, it must be Reference type. */
-        Assert(meta_column->column_type == T_REFERENCE);
-        /* Get subrow, and recursion. */
-        void *sub_tuple = DefineTuple((Refer *) value);
-        Table *sub_table = open_table(meta_column->table_name);
-        return TupleForPredicate(
-            select_result, 
-            sub_table->meta_table->meta_columns,
-            sub_tuple, 
-            column->sub_column, 
-            comparison
-        ); 
-    } else if (column->has_sub_column && column->scalar_exp_list) {
-        db_log(ERROR, "Not support support sub column for pridicate.");
-        return false;
-    } else {
-        ScalarExpNode *comparison_value = comparison->value;
-        switch (comparison_value->type) {
-            case SCALAR_COLUMN:
-                return ValueForPredicateColumn(
-                    select_result, meta_columns, tuple, 
-                    GetComparableValue(value, meta_column->column_type), 
-                    comparison_value->column, 
-                    comparison->type, 
-                    meta_column
-                );    
-            case SCALAR_VALUE: 
-                return ValueForPredicateValue(
-                    select_result, 
-                    GetComparableValue(value, meta_column->column_type),
-                    comparison_value->value,
-                    comparison->type, 
-                    meta_column
-                );
-            case SCALAR_FUNCTION:
-                db_log(ERROR, "Not support function as comparison value.");
-                return false;
-            case SCALAR_CALCULATE:
-                db_log(ERROR, "Not support calcuation comparison value.");
-                return false;
-            default:
-                UNEXPECTED_VALUE(comparison_value->type);
-                return false;
-        }
-    }
-    /* When column skip test, 
-     * it may exists in other tables when multi-table query. */
-    return true;
-}
-
-
-/* Check if include leaf node satisfy comparison predicate. */
-static bool LeafNodeForComparisonPredicate(SelectResult *select_result, List *meta_columns, 
-                                           void *tuple, ComparisonNode *comparison) {
-    return TupleForPredicate(select_result, meta_columns, tuple, comparison->column, comparison);
-}
-
 /* Check if value in value list. */
 static bool ValueInValueList(List *value_list, void *value, MetaColumn *meta_column) {
     ListCell *lc;
     foreach (lc, value_list) {
-        void *target = ValueItemNodeFindValue(lfirst(lc), meta_column);
+        void *target = ValueItemNodeFindValue(lfirst(lc));
         if (EQ(value, target, meta_column->column_type))
             return true;
     }
@@ -431,13 +236,203 @@ static bool ValueLikeStringValue(char *value, char *target) {
         return streq(value, target);
 }
 
+static MetaColumn *ColumnNodeFindMetaColumn(SelectResult *select_result, List *meta_columns, ColumnNode *column) {
+    char *table_name;
+    MetaColumn *target_meta_column;
+
+    /* Find table name. Maybe not found when sing-table query, 
+     * there is no range_variable. */
+    table_name = SearchTableViaAlias(select_result, column->range_variable);
+
+    /* Find meta column. */
+    target_meta_column = is_empty(table_name) 
+            ? NameFindMetaColumnInner(meta_columns, column->column_name)
+            : TableColumnNameFindMetaColumn(meta_columns, table_name, column->column_name);
+    if (target_meta_column == NULL) {
+        db_log(ERROR, "Unknown column '%s.%s' in where clause. ", 
+               column->range_variable, 
+               column->column_name);
+        return NULL;
+    }
+    
+    return target_meta_column;
+}
+
+/* Query tuple for sub column value. */
+static KeyValue *QueryTupleColumnValueForSubColumn(SelectResult *select_result, MetaColumn *target_meta_column, ColumnNode *column, void *value) {
+    Assert(column->has_sub_column);
+    if (column->sub_column != NULL) {
+        Assert(target_meta_column->column_type == T_REFERENCE);
+        void *sub_tuple = DefineTuple((Refer *) value);
+        Table *sub_table = open_table(target_meta_column->table_name);
+        return QueryTupleColumnValue(select_result, sub_table->meta_table->meta_columns, column->sub_column, sub_tuple);
+    } else if (!list_empty(column->scalar_exp_list)) {
+        db_log(ERROR, "Not support sub column scalar exp list for search conditon.");
+    }
+    return NULL;
+}
+
+/* Query tuple column value. */
+static KeyValue *QueryTupleColumnValue(SelectResult *select_result, List *meta_columns, ColumnNode *column, void *tuple) {
+    MetaColumn *target_meta_column = ColumnNodeFindMetaColumn(select_result, meta_columns, column);
+    void *value = GetComparableValue(TupeFindValue(tuple, target_meta_column), target_meta_column->column_type);
+    return column->has_sub_column 
+        ? QueryTupleColumnValueForSubColumn(select_result, target_meta_column, column, value)
+        : new_key_value(target_meta_column->column_name, value, target_meta_column->column_type, target_meta_column->own_table_name);
+}
+
+/* Query tuple calulate value. */
+static KeyValue *QueryTupleCalulateValue(SelectResult *select_result, List *meta_columns, CalculateNode *calculate, void *tuple) {
+    KeyValue *result, *left, *right;
+
+    result = NULL;
+    left = QueryTupleValue(select_result, meta_columns, calculate->left, tuple);
+    right = QueryTupleValue(select_result, meta_columns, calculate->right, tuple);
+
+    switch (calculate->type) {
+        case CAL_ADD:
+            result = CalcAddition(left, right);
+            break;
+        case CAL_SUB:
+            result = CalcSubstraction(left, right);
+            break;
+        case CAL_MUL:
+            result = CalcMultplication(left, right);
+            break;
+        case CAL_DIV:
+            result = CalcDivision(left, right);
+            break;
+    }
+
+    return result;
+}
+
+/* Query tuple value item. */
+static KeyValue *QueryTupleValueItem(SelectResult *select_result, List *meta_columns, ValueItemNode *value_item, void *tuple) {
+    void *value = ValueItemNodeFindValue(value_item);
+    return value == NULL 
+        ? new_key_value(NULL, value, T_UNKNOWN, NULL)
+        : new_key_value(NULL, value, AtomTypeConvertDataType(value_item->value.atom->type), NULL);
+}
+
+/* Query tuple function value. */
+static KeyValue *QueryTupleFuncitonValue(SelectResult *select_result, List *meta_columns, ValueItemNode *value_item, void *tuple) {
+    db_log(PANIC, "Not support function");
+    return NULL;
+}
+
+/* Query tuple value. */
+static KeyValue *QueryTupleValue(SelectResult *select_result, List *meta_columns, ScalarExpNode *scalar_exp, void *tuple) {
+    switch (scalar_exp->type) {
+        case SCALAR_COLUMN:
+            return QueryTupleColumnValue(select_result, meta_columns, scalar_exp->column, tuple);
+        case SCALAR_CALCULATE:
+            return QueryTupleCalulateValue(select_result, meta_columns, scalar_exp->calculate, tuple);
+        case SCALAR_VALUE:
+            return QueryTupleValueItem(select_result, meta_columns, scalar_exp->value, tuple);
+        case SCALAR_FUNCTION:
+            return QueryTupleFuncitonValue(select_result, meta_columns, scalar_exp->value, tuple);
+        default:
+            UNEXPECTED_VALUE(scalar_exp->type);
+            return NULL;
+    }
+}
+
+
+static inline ReferValue *ScalarExpFindReferValue(ScalarExpNode *scalar_exp) {
+    return scalar_exp->value->value.atom->value.referval;
+}
+
+static bool ValueItemIsReferValue(ValueItemNode *value_item) {
+    switch (value_item->type) {
+        case V_ATOM: {
+            AtomNode *atom_node = value_item->value.atom;
+            return atom_node->type == A_REFERENCE;
+        }
+        case V_ARRAY: {
+            ListCell *lc;
+            foreach(lc, value_item->value.value_list) {
+                ValueItemNode *value_item = (ValueItemNode *)lfirst(lc);
+                /* Any of it is ReferValue is true. */
+                if (ValueItemIsReferValue(value_item))
+                    return true;
+            }
+        }
+        case V_NULL:
+            return false;
+    }
+    return false;
+} 
+
+static bool ScalarExpIsReferValue(ScalarExpNode *scalar_exp) {
+    if (scalar_exp->type == SCALAR_VALUE) {
+        ValueItemNode *value_item = scalar_exp->value;
+        return ValueItemIsReferValue(value_item);
+    }
+    return false;
+}
+
+
+/* If satisfy columnn and refer value in comparison. */
+static bool SatisfyColumnAndReferValueCompparison(ScalarExpNode *left, ScalarExpNode *right) {
+    if (ScalarExpIsReferValue(left)) {
+        if (right->type == SCALAR_COLUMN)
+            return true;
+        else
+            db_log(ERROR, "Refer value must compare with column.");
+    } else if (ScalarExpIsReferValue(right)) {
+        if (left->type == SCALAR_COLUMN)
+            return true;
+        else
+            db_log(ERROR, "Refer value must compare with column.");
+    }
+
+    return false;
+}
+
+static bool ColumnAndReferValueCompparison(SelectResult *select_result, List *meta_columns, CompareType compare_type, 
+                                           ScalarExpNode *left, ScalarExpNode *right, void *tuple) {
+    MetaColumn *target_meta_column;
+    ReferValue *referVal;
+    void *source, *target;
+
+    if (ScalarExpIsReferValue(right)) {
+        target_meta_column = ColumnNodeFindMetaColumn(select_result, meta_columns, left->column);
+        referVal = ScalarExpFindReferValue(right);
+        source = TupeFindValue(tuple, target_meta_column);
+        target = fetch_refer(target_meta_column, referVal->condition);
+    } else {
+        target_meta_column = ColumnNodeFindMetaColumn(select_result, meta_columns, right->column);
+        referVal = ScalarExpFindReferValue(left);
+        source = fetch_refer(target_meta_column, referVal->condition);
+        target = TupeFindValue(tuple, target_meta_column);
+    }
+
+    return eval(compare_type, source, target, T_REFERENCE);
+}
+
+/* Check if include leaf node satisfy comparison predicate. */
+static bool LeafNodeForComparisonPredicate(SelectResult *select_result, List *meta_columns, 
+                                           void *tuple, ComparisonNode *comparison) {
+    /* Do specially for column-refervalue comparison. */
+    if (SatisfyColumnAndReferValueCompparison(comparison->left, comparison->right))
+        return ColumnAndReferValueCompparison(select_result, 
+                                              meta_columns, 
+                                              comparison->type, comparison->left, 
+                                              comparison->right, 
+                                              tuple);
+    /* Do others normally. */
+    KeyValue *leftVal = QueryTupleValue(select_result, meta_columns, comparison->left, tuple);
+    KeyValue *rightVal = QueryTupleValue(select_result, meta_columns, comparison->right, tuple);
+    return KeyValueEval(comparison->type, leftVal, rightVal);
+}
 
 /* Check if include leaf node satisfy like predicate. */
 static bool LeafNodeForLikePredicate(SelectResult *select_result, void *tuple, LikeNode *like_node) {
     Table *table = open_table(select_result->table_name);
     MetaColumn *meta_column = NameFindMetaColumn(table->meta_table, like_node->column->column_name);
     if (meta_column != NULL) {
-        void *target_value = ValueItemNodeFindValue(like_node->value, meta_column);
+        void *target_value = ValueItemNodeFindValue(like_node->value);
         void *value = TupeFindValue(tuple, meta_column);
         return ValueLikeStringValue(GetComparableValue(value, meta_column->column_type), target_value);
     }
@@ -500,9 +495,8 @@ static bool LeafNodeForBooleanFactor(SelectResult *select_result, List *meta_col
 static bool LeafNodeForBooleanTerm(SelectResult *select_result, List *meta_columns, void *tuple, BooleanTermNode *boolean_term) {
     return boolean_term->and_boolean_term == NULL
         ? LeafNodeForBooleanFactor(select_result, meta_columns, tuple, boolean_term->boolean_factor)
-        : LeafNodeForBooleanTerm(select_result, meta_columns, tuple, boolean_term->and_boolean_term) &&
-             LeafNodeForBooleanFactor(select_result, meta_columns, tuple, boolean_term->boolean_factor);
-            
+        : LeafNodeForBooleanFactor(select_result, meta_columns, tuple, boolean_term->boolean_factor) &&
+            LeafNodeForBooleanTerm(select_result, meta_columns, tuple, boolean_term->and_boolean_term);
 }
 
 /* Check if the leaf node meets search condition. */
@@ -511,9 +505,9 @@ static bool LeafNodeForSearchCondition(SelectResult *select_result, List *meta_c
     if (search_condition == NULL) 
           return true;
     return search_condition->or_search_condition == NULL 
-        ? LeafNodeForBooleanTerm(select_result,  meta_columns,  tuple,  search_condition->boolean_term) 
-        : LeafNodeForSearchCondition(select_result,  meta_columns,  tuple,  search_condition->or_search_condition) ||
-             LeafNodeForBooleanTerm(select_result,  meta_columns,  tuple,  search_condition->boolean_term);
+        ? LeafNodeForBooleanTerm(select_result, meta_columns, tuple, search_condition->boolean_term) 
+        : LeafNodeForSearchCondition(select_result, meta_columns, tuple, search_condition->or_search_condition) ||
+             LeafNodeForBooleanTerm(select_result, meta_columns, tuple, search_condition->boolean_term);
 }
 
 /* Define the tuple by refer. 
@@ -1236,13 +1230,15 @@ static SearchConditionNode *ColumnValueConvertCondition(MetaColumn *meta_column,
     predicate->type = PRE_COMPARISON;
     predicate->comparison = instance(ComparisonNode);
     predicate->comparison->type = O_EQ;
-    predicate->comparison->column = instance(ColumnNode);
-    predicate->comparison->column->column_name = dstrdup(meta_column->column_name);
-    predicate->comparison->value = instance(ScalarExpNode);
-    predicate->comparison->value->type = SCALAR_VALUE;
-    predicate->comparison->value->value = instance(ValueItemNode);
-    predicate->comparison->value->value->type = V_ATOM;
-    predicate->comparison->value->value->value.atom = GenerateAtomNode(meta_column, value);
+    predicate->comparison->left = instance(ScalarExpNode);
+    predicate->comparison->left->type = SCALAR_COLUMN;
+    predicate->comparison->left->column = instance(ColumnNode);
+    predicate->comparison->left->column->column_name = dstrdup(meta_column->column_name);
+    predicate->comparison->right = instance(ScalarExpNode);
+    predicate->comparison->right->type = SCALAR_VALUE;
+    predicate->comparison->right->value = instance(ValueItemNode);
+    predicate->comparison->right->value->type = V_ATOM;
+    predicate->comparison->right->value->value.atom = GenerateAtomNode(meta_column, value);
 
     /* Assemble All. */
     boolean_primary->type = PREDICATE_BOOLEAN_PRIMAYR; 
@@ -2233,7 +2229,7 @@ static KeyValue *QueryRowValueItem(ValueItemNode *value_item, Row *row) {
         case A_BOOL:
             return new_key_value(VALUE_NAME, &atom_node->value.boolval, T_BOOL, NULL);
         case A_FLOAT:
-            return new_key_value(VALUE_NAME, &atom_node->value.boolval,  T_DOUBLE, NULL);
+            return new_key_value(VALUE_NAME, &atom_node->value.floatval,  T_DOUBLE, NULL);
         case A_STRING:
             return new_key_value(VALUE_NAME, atom_node->value.strval, T_STRING, NULL);
         case A_REFERENCE:

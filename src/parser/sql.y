@@ -1204,12 +1204,12 @@ predicate:
         }
     ;
 comparison_predicate:
-    column compare scalar_exp
+    scalar_exp compare scalar_exp
         {
             ComparisonNode *comparison_node = instance(ComparisonNode);
-            comparison_node->column = $1;
+            comparison_node->left = $1;
             comparison_node->type = $2;
-            comparison_node->value = $3;
+            comparison_node->right = $3;
             $$ = comparison_node;
         }
     ;

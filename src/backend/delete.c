@@ -82,7 +82,8 @@ void exec_delete_statement(DeleteNode *delete_node, DBResult *result) {
 
     /* Query with condition and delete satisfied row. */
     QueryUnderSearchCondition(
-        delete_node->condition_node, select_result, 
+        delete_node->condition_node, 
+        select_result, 
         delete_row, ARG_NULL, NULL
     );
 

@@ -355,8 +355,8 @@ void free_assignment_node(AssignmentNode *assignment_node) {
 /* Free ComparisonNode. */
 static void free_comparison_node(ComparisonNode *comparison_node) {
     if (comparison_node) {
-        free_column_node(comparison_node->column);
-        free_scalar_exp_node(comparison_node->value);
+        free_scalar_exp_node(comparison_node->left);
+        free_scalar_exp_node(comparison_node->right);
         dfree(comparison_node);
     }
 }

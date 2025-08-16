@@ -159,17 +159,25 @@ bool eval(CompareType compare_type, void *source, void *target, DataType data_ty
 
 /* Compare key values for EQ. */
 static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
+    /* Deal with NULL case. */
+    if (left->value == NULL && right->value == NULL) 
+        return true;
+    else if (left->value != NULL && right->value == NULL) 
+        return false;
+    else if (left->value == NULL && right->value != NULL)
+        return false;
+
     switch (left->data_type) {
         case T_BOOL: {
             switch (right->data_type) {
                 case T_BOOL:
-                    return EQ(left->value, right->value, T_BOOL);
+                    return *(bool *)left->value == *(bool *)right->value;
                 case T_STRING: {
                     bool val;
                     ST_FLAG flag = stob(right->value, &val);
                     switch (flag) {
                         case ST_SUCCESS:
-                            return EQ(left->value, &val, T_BOOL);
+                            return *(bool *)left->value == val;
                         case ST_INVALID: {
                             db_log(ERROR, "Invalid input %s for type bool.", right->value);
                             return false;
@@ -192,14 +200,15 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
         case T_INT: {
             switch (right->data_type) {
                 case T_INT:
+                    return *(int32_t *)left->value == *(int32_t *)right->value;
                 case T_LONG:
-                    return EQ(left->value, right->value, T_INT);
+                    return *(int32_t *)left->value == *(int64_t *)right->value;
                 case T_STRING: {
                     int32_t val;
                     ST_FLAG flag = stoi32(right->value, &val);
                     switch (flag) {
                         case ST_SUCCESS:
-                            return EQ(left->value, &val, T_INT);
+                            return *(int32_t *)left->value == val;
                         case ST_INVALID: {
                             db_log(ERROR, "Invalid input %s for type int.", right->value);
                             return false;
@@ -222,14 +231,15 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
         case T_LONG: {
             switch (right->data_type) {
                 case T_INT:
+                    return *(int64_t *)left->value == *(int32_t *)right->value;
                 case T_LONG:
-                    return EQ(left->value, right->value, T_LONG);
+                    return *(int64_t *)left->value == *(int64_t *)right->value;
                 case T_STRING: {
                     int64_t val;
                     ST_FLAG flag = stoi64(right->value, &val);
                     switch (flag) {
                         case ST_SUCCESS:
-                            return EQ(left->value, &val, T_LONG);
+                            return *(int64_t *)left->value == val;
                         case ST_INVALID: {
                             db_log(ERROR, "Invalid input %s for type long.", right->value);
                             return false;
@@ -252,14 +262,15 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
         case T_FLOAT: {
             switch (right->data_type) {
                 case T_INT:
+                    return *(float *)left->value == *(int32_t *)right->value;
                 case T_LONG:
-                    return EQ(left->value, right->value, T_FLOAT);
+                    return *(float *)left->value == *(int64_t *)right->value;
                 case T_STRING: {
                     float val;
                     ST_FLAG flag = stof(right->value, &val);
                     switch (flag) {
                         case ST_SUCCESS:
-                            return EQ(left->value, &val, T_FLOAT);
+                            return *(float *)left->value == val;
                         case ST_INVALID: {
                             db_log(ERROR, "Invalid input %s for type float.", right->value);
                             return false;
@@ -282,14 +293,15 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
         case T_DOUBLE: {
             switch (right->data_type) {
                 case T_INT:
+                    return *(double *)left->value == *(int32_t *)right->value;
                 case T_LONG:
-                    return EQ(left->value, right->value, T_FLOAT);
+                    return *(double *)left->value == *(int64_t *)right->value;
                 case T_STRING: {
-                    float val;
-                    ST_FLAG flag = stof(right->value, &val);
+                    double val;
+                    ST_FLAG flag = stod(right->value, &val);
                     switch (flag) {
                         case ST_SUCCESS:
-                            return EQ(left->value, &val, T_FLOAT);
+                            return *(double *)left->value == *(double *)right->value;
                         case ST_INVALID: {
                             db_log(ERROR, "Invalid input %s for type float.", right->value);
                             return false;
@@ -313,7 +325,7 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
             switch (right->data_type) {
                 case T_DATE:
                 case T_TIMESTAMP:
-                    return EQ(left->value, right->value, T_DATE);
+                    return *(time_t *)left->value == *(time_t *)right->value;
                 case T_STRING: {
                     struct tm tmp_time;
                     memset(&tmp_time, 0, sizeof(struct tm));
@@ -322,7 +334,7 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
                     tmp_time.tm_min = 0;
                     tmp_time.tm_hour = 0;
                     time_t val = mktime(&tmp_time);
-                    return EQ(left->value, &val, T_DATE);
+                    return *(time_t *)left->value == val;
                 }
                 default:
                     goto ERR_TYPE;
@@ -333,13 +345,13 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
             switch (right->data_type) {
                 case T_DATE:
                 case T_TIMESTAMP:
-                    return EQ(left->value, right->value, T_TIMESTAMP);
+                    return *(time_t *)left->value == *(time_t *)right->value;
                 case T_STRING: {
                     struct tm tmp_time;
                     memset(&tmp_time, 0, sizeof(struct tm));
                     strptime(right->value, "%Y-%m-%d %H:%M:%S", &tmp_time);
                     time_t val = mktime(&tmp_time);
-                    return EQ(left->value, &val, T_DATE);
+                    return *(time_t *)left->value == val;
                 }
                 default:
                     goto ERR_TYPE;
@@ -357,8 +369,10 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
                 case T_TIMESTAMP:
                     /* Same result after reversing. */
                     return KeyValueEQ(right, left);
-                case T_STRING: 
-                    return EQ(left->value, right->value, T_STRING);
+                case T_CHAR:
+                case T_VARCHAR:
+                case T_STRING:
+                    return strcmp(left->value, right->value) == 0;
                 default:
                     goto ERR_TYPE;
             }
@@ -367,7 +381,7 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
         case T_REFERENCE: {
             switch (right->data_type) {
                 case T_REFERENCE:
-                    return EQ(left->value, right->value, T_REFERENCE);
+                    return refer_equals(left->value, right->value);
                 default:
                     goto ERR_TYPE;
             }
@@ -376,7 +390,9 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
         case T_ROW: {
             switch (right->data_type) {
                 case T_ROW:
-                    return EQ(left->value, right->value, T_ROW);
+                    /* For comparing tow rows, just compare their pointer, 
+                     * maybe this is not right way, consider it int future. */
+                    return left->value == right->value;
                 default:
                     goto ERR_TYPE;
             }
@@ -385,7 +401,6 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
         default:
             UNEXPECTED_VALUE("Unknown data type.");
             break;
-            
     }
 
 ERR_TYPE:
@@ -403,17 +418,25 @@ static bool KeyValueNE(KeyValue *left, KeyValue *right) {
 
 /* Compare key values for GT. */
 static bool KeyValueGT(KeyValue *left, KeyValue *right) {
+    /* Deal with NULL case. */
+    if (left->value == NULL && right->value == NULL) 
+        return false;
+    else if (left->value != NULL && right->value == NULL) 
+        return true;
+    else if (left->value == NULL && right->value != NULL)
+        return false;
+
     switch (left->data_type) {
         case T_BOOL: {
             switch (right->data_type) {
                 case T_BOOL:
-                    return GT(left->value, right->value, T_BOOL);
+                    return *(bool *)left->value > *(bool *)right->value;
                 case T_STRING: {
                     bool val;
                     ST_FLAG flag = stob(right->value, &val);
                     switch (flag) {
                         case ST_SUCCESS:
-                            return GT(left->value, &val, T_BOOL);
+                            return *(bool *)left->value > val;
                         case ST_INVALID: {
                             db_log(ERROR, "Invalid input %s for type bool.", right->value);
                             return false;
@@ -436,14 +459,15 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
         case T_INT: {
             switch (right->data_type) {
                 case T_INT:
+                    return *(int32_t *)left->value > *(int32_t *)right->value;
                 case T_LONG:
-                    return GT(left->value, right->value, T_INT);
+                    return *(int32_t *)left->value > *(int64_t *)right->value;
                 case T_STRING: {
                     int32_t val;
                     ST_FLAG flag = stoi32(right->value, &val);
                     switch (flag) {
                         case ST_SUCCESS:
-                            return GT(left->value, &val, T_INT);
+                            return *(int32_t *)left->value > val;
                         case ST_INVALID: {
                             db_log(ERROR, "Invalid input %s for type int.", right->value);
                             return false;
@@ -466,14 +490,15 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
         case T_LONG: {
             switch (right->data_type) {
                 case T_INT:
+                    return *(int64_t *)left->value > *(int32_t *)right->value;
                 case T_LONG:
-                    return GT(left->value, right->value, T_LONG);
+                    return *(int64_t *)left->value > *(int64_t *)right->value;
                 case T_STRING: {
                     int64_t val;
                     ST_FLAG flag = stoi64(right->value, &val);
                     switch (flag) {
                         case ST_SUCCESS:
-                            return GT(left->value, &val, T_LONG);
+                            return *(int64_t *)left->value > val;
                         case ST_INVALID: {
                             db_log(ERROR, "Invalid input %s for type long.", right->value);
                             return false;
@@ -496,14 +521,15 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
         case T_FLOAT: {
             switch (right->data_type) {
                 case T_INT:
+                    return *(float *)left->value > *(int32_t *)right->value;
                 case T_LONG:
-                    return GT(left->value, right->value, T_FLOAT);
+                    return *(float *)left->value > *(int64_t *)right->value;
                 case T_STRING: {
                     float val;
                     ST_FLAG flag = stof(right->value, &val);
                     switch (flag) {
                         case ST_SUCCESS:
-                            return GT(left->value, &val, T_FLOAT);
+                            return *(float *)left->value > val;
                         case ST_INVALID: {
                             db_log(ERROR, "Invalid input %s for type float.", right->value);
                             return false;
@@ -526,14 +552,15 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
         case T_DOUBLE: {
             switch (right->data_type) {
                 case T_INT:
+                    return *(double *)left->value > *(int32_t *)right->value;
                 case T_LONG:
-                    return GT(left->value, right->value, T_FLOAT);
+                    return *(double *)left->value > *(int64_t *)right->value;
                 case T_STRING: {
-                    float val;
-                    ST_FLAG flag = stof(right->value, &val);
+                    double val;
+                    ST_FLAG flag = stod(right->value, &val);
                     switch (flag) {
                         case ST_SUCCESS:
-                            return GT(left->value, &val, T_FLOAT);
+                            return *(double *)left->value > *(double *)right->value;
                         case ST_INVALID: {
                             db_log(ERROR, "Invalid input %s for type float.", right->value);
                             return false;
@@ -557,7 +584,7 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
             switch (right->data_type) {
                 case T_DATE:
                 case T_TIMESTAMP:
-                    return GT(left->value, right->value, T_DATE);
+                    return *(time_t *)left->value > *(time_t *)right->value;
                 case T_STRING: {
                     struct tm tmp_time;
                     memset(&tmp_time, 0, sizeof(struct tm));
@@ -566,7 +593,7 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
                     tmp_time.tm_min = 0;
                     tmp_time.tm_hour = 0;
                     time_t val = mktime(&tmp_time);
-                    return GT(left->value, &val, T_DATE);
+                    return *(time_t *)left->value > val;
                 }
                 default:
                     goto ERR_TYPE;
@@ -577,13 +604,13 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
             switch (right->data_type) {
                 case T_DATE:
                 case T_TIMESTAMP:
-                    return GT(left->value, right->value, T_TIMESTAMP);
+                    return *(time_t *)left->value > *(time_t *)right->value;
                 case T_STRING: {
                     struct tm tmp_time;
                     memset(&tmp_time, 0, sizeof(struct tm));
                     strptime(right->value, "%Y-%m-%d %H:%M:%S", &tmp_time);
                     time_t val = mktime(&tmp_time);
-                    return GT(left->value, &val, T_DATE);
+                    return *(time_t *)left->value > val;
                 }
                 default:
                     goto ERR_TYPE;
@@ -600,9 +627,11 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
                 case T_DATE:
                 case T_TIMESTAMP:
                     /* Same result after reversing. */
-                    return KeyValueLE(right, left);
-                case T_STRING: 
-                    return GT(left->value, right->value, T_STRING);
+                    return !KeyValueGT(right, left) && KeyValueNE(left, right);
+                case T_CHAR:
+                case T_VARCHAR:
+                case T_STRING:
+                    return strcmp(left->value, right->value) > 0;
                 default:
                     goto ERR_TYPE;
             }
@@ -611,7 +640,7 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
         case T_REFERENCE: {
             switch (right->data_type) {
                 case T_REFERENCE:
-                    return GT(left->value, right->value, T_REFERENCE);
+                    db_log(ERROR, "Refer data not allowed to be operated GT.");
                 default:
                     goto ERR_TYPE;
             }
@@ -620,7 +649,7 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
         case T_ROW: {
             switch (right->data_type) {
                 case T_ROW:
-                    return GT(left->value, right->value, T_ROW);
+                    db_log(ERROR, "Not implement data type when operate GT.");
                 default:
                     goto ERR_TYPE;
             }

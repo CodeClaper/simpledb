@@ -23,7 +23,7 @@ static SearchConditionNode *copy_search_condition_node(SearchConditionNode *sear
 
 /* Copy value. */
 void *copy_value(void *value, DataType data_type) {
-    if (!value)
+    if (value == NULL)
         return NULL;
 
     switch (data_type) {
@@ -445,11 +445,11 @@ static SearchConditionNode *copy_search_condition_node(SearchConditionNode *sear
 ComparisonNode *copy_comparison_node(ComparisonNode *comparison_node) {
     if (comparison_node == NULL)
         return NULL;
-    ComparisonNode *comparison_node_copy = instance(ComparisonNode);
-    comparison_node_copy->type = comparison_node->type;
-    comparison_node_copy->column = copy_column_node(comparison_node->column);
-    comparison_node_copy->value = copy_scalar_exp_node(comparison_node->value);
-    return comparison_node_copy;
+    ComparisonNode *duplica = instance(ComparisonNode);
+    duplica->type = comparison_node->type;
+    duplica->left = copy_scalar_exp_node(comparison_node->left);
+    duplica->right = copy_scalar_exp_node(comparison_node->right);
+    return duplica;
 }
 
 /* Copy a LikeNode. */

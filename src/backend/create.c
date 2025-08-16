@@ -87,7 +87,7 @@ static void ColumnDefOptListForMetaColumn(MetaColumn *meta_column, List *column_
                 break;
             case OPT_DEFAULT_VALUE:
                 meta_column->default_value_type = DEFAULT_VALUE;
-                meta_column->default_value = ValueItemNodeFindValue(column_def_opt->value, meta_column);
+                meta_column->default_value = ValueItemNodeAssignValue(column_def_opt->value, meta_column);
                 /* You can use indirect refer value as default value, but is must exist. */
                 if (meta_column->column_type == T_REFERENCE) {
                     if (meta_column->default_value == NULL)

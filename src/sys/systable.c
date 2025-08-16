@@ -119,15 +119,17 @@ static SearchConditionNode *OidConvertCondition(Oid oid) {
     predicate->type = PRE_COMPARISON;
     predicate->comparison = instance(ComparisonNode);
     predicate->comparison->type = O_EQ;
-    predicate->comparison->column = instance(ColumnNode);
-    predicate->comparison->column->column_name = dstrdup(SYS_TABLE_OID_NAME);
-    predicate->comparison->value = instance(ScalarExpNode);
-    predicate->comparison->value->type = SCALAR_VALUE;
-    predicate->comparison->value->value = instance(ValueItemNode);
-    predicate->comparison->value->value->type = V_ATOM;
-    predicate->comparison->value->value->value.atom = instance(AtomNode);
-    predicate->comparison->value->value->value.atom->type = A_INT;
-    predicate->comparison->value->value->value.atom->value.intval = oid;
+    predicate->comparison->left = instance(ScalarExpNode);
+    predicate->comparison->left->type = SCALAR_COLUMN;
+    predicate->comparison->left->column = instance(ColumnNode);
+    predicate->comparison->left->column->column_name = dstrdup(SYS_TABLE_OID_NAME);
+    predicate->comparison->right = instance(ScalarExpNode);
+    predicate->comparison->right->type = SCALAR_VALUE;
+    predicate->comparison->right->value = instance(ValueItemNode);
+    predicate->comparison->right->value->type = V_ATOM;
+    predicate->comparison->right->value->value.atom = instance(AtomNode);
+    predicate->comparison->right->value->value.atom->type = A_INT;
+    predicate->comparison->right->value->value.atom->value.intval = oid;
 
     /* Assemble All. */
     boolean_primary->type = PREDICATE_BOOLEAN_PRIMAYR; 
@@ -145,8 +147,7 @@ static SearchConditionNode *OidConvertCondition(Oid oid) {
 
 /* Convert relname and reltype to a condition.
  * ------------------------------------------
- * Generate a condition which filtered by relname and reltype.
- * */
+ * Generate a condition which filtered by relname and reltype. */
 static SearchConditionNode *RelnameTypeConvertCondition(char *relname, ObjectType type) {
     SearchConditionNode *search_condition = instance(SearchConditionNode);
     BooleanTermNode *boolean_term = instance(BooleanTermNode);
@@ -166,30 +167,34 @@ static SearchConditionNode *RelnameTypeConvertCondition(char *relname, ObjectTyp
     predicate->type = PRE_COMPARISON;
     predicate->comparison = instance(ComparisonNode);
     predicate->comparison->type = O_EQ;
-    predicate->comparison->column = instance(ColumnNode);
-    predicate->comparison->column->column_name = dstrdup(SYS_TABLE_RELNAME_NAME);
-    predicate->comparison->value = instance(ScalarExpNode);
-    predicate->comparison->value->type = SCALAR_VALUE;
-    predicate->comparison->value->value = instance(ValueItemNode);
-    predicate->comparison->value->value->type = V_ATOM;
-    predicate->comparison->value->value->value.atom = instance(AtomNode);
-    predicate->comparison->value->value->value.atom->type = A_STRING;
-    predicate->comparison->value->value->value.atom->value.strval = relname;
+    predicate->comparison->left = instance(ScalarExpNode);
+    predicate->comparison->left->type = SCALAR_COLUMN;
+    predicate->comparison->left->column = instance(ColumnNode);
+    predicate->comparison->left->column->column_name = dstrdup(SYS_TABLE_RELNAME_NAME);
+    predicate->comparison->right = instance(ScalarExpNode);
+    predicate->comparison->right->type = SCALAR_VALUE;
+    predicate->comparison->right->value = instance(ValueItemNode);
+    predicate->comparison->right->value->type = V_ATOM;
+    predicate->comparison->right->value->value.atom = instance(AtomNode);
+    predicate->comparison->right->value->value.atom->type = A_STRING;
+    predicate->comparison->right->value->value.atom->value.strval = relname;
 
     /* Assemble another predicate. */
     and_predicate = instance(PredicateNode);
     and_predicate->type = PRE_COMPARISON;
     and_predicate->comparison = instance(ComparisonNode);
     and_predicate->comparison->type = O_EQ;
-    and_predicate->comparison->column = instance(ColumnNode);
-    and_predicate->comparison->column->column_name = dstrdup(SYS_TABLE_RELTYPE_NAME);
-    and_predicate->comparison->value = instance(ScalarExpNode);
-    and_predicate->comparison->value->type = SCALAR_VALUE;
-    and_predicate->comparison->value->value = instance(ValueItemNode);
-    and_predicate->comparison->value->value->type = V_ATOM;
-    and_predicate->comparison->value->value->value.atom = instance(AtomNode);
-    and_predicate->comparison->value->value->value.atom->type = A_INT;
-    and_predicate->comparison->value->value->value.atom->value.intval = type;
+    and_predicate->comparison->left = instance(ScalarExpNode);
+    and_predicate->comparison->left->type = SCALAR_COLUMN;
+    and_predicate->comparison->left->column = instance(ColumnNode);
+    and_predicate->comparison->left->column->column_name = dstrdup(SYS_TABLE_RELTYPE_NAME);
+    and_predicate->comparison->right = instance(ScalarExpNode);
+    and_predicate->comparison->right->type = SCALAR_VALUE;
+    and_predicate->comparison->right->value = instance(ValueItemNode);
+    and_predicate->comparison->right->value->type = V_ATOM;
+    and_predicate->comparison->right->value->value.atom = instance(AtomNode);
+    and_predicate->comparison->right->value->value.atom->type = A_INT;
+    and_predicate->comparison->right->value->value.atom->value.intval = type;
     
     /* Assemble All. */
     boolean_primary->type = PREDICATE_BOOLEAN_PRIMAYR; 
@@ -369,6 +374,7 @@ List *FindAllObject() {
         SYS_ROOT_OID, NULL, result, 
         SelectTuple, ARG_NULL, NULL
     );
+
     return TuplesConvertObjectList(result->tuples);
 }
 

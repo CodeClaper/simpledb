@@ -6,16 +6,15 @@
 
 /* Function type names*/
 static char *FUNCTION_TYPE_NAMES[] = { "COUNT", "MAX", "MIN", "SUM", "AVG" };
-
-#define GET_FUNCTION_TYPE_NAME(function_type) \
-    FUNCTION_TYPE_NAMES[function_type]
+static inline char *GET_FUNCTION_TYPE_NAME(FunctionType function_type) {
+   return FUNCTION_TYPE_NAMES[function_type];
+}
 
 /* DataTypeNames */
 static char *DATA_TYPE_NAMES[] =  { "unknown", "bool",  "char", "varchar", "int", "long", "double", "float", "string", "date", "timestamp",  "reference", "array" };
-
-#define GET_DATA_TYPE_NAME(data_type)\
-    DATA_TYPE_NAMES[data_type]
-
+static inline char *GET_DATA_TYPE_NAME(DataType data_type) {
+    return DATA_TYPE_NAMES[data_type];
+}
 
 /* Default data length. */
 uint32_t DataTypeDefaultLength(DataType column_type);
@@ -27,7 +26,7 @@ DataType AtomTypeConvertDataType(AtomType atom_type);
 void *ValueItemNodeAssignValue(ValueItemNode *value_item_node, MetaColumn *meta_column);
 
 /* Get value from value item node. */
-void *ValueItemNodeFindValue(ValueItemNode *value_item_node, MetaColumn *meta_column);
+void *ValueItemNodeFindValue(ValueItemNode *value_item_node);
 
 /* Get Comparable value. */
 void *GetComparableValue(void *value, DataType type);

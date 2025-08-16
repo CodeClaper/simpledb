@@ -71,13 +71,13 @@ uint32_t DataTypeDefaultLength(DataType column_type) {
 DataType AtomTypeConvertDataType(AtomType atom_type) {
     switch (atom_type) {
         case A_INT:
-            return T_INT;
+            return T_LONG;
         case A_BOOL:
             return T_BOOL;
-        case A_FLOAT:
+        case A_FLOAT: 
             return T_DOUBLE;
         case A_STRING:
-            return T_STRING;
+            return T_VARCHAR;
         case A_REFERENCE:
             return T_REFERENCE;
         default:
@@ -229,91 +229,21 @@ void *ValueItemNodeAssignValue(ValueItemNode *value_item_node, MetaColumn *meta_
 }
 
 /* Get value from atom. */
-static void *AtomNodeFindValue(AtomNode *atom_node, MetaColumn *meta_column) {
-    /* User can use '%s' fromat in sql to pass multiple types value 
-     * including char, string, date, timestamp. So we must use meta 
-     * column data type to define which data type of the value. */
-    switch (meta_column->column_type) {
-        case T_BOOL: 
-            return copy_value(&atom_node->value.boolval, meta_column->column_type);
-        case T_INT: {
-            int32_t val = (int32_t)atom_node->value.intval;
-            return copy_value(&val, meta_column->column_type);
-        }
-        case T_LONG: {
-            int64_t val = (int64_t)atom_node->value.intval;
-            return copy_value(&val, meta_column->column_type);
-        }
-        case T_FLOAT: {
-            float val = 0;
-            switch (atom_node->type) {
-                case A_INT:
-                    val = (double)atom_node->value.intval;
-                    break;
-                case A_FLOAT:
-                    val = (double)atom_node->value.floatval;
-                    break;
-                default:
-                    db_log(ERROR, "Can`t convert to data type [%s] for column '%s'", 
-                           AtomTypeConvertDataType(atom_node->type), 
-                           meta_column->column_name);
-                    break;
-            }
-            return copy_value(&val, meta_column->column_type);
-        }
-        case T_DOUBLE: {
-            double val = 0;
-            switch (atom_node->type) {
-                case A_INT:
-                    val = (double)atom_node->value.intval;
-                    break;
-                case A_FLOAT:
-                    val = (double)atom_node->value.floatval;
-                    break;
-                default:
-                    db_log(ERROR, "Can`t convert to data type [%s] for column '%s'", 
-                           AtomTypeConvertDataType(atom_node->type), 
-                           meta_column->column_name);
-                    break;
-            }
-            return copy_value(&val, meta_column->column_type);
-        }
-        case T_CHAR:
-        case T_STRING: 
-        case T_VARCHAR: 
-            return copy_value(atom_node->value.strval, meta_column->column_type);
-        case T_DATE: {
-            struct tm tmp_time = {0};
-            time_t *time = instance(time_t);  
-            strptime(atom_node->value.strval, "%Y-%m-%d", &tmp_time);
-            tmp_time.tm_sec = 0;
-            tmp_time.tm_min = 0;
-            tmp_time.tm_hour = 0;
-            time_t tmp = mktime(&tmp_time);
-            memcpy(time, &tmp, sizeof(time_t));
-            return time;
-        }
-        case T_TIMESTAMP: {
-            struct tm tmp_time = {0};
-            time_t *time = instance(time_t);  
-            strptime(atom_node->value.strval, "%Y-%m-%d %H:%M:%S", &tmp_time);
-            time_t tmp = mktime(&tmp_time);
-            memcpy(time, &tmp, sizeof(time_t));
-            return time;
-        }
-        case T_REFERENCE: {
-            ReferValue *refer_value = atom_node->value.referval;
-            switch (refer_value->type) {
-                case DIRECTLY:
-                    db_log(WARN, "Not support directly fetch refer when query.");
-                    return make_null_refer();
-                case INDIRECTLY: 
-                    return fetch_refer(meta_column, refer_value->condition);
-            }
-            break;
-        }
+static void *AtomNodeFindValue(AtomNode *atom_node) {
+    switch (atom_node->type) {
+        case A_INT: 
+            return &atom_node->value.intval;
+        case A_BOOL:
+            return &atom_node->value.boolval;
+        case A_FLOAT:
+            return &atom_node->value.floatval;
+        case A_STRING:
+            return atom_node->value.strval;
+        case A_REFERENCE:
+            return atom_node->value.referval;
         default:
-            db_log(PANIC, "Not implement yet.");
+            UNEXPECTED_VALUE(atom_node->type);
+            return NULL;
     }
     return NULL;
 }
@@ -323,17 +253,15 @@ static void *AtomNodeFindValue(AtomNode *atom_node, MetaColumn *meta_column) {
  * Return pointer that needs be free`d by caller. 
  * And return null for V_NULL type ValueItemNode.
  * */
-void *ValueItemNodeFindValue(ValueItemNode *value_item_node, MetaColumn *meta_column) {
+void *ValueItemNodeFindValue(ValueItemNode *value_item_node) {
     /* For array, return value set. */
     switch (value_item_node->type) {
         case V_ATOM: {
             AtomNode *atom_node = value_item_node->value.atom;
-            /* Check default value valid. */
-            check_value_valid(meta_column, atom_node);
-            return AtomNodeFindValue(atom_node, meta_column);
+            return AtomNodeFindValue(atom_node);
         }
         case V_ARRAY:
-            return list_copy_deep(value_item_node->value.value_list);
+            return value_item_node->value.value_list;
         case V_NULL:
             return NULL;
         default:

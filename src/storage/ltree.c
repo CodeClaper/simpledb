@@ -533,12 +533,12 @@ static void set_index_created_xid(void *destination, Xid created_xid) {
 
 /* Get index expired_xid. */
 Xid get_index_expired_xid(void *destination) {
-    return *(Xid *) (destination + REFER_SIZE + LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE+ sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE);
+    return *(Xid *) (destination + REFER_SIZE + LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE);
 }
 
 /* Set index expired_xid. */
 static void set_index_expired_xid(void *destination, Xid expired_xid) {
-    *(Xid *) (destination + REFER_SIZE + LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE+ sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE) = expired_xid;
+    *(Xid *) (destination + REFER_SIZE + LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE) = expired_xid;
 }
 
 /* Initialize leaf node. */

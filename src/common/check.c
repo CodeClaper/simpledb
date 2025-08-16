@@ -556,14 +556,7 @@ static bool check_comparison_value(ScalarExpNode *comparion_value, MetaTable *me
 
 /* Check ComparisonNode.*/
 static bool check_comparison_node(ComparisonNode *comparison, AliasMap alias_map) {
-    ColumnNode *column = comparison->column;
-
-    /* Confirm MetaTable. */
-    MetaTable *current_meta_table = confirm_meta_table_via_column(column, alias_map);
-    MetaColumn *meta_column = NameFindMetaColumn(current_meta_table, column->column_name);
-
-    return check_column_node(comparison->column, current_meta_table) // check select column
-           && check_comparison_value(comparison->value, current_meta_table, meta_column);
+    return true;
 }
 
 /* Check InNode. */
@@ -785,7 +778,7 @@ static bool check_assignment_set_node(UpdateNode *update_node) {
                    GET_TABLE_NAME(table));
             return false;
         }
-        assign_value = ValueItemNodeFindValue(value_node, meta_column);
+        assign_value = ValueItemNodeFindValue(value_node);
 
         /* Check column, check type, check if value valid. */
         if (!(check_column_node(column_node, table->meta_table) && 

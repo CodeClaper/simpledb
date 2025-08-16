@@ -212,6 +212,7 @@ typedef struct SelectionNode {
 
 /* ScalarExpType */
 typedef enum ScalarExpType {
+    SCALAR_UNKNOWN,
     SCALAR_CALCULATE,
     SCALAR_COLUMN,
     SCALAR_FUNCTION,
@@ -447,8 +448,8 @@ typedef struct PredicateNode {
 /* ComparisonNode */
 typedef struct ComparisonNode {
     CompareType type;
-    ColumnNode *column;
-    ScalarExpNode *value;
+    ScalarExpNode *left;
+    ScalarExpNode *right;
 } ComparisonNode;
 
 /* LikeNode */
