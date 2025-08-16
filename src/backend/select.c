@@ -2005,7 +2005,7 @@ static KeyValue *CalcDivision(KeyValue *left, KeyValue *right) {
                     return new_key_value(DIV_NAME, &div, T_DOUBLE, NULL);
                 }
                 case T_LONG: {
-                    double div = (double)(*(int64_t *)left->value) / (*(int64_t *)right->value);
+                    double div = (double)(*(int32_t *)left->value) / (*(int64_t *)right->value);
                     return new_key_value(DIV_NAME, &div, T_DOUBLE, NULL);
                 }
                 case T_FLOAT: {
