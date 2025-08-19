@@ -21,6 +21,7 @@
 #include "compare.h"
 #include "data.h"
 #include "row.h"
+#include "func.h"
 #include "table.h"
 #include "log.h"
 #include "copy.h"
@@ -40,6 +41,7 @@
 static bool check_value_item_set_node(MetaTable *meta_table, char *column_name, List *value_list);
 static bool check_scalar_exp(ScalarExpNode *scalar_exp, AliasMap alias_map);
 static bool check_search_condition_node(SearchConditionNode *condition_node, AliasMap alias_map);
+static bool check_scalar_exp_in_seach_condition(ScalarExpNode *scalar_exp);
 
 /* Get column name in ColumnDefNode. */
 static inline char *get_column_def_name(ColumnDefNode *column_def) {
@@ -538,17 +540,31 @@ static bool check_selection(SelectionNode *selection_node, AliasMap alias_map) {
            : check_scalar_exp_list(selection_node->scalar_exp_list, alias_map);
 }
 
+static bool check_calulate_in_search_condition(CalculateNode *calculate) {
+    return check_scalar_exp_in_seach_condition(calculate->left) && 
+                check_scalar_exp_in_seach_condition(calculate->right);
+}
+
+static bool check_function_in_search_condition(FunctionNode *function) {
+    if (IsAggFuncion(function->type)) {
+        db_log(ERROR, "Aggregate function not allowd in where.");
+        return false;
+    }
+    return true;
+}
+
 /* Check ComparisonNode value.*/
-static bool check_comparison_value(ScalarExpNode *comparion_value, MetaTable *meta_table, MetaColumn *meta_column) {
-    switch (comparion_value->type) {
+static bool check_scalar_exp_in_seach_condition(ScalarExpNode *scalar_exp) {
+    switch (scalar_exp->type) {
         case SCALAR_VALUE:
-            return check_value_item_node(meta_table, meta_column->column_name, comparion_value->value);
         case SCALAR_COLUMN:
-        case SCALAR_FUNCTION:
-        case SCALAR_CALCULATE:
             return true;
+        case SCALAR_CALCULATE:
+            return check_calulate_in_search_condition(scalar_exp->calculate);
+        case SCALAR_FUNCTION: 
+            return check_function_in_search_condition(scalar_exp->function); 
         default: {
-            UNEXPECTED_VALUE(comparion_value->type);
+            UNEXPECTED_VALUE(scalar_exp->type);
             return false;
         }
     }
@@ -556,7 +572,8 @@ static bool check_comparison_value(ScalarExpNode *comparion_value, MetaTable *me
 
 /* Check ComparisonNode.*/
 static bool check_comparison_node(ComparisonNode *comparison, AliasMap alias_map) {
-    return true;
+    return check_scalar_exp_in_seach_condition(comparison->left) && 
+                check_scalar_exp_in_seach_condition(comparison->right);
 }
 
 /* Check InNode. */
