@@ -172,6 +172,7 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
             switch (right->data_type) {
                 case T_BOOL:
                     return *(bool *)left->value == *(bool *)right->value;
+                case T_VARCHAR:
                 case T_STRING: {
                     bool val;
                     ST_FLAG flag = stob(right->value, &val);
@@ -203,6 +204,7 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
                     return *(int32_t *)left->value == *(int32_t *)right->value;
                 case T_LONG:
                     return *(int32_t *)left->value == *(int64_t *)right->value;
+                case T_VARCHAR:
                 case T_STRING: {
                     int32_t val;
                     ST_FLAG flag = stoi32(right->value, &val);
@@ -234,6 +236,7 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
                     return *(int64_t *)left->value == *(int32_t *)right->value;
                 case T_LONG:
                     return *(int64_t *)left->value == *(int64_t *)right->value;
+                case T_VARCHAR:
                 case T_STRING: {
                     int64_t val;
                     ST_FLAG flag = stoi64(right->value, &val);
@@ -265,6 +268,7 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
                     return *(float *)left->value == *(int32_t *)right->value;
                 case T_LONG:
                     return *(float *)left->value == *(int64_t *)right->value;
+                case T_VARCHAR:
                 case T_STRING: {
                     float val;
                     ST_FLAG flag = stof(right->value, &val);
@@ -296,6 +300,7 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
                     return *(double *)left->value == *(int32_t *)right->value;
                 case T_LONG:
                     return *(double *)left->value == *(int64_t *)right->value;
+                case T_VARCHAR:
                 case T_STRING: {
                     double val;
                     ST_FLAG flag = stod(right->value, &val);
@@ -433,6 +438,7 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
             switch (right->data_type) {
                 case T_BOOL:
                     return *(bool *)left->value > *(bool *)right->value;
+                case T_VARCHAR:
                 case T_STRING: {
                     bool val;
                     ST_FLAG flag = stob(right->value, &val);
@@ -464,6 +470,7 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
                     return *(int32_t *)left->value > *(int32_t *)right->value;
                 case T_LONG:
                     return *(int32_t *)left->value > *(int64_t *)right->value;
+                case T_VARCHAR:
                 case T_STRING: {
                     int32_t val;
                     ST_FLAG flag = stoi32(right->value, &val);
@@ -495,6 +502,7 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
                     return *(int64_t *)left->value > *(int32_t *)right->value;
                 case T_LONG:
                     return *(int64_t *)left->value > *(int64_t *)right->value;
+                case T_VARCHAR:
                 case T_STRING: {
                     int64_t val;
                     ST_FLAG flag = stoi64(right->value, &val);
@@ -526,6 +534,7 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
                     return *(float *)left->value > *(int32_t *)right->value;
                 case T_LONG:
                     return *(float *)left->value > *(int64_t *)right->value;
+                case T_VARCHAR:
                 case T_STRING: {
                     float val;
                     ST_FLAG flag = stof(right->value, &val);
@@ -557,6 +566,7 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
                     return *(double *)left->value > *(int32_t *)right->value;
                 case T_LONG:
                     return *(double *)left->value > *(int64_t *)right->value;
+                case T_VARCHAR:
                 case T_STRING: {
                     double val;
                     ST_FLAG flag = stod(right->value, &val);
