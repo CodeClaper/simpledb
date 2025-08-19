@@ -201,6 +201,15 @@ bool streq_or_null(char *str1, char *str2) {
         return false;
 }
 
+/* String concat. */
+char *StrCat(char *str1, char *str2) {
+    Size len1 = len(str1);
+    Size len2 = len(str2);
+    char *str = dalloc(len1 + len2 + 1);
+    memcpy(str, str1, len1);
+    memcpy(str + len1, str2, len2);
+    return str;
+}
 
 /* Convert int32 to string. */
 char *itos(int32_t val) {

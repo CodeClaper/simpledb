@@ -59,6 +59,10 @@ bool strcaseeq(char *str1, char *str2);
  * if both is null, also return true. */
 bool streq_or_null(char *str1, char *str2);
 
+
+/* String concat. */
+char *StrCat(char *str1, char *str2);
+
 /* Return true if pointer is NULL. */
 inline static bool is_null(void *ptr) {
     return ptr == NULL;
