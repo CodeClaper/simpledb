@@ -73,44 +73,43 @@ static inline bool NonNull(void *ptr) {
 }
 
 /* Convert int32 to string. */
-char *itos(int32_t val);
+char *IntToStr(int32_t val);
 
 /* Convert long to string. */
-char *ltos(int64_t val);
+char *LongToStr(int64_t val);
 
 /* Covnert bool to string. */
-char *btos(bool val);
+char *BoolToStr(bool val);
 
 /* Convert float to string. */
-char *ftos(float val);
+char *FloatToStr(float val);
 
 /* Convert float to string. */
-char *dtos(double val);
+char *DoubleToStr(double val);
 
 /* Convert time to string. */
-char *ttos(time_t val, char *frmt);
+char *TimeToStr(time_t val, char *frmt);
 
 /* Convert String value to int32_t value. */
-ST_FLAG stoi32(char *val,  int32_t *ret);
+ST_FLAG StrToInt(char *val, int32_t *ret);
 
 /* Convert String value to int64 value.*/
-ST_FLAG stoi64(char *val,  int64_t *ret);
+ST_FLAG StrToLong(char *val, int64_t *ret);
 
 /* Convert String value to float value. */
-ST_FLAG stof(char *val, float *ret);
+ST_FLAG StrToFloat(char *val, float *ret);
 
 /* Convert String value to double value. */
-ST_FLAG stod(char *val, double *ret);
+ST_FLAG StrToDouble(char *val, double *ret);
 
 /* Convert String value to bool value. */
-ST_FLAG stob(char *val, bool *ret);
+ST_FLAG StrToBool(char *val, bool *ret);
 
 /* Escap the string value. */
-char *escap_str(const char *str);
+char *EscapStr(const char *str);
 
 /* Get line from socket. */
 int get_line(int sock, char *buf, int size);
-
 
 /* Max size. */
 inline static size_t max_size(size_t size1, size_t size2) {

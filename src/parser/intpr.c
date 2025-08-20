@@ -10,7 +10,7 @@
 /* Paser a string value to int64_t value. */
 int64_t parse_long(char *val) {
     int64_t parsed;
-    ST_FLAG flag = stoi64(val, &parsed);
+    ST_FLAG flag = StrToLong(val, &parsed);
     switch (flag) {
         case ST_SUCCESS:
             break;
@@ -30,7 +30,7 @@ int64_t parse_long(char *val) {
 /* Paser a string value to double value. */
 double parse_double(char *val) {
     double parsed;
-    ST_FLAG flag = stod(val, &parsed);
+    ST_FLAG flag = StrToDouble(val, &parsed);
     switch (flag) {
         case ST_SUCCESS:
             break;

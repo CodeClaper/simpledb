@@ -48,7 +48,7 @@ static void json_key_value_inner(char *key, void *value, DataType type) {
             break;
         case T_CHAR: 
         case T_VARCHAR: 
-            db_send("\"%s\": \"%s\"", key, value ? escap_str((char *)value) : "null");
+            db_send("\"%s\": \"%s\"", key, value ? EscapStr((char *)value) : "null");
             break;
         case T_FLOAT: 
             db_send("\"%s\": %f", key, value ? *(float *)value : 0);
@@ -82,7 +82,7 @@ static void json_key_value_inner(char *key, void *value, DataType type) {
         }
         case T_STRING: {
             char *strVal = QueryStringValue((StrRefer *)value);
-            db_send("\"%s\": \"%s\"", key, strVal ? escap_str(strVal) : "null");
+            db_send("\"%s\": \"%s\"", key, strVal ? EscapStr(strVal) : "null");
             break;
         }
         /* Specially deal with T_REFERENCE data. */
@@ -127,7 +127,7 @@ static void json_key_array_value_inner(char *key, ArrayValue *array_value, DataT
             ListCell *lc;
             foreach (lc, array_value->list) {
                 int32_t value = *(int32_t *)lfirst(lc);
-                char *strVal = itos(value);
+                char *strVal = IntToStr(value);
                 db_send(strVal);
                 if (last_cell(array_value->list) != lc)
                     db_send(",");
@@ -143,7 +143,7 @@ static void json_key_array_value_inner(char *key, ArrayValue *array_value, DataT
             ListCell *lc;
             foreach (lc, array_value->list) {
                 int64_t value = *(int64_t *)lfirst(lc);
-                char *strVal = ltos(value);
+                char *strVal = LongToStr(value);
                 db_send(strVal);
                 if (last_cell(array_value->list) != lc)
                     db_send(",");
@@ -175,7 +175,7 @@ static void json_key_array_value_inner(char *key, ArrayValue *array_value, DataT
             ListCell *lc;
             foreach (lc, array_value->list) {
                 float value = *(float *)lfirst(lc);
-                char *strVal = ftos(value);
+                char *strVal = FloatToStr(value);
                 db_send(strVal);
                 if (last_cell(array_value->list) != lc)
                      db_send(",");
@@ -191,7 +191,7 @@ static void json_key_array_value_inner(char *key, ArrayValue *array_value, DataT
             ListCell *lc;
             foreach (lc, array_value->list) {
                 double value = *(double *)lfirst(lc);
-                char *strVal = dtos(value);
+                char *strVal = DoubleToStr(value);
                 db_send(strVal);
                 if (last_cell(array_value->list) != lc)
                     db_send(",");
@@ -207,7 +207,7 @@ static void json_key_array_value_inner(char *key, ArrayValue *array_value, DataT
             ListCell *lc;
             foreach (lc, array_value->list) {
                 time_t value = *(time_t *)lfirst(lc);
-                char *strVal = ttos(value, "%Y-%m-%d %H:%M:%S");
+                char *strVal = TimeToStr(value, "%Y-%m-%d %H:%M:%S");
                 db_send("\"%s\"", strVal);
                 if (last_cell(array_value->list) != lc)
                     db_send(",");
@@ -223,7 +223,7 @@ static void json_key_array_value_inner(char *key, ArrayValue *array_value, DataT
             ListCell *lc;
             foreach (lc, array_value->list) {
                 time_t value = *(time_t *)lfirst(lc);
-                char *strVal = ttos(value, "%Y-%m-%d");
+                char *strVal = TimeToStr(value, "%Y-%m-%d");
                 db_send("\"%s\"", strVal);
                 if (last_cell(array_value->list) != lc)
                     db_send(",");

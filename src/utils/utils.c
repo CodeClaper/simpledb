@@ -212,42 +212,42 @@ char *StrCat(char *str1, char *str2) {
 }
 
 /* Convert int32 to string. */
-char *itos(int32_t val) {
+char *IntToStr(int32_t val) {
     char *str = dalloc(MAX_INT_STR_LENGTH);
     sprintf(str, "%d", val);
     return str;
 }
 
 /* Convert long to string. */
-char *ltos(int64_t val) {
+char *LongToStr(int64_t val) {
     char *str = dalloc(MAX_LONG_STR_LENGTH);
     sprintf(str, "%ld", val);
     return str;
 }
 
 /* Covnert bool to string. */
-char *btos(bool val) {
+char *BoolToStr(bool val) {
     char *str = dalloc(MAX_BOOL_STR_LENGTH);
     sprintf(str, val ? "true" : "false");
     return str;
 }
 
 /* Convert float to string. */
-char *ftos(float val) {
+char *FloatToStr(float val) {
     char *str = dalloc(MAX_FLOAT_STR_LENGTH);
     sprintf(str, "%f", val);
     return str;
 }
 
 /* Convert float to string. */
-char *dtos(double val) {
+char *DoubleToStr(double val) {
     char *str = dalloc(MAX_DOUBLE_STR_LENGTH);
     sprintf(str, "%.15lf", val);
     return str;
 }
 
 /* Convert time to string. */
-char *ttos(time_t val, char *frmt) {
+char *TimeToStr(time_t val, char *frmt) {
     char temp[90];
     char *str = dalloc(MAX_TIMESTAMP_STR_LENGTH);
     struct tm *tmp_time = localtime(&val);
@@ -257,7 +257,7 @@ char *ttos(time_t val, char *frmt) {
 }
 
 /* Convert String value to int32_t value.*/
-ST_FLAG stoi32(char *val, int32_t *ret) {
+ST_FLAG StrToInt(char *val, int32_t *ret) {
     char buf[BUFF_SIZE];
     char *endptr;
 
@@ -286,7 +286,7 @@ ST_FLAG stoi32(char *val, int32_t *ret) {
  * return 0 if not valid number.
  * return -1 if overflow.
  * */
-ST_FLAG stoi64(char *val, int64_t *ret) {
+ST_FLAG StrToLong(char *val, int64_t *ret) {
     char buf[BUFF_SIZE];
     char *endptr;
 
@@ -307,7 +307,7 @@ ST_FLAG stoi64(char *val, int64_t *ret) {
 
 
 /* Convert String value to float value.*/
-ST_FLAG stof(char *val, float *ret) {
+ST_FLAG StrToFloat(char *val, float *ret) {
     char *endptr;
     errno = 0;
     double converted = strtod(val, &endptr);
@@ -328,7 +328,7 @@ ST_FLAG stof(char *val, float *ret) {
 }
 
 /* Convert String value to double value. */
-ST_FLAG stod(char *val, double *ret) {
+ST_FLAG StrToDouble(char *val, double *ret) {
     char *endptr;
     errno = 0;
     double converted = strtod(val, &endptr);
@@ -349,7 +349,7 @@ ST_FLAG stod(char *val, double *ret) {
 }
 
 /* Convert String value to bool value. */
-ST_FLAG stob(char *val, bool *ret) {
+ST_FLAG StrToBool(char *val, bool *ret) {
     if (StrNoCaseEq("TRUE", val) || StrNoCaseEq("1", val)) {
         *ret = true;
         return ST_SUCCESS;
@@ -361,7 +361,7 @@ ST_FLAG stob(char *val, bool *ret) {
 }
 
 /* Escap the string value. */
-char *escap_str(const char *str) {
+char *EscapStr(const char *str) {
     size_t new_len = 0;
     for (const char *p = str; *p; p++) {
         new_len += (*p == '\n') ? 2 : 1;

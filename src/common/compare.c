@@ -168,7 +168,7 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
                 case T_VARCHAR:
                 case T_STRING: {
                     bool val;
-                    ST_FLAG flag = stob(right->value, &val);
+                    ST_FLAG flag = StrToBool(right->value, &val);
                     switch (flag) {
                         case ST_SUCCESS:
                             return *(bool *)left->value == val;
@@ -200,7 +200,7 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
                 case T_VARCHAR:
                 case T_STRING: {
                     int32_t val;
-                    ST_FLAG flag = stoi32(right->value, &val);
+                    ST_FLAG flag = StrToInt(right->value, &val);
                     switch (flag) {
                         case ST_SUCCESS:
                             return *(int32_t *)left->value == val;
@@ -232,7 +232,7 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
                 case T_VARCHAR:
                 case T_STRING: {
                     int64_t val;
-                    ST_FLAG flag = stoi64(right->value, &val);
+                    ST_FLAG flag = StrToLong(right->value, &val);
                     switch (flag) {
                         case ST_SUCCESS:
                             return *(int64_t *)left->value == val;
@@ -264,7 +264,7 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
                 case T_VARCHAR:
                 case T_STRING: {
                     float val;
-                    ST_FLAG flag = stof(right->value, &val);
+                    ST_FLAG flag = StrToFloat(right->value, &val);
                     switch (flag) {
                         case ST_SUCCESS:
                             return *(float *)left->value == val;
@@ -296,7 +296,7 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
                 case T_VARCHAR:
                 case T_STRING: {
                     double val;
-                    ST_FLAG flag = stod(right->value, &val);
+                    ST_FLAG flag = StrToDouble(right->value, &val);
                     switch (flag) {
                         case ST_SUCCESS:
                             return *(double *)left->value == *(double *)right->value;
@@ -438,7 +438,7 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
                 case T_VARCHAR:
                 case T_STRING: {
                     bool val;
-                    ST_FLAG flag = stob(right->value, &val);
+                    ST_FLAG flag = StrToBool(right->value, &val);
                     switch (flag) {
                         case ST_SUCCESS:
                             return *(bool *)left->value > val;
@@ -470,7 +470,7 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
                 case T_VARCHAR:
                 case T_STRING: {
                     int32_t val;
-                    ST_FLAG flag = stoi32(right->value, &val);
+                    ST_FLAG flag = StrToInt(right->value, &val);
                     switch (flag) {
                         case ST_SUCCESS:
                             return *(int32_t *)left->value > val;
@@ -502,7 +502,7 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
                 case T_VARCHAR:
                 case T_STRING: {
                     int64_t val;
-                    ST_FLAG flag = stoi64(right->value, &val);
+                    ST_FLAG flag = StrToLong(right->value, &val);
                     switch (flag) {
                         case ST_SUCCESS:
                             return *(int64_t *)left->value > val;
@@ -534,7 +534,7 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
                 case T_VARCHAR:
                 case T_STRING: {
                     float val;
-                    ST_FLAG flag = stof(right->value, &val);
+                    ST_FLAG flag = StrToFloat(right->value, &val);
                     switch (flag) {
                         case ST_SUCCESS:
                             return *(float *)left->value > val;
@@ -566,7 +566,7 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
                 case T_VARCHAR:
                 case T_STRING: {
                     double val;
-                    ST_FLAG flag = stod(right->value, &val);
+                    ST_FLAG flag = StrToDouble(right->value, &val);
                     switch (flag) {
                         case ST_SUCCESS:
                             return *(double *)left->value > *(double *)right->value;
