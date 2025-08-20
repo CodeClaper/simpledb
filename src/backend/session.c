@@ -26,27 +26,27 @@ void NewSession(int cli) {
     client.client = cli;
     client.frequency = 0;
     client.volumn = 0;
-    client.preData = NULL;
+    client.tempData = NULL;
     CleanUpSession();
 }
 
-/* Spool if empty. */
+/* Check if session is empty. */
 inline static bool SessionIsEmpty() {
     return client.pindex == 0;
 }
 
-/* Spool if full. */
+/* Check if session is full. */
 inline static bool SessionIsFull() {
     return client.pindex >= SPOOL_SIZE - LEFT_SPACE;
 }
 
-/* Clear up spool. */
+/* Clear up session pool. */
 static void CleanUpSession() {
     bzero(client.spool, SPOOL_SIZE);
     client.pindex = 0;
 }
 
-/* Store spool. */
+/* Save message to pool. */
 static char *SaveSessionMessage(char *message) {
     size_t len = strlen(message);
     size_t current = client.pindex + len;
@@ -60,8 +60,14 @@ static char *SaveSessionMessage(char *message) {
     }
 }
 
-/* db send pre. */
-bool MakePreData(const char *format, ...) {
+/* Make the temp data. 
+ * -------------------
+ * Sometime, we need store the message to the temp data install the pool. 
+ * The temp data may be canceled by <CancelTempData>.
+ * Before store message into the temp data, we need to send off all data 
+ * in the pool to make sure the temp data will be send fistly.
+ * */
+bool MakeTempData(const char *format, ...) {
     va_list ap;
     ssize_t s;
     uint32_t len;
@@ -98,31 +104,33 @@ bool MakePreData(const char *format, ...) {
             CleanUpSession();
     }
     
-    client.preData = dstrdup(sbuff);
+    client.tempData = dstrdup(sbuff);
 
     return true;
 }
 
-bool CleanUpPreData() {
-    if (client.preData == NULL)
+/* Cancel the temp data. */
+bool CancelTempData() {
+    if (client.tempData == NULL)
         return false;
-    dfree(client.preData);
-    client.preData = NULL;
+    dfree(client.tempData);
+    client.tempData = NULL;
     return true;
 }
 
-static bool DbSendPreData() {
-    if (client.preData == NULL)
+/* Send the temp data. */
+static bool DbSendTempData() {
+    if (client.tempData == NULL)
         return true;
     char sbuff[SPOOL_SIZE];
     Size len;
 
-    len = strlen(client.preData);
+    len = strlen(client.tempData);
     Assert(len < SPOOL_SIZE - 4);
     memcpy(sbuff, &len, 4);
-    memcpy(sbuff + 4, client.preData, len);
+    memcpy(sbuff + 4, client.tempData, len);
 
-    return send(client.client, sbuff, len + 4, 0) > 0 && CleanUpPreData();
+    return send(client.client, sbuff, len + 4, 0) > 0 && CancelTempData();
 }
 
 /* Socket send message.
@@ -167,7 +175,7 @@ bool db_send(const char *format, ...) {
     /* Check if client close connection, if recv get zero 
      * which means client has closed conneciton. */
     if (
-        DbSendPreData() && 
+        DbSendTempData() && 
         (s = send(client.client, client.spool, (len + 4), 0)) > 0
     ) {
         /* Clear up spool. */

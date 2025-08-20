@@ -253,7 +253,7 @@ void Execute(char *sql) {
             db_send(len_list(statements) > 1 ? "]" : "");
         } else {
             /* Catch routine. */
-            CleanUpPreData();
+            CancelTempData();
             /* If the set is empty, which means sql syntax error, 
              * put an error result to the set. */
             if (list_empty(result_list)) {
