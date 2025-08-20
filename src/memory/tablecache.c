@@ -116,7 +116,7 @@ bool TableNameExistsInCache(char *tableName) {
     ListCell *lc;
     foreach (lc, TableCache) {
         Table *cur_table = (Table *) lfirst(lc);
-        if (streq(tableName, GET_TABLE_NAME(cur_table))) {
+        if (StrEq(tableName, GET_TABLE_NAME(cur_table))) {
             found = true;
             break;
         }
@@ -153,7 +153,7 @@ Table *NameFindTableCache(char *tableName) {
     foreach (lc, TableCache) {
         Table *cur_table = (Table *) lfirst(lc);
         Assert(cur_table);
-        if (streq(tableName, GET_TABLE_NAME(cur_table))) {
+        if (StrEq(tableName, GET_TABLE_NAME(cur_table))) {
             found = cur_table;
             break;
         }

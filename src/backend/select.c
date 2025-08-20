@@ -95,7 +95,7 @@ static KeyValue *QueryTupleColumnValue(SelectResult *select_result, List *meta_c
  * LimitClauseNode full means the poffset is GT or EQ the offset.
  * */
 inline static bool LimitClauseIsFull(SelectParam *selectParam) {
-    return non_null(selectParam->limitClause) && 
+    return NonNull(selectParam->limitClause) && 
         (selectParam->offset >= selectParam->limitClause->offset + selectParam->limitClause->rows);
 }
 
@@ -223,18 +223,18 @@ static bool ValueLikeStringValue(char *value, char *target) {
         char str_dup[target_len];
         memset(str_dup, 0, target_len);
         memcpy(str_dup, target + 1, target_len -2);
-        return contains(value, str_dup);
+        return Contains(value, str_dup);
     }
     else if (target[0] == '%')
-        return endwith(value, target + 1);
+        return EndWith(value, target + 1);
     else if (target[target_len - 1] == '%') {
         char str_dup[target_len];
         memset(str_dup, 0, target_len);
         memcpy(str_dup, target, target_len - 1);
-        return startwith(value, str_dup);
+        return StartWith(value, str_dup);
     } 
     else 
-        return streq(value, target);
+        return StrEq(value, target);
 }
 
 static MetaColumn *ColumnNodeFindMetaColumn(SelectResult *select_result, List *meta_columns, ColumnNode *column) {
@@ -246,7 +246,7 @@ static MetaColumn *ColumnNodeFindMetaColumn(SelectResult *select_result, List *m
     table_name = SearchTableViaAlias(select_result, column->range_variable);
 
     /* Find meta column. */
-    target_meta_column = is_empty(table_name) 
+    target_meta_column = StrIsEmpty(table_name) 
             ? NameFindMetaColumnInner(meta_columns, column->column_name)
             : TableColumnNameFindMetaColumn(meta_columns, table_name, column->column_name);
     if (target_meta_column == NULL) {
@@ -696,13 +696,13 @@ static void DuplicateColumnNameHandler(List *meta_columns) {
             MetaColumn *second = lfirst(lc2);
             if (lc1 == lc2)
                 continue;
-            if (streq(second->column_name, first->column_name)) {
+            if (StrEq(second->column_name, first->column_name)) {
                 /* Notece: there is still some issue, maybe overflow the MAX_COLUMN_NAME_LEN buffer. */
-                if (streq(second->own_table_name, first->own_table_name))
-                    memcpy(second->column_name, format("%s(%d)", first->column_name, ++times), MAX_COLUMN_NAME_LEN);
+                if (StrEq(second->own_table_name, first->own_table_name))
+                    memcpy(second->column_name, FormatStr("%s(%d)", first->column_name, ++times), MAX_COLUMN_NAME_LEN);
                 else {
-                    memcpy(first->column_name, format("%s.%s", first->own_table_name, first->column_name), MAX_COLUMN_NAME_LEN);
-                    memcpy(second->column_name, format("%s.%s", second->own_table_name, second->column_name), MAX_COLUMN_NAME_LEN);
+                    memcpy(first->column_name, FormatStr("%s.%s", first->own_table_name, first->column_name), MAX_COLUMN_NAME_LEN);
+                    memcpy(second->column_name, FormatStr("%s.%s", second->own_table_name, second->column_name), MAX_COLUMN_NAME_LEN);
                 }
             }
         } 
@@ -716,8 +716,8 @@ static char *SearchTableViaAlias(SelectResult *select_result, char *range_variab
     Assert(select_result != NULL);
 
     /* Either table name or range variable is EQ. */
-    if (streq(select_result->table_name, range_variable) || 
-            streq(select_result->range_variable, range_variable))
+    if (StrEq(select_result->table_name, range_variable) || 
+            StrEq(select_result->range_variable, range_variable))
         return select_result->table_name;
 
     if (select_result->nested)
@@ -1028,7 +1028,7 @@ static void SelectInternalNodeAsync(SelectResult *select_result, SearchCondition
                                             ROW_HANDLER row_handler, ROW_HANDLER_ARG_TYPE type, void *arg) {
 
     /* If LimitClauseNode full, not continue. */
-    if (non_null(arg) && LimitClauseIsFull(arg))
+    if (NonNull(arg) && LimitClauseIsFull(arg))
         return;
 
     Buffer buffer;
@@ -1639,8 +1639,9 @@ static KeyValue *QueryRowColumnValue(SelectResult *select_result, ColumnNode *co
     ListCell *lc;
     foreach (lc, row->data) {
         KeyValue *key_value = lfirst(lc);
-        if (streq(column->column_name, key_value->key) && 
-                (table_name == NULL || streq(table_name, key_value->table_name))) {
+        if (StrEq(column->column_name, key_value->key) && 
+                (table_name == NULL || StrEq(table_name, key_value->table_name))
+        ) {
             /* Reference type and query sub column. */
             if (key_value->data_type == T_REFERENCE) {
                 Refer *refer = (Refer *)key_value->value;
@@ -2263,7 +2264,7 @@ static KeyValue *QueryRowValue(SelectResult *select_result, ScalarExpNode *scala
 /* Query a Row of Selection,
  * Actually, the Selection is pure-column scalars. */
 static Row *QueryColumnsSelectOneRow(SelectResult *select_result, List *scalar_exp_list, Row *row) {
-    if (is_null(row)) 
+    if (IsNull(row)) 
         return NULL;
     
     Row *sub_row = NewRow();
@@ -2373,7 +2374,7 @@ static SelectResult *QueryMultiTableUnderSearchCondition(SelectNode *select_node
     SelectParam *selectParam;
 
     /* If no from clause, return an empty select result. */
-    if (is_null(select_node->table_exp->from_clause)) 
+    if (IsNull(select_node->table_exp->from_clause)) 
         return new_select_result(SELECT_STMT, NULL, true);
 
     table_list = select_node->table_exp->from_clause->from;
@@ -2434,7 +2435,7 @@ void exec_select_statement(SelectNode *select_node, DBResult *result) {
     result->rows = select_result->row_size;
     result->data = select_result;
     result->success = true;
-    result->message = format("Query %d rows data from table '%s' successfully.", 
+    result->message = FormatStr("Query %d rows data from table '%s' successfully.", 
                              result->rows, 
                              select_result->table_name);
 

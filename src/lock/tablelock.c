@@ -80,7 +80,7 @@ void check_table_locked(Oid oid) {
  * */
 void try_acquire_table(Oid oid) {
     TableLockEntity *lock_entry = find_lock_entry(oid);
-    if (is_null(lock_entry)) {
+    if (IsNull(lock_entry)) {
        lock_entry = register_lock_entry(oid);
     }
     

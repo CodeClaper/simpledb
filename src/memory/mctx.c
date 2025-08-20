@@ -113,8 +113,8 @@ void MemoryContextCreate(MemoryContext node, MemoryContext parent,
     node->context_methods = &mctx_methods[id];
     
     /* Link node to peer nodes. */
-    if (non_null(parent)) {
-        if (non_null(parent->firstChild)) 
+    if (NonNull(parent)) {
+        if (NonNull(parent->firstChild)) 
             parent->firstChild->presChild = node;
         parent->firstChild = node;
     }

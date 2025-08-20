@@ -489,6 +489,10 @@ void free_scalar_exp_node(ScalarExpNode *scalar_exp_node) {
             case SCALAR_VALUE:
                 free_value_item_node(scalar_exp_node->value);
                 break;
+            default:
+                UNEXPECTED_VALUE(scalar_exp_node->type);
+                break;
+                
         }
         free_value(scalar_exp_node->alias, T_STRING);
         dfree(scalar_exp_node);

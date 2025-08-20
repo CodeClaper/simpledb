@@ -60,7 +60,7 @@ static void ExecuteBeginTransactionStmt(Statement *stmt, DBResult *result) {
     Assert(stmt->statement_type == BEGIN_TRANSACTION_STMT);
     BeginTransaction();
     result->success = true;
-    result->message = format("Begin new transaction successfully." );
+    result->message = FormatStr("Begin new transaction successfully." );
 }
 
 /* Commit tranasction statement. */
@@ -68,7 +68,7 @@ static void ExecuteCommitTransactionStmt(Statement *stmt, DBResult *result) {
     Assert(stmt->statement_type == COMMIT_TRANSACTION_STMT);
     CommitTransaction();
     result->success = true;
-    result->message = format("Commit the transaction successfully.");
+    result->message = FormatStr("Commit the transaction successfully.");
 }
 
 /* Rollback tranasction statement. */
@@ -76,7 +76,7 @@ static void ExecuteRoolbackTransactionStmt(Statement *stmt, DBResult *result) {
     Assert(stmt->statement_type == ROLLBACK_TRANSACTION_STMT);
     RollbackTransaction();
     result->success = true;
-    result->message = format("Rollback and commit the transaction successfully.");
+    result->message = FormatStr("Rollback and commit the transaction successfully.");
 }
 
 /* Create table Statement. */
@@ -109,7 +109,7 @@ static void ExecuteInsertStmt(Statement *stmt, DBResult *result) {
     if (list) {
         result->success = true;
         result->rows = len_list(list);
-        result->message = format("Insert %d rows data to table '%s' successfully.",
+        result->message = FormatStr("Insert %d rows data to table '%s' successfully.",
                                  result->rows, stmt->insert_node->table_name);
         db_log(SUCCESS, "Insert %d row data to table '%s' successfully.",
                result->rows, stmt->insert_node->table_name);
@@ -237,7 +237,7 @@ void Execute(char *sql) {
     List *statements = NULL;
 
     /* Check empty sql. */
-    if (!is_empty(sql)) {
+    if (!StrIsEmpty(sql)) {
         /* Catch Error. */
         Try {
             statements = parse(sql);
@@ -255,8 +255,9 @@ void Execute(char *sql) {
             }
             db_send(len_list(statements) > 1 ? "]" : "");
         } Catch {
-            /* Catch routine. */
+            /* Cancel the temp data. */
             CancelTempData();
+
             /* If the set is empty, which means sql syntax error, 
              * put an error result to the set. */
             if (list_empty(result_list)) {
@@ -274,13 +275,14 @@ void Execute(char *sql) {
                 last_result->duration = time_span(last_result->end_time, last_result->start_time);
                 db_log(INFO, "Duration: %lfs", last_result->duration);
             }
+
             json_db_result(last_result);
             db_send(len_list(result_list) > 1 ? "]" : "");
         }
     } else {
         DBResult *emptyResult = new_db_result();
         emptyResult->success = false;
-        emptyResult->message = format("Input nothing");
+        emptyResult->message = FormatStr("Input nothing");
         append_list(result_list, emptyResult);
         json_list(result_list);
     }

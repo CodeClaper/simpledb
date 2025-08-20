@@ -312,7 +312,7 @@ static Oid RelnameAndReltypeFindOid(char *relname, ObjectType reltype) {
  * Return OID_ZERO if missing.
  * */
 Oid TableNameFindOid(char *tableName) {
-    if (streq(tableName, SYS_TABLE_NAME))
+    if (StrEq(tableName, SYS_TABLE_NAME))
         return SYS_ROOT_OID;
     return RelnameAndReltypeFindOid(tableName, OTABLE);
 }
@@ -332,7 +332,7 @@ Oid StrTableNameFindOid(char *tableName) {
  * Return OID_ZERO if missing.
  * */
 Oid TableNameFindHeapOid(char *tableName) {
-    if (streq(tableName, SYS_TABLE_NAME))
+    if (StrEq(tableName, SYS_TABLE_NAME))
         return SYS_ROOT_HEAP_OID;
     return RelnameAndReltypeFindOid(tableName, OHEAP_TABLE);
 }

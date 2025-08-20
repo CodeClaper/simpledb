@@ -43,7 +43,7 @@ static void UpdateCell(Row *row, AssignmentNode *assign_node, MetaColumn *meta_c
     ListCell *lc;
     foreach (lc, row->data) {
         KeyValue *key_value = lfirst(lc);
-        if (streq(key_value->key, assign_node->column->column_name)) {
+        if (StrEq(key_value->key, assign_node->column->column_name)) {
             ValueItemNode *value_item = assign_node->value;
             key_value->value = ValueItemNodeAssignValue(value_item, meta_column);
         }
@@ -178,7 +178,7 @@ void exec_update_statment(UpdateNode *update_node, DBResult *result) {
     /* Combine the result. */
     result->success = true;
     result->rows = select_result->row_size;
-    result->message = format("Successfully updated %d row data.", result->rows);
+    result->message = FormatStr("Successfully updated %d row data.", result->rows);
 
     db_log(SUCCESS, "Successfully updated %d row data.", result->rows);
     

@@ -13,7 +13,7 @@ KeyValue *new_key_value(char *key, void *value, DataType data_type, char *table_
     key_value->key = dstrdup(key);
     key_value->value = copy_value(value, data_type);
     key_value->data_type = data_type;
-    key_value->table_name = is_empty(table_name) ? NULL : dstrdup(table_name);
+    key_value->table_name = StrIsEmpty(table_name) ? NULL : dstrdup(table_name);
     key_value->is_array = false;
     return key_value;
 }
@@ -30,8 +30,8 @@ ArrayValue *new_array_value(DataType data_type, uint32_t size) {
 SelectResult *new_select_result(StatementType stype, char *table_name, bool is_head) {
     SelectResult *select_result = instance(SelectResult);
     select_result->stype = stype;
-    select_result->oid = is_empty(table_name) ? OID_ZERO : TableNameFindOid(table_name);
-    select_result->table_name = is_empty(table_name) ? NULL : dstrdup(table_name);
+    select_result->oid = StrIsEmpty(table_name) ? OID_ZERO : TableNameFindOid(table_name);
+    select_result->table_name = StrIsEmpty(table_name) ? NULL : dstrdup(table_name);
     select_result->range_variable = NULL;
     select_result->tuples = CreateQueue(NODE_VOID);
     select_result->rows = CreateQueue(NODE_ROW);

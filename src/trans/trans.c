@@ -129,7 +129,7 @@ static inline Xid NextXid() {
 
 /* Any running transaction. */
 bool inline AnyTransactionRunning() {
-    return !is_null(xheader->next);
+    return !IsNull(xheader->next);
 }
 
 /* Get the tail of TransEntry list. */
@@ -256,7 +256,7 @@ void BeginTransaction() {
 /* Commit transaction manually. */
 void CommitTransaction() {
     TransEntry *entry = FindTransaction();
-    if (is_null(entry) || entry->auto_commit)
+    if (IsNull(entry) || entry->auto_commit)
         db_log(ERROR, "Not in any transaction, please begin a transaction");
 
     /* Commit Xlog. */
@@ -295,7 +295,7 @@ void AutoCommitTransaction() {
 /* Tranasction rollback. */
 void RollbackTransaction() {
     TransEntry *entry = FindTransaction();
-    if (is_null(entry) || entry->auto_commit)
+    if (IsNull(entry) || entry->auto_commit)
         db_log(ERROR, "Not in any transaction, please begin a transaction");
 
     ExecuteRollback();
@@ -313,7 +313,7 @@ void AutoRollbackTransaction() {
     if (conf->auto_rollback) {
         /* Return if not exists transaction. */
         TransEntry *entry = FindTransaction();
-        if (is_null(entry))
+        if (IsNull(entry))
             return;
 
         /* Rollback Xlog. */

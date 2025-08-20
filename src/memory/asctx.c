@@ -169,7 +169,7 @@ void *AllocSetAlloc(MemoryContext context, Size size) {
     /* Find there is enough chunk in FreeList. */
     fdx = AllocSetFreeIndex(size);
     chunk = set->free_list[fdx];
-    if (non_null(chunk)) {
+    if (NonNull(chunk)) {
         set->free_list[fdx] = chunk->next;
         return CHUNK_GET_POINTER(chunk);
     }
@@ -273,7 +273,7 @@ void *AllocSetRealloc(void *ptr, Size size) {
         oldblksize = block->endptr - ((char *) block);
 
         block = realloc(block, blksize);
-        if (is_null(block)) {
+        if (IsNull(block)) {
             fprintf(stderr, "Out of memory.");
             exit(1);
         }

@@ -133,13 +133,13 @@ bool create_table(Oid oid, MetaTable *meta_table) {
 /* Get Column Position. */
 static int get_column_position(MetaTable *meta_table, ColumnPositionDef *pos_def) {
     /* If not ColumnPositionDef, append column at last. */
-    if (is_null(pos_def))
+    if (IsNull(pos_def))
         return meta_table->column_size;
 
     ListCell *lc;
     foreach (lc, meta_table->meta_columns) {
         MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
-        if (streq(meta_column->column_name, pos_def->column)) {
+        if (StrEq(meta_column->column_name, pos_def->column)) {
             switch (pos_def->type) {
                 case POS_BEFORE:
                     return __i;

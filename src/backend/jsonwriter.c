@@ -456,8 +456,8 @@ static void handle_dulicate_key(Row *row) {
             KeyValue *second = lfirst(lc2);
             if (lc1 == lc2)
                 continue;
-            if (streq(second->key, first->key)) {
-                second->key = format("%s(%d)", first->key, ++times);
+            if (StrEq(second->key, first->key)) {
+                second->key = FormatStr("%s(%d)", first->key, ++times);
             }
         } 
     }

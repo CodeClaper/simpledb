@@ -355,7 +355,7 @@ MetaColumn *NameFindMetaColumnInner(List *meta_columns, char *column_name) {
     ListCell *lc;
     foreach (lc, meta_columns) {
         MetaColumn *current = (MetaColumn *) lfirst(lc);
-        if (streq(current->column_name, column_name))
+        if (StrEq(current->column_name, column_name))
             return current;
     }
     return NULL;
@@ -367,7 +367,7 @@ MetaColumn *TableColumnNameFindMetaColumn(List *meta_columns, char *table_name, 
     ListCell *lc;
     foreach (lc, meta_columns) {
         MetaColumn *current = (MetaColumn *) lfirst(lc);
-        if (streq(current->own_table_name, table_name) && streq(current->column_name, column_name))
+        if (StrEq(current->own_table_name, table_name) && StrEq(current->column_name, column_name))
             return current;
     }
     return NULL;
@@ -386,7 +386,7 @@ int NameFindMetaColumnPostion(MetaTable *meta_table, char *column_name) {
     ListCell *lc;
     foreach (lc, meta_table->meta_columns) {
         MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
-        if (streq(meta_column->column_name, column_name))
+        if (StrEq(meta_column->column_name, column_name))
             return i;
         i++;
     }
@@ -412,7 +412,7 @@ MetaColumn *NameFindAllMetaColumn(MetaTable *meta_table, char *name) {
     ListCell *lc;
     foreach (lc, meta_table->meta_columns) {
         MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
-        if (streq(meta_column->column_name, name))
+        if (StrEq(meta_column->column_name, name))
             return meta_column;
     }
     return NULL;
@@ -459,7 +459,7 @@ bool ColumnExistsInTable(char *column_name, char *table_name) {
     ListCell *lc;
     foreach (lc, meta_table->meta_columns) {
         MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
-        if (streq(column_name, meta_column->column_name))
+        if (StrEq(column_name, meta_column->column_name))
             return true;
     }
     return false;

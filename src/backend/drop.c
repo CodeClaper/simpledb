@@ -24,7 +24,7 @@ void exec_drop_table_statement(char *table_name, DBResult *result) {
     ) {
         result->success = true;
         result->rows = 0;
-        result->message = format("Table '%s' droped successfully.", table_name);
+        result->message = FormatStr("Table '%s' droped successfully.", table_name);
         db_log(SUCCESS, "Table '%s' droped successfully.", table_name);
     }
 }

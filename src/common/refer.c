@@ -297,7 +297,8 @@ static void update_key_value_refer(Row *row, MetaColumn *meta_column, Refer *ref
     foreach (lc, row->data) {
         KeyValue *key_value = lfirst(lc);
         if (key_value->data_type == T_REFERENCE && 
-                streq(key_value->key, meta_column->column_name)) {
+                StrEq(key_value->key, meta_column->column_name)
+        ) {
             if (key_value->is_array) {
                 if (update_array_key_value_refer(key_value, refer_update_entity))
                     flag = true;
@@ -337,7 +338,7 @@ static void update_row_refer(void *destin, SelectResult *select_result,
     foreach (lc, meta_table->meta_columns) {
         MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
         if (meta_column->column_type == T_REFERENCE && 
-                streq(meta_column->table_name, GET_TABLE_NAME(ref_table))) 
+                StrEq(meta_column->table_name, GET_TABLE_NAME(ref_table))) 
             update_key_value_refer(row, meta_column, refer, refer_update_entity);
     }
 }

@@ -20,7 +20,7 @@ List *parse(char *sql) {
     if (sql == NULL)
         return NULL;
 
-    trim(sql); /* Remove space characters, includes '\f', '\n', '\r', '\t', '\v'*/
+    Trim(sql); /* Remove space characters, includes '\f', '\n', '\r', '\t', '\v'*/
     db_log(INFO, "Execute sql: %s", sql);
 
     size_t size = strlen(sql) + 1;

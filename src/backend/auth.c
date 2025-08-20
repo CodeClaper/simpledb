@@ -15,6 +15,6 @@
 bool auth(char *message) {
     char buf[BUFF_SIZE];
     sprintf(buf, "%s/%s", conf->account, conf->password);
-    return streq(buf, message);
+    return StrEq(buf, message);
 }
 

@@ -1328,7 +1328,7 @@ case 72:
 YY_RULE_SETUP
 #line 101 "sql.l"
 { 
-                            yylval.strVal = replace_all(yytext, "`", ""); 
+                            yylval.strVal = ReplaceAll(yytext, "`", ""); 
                             current_token = dstrdup(yylval.strVal);
                             return IDENTIFIER;
                         } 

@@ -99,7 +99,7 @@ FALSE                   return FALSE;
                             return IDENTIFIER;
                         } 
 `[a-zA-Z][a-zA-Z0-9_]*` { 
-                            yylval.strVal = replace_all(yytext, "`", ""); 
+                            yylval.strVal = ReplaceAll(yytext, "`", ""); 
                             current_token = dstrdup(yylval.strVal);
                             return IDENTIFIER;
                         } 
@@ -129,7 +129,7 @@ FALSE                   return FALSE;
                             } 
                             return STRINGVALUE;
                         } 
-'[^']*$	            { yyerror(NULL, "Unterminated string");  return YYerror;}
+'[^']*$	                { yyerror(NULL, "Unterminated string");  return YYerror;}
 \n                      { lineno++; return NL;}
 [ \t]                   /* igonore space */
 "--".*$		;	        /* comment */

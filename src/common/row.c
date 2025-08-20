@@ -53,8 +53,8 @@ void *RowFindKey(Row *row, MetaTable *meta_table) {
     ListCell *lc;
     foreach (lc, row->data) {
         KeyValue *key_value = (KeyValue *) lfirst(lc);
-        AssertFalse(is_empty(key_value->table_name));
-        if (streq(key_value->key, primary_meta_column->column_name) && streq(key_value->table_name, meta_table->table_name))
+        AssertFalse(StrIsEmpty(key_value->table_name));
+        if (StrEq(key_value->key, primary_meta_column->column_name) && StrEq(key_value->table_name, meta_table->table_name))
             return key_value->value;
     }
 

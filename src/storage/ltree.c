@@ -1495,7 +1495,7 @@ static void *gen_new_default_value_at_append_column(void *default_value, MetaTab
     switch (new_meta_column->default_value_type) {
         case DEFAULT_VALUE: {
             /* Maybe default value is null, when refer value not found any match row. */
-            if (!is_null(new_meta_column->default_value))
+            if (!IsNull(new_meta_column->default_value))
                 memcpy(default_value + offset, 
                        new_meta_column->default_value, 
                        new_meta_column->column_length);
@@ -2497,7 +2497,7 @@ static void *get_value_from_row(Row *row, MetaColumn *meta_column) {
     ListCell *lc;
     foreach (lc, row->data) {
         KeyValue *key_value = lfirst(lc);
-        if (streq(column_name, key_value->key))
+        if (StrEq(column_name, key_value->key))
            return key_value->value;
     }
 
@@ -2568,7 +2568,7 @@ void *serialize_row_data(Row *row, Table *table) {
     foreach (lc, meta_table->meta_columns) {
         MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
         void *value = get_value_from_row(row, meta_column);
-        if (meta_column->not_null && is_null(value)) {
+        if (meta_column->not_null && IsNull(value)) {
             db_log(ERROR, "Column '%s' does`t have a default value.", meta_column->column_name);
             return NULL;
         }

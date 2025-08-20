@@ -58,7 +58,7 @@ static void register_table_reg(Oid oid) {
  * if already exists one, not actually call register_table_reg() */
 void try_register_table_reg(Oid oid) {
     TableRegEntry *entry = find_table_reg(oid);
-    if (is_null(entry)) 
+    if (IsNull(entry)) 
         register_table_reg(oid);
 }
 

@@ -126,7 +126,7 @@ void *shdrealloc(void *ptr, size_t size) {
 
 /* Strdup for share. */
 char *shdstrdup(char *str) {
-    if (is_null(str))
+    if (IsNull(str))
         return NULL;
     size_t size = strlen(str) + 1;
     void *new_str = shdalloc(size);

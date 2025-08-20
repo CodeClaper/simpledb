@@ -324,7 +324,7 @@ void exec_create_table_statement(CreateTableNode *create_table_node, DBResult *r
     ) {
         result->success = true;
         result->rows = 0;
-        result->message = format("Table '%s' created successfully.", 
+        result->message = FormatStr("Table '%s' created successfully.", 
                                  create_table_node->table_name);
 
         db_log(SUCCESS, "Table '%s' created successfully.", 

@@ -53,7 +53,7 @@ static char *extract_addr(char *addr) {
 static int print_stacktrace_addr2line(char *addr) {
 	char addr2line_cmd[512] = {0};
 
-    if (!startwith(addr, program_name))
+    if (!StartWith(addr, program_name))
         return 0;
 
     char *realAddr = extract_addr(addr);

@@ -40,7 +40,7 @@ void *lodrealloc(void *ptr, size_t size) {
 /* Strdup for local. */
 char *lodstrdup(char *str) {
     char *newStr = NULL;
-    if (is_null(str))
+    if (IsNull(str))
         return newStr;
     newStr = MemoryContextStrdup(str);
     return newStr;

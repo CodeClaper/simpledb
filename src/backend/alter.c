@@ -60,7 +60,7 @@ static void AlterAddNewColumn(AddColumnDef *add_column_def, char *table_name, DB
     /* Try to add new column. */
     if (add_new_meta_column(table_name, new_meta_column, add_column_def->position_def)) {
         result->success = true;
-        result->message = format("Add column '%s' for table '%s' successfully.", 
+        result->message = FormatStr("Add column '%s' for table '%s' successfully.", 
                                  new_meta_column->column_name, 
                                  table_name);
         db_log(SUCCESS, "Add column '%s' for table '%s' successfully.", 
@@ -84,7 +84,7 @@ static void AlterDropOldColumn(DropColumnDef *drop_column_def, char *table_name,
     /* Drop column.*/
     if (drop_meta_column(table_name, drop_column_def->column_name)) {
         result->success = true;
-        result->message = format("Drop column '%s' for table '%s' successfully.", 
+        result->message = FormatStr("Drop column '%s' for table '%s' successfully.", 
                                  drop_column_def->column_name, 
                                  table_name);
         db_log(SUCCESS, "Drop column '%s' for table '%s' successfully.", 

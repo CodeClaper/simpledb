@@ -20,7 +20,7 @@
 /* Left trim. 
  * Notice: not use the s directly, 
  * rather than the returning vlaue. */
-char *ltrim(char *s) {
+char *LeftTrim(char *s) {
     while(isspace(*s)) s++;
     return s;
 }
@@ -28,20 +28,20 @@ char *ltrim(char *s) {
 /* Right trim. 
  * Notice: although you can use s directly, 
  * but not recommand that. */
-char *rtrim(char *s) {
+char *RightTrim(char *s) {
     char* back = s + strlen(s);
     while(isspace(*--back));
     *(back+1) = '\0';
     return s;
 }
 
-/* trim */
-char *trim(char *s) {
-    return rtrim(ltrim(s)); 
+/* Trim */
+char *Trim(char *s) {
+    return RightTrim(LeftTrim(s)); 
 }
 
 /* Check if a string contains substring.*/
-bool contains(char* str, char *substr) {
+bool Contains(char* str, char *substr) {
     if (!str || !substr)
         return false;
     char *s = strstr(str, substr);
@@ -49,7 +49,7 @@ bool contains(char* str, char *substr) {
 }
 
 /* Check if a file has prefix. */
-bool startwith(char *str, const char *prefix) {
+bool StartWith(char *str, const char *prefix) {
     if (!str || !prefix)
         return false;
     ssize_t str_len = strlen(str);
@@ -60,7 +60,7 @@ bool startwith(char *str, const char *prefix) {
 }
 
 /* check if a file has suffix. */
-bool endwith(char *str, char *suffix) {
+bool EndWith(char *str, char *suffix) {
     if (!str || !suffix)
         return false;
     ssize_t str_len = strlen(str);
@@ -71,7 +71,7 @@ bool endwith(char *str, char *suffix) {
 }
 
 /* substring */
-char *substr(char *str, uint32_t start, uint32_t end) {
+char *SubStr(char *str, uint32_t start, uint32_t end) {
     if (!str)
         return NULL;
     ssize_t str_size = strlen(str);
@@ -90,7 +90,7 @@ char *substr(char *str, uint32_t start, uint32_t end) {
 }
 
 /* replace onece */
-char *replace_once(char *str, const char *old_str, const char *new_str) {
+char *ReplaceOnce(char *str, const char *old_str, const char *new_str) {
     if (!str || !old_str)
         return NULL;
     ssize_t str_size = strlen(str);
@@ -117,7 +117,7 @@ char *replace_once(char *str, const char *old_str, const char *new_str) {
 }
 
 /* Replace all. */
-char *replace_all(char *str, char *old_str, char *new_str) {
+char *ReplaceAll(char *str, char *old_str, char *new_str) {
     if (!str || !old_str)
         return NULL;
     ssize_t str_size = strlen(str);
@@ -150,7 +150,7 @@ char *replace_all(char *str, char *old_str, char *new_str) {
 }
 
 /* Check if empty string. */
-bool is_empty(char *s) {
+bool StrIsEmpty(char *s) {
     if (s == NULL) 
         return true;
     size_t size = strlen(s);
@@ -164,7 +164,7 @@ bool is_empty(char *s) {
 }
 
 /* Format String and return. */
-char *format(char *format, ...) {
+char *FormatStr(char *format, ...) {
     char message[BUFF_SIZE];
     va_list ap;
     va_start(ap, format);
@@ -176,23 +176,23 @@ char *format(char *format, ...) {
 
 /* Check if two strings are equal. 
  * Any of strings is NULL, return false. */
-bool streq(char *str1, char *str2) {
+bool StrEq(char *str1, char *str2) {
     return str1 && str2 && strcmp(str1, str2) == 0;
 }
 
 /* Check if two strings are equal, ignoring case. 
  * Any of strings is NULL, return false. */
-bool strcaseeq(char *str1, char *str2) {
+bool StrNoCaseEq(char *str1, char *str2) {
     return str1 && str2 && strcasecmp(str1, str2) == 0;
 }
 
-size_t len(char *str) {
+size_t StrLen(char *str) {
     return strlen(str);
 }
 
 /* Check if two strings are equal, 
  * if both are null, also return true. */
-bool streq_or_null(char *str1, char *str2) {
+bool StrEqOrNull(char *str1, char *str2) {
     if (str1 && str2)
         return strcmp(str1, str2) == 0;
     else if (!str1 && !str2)
@@ -203,8 +203,8 @@ bool streq_or_null(char *str1, char *str2) {
 
 /* String concat. */
 char *StrCat(char *str1, char *str2) {
-    Size len1 = len(str1);
-    Size len2 = len(str2);
+    Size len1 = StrLen(str1);
+    Size len2 = StrLen(str2);
     char *str = dalloc(len1 + len2 + 1);
     memcpy(str, str1, len1);
     memcpy(str + len1, str2, len2);
@@ -272,7 +272,7 @@ ST_FLAG stoi32(char *val, int32_t *ret) {
     /* Check if overflow max long value*/
     memset(buf, 0, BUFF_SIZE);
     sprintf(buf, "%ld", converted);
-    if (!streq(val, buf))
+    if (!StrEq(val, buf))
         return ST_OVERFLOW;
 
     *ret =  (int32_t) converted;
@@ -297,7 +297,7 @@ ST_FLAG stoi64(char *val, int64_t *ret) {
     /* Check if overflow max long value*/
     memset(buf, 0, BUFF_SIZE);
     sprintf(buf, "%ld", converted);
-    if (!streq(val, buf))
+    if (!StrEq(val, buf))
         return ST_OVERFLOW;
 
     *ret = converted;
@@ -350,10 +350,10 @@ ST_FLAG stod(char *val, double *ret) {
 
 /* Convert String value to bool value. */
 ST_FLAG stob(char *val, bool *ret) {
-    if (strcaseeq("TRUE", val) || strcaseeq("1", val)) {
+    if (StrNoCaseEq("TRUE", val) || StrNoCaseEq("1", val)) {
         *ret = true;
         return ST_SUCCESS;
-    } else if (strcaseeq("FALSE", val) || strcaseeq("o", val)) {
+    } else if (StrNoCaseEq("FALSE", val) || StrNoCaseEq("o", val)) {
         *ret = false;
         return ST_SUCCESS;
     } else

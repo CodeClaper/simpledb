@@ -127,10 +127,10 @@ static bool include_column_for_query_spece(MetaColumn *meta_column, QuerySpecNod
             char *alias_name = scalar_exp->alias;
             char *column_name = scalar_exp->column->column_name;
             if (alias_name) {
-                if (streq(meta_column->column_name, alias_name)) 
+                if (StrEq(meta_column->column_name, alias_name)) 
                     target_meta_column = find_meta_column_in_table_ref_list(list, column_name);
             } else {
-               if (streq(meta_column->column_name, column_name)) 
+               if (StrEq(meta_column->column_name, column_name)) 
                     target_meta_column = find_meta_column_in_table_ref_list(list, column_name);
             }
         }
@@ -154,7 +154,7 @@ static bool check_column_node(ColumnNode *column_node, MetaTable *meta_table) {
     ListCell *lc;
     foreach (lc, meta_table->meta_columns) {
         MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
-        if (streq(meta_column->column_name, column_node->column_name)) {
+        if (StrEq(meta_column->column_name, column_node->column_name)) {
             if (column_node->has_sub_column == false)
                 return true;
             else if (meta_column->column_type == T_REFERENCE && column_node->has_sub_column) {
@@ -211,15 +211,15 @@ static MetaTable *confirm_meta_table_via_column(ColumnNode *column, AliasMap ali
         MetaTable *meta_table = table->meta_table;
 
         if (column->range_variable && 
-            (streq(column->range_variable, alias_entry.name) || 
-                streq(column->range_variable, alias_entry.alias))) 
+            (StrEq(column->range_variable, alias_entry.name) || 
+                StrEq(column->range_variable, alias_entry.alias))) 
                 current_meta_table = meta_table;
 
         if (column->range_variable == NULL) {
             ListCell *lc;
             foreach (lc, meta_table->meta_columns) {
                 MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
-                if (streq(meta_column->column_name, column->column_name)) {
+                if (StrEq(meta_column->column_name, column->column_name)) {
                     current_meta_table = meta_table;
                     times++;
                 }            
@@ -401,7 +401,7 @@ static bool check_value_item_node(MetaTable *meta_table, char *column_name, Valu
         MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
         if (meta_column->sys_reserved)
             continue;
-        if (streq(meta_column->column_name, column_name)) {
+        if (StrEq(meta_column->column_name, column_name)) {
             switch (value_item_node->type) {
                 case V_ATOM: {
                     AtomNode *atom_node = value_item_node->value.atom;
@@ -688,13 +688,13 @@ static bool check_table_ref_list(List *list) {
         for (j = i + 1; j < len; j++) {
             TableRefNode *table_ref2 = lfirst(list_nth_cell(list, j));
             /* Check duplicate table. */
-            if (streq(table_ref->table, table_ref2->table)) {
+            if (StrEq(table_ref->table, table_ref2->table)) {
                 db_log(ERROR, "Duplicate table '%s'. ", table_ref->table);
                 return false;
             }
             /* Check duplicate table alias name. */
             if (table_ref->range_variable && table_ref2->range_variable 
-                && streq(table_ref->range_variable, table_ref2->range_variable)) {
+                && StrEq(table_ref->range_variable, table_ref2->range_variable)) {
                 db_log(ERROR, "Duplicate table alias name: '%s'. ", table_ref->range_variable);
                 return false;
             }
@@ -719,7 +719,7 @@ static bool check_where_clause(WhereClauseNode *where_clause, AliasMap alias_map
 
 /* Check LimitClauseNode. */
 static bool check_limit_clause(LimitClauseNode *limit_clause) {
-    if (non_null(limit_clause)) {
+    if (NonNull(limit_clause)) {
         if (limit_clause->rows < 0) {
             db_log(ERROR, "LIMIT must not be negative.");
             return false;
@@ -789,7 +789,7 @@ static bool check_assignment_set_node(UpdateNode *update_node) {
         Assert(column_node != NULL);
 
         MetaColumn *meta_column = NameFindMetaColumn(table->meta_table, column_node->column_name);
-        if (is_null(meta_column)) {
+        if (IsNull(meta_column)) {
             db_log(ERROR, "Not found column %s in table %s.", 
                    column_node->column_name, 
                    GET_TABLE_NAME(table));
@@ -837,7 +837,7 @@ static bool check_if_column_already_exists(List *list, ColumnDefNode *column_def
     ListCell *lc;
     foreach (lc, list) {
         ColumnDefNode *current_column_def = lfirst(lc);
-        if (streq(current_column_def->column->column, column_def->column->column))
+        if (StrEq(current_column_def->column->column, column_def->column->column))
             return true;
     }
     return false;
@@ -1076,7 +1076,7 @@ static bool check_insert_node_for_value_items(InsertNode *insert_node, List *val
             ColumnNode *column_node = lfirst(lc1);
             ValueItemNode *value_item_node = lfirst(lc2);
             MetaColumn *meta_column = NameFindMetaColumn(meta_table, column_node->column_name);
-            if (is_null(meta_column)) {
+            if (IsNull(meta_column)) {
                 db_log(ERROR, "Unknown column '%s'", column_node->column_name);
                 return false;
             }
@@ -1162,7 +1162,7 @@ static bool check_alter_table_add_column_action(char *table_name, AddColumnDef *
     }
 
     /* Check if the position column def exists. */
-    if (!is_null(add_column->position_def) 
+    if (!IsNull(add_column->position_def) 
             && !ColumnExistsInTable(add_column->position_def->column, table_name)) {
         db_log(ERROR, "Unknown column '%s' in table '%s'.", 
                add_column->position_def->column, 
@@ -1188,7 +1188,7 @@ static bool check_alter_table_drop_column(char *table_name, DropColumnDef *drop_
     MetaColumn *meta_column = NameFindMetaColumn(meta_table, drop_column_def->column_name);
 
     /* Check drop column if exists. */
-    if (is_null(meta_column)) {
+    if (IsNull(meta_column)) {
         db_log(ERROR, "Table '%s' not exists column '%s'.", 
                table_name, 
                drop_column_def->column_name);

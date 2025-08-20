@@ -38,12 +38,12 @@ char *read_conf(char *title, char *key) {
             perror("Read conf file error.");
             exit(1);
         }
-        char *line = trim(buff);
+        char *line = Trim(buff);
         /* Check if commenter line. */
-        if (startwith(line, "//") || startwith(line, "#"))
+        if (StartWith(line, "//") || StartWith(line, "#"))
             continue;
         /* Check if the title */
-        if (startwith(line, "[") && startwith(line + 1, title)) {
+        if (StartWith(line, "[") && StartWith(line + 1, title)) {
             inBlock = true;    
             continue;
         }
@@ -53,7 +53,7 @@ char *read_conf(char *title, char *key) {
         if (strchr(line, '=') == NULL)
             continue;
         /* Check if this line contains key. */
-        if (!startwith(line, key))
+        if (!StartWith(line, key))
             continue;
         p = strstr(line, key);
         if (p == NULL) {
@@ -61,11 +61,11 @@ char *read_conf(char *title, char *key) {
             exit(1);
         }
         p += strlen(key);
-        trim(p);
+        Trim(p);
         /* skip '=' */
         p += 1;
         fclose(file);
-        return strdup(trim(p));
+        return strdup(Trim(p));
     }
     fprintf(stderr, "Not found [%s].[%s] in configuration file.\n", title, key);
     exit(EXECUTE_FAIL);
@@ -102,7 +102,7 @@ static char* append_dir_end(char *dir) {
 /* Define bool value. */
 static bool define_bool_value(char *title, char *key) {
     char *bstr = read_conf(title, key);
-    return streq("true", bstr);
+    return StrEq("true", bstr);
 }
 
 

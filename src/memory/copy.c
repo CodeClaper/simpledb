@@ -474,7 +474,7 @@ InNode *copy_in_node(InNode *in_node) {
 
 /* Copy LimitNode. */
 LimitClauseNode *copy_limit_clause_node(LimitClauseNode *limit_clause_node) {
-    if (is_null(limit_clause_node))
+    if (IsNull(limit_clause_node))
         return NULL;
     LimitClauseNode *duplica = instance(LimitClauseNode);
     duplica->rows = limit_clause_node->rows;

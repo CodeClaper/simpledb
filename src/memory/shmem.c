@@ -103,7 +103,7 @@ static void *shmem_alloc_inner(size_t size) {
 /* Allocate memory in Shmem. */
 void *shmem_alloc(size_t size) {
     void *ptr = shmem_alloc_inner(size);
-    if (is_null(ptr)) {
+    if (IsNull(ptr)) {
         perror("Out of shared memory.");
         exit(1);
     }

@@ -160,7 +160,7 @@ bool db_send(const char *format, ...) {
     char *left_msg = SaveSessionMessage(sbuff);
 
     /* Only when spool is full or OVER FLAG, socket will send the whole spool data. */
-    if (!SessionIsFull() && !streq(OVER_FLAG, sbuff))
+    if (!SessionIsFull() && !StrEq(OVER_FLAG, sbuff))
         return true;
 
     Assert(!SessionIsEmpty());

@@ -16,60 +16,59 @@ typedef enum ST_FLAG {
 
 typedef unsigned char *byte_pointer;
 
-/* left trim*/
-char *ltrim(char *s);
+/* Left trim*/
+char *LeftTrim(char *s);
 
-/* right trim */
-char *rtrim(char *s);
+/* Right trim */
+char *RightTrim(char *s);
 
 /* trim */
-char *trim(char *s);
+char *Trim(char *s);
 
 /* Check if a string contains substring.*/
-bool contains(char* str, char *substr);
+bool Contains(char* str, char *substr);
 
 /* Check if a file has prefix. */
-bool startwith(char *str, const char *prefix);
+bool StartWith(char *str, const char *prefix);
 
 /* Check if a file has suffix. */
-bool endwith(char *str, char *suffix);
+bool EndWith(char *str, char *suffix);
 
-/* substring */
-char *substr(char *str, uint32_t start, uint32_t end);
+/* Substring */
+char *SubStr(char *str, uint32_t start, uint32_t end);
 
-/* replace once */
-char *replace_once(char *str, const char *old_str, const char *new_str);
+/* Replace once */
+char *ReplaceOnce(char *str, const char *old_str, const char *new_str);
 
 /* Replace all. */
-char *replace_all(char *str, char *old_str, char *new_str);
+char *ReplaceAll(char *str, char *old_str, char *new_str);
 
 /* Check if empty string. */
-bool is_empty(char *s);
+bool StrIsEmpty(char *s);
 
 /* Format String and return. */
-char *format(char *format, ...);
+char *FormatStr(char *format, ...);
 
 /* Check both string if equal. */
-bool streq(char *str1, char *str2);
+bool StrEq(char *str1, char *str2);
 
 /* Check if two strings are equal, ignoring case. */
-bool strcaseeq(char *str1, char *str2);
+bool StrNoCaseEq(char *str1, char *str2);
 
 /* Check both string if equal, 
  * if both is null, also return true. */
-bool streq_or_null(char *str1, char *str2);
-
+bool StrEqOrNull(char *str1, char *str2);
 
 /* String concat. */
 char *StrCat(char *str1, char *str2);
 
 /* Return true if pointer is NULL. */
-inline static bool is_null(void *ptr) {
+static inline bool IsNull(void *ptr) {
     return ptr == NULL;
 }
 
 /* Return true if pointer is not NULL. */
-inline static bool non_null(void *ptr) {
+static inline bool NonNull(void *ptr) {
     return ptr != NULL;
 }
 
