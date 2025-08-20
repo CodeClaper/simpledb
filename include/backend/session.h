@@ -7,6 +7,7 @@ typedef struct {
     uint32_t volumn;
     char spool[SPOOL_SIZE];     /* Store messsage pool. */
     volatile uint32_t pindex;   /* Current spool position index. */
+    char *preData;              /* Pre data. */
 } Session;
 
 #define OVER_FLAG "\r\n\r\n"  /* Over flag of message. */
@@ -14,6 +15,12 @@ typedef struct {
 
 /* Generate new session. */
 void new_session(int client);
+
+/* Clean up pre data. */
+bool clean_pre_data();
+
+/* db send pre. */
+bool db_send_pre(const char *format, ...);
 
 /* Socket send
  * return true if send successfully, else return false.  */

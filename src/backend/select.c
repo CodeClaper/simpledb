@@ -2347,8 +2347,7 @@ static inline SearchConditionNode *GetTableExpSeachCondition(TableExpNode *table
 /* Do before query condition. */
 static void DoBeforeQuerySeachCondition(SelectParam *selectParam) {
     if (selectParam->onlyAll && selectParam->stmt_type == SELECT_STMT) {
-        db_send("{ \"success\": true, ");
-        db_send("\"data\": [");
+        db_send_pre("{ \"success\": true, \"data\": [");
     }
 }
 
