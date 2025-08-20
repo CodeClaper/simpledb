@@ -14,22 +14,21 @@ typedef struct {
 #define LEFT_SPACE 4
 
 /* Generate new session. */
-void new_session(int client);
+void NewSession(int cli);
 
 /* Clean up pre data. */
-bool clean_pre_data();
+bool CleanUpPreData();
 
 /* db send pre. */
-bool db_send_pre(const char *format, ...);
+bool MakePreData(const char *format, ...);
 
 /* Socket send
  * return true if send successfully, else return false.  */
 bool db_send(const char *format, ...);
 
 /* Socket send 'Over' flag,
- * which means the message is over.
- * */
-bool db_send_over();
+ * which means the message is over. */
+bool DbSendOver();
 
 /* Socket recv. */
-char *db_recv();
+char *DbRecv();

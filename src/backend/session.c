@@ -18,50 +18,50 @@
 #include "utils.h"
 #include "asserts.h"
 
-static Session inner_session;
-static void clean_up_spool();
+static Session client;
+static void CleanUpSession();
 
 /* New session. */
-void new_session(int client) {
-    inner_session.client = client;
-    inner_session.frequency = 0;
-    inner_session.volumn = 0;
-    inner_session.preData = NULL;
-    clean_up_spool();
+void NewSession(int cli) {
+    client.client = cli;
+    client.frequency = 0;
+    client.volumn = 0;
+    client.preData = NULL;
+    CleanUpSession();
 }
 
 /* Spool if empty. */
-inline static bool spool_is_empty() {
-    return inner_session.pindex == 0;
+inline static bool SessionIsEmpty() {
+    return client.pindex == 0;
 }
 
 /* Spool if full. */
-inline static bool spool_is_full() {
-    return inner_session.pindex >= SPOOL_SIZE - LEFT_SPACE;
+inline static bool SessionIsFull() {
+    return client.pindex >= SPOOL_SIZE - LEFT_SPACE;
 }
 
 /* Clear up spool. */
-static void clean_up_spool() {
-    bzero(inner_session.spool, SPOOL_SIZE);
-    inner_session.pindex = 0;
+static void CleanUpSession() {
+    bzero(client.spool, SPOOL_SIZE);
+    client.pindex = 0;
 }
 
 /* Store spool. */
-static char *store_spool(char *message) {
+static char *SaveSessionMessage(char *message) {
     size_t len = strlen(message);
-    size_t current = inner_session.pindex + len;
+    size_t current = client.pindex + len;
     if (current < SPOOL_SIZE - LEFT_SPACE) {
-        memcpy(inner_session.spool + inner_session.pindex, message, len); 
-        inner_session.pindex = current;
+        memcpy(client.spool + client.pindex, message, len); 
+        client.pindex = current;
         return NULL;
     } else {
-        inner_session.pindex = SPOOL_SIZE;
+        client.pindex = SPOOL_SIZE;
         return message;
     }
 }
 
 /* db send pre. */
-bool db_send_pre(const char *format, ...) {
+bool MakePreData(const char *format, ...) {
     va_list ap;
     ssize_t s;
     uint32_t len;
@@ -82,48 +82,47 @@ bool db_send_pre(const char *format, ...) {
     
     va_end(ap);
 
-    if (!spool_is_empty()) 
+    if (!SessionIsEmpty()) 
     {
-        len = (uint32_t) strlen(inner_session.spool);
+        len = (uint32_t) strlen(client.spool);
         Assert(len > 0);
         Assert(len < SPOOL_SIZE - LEFT_SPACE);
 
-        memmove(((char *) inner_session.spool) + 4, inner_session.spool, len);
-        memcpy(inner_session.spool, &len, 4);
+        memmove(((char *) client.spool) + 4, client.spool, len);
+        memcpy(client.spool, &len, 4);
 
         /* Check if client close connection, if recv get zero 
          * which means client has closed conneciton. */
-        if ((s = send(inner_session.client, inner_session.spool, (len + 4), 0)) > 0)
+        if ((s = send(client.client, client.spool, (len + 4), 0)) > 0)
             /* Clear up spool. */
-            clean_up_spool();
+            CleanUpSession();
     }
     
-    inner_session.preData = dstrdup(sbuff);
+    client.preData = dstrdup(sbuff);
 
     return true;
 }
 
-bool clean_pre_data() {
-    if (inner_session.preData == NULL)
+bool CleanUpPreData() {
+    if (client.preData == NULL)
         return false;
-    dfree(inner_session.preData);
-    inner_session.preData = NULL;
+    dfree(client.preData);
+    client.preData = NULL;
     return true;
 }
 
-static bool db_pre_send() {
-    if (inner_session.preData == NULL)
+static bool DbSendPreData() {
+    if (client.preData == NULL)
         return true;
     char sbuff[SPOOL_SIZE];
     Size len;
 
-    len = strlen(inner_session.preData);
+    len = strlen(client.preData);
     Assert(len < SPOOL_SIZE - 4);
     memcpy(sbuff, &len, 4);
-    memcpy(sbuff + 4, inner_session.preData, len);
+    memcpy(sbuff + 4, client.preData, len);
 
-    return send(inner_session.client, sbuff, len + 4, 0) > 0 && 
-                clean_pre_data();
+    return send(client.client, sbuff, len + 4, 0) > 0 && CleanUpPreData();
 }
 
 /* Socket send message.
@@ -150,29 +149,29 @@ bool db_send(const char *format, ...) {
     va_end(ap);
 
     /* Store message into spool. */
-    char *left_msg = store_spool(sbuff);
+    char *left_msg = SaveSessionMessage(sbuff);
 
     /* Only when spool is full or OVER FLAG, socket will send the whole spool data. */
-    if (!spool_is_full() && !streq(OVER_FLAG, sbuff))
+    if (!SessionIsFull() && !streq(OVER_FLAG, sbuff))
         return true;
 
-    Assert(!spool_is_empty());
+    Assert(!SessionIsEmpty());
 
-    len = (uint32_t) strlen(inner_session.spool);
+    len = (uint32_t) strlen(client.spool);
     Assert(len > 0);
     Assert(len < SPOOL_SIZE - LEFT_SPACE);
 
-    memmove(((char *) inner_session.spool) + 4, inner_session.spool, len);
-    memcpy(inner_session.spool, &len, 4);
+    memmove(((char *) client.spool) + 4, client.spool, len);
+    memcpy(client.spool, &len, 4);
 
     /* Check if client close connection, if recv get zero 
      * which means client has closed conneciton. */
     if (
-        db_pre_send() && 
-        (s = send(inner_session.client, inner_session.spool, (len + 4), 0)) > 0
+        DbSendPreData() && 
+        (s = send(client.client, client.spool, (len + 4), 0)) > 0
     ) {
         /* Clear up spool. */
-        clean_up_spool();
+        CleanUpSession();
         /* If there are left message, continue db_send. */
         return (left_msg != NULL) ? db_send(left_msg) : true;
     }
@@ -183,17 +182,17 @@ bool db_send(const char *format, ...) {
 /* Socket send 'OVER' flag,
  * which means the message is over.
  * */
-bool db_send_over() {
+bool DbSendOver() {
     return db_send(OVER_FLAG);
 }
 
 /* Socket recv. */
-char *db_recv() {
+char *DbRecv() {
     size_t r;
     char *buf = dalloc(SPOOL_SIZE);
     bzero(buf, SPOOL_SIZE);
     
-    r = recv(inner_session.client, buf, SPOOL_SIZE, 0);
+    r = recv(client.client, buf, SPOOL_SIZE, 0);
     if (r > 0) {
         return buf;
     } else {

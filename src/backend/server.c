@@ -85,7 +85,7 @@ static bool AuthRequest(intptr_t client) {
     result->stmt_type = LOGIN_STMT;
 
     json_db_result(result);
-    db_send_over();
+    DbSendOver();
 
     return pass;
 }
@@ -134,7 +134,7 @@ static void RequestHandler(intptr_t client) {
 
     while ((rdata = ReceiveRequestData(client)) != NULL) {
         Execute(rdata);
-        if (!db_send_over())
+        if (!DbSendOver())
             break;
         MemoryContextReset(MASTER_MEMORY_CONTEXT);
         DestroyContextRecorders();
@@ -163,9 +163,8 @@ static void MemoryContextEnd() {
 
 /* Accept request.*/
 void AcceptRequest(intptr_t client) {
-
     /* Start new session. */
-    new_session(client);
+    NewSession(client);
 
     /* Set signal handler. */
     set_signal_handler();
