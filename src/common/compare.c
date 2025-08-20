@@ -25,13 +25,6 @@
 #include "meta.h"
 #include "utils.h"
 
-static bool KeyValueEQ(KeyValue *left, KeyValue *right); 
-static bool KeyValueNE(KeyValue *left, KeyValue *right); 
-static bool KeyValueGT(KeyValue *left, KeyValue *right); 
-static bool KeyValueGE(KeyValue *left, KeyValue *right); 
-static bool KeyValueLT(KeyValue *left, KeyValue *right); 
-static bool KeyValueLE(KeyValue *left, KeyValue *right); 
-
 /* Equal operation (=).*/
 bool EQ(void *source, void *target, DataType data_type) {
     /* Deal with NULL case. */
@@ -340,6 +333,8 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
                     tmp_time.tm_min = 0;
                     tmp_time.tm_hour = 0;
                     time_t val = mktime(&tmp_time);
+                    if (val < 0)
+                        db_log(ERROR, "Invalid input %s for type date.", right->value);
                     return *(time_t *)left->value == val;
                 }
                 default:
@@ -358,6 +353,8 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
                     memset(&tmp_time, 0, sizeof(struct tm));
                     strptime(right->value, "%Y-%m-%d %H:%M:%S", &tmp_time);
                     time_t val = mktime(&tmp_time);
+                    if (val < 0)
+                        db_log(ERROR, "Invalid input %s for type timestamp.", right->value);
                     return *(time_t *)left->value == val;
                 }
                 default:
@@ -606,6 +603,8 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
                     tmp_time.tm_min = 0;
                     tmp_time.tm_hour = 0;
                     time_t val = mktime(&tmp_time);
+                    if (val < 0)
+                        db_log(ERROR, "Invalid input %s for type date.", right->value);
                     return *(time_t *)left->value > val;
                 }
                 default:
@@ -624,6 +623,8 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
                     memset(&tmp_time, 0, sizeof(struct tm));
                     strptime(right->value, "%Y-%m-%d %H:%M:%S", &tmp_time);
                     time_t val = mktime(&tmp_time);
+                    if (val < 0)
+                        db_log(ERROR, "Invalid input %s for type timestamp.", right->value);
                     return *(time_t *)left->value > val;
                 }
                 default:

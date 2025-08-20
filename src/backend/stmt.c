@@ -52,6 +52,9 @@
 #include "xlog.h"
 #include "timer.h"
 
+#define Try if (setjmp(errEnv) == 0)
+#define Catch else
+
 /* Begin tranasction statement. */
 static void ExecuteBeginTransactionStmt(Statement *stmt, DBResult *result) {
     Assert(stmt->statement_type == BEGIN_TRANSACTION_STMT);
@@ -236,7 +239,7 @@ void Execute(char *sql) {
     /* Check empty sql. */
     if (!is_empty(sql)) {
         /* Catch Error. */
-        if (setjmp(errEnv) == 0) {
+        Try {
             statements = parse(sql);
             db_send(len_list(statements) > 1 ? "[" : "");
             /* Execute each statement. */
@@ -251,7 +254,7 @@ void Execute(char *sql) {
                     db_send(",");
             }
             db_send(len_list(statements) > 1 ? "]" : "");
-        } else {
+        } Catch {
             /* Catch routine. */
             CancelTempData();
             /* If the set is empty, which means sql syntax error, 
