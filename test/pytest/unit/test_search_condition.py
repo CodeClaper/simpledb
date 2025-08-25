@@ -169,13 +169,75 @@ def test_with_compare_calculate3():
         {'id': 'S006', 'name': 'bob', 'age': 9, 'birth': '2015-07-07', 'class': {'id': 'C003', 'location': 'South side', 'studentNum': 33}}
     ]
 
+## test with compare calculate
+def test_with_compare_calculate4():
+    sql = "select * from Student where age + 2 < 12;"
+    ret = client.execute(sql )
+    assert ret["success"] == True
+    assert ret["data"] == [ 
+        {'id': 'S005', 'name': 'kunting', 'age': 9, 'birth': '2015-06-23', 'class': {'id': 'C002', 'location': 'Middle', 'studentNum': 28}}, 
+        {'id': 'S006', 'name': 'bob', 'age': 9, 'birth': '2015-07-07', 'class': {'id': 'C003', 'location': 'South side', 'studentNum': 33}}
+    ]
+
+## test with compare calculate
+def test_with_compare_calculate5():
+    sql = "select * from Student where age * 2 < 19;"
+    ret = client.execute(sql )
+    assert ret["success"] == True
+    assert ret["data"] == [ 
+        {'id': 'S005', 'name': 'kunting', 'age': 9, 'birth': '2015-06-23', 'class': {'id': 'C002', 'location': 'Middle', 'studentNum': 28}}, 
+        {'id': 'S006', 'name': 'bob', 'age': 9, 'birth': '2015-07-07', 'class': {'id': 'C003', 'location': 'South side', 'studentNum': 33}}
+    ]
+
 ## test with aggregate function.
 def test_with_compare_aggregate_function():
     sql = "select * from Student where sum(age) > 10;"
     ret = client.execute(sql )
     assert ret["success"] == False
     assert ret["message"] == "Aggregate function not allowd in where."
-    
+ 
+## test compare with string values.
+def test_compare_with_string_value():
+    sql = "select * from Student where age = '9';"
+    ret = client.execute(sql )
+    assert ret["success"] == True
+    assert ret["data"] == [ 
+        {'id': 'S005', 'name': 'kunting', 'age': 9, 'birth': '2015-06-23', 'class': {'id': 'C002', 'location': 'Middle', 'studentNum': 28}}, 
+        {'id': 'S006', 'name': 'bob', 'age': 9, 'birth': '2015-07-07', 'class': {'id': 'C003', 'location': 'South side', 'studentNum': 33}}
+    ]
+
+## test compare wrong type.
+def test_compare_wrong_type():
+    sql = "select * from Student where age = 'BIG';"
+    ret = client.execute(sql )
+    assert ret["success"] == False
+    assert ret["message"] == "Invalid input BIG for type int."
+
+## test wrong date string.
+def test_compare_wrong_date_string():
+    sql = "select * from Student where birth = 'XXXX-XX-XX';"
+    ret = client.execute(sql )
+    print(ret)
+    assert ret["success"] == False
+    assert ret["message"] == "Invalid input XXXX-XX-XX for type date."
+
+## test wrong date string.
+def test_compare_wrong_date_string2():
+    sql = "select * from Student where birth = '2025-03-0X';"
+    ret = client.execute(sql )
+    print(ret)
+    assert ret["success"] == False
+    assert ret["message"] == "Invalid input 2025-03-0X for type date."
+
+## test compare date and timstamp .
+def test_compare_date_timestamp():
+    sql = "select * from Student where birth = '2015-07-07 10:12:00';"
+    ret = client.execute(sql )
+    print(ret)
+    assert ret["success"] == True
+    assert ret["data"] == [
+        {'id': 'S006', 'name': 'bob', 'age': 9, 'birth': '2015-07-07', 'class': {'id': 'C003', 'location': 'South side', 'studentNum': 33}}
+    ]
 
 ## test complex search condition. 
 def test_complex_search_condition():
