@@ -326,6 +326,10 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
                     return *(time_t *)left->value == *(time_t *)right->value;
                 case T_VARCHAR:
                 case T_STRING: {
+                    /* Check if valid input. */
+                    if (!StrIsDate(right->value) && !StrIsTimestamp(right->value))
+                        db_log(ERROR, "Invalid input %s for type date.", right->value);
+
                     struct tm tmp_time;
                     memset(&tmp_time, 0, sizeof(struct tm));
                     strptime(right->value, "%Y-%m-%d", &tmp_time);
@@ -333,8 +337,6 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
                     tmp_time.tm_min = 0;
                     tmp_time.tm_hour = 0;
                     time_t val = mktime(&tmp_time);
-                    if (val < 0)
-                        db_log(ERROR, "Invalid input %s for type date.", right->value);
                     return *(time_t *)left->value == val;
                 }
                 default:
@@ -349,12 +351,14 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
                     return *(time_t *)left->value == *(time_t *)right->value;
                 case T_VARCHAR:
                 case T_STRING: {
+                    /* Check if valid input. */
+                    if (!StrIsDate(right->value) && !StrIsTimestamp(right->value))
+                        db_log(ERROR, "Invalid input %s for type timestamp.", right->value);
+
                     struct tm tmp_time;
                     memset(&tmp_time, 0, sizeof(struct tm));
                     strptime(right->value, "%Y-%m-%d %H:%M:%S", &tmp_time);
                     time_t val = mktime(&tmp_time);
-                    if (val < 0)
-                        db_log(ERROR, "Invalid input %s for type timestamp.", right->value);
                     return *(time_t *)left->value == val;
                 }
                 default:
@@ -596,6 +600,10 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
                     return *(time_t *)left->value > *(time_t *)right->value;
                 case T_VARCHAR:
                 case T_STRING: {
+                    /* Check if valid input. */
+                    if (!StrIsDate(right->value) && !StrIsTimestamp(right->value))
+                        db_log(ERROR, "Invalid input %s for type date.", right->value);
+
                     struct tm tmp_time;
                     memset(&tmp_time, 0, sizeof(struct tm));
                     strptime(right->value, "%Y-%m-%d", &tmp_time);
@@ -603,8 +611,6 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
                     tmp_time.tm_min = 0;
                     tmp_time.tm_hour = 0;
                     time_t val = mktime(&tmp_time);
-                    if (val < 0)
-                        db_log(ERROR, "Invalid input %s for type date.", right->value);
                     return *(time_t *)left->value > val;
                 }
                 default:
@@ -619,12 +625,14 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
                     return *(time_t *)left->value > *(time_t *)right->value;
                 case T_VARCHAR:
                 case T_STRING: {
+                    /* Check if valid input. */
+                    if (!StrIsDate(right->value) && !StrIsTimestamp(right->value))
+                        db_log(ERROR, "Invalid input %s for type timestamp.", right->value);
+
                     struct tm tmp_time;
                     memset(&tmp_time, 0, sizeof(struct tm));
                     strptime(right->value, "%Y-%m-%d %H:%M:%S", &tmp_time);
                     time_t val = mktime(&tmp_time);
-                    if (val < 0)
-                        db_log(ERROR, "Invalid input %s for type timestamp.", right->value);
                     return *(time_t *)left->value > val;
                 }
                 default:
