@@ -44,7 +44,13 @@ char *ReplaceOnce(char *str, const char *old_str, const char *new_str);
 char *ReplaceAll(char *str, char *old_str, char *new_str);
 
 /* Check if empty string. */
-bool StrIsEmpty(char *s);
+bool StrIsEmpty(char *str);
+
+/* Check if str is date format. */
+bool StrIsDate(char *str);
+
+/* Check if str is timestamp format. */
+bool StrIsTimestamp(char *str);
 
 /* Format String and return. */
 char *FormatStr(char *format, ...);
@@ -61,16 +67,6 @@ bool StrEqOrNull(char *str1, char *str2);
 
 /* String concat. */
 char *StrCat(char *str1, char *str2);
-
-/* Return true if pointer is NULL. */
-static inline bool IsNull(void *ptr) {
-    return ptr == NULL;
-}
-
-/* Return true if pointer is not NULL. */
-static inline bool NonNull(void *ptr) {
-    return ptr != NULL;
-}
 
 /* Convert int32 to string. */
 char *IntToStr(int32_t val);
@@ -111,6 +107,17 @@ char *EscapStr(const char *str);
 /* Get line from socket. */
 int get_line(int sock, char *buf, int size);
 
+/* Return true if pointer is NULL. */
+static inline bool IsNull(void *ptr) {
+    return ptr == NULL;
+}
+
+/* Return true if pointer is not NULL. */
+static inline bool NonNull(void *ptr) {
+    return ptr != NULL;
+}
+
+
 /* Max size. */
 inline static size_t max_size(size_t size1, size_t size2) {
     return size1 > size2 ? size1: size2;
@@ -120,7 +127,6 @@ inline static size_t max_size(size_t size1, size_t size2) {
 inline static size_t min_size(size_t size1, size_t size2) {
     return size1 < size2 ? size1 : size2;
 }
-
 
 /* Show bytes. */
 void show_bytes(byte_pointer start, size_t len);

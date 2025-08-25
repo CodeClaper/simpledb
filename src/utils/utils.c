@@ -13,9 +13,11 @@
 #include <sys/socket.h>
 #include <time.h>
 #include <float.h>
+#include <regex.h>
 #include "data.h"
 #include "utils.h"
 #include "mmgr.h"
+#include "log.h"
 
 /* Left trim. 
  * Notice: not use the s directly, 
@@ -161,6 +163,48 @@ bool StrIsEmpty(char *s) {
             return false;
     }
     return true;
+}
+
+/* Check if str is date format. */
+bool StrIsDate(char *str) {
+    if (StrIsEmpty(str))
+        return false;
+
+    regex_t reegex;
+    int comp_result, exe_result;
+
+    /* Visit `https://www.regular-expressions.info/gnu.html`, and notice there`s not "\\b". */
+    comp_result = regcomp(&reegex, 
+                          "^([0-9]{4})-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$", 
+                          REG_EXTENDED);
+    if (comp_result != 0)
+        db_log(ERROR, "Regex compile fail.");
+
+    exe_result = regexec(&reegex, str, 0, NULL, 0);
+    regfree(&reegex);
+
+    return exe_result == REG_NOERROR;
+}
+
+/* Check if str is timestamp format. */
+bool StrIsTimestamp(char *str) {
+    if (StrIsEmpty(str))
+        return false;
+
+    regex_t reegex;
+    int comp_result, exe_result;
+
+    /* Visit `https://www.regular-expressions.info/gnu.html` and notice there`s not "\\b". */
+    comp_result = regcomp(&reegex, 
+                          "^([0-9]{4})-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])\\s(0[0-9]|1[0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])(\\.[0-9]{1,3})?$", 
+                          REG_EXTENDED);
+    if (comp_result != 0)
+        db_log(ERROR, "Regex compile fail.");
+
+    exe_result = regexec(&reegex, str, 0, NULL, 0);
+    regfree(&reegex);
+
+    return exe_result == REG_NOERROR;
 }
 
 /* Format String and return. */
