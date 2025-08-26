@@ -23,6 +23,7 @@
 #include "asserts.h"
 #include "instance.h"
 #include "systable.h"
+#include "optimizer.h"
 
 #define DEFAULT_GC_INTERVAL 10
 
@@ -95,7 +96,7 @@ void gc_table(char *table_name) {
 #endif
     /* Query with condition, and delete satisfied condition row. */
     SelectResult *select_result = new_select_result(UNKONWN_STMT, table_name, true);
-    QueryUnderSearchCondition(NULL, select_result, gc_row, ARG_NULL, NULL);
+    QueryUnderSearchCondition(NULL, select_result, SimpleSelectPlan(gc_row, ARG_NULL, NULL));
     free_select_result(select_result);
 }
 

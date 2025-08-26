@@ -11,20 +11,41 @@ typedef enum ROW_HANDLER_ARG_TYPE {
     ARG_REFER_UPDATE_ENTITY
 } ROW_HANDLER_ARG_TYPE;
 
-
 /* Function pointer about row handler */
 typedef void (*ROW_HANDLER)(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg);
 
-typedef struct SelectParam {
+/* SelectTable. */
+typedef struct SelectTable {
+    Table *table;
+    char *alias_name;
+} SelectTable;
+
+/* Select Plan. */
+typedef struct SelectPlan {
     StatementType stmt_type;        /* StatementType. */
     bool onlyAll;                   /* Only select all. */
     bool onlyCount;                 /* Only count int select statement. */
     bool onlyScanIndex;             /* Only scan index. */
+    bool indexValid;                /* Index if valid. */
+    List *selectTableList;          /* List of SelectTable. */
     volatile int32_t offset;        /* Current offset. Need volatile in parall calculating.*/
     LimitClauseNode *limitClause;   /* LimitClauseNode. */
     ROW_HANDLER rowHanler;          /* Row Handler implements.*/
+    ROW_HANDLER_ARG_TYPE type;      /* Arguement type. */
+    void *arg;                      /* Arguement. */
     s_lock slock;                   /* Sync lock.*/
-} SelectParam;
+} SelectPlan;
+
+/* SelectFromInternalChildTaskArgs. */
+typedef struct SelectFromInternalChildTaskArgs {
+    SelectResult *select_result;
+    uint32_t page_num;
+    uint32_t keys_num;
+    SearchConditionNode *condition;
+    Table *table;
+    SelectPlan *select_plan;
+} SelectFromInternalChildTaskArgs;
+
 
 /* Count number of row, used in the sql function count() */
 void CountRow(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg);
@@ -54,10 +75,10 @@ Row *DefineVisibleRow(Refer *refer);
 SelectResult *SelectWithColumnValue(Oid oid, MetaColumn *meta_column, void *value);
 
 /* Query with condition inner. */
-void QueryUnderSearchConditionInner(Oid oid, SearchConditionNode *condition, SelectResult *select_result, ROW_HANDLER row_handler, ROW_HANDLER_ARG_TYPE type, void *arg);
+void QueryUnderSearchConditionInner(Oid oid, SearchConditionNode *condition, SelectResult *select_result, SelectPlan *select_plan);
 
 /* Query with condition. */
-void QueryUnderSearchCondition(SearchConditionNode *condition, SelectResult *select_result, ROW_HANDLER row_handler, ROW_HANDLER_ARG_TYPE type, void *arg);
+void QueryUnderSearchCondition(SearchConditionNode *condition, SelectResult *select_result, SelectPlan *select_plan);
 
 /* Execute select statement. */
 void exec_select_statement(SelectNode *select_node, DBResult *result);

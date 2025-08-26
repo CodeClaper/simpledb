@@ -22,6 +22,7 @@
 #include "tuple.h"
 #include "sysstate.h"
 #include "heaptable.h"
+#include "optimizer.h"
 
 /* System table meta column lisLEAF_NODE_CELL_NULL_FLAG_SIZE + MAX_COLUMN_SIZEt. */
 MetaColumn SYS_TABLE_COLUMNS[] = {
@@ -237,7 +238,7 @@ static Object OidFindObjectInner(Oid oid) {
     /* Query. */
     QueryUnderSearchConditionInner(
         SYS_ROOT_OID, condition, result, 
-        SelectTuple, ARG_NULL, NULL
+        SimpleSelectPlan(SelectTuple, ARG_NULL, NULL)
     );
 
     /* Logically, we will get one row data. */
@@ -287,7 +288,7 @@ static Oid RelnameAndReltypeFindOid(char *relname, ObjectType reltype) {
     /* Query. */
     QueryUnderSearchConditionInner(
         SYS_ROOT_OID, condition, result, 
-        SelectTuple, ARG_NULL, NULL
+        SimpleSelectPlan(SelectTuple, ARG_NULL, NULL)
     );
 
     /* The rows number maybe zero, which means the table not exists. 
@@ -372,7 +373,7 @@ List *FindAllObject() {
     /* Query. */
     QueryUnderSearchConditionInner(
         SYS_ROOT_OID, NULL, result, 
-        SelectTuple, ARG_NULL, NULL
+        SimpleSelectPlan(SelectTuple, ARG_NULL, NULL)
     );
 
     return TuplesConvertObjectList(result->tuples);
@@ -488,7 +489,7 @@ bool RemoveObject(Oid oid) {
     /* Query. */
     QueryUnderSearchConditionInner(
         SYS_ROOT_OID, condition, result, 
-        delete_row, ARG_NULL, NULL
+        SimpleSelectPlan(delete_row, ARG_NULL, NULL)
     );
     
     return result->row_size > 0;

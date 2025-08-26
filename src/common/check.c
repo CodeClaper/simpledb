@@ -37,6 +37,7 @@
 #include "instance.h"
 #include "sys.h"
 #include "tablecache.h"
+#include "optimizer.h"
 
 static bool check_value_item_set_node(MetaTable *meta_table, char *column_name, List *value_list);
 static bool check_scalar_exp(ScalarExpNode *scalar_exp, AliasMap alias_map);
@@ -745,7 +746,7 @@ static bool check_unique_column(Table *table, MetaColumn *meta_column, void *val
     /* Although this cehck update node, but new select result is SELECT_STMT. */
     SelectResult *select_result = new_select_result(SELECT_STMT, update_node->table_name, true);
     SearchConditionNode *condition_node = get_condition_from_where_clause(update_node->where_clause);
-    QueryUnderSearchCondition(condition_node, select_result, SelectRow, ARG_NULL, NULL);
+    QueryUnderSearchCondition(condition_node, select_result, SimpleSelectPlan(SelectRow, ARG_NULL, NULL));
     /* If selected rows more than one, 
      * which means at least two rows has same value.*/
     if (select_result->row_size > 1) {

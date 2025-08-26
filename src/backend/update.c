@@ -37,6 +37,7 @@
 #include "jsonwriter.h"
 #include "log.h"
 #include "instance.h"
+#include "optimizer.h"
 
 /* Update cell */
 static void UpdateCell(Row *row, AssignmentNode *assign_node, MetaColumn *meta_column) {
@@ -171,9 +172,10 @@ void exec_update_statment(UpdateNode *update_node, DBResult *result) {
     condition_node = WhereClauseFindSearchCondition(update_node->where_clause);
 
     /* Query with update row operation. */
-    QueryUnderSearchCondition(condition_node, select_result, 
-                              UpdateTuple, ARG_ASSIGNMENT_LIST, 
-                              update_node->assignment_list);
+    QueryUnderSearchCondition(
+        condition_node, select_result, 
+        SimpleSelectPlan(UpdateTuple, ARG_ASSIGNMENT_LIST, update_node->assignment_list)
+    );
     
     /* Combine the result. */
     result->success = true;

@@ -32,6 +32,7 @@
 #include "log.h"
 #include "instance.h"
 #include "tablecache.h"
+#include "optimizer.h"
 
 typedef struct {
     uint32_t size;
@@ -196,7 +197,10 @@ Refer *fetch_refer(MetaColumn *meta_column, SearchConditionNode *condition_node)
     /* Make a new SelectResult. */
     SelectResult *select_result = new_select_result(UNKONWN_STMT, meta_column->table_name, true);
 
-    QueryUnderSearchCondition(condition_node, select_result, SelectRow, ARG_NULL, NULL);
+    QueryUnderSearchCondition(
+        condition_node, select_result, 
+        SimpleSelectPlan(SelectRow, ARG_NULL, NULL)
+    );
 
     Refer *refer = NULL;
     uint32_t row_size = QueueSize(select_result->rows);
@@ -354,11 +358,8 @@ static void update_table_refer(MetaTable *meta_table, ReferUpdateEntity *refer_u
 
     /* Traverse rows to update refer. */
     QueryUnderSearchCondition(
-        NULL, 
-        select_result, 
-        update_row_refer, 
-        ARG_REFER_UPDATE_ENTITY, 
-        refer_update_entity
+        NULL, select_result, 
+        SimpleSelectPlan(update_row_refer, ARG_REFER_UPDATE_ENTITY, refer_update_entity)
     );
 }
 
