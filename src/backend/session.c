@@ -20,6 +20,7 @@
 
 static Session client;
 static void CleanUpSession();
+static bool DbSendTempData();
 
 /* New session. */
 void NewSession(int cli) {
@@ -87,6 +88,9 @@ bool MakeTempData(const char *format, ...) {
     vsprintf(sbuff, format, ap);
     
     va_end(ap);
+
+    if (!StrIsEmpty(client.tempData))
+        DbSendTempData();
 
     if (!SessionIsEmpty()) 
     {

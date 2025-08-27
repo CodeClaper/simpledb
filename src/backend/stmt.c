@@ -229,7 +229,6 @@ static void ExecuteStatement(Statement *statement, DBResult *result) {
  * (10) ALTER TABLE ADD or DROP COLUMN.
  * */
 void Execute(char *sql) {
-
     struct timeval start_time, end_time;
     gettimeofday(&start_time, NULL);
 

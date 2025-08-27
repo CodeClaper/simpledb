@@ -56,6 +56,14 @@ def test_compare_with_date2():
         {'id': 'S007', 'name': 'Doglas', 'age': 11, 'class': 1, 'sex': 'W', 'createdTime': '2025-01-09 10:30:01'}
     ]
 
+def test_compare_with_wrong_type():
+    sql = "select * from Student where createdTime < '2025-02-17 12:00:0X';"
+    ret = client.execute(sql)
+    print(ret)
+    assert ret["success"] == False
+    assert ret["message"] == "Invalid input 2025-02-17 12:00:0X for type timestamp."
+
+
 ## test for drop table.
 def test_drop_table():
     sql = "DROP TABLE Student;" 
