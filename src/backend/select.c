@@ -514,17 +514,30 @@ static bool InternalNodeForComparisonPredicate(SelectPlan *select_plan, KeyValue
     return true;
 }
 
+/* Check if the internal comparison meets like predicate. */
+static bool InternalNodeForLikePredicate(SelectPlan *select_plan, KeyValue *min_key_value, KeyValue *max_key_value, LikeNode *like) { 
+    ColumnNode *column = like->column;
+    KeyValue *value = QueryTupleValueItem(like->value);
+    if (StrEq(column->column_name, min_key_value->key) && StrEq(column->column_name, max_key_value->key))
+        return KeyValueEval(O_LT, min_key_value, value) && KeyValueEval(O_GE, max_key_value, value); 
+    return true;
+}
+
 /* Check if the internal meets predicate. */
-static bool InternalNodeForPredicata(SelectPlan *select_plan, KeyValue *min_key_value, KeyValue *max_key_value, PredicateNode *predicate) {
+static bool InternalNodeForPredicate(SelectPlan *select_plan, KeyValue *min_key_value, KeyValue *max_key_value, PredicateNode *predicate) {
     switch (predicate->type) {
         case PRE_COMPARISON:
             return InternalNodeForComparisonPredicate(
                 select_plan, min_key_value, max_key_value, 
                 predicate->comparison
             );
+        case PRE_LIKE:
+            return InternalNodeForLikePredicate(
+                select_plan, min_key_value, max_key_value, 
+                predicate->like
+            );
         /* For in or like predicate will cause index invalid. */
         case PRE_IN:
-        case PRE_LIKE:
             return true;
         default:
             UNEXPECTED_VALUE(predicate->type);
@@ -536,7 +549,7 @@ static bool InternalNodeForPredicata(SelectPlan *select_plan, KeyValue *min_key_
 static bool InternalNodeForBooleanPrimary(SelectPlan *select_plan, KeyValue *min_key_value, KeyValue *max_key_value, BooleanPrimaryNode *boolean_primary) {
     switch (boolean_primary->type) {
         case PREDICATE_BOOLEAN_PRIMAYR:
-            return InternalNodeForPredicata(select_plan, min_key_value, max_key_value, boolean_primary->predicate);
+            return InternalNodeForPredicate(select_plan, min_key_value, max_key_value, boolean_primary->predicate);
         case SEARCH_CONDITION_BOOLEAN_PRIMAYR:
             return InternalNodeForSearchCondition(select_plan, min_key_value, max_key_value, boolean_primary->search_condition);
         default:

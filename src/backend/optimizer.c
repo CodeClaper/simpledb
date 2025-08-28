@@ -137,6 +137,11 @@ static Table *ColumnNodeFindTable(List *select_table_list, ColumnNode *column) {
     return NULL;
 }   
 
+/* Check if not left wildcard. */
+static inline bool NoneLeftWildcard(char *wildcard) {
+    return wildcard[0] != '%';
+}
+
 /* If index valid for ColumnNode. 
  * ------------------------------
  * Note: by now, we only support primary key, 
@@ -184,9 +189,19 @@ static bool IndexValidForComparison(List *select_table_list, ComparisonNode *com
             IndexValidForScalarExp(select_table_list, comparison->right);
 }
 
+/* If index valid for like predicate. 
+ * ---------------------------------
+ * Note: for like predicate, index works valid only for right wildcard,
+ * full wildcard and left wildcard will cause index invalid. 
+ * */
+static bool IndexValidForLike(List *select_table_list, LikeNode *like) {
+    return IndexValidForColumn(select_table_list, like->column) &&
+            NoneLeftWildcard(like->value->value.atom->value.strval);
+}
+
 /* If index valid for PredicateNode. 
  * --------------------------------
- * Note: Like or in predicate maybe index-valid,
+ * Note: in predicate maybe index-valid,
  * to be simple, they ars regarded as index-invaid.
  * */
 static bool IndexValidForPredicate(List *select_table_list, PredicateNode *predicate) {
@@ -194,6 +209,7 @@ static bool IndexValidForPredicate(List *select_table_list, PredicateNode *predi
         case PRE_COMPARISON:
             return IndexValidForComparison(select_table_list, predicate->comparison);
         case PRE_LIKE:
+            return IndexValidForLike(select_table_list, predicate->like);
         case PRE_IN:
             return false;
         default:
