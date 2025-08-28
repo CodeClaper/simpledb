@@ -114,7 +114,7 @@ bool create_table(Oid oid, MetaTable *meta_table) {
     lseek(descr, 0, SEEK_SET);
     ssize_t w_size = write(descr, root_node, PAGE_SIZE);
     if (w_size == -1) {
-        db_log(ERROR, "Write table meta info error and errno %d.\n", errno);
+        db_log(ERROR, "Write table meta info error and error message: %s.", strerror(errno));
         dfree(file_path);
         dfree(root_node);
         return false;

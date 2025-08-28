@@ -77,7 +77,7 @@ bool CreateHeapTableInner(Oid oid) {
     lseek(descr, 0, SEEK_SET);
     w_size = write(descr, rblock, PAGE_SIZE);
     if (w_size == -1) {
-        db_log(PANIC, "Write table meta info error and errno %d.", errno);
+        db_log(PANIC, "Write table meta info error and errno message: %s.", strerror(errno));
         return false;
     } 
 
