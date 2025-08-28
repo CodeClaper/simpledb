@@ -589,7 +589,7 @@ static bool check_in_node(InNode *in_node, AliasMap alias_map) {
 
 /* Check like data type. */
 static bool check_like_data_type(MetaColumn *meta_column) {
-    if (meta_column->column_type != T_STRING) {
+    if (meta_column->column_type != T_STRING && meta_column->column_type != T_VARCHAR) {
         db_log(ERROR, "For like predicate, only support string data type.");
         return false;
     }
