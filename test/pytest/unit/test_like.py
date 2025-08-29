@@ -11,7 +11,6 @@ def test_create_table():
     ret = client.execute(sql)
     assert ret["success"] == True
 
-
 ## insert mock data. 
 def test_insert_mock_data():
     sql = "insert into Student values('S001', 'kail', 10, '2014-10-03', 'beijing');\n" \
@@ -91,7 +90,7 @@ def test_like_predicate_no_wildcard():
         {'id': 'S004', 'name': 'david', 'age': 14, 'birth': '2010-01-05', 'address': 'jinan'}
     ]
 
-## test no wildcard.
+## test error wildcard.
 def test_like_predicate_error_wildcard():
     sql = "select * from Student where address like 'an%g';"
     ret = client.execute(sql)

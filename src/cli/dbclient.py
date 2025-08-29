@@ -94,7 +94,7 @@ class DbClient:
                     print(response[:-4])
                     break
                 else:
-                    print(response)
+                    print(response, end="")
         except ConnectionError:
             exit(1)
         except socket.timeout:
