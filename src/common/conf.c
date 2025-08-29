@@ -78,6 +78,8 @@ static LogLevel define_log_level(char *level) {
         return DEBUGER;
     else if (strcasecmp(level, "INFO") == 0)
         return INFO;
+    else if (strcasecmp(level, "SUCCS") == 0)
+        return SUCCESS;
     else if (strcasecmp(level, "WARN") == 0)
         return WARN;
     else if (strcasecmp(level, "ERROR") == 0)
