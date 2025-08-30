@@ -44,6 +44,15 @@ def test_compare_index_valid3():
     assert ret[0]["data"] == ret[1]["data"]
     assert ret[0]["duration"] * 10 < ret[1]["duration"]
 
+## test index invalid
+def test_compare_index_invalid1():
+    sql = "select count(1) from Demo where id < '111' or sid >= '999';\n" \
+          "select count(1) from Demo where sid < '111' or sid >= '999';"
+    ret = client.execute(sql)
+    assert_all(ret)
+    assert ret[0]["data"] == ret[1]["data"]
+    assert abs(ret[0]["duration"] - ret[1]["duration"]) < 0.1
+
 ## test critical value
 def test_critical_value1():
     sql = "select count(1) from Demo where id >= '76150' and id <= '76247';\n" \
@@ -87,12 +96,30 @@ def test_index_valid_like2():
     ret = client.execute(sql)
     assert_all(ret)
     assert ret[0]["data"] == ret[1]["data"]
-    assert abs(ret[0]["duration"] - ret[1]["duration"]) < 1
+    assert abs(ret[0]["duration"] - ret[1]["duration"]) < 0.1
 
 ## test index valid for like predicate
 def test_index_valid_like3():
     sql = "select * from Demo where id like '99999%';\n" \
           "select * from Demo where sid like '99999%';\n"
+    ret = client.execute(sql)
+    assert_all(ret)
+    assert ret[0]["data"] == ret[1]["data"]
+    assert ret[0]["duration"] * 10 < ret[1]["duration"]
+
+## test index valid for in predicate. 
+def test_index_valid_in():
+    sql = "select * from Demo where id in ('1', '111', '1111', '11111');\n"\
+          "select * from Demo where sid in ('1', '111', '1111', '11111');\n"
+    ret = client.execute(sql)
+    assert_all(ret)
+    assert ret[0]["data"] == ret[1]["data"]
+    assert ret[0]["duration"] * 10 < ret[1]["duration"]
+
+## test index valid for in predicate. 
+def test_index_valid_for_not():
+    sql = "select count(*) from Demo where not id in ('1', '111', '1111', '11111');\n"\
+          "select count(*) from Demo where not sid in ('1', '111', '1111', '11111');\n"
     ret = client.execute(sql)
     assert_all(ret)
     assert ret[0]["data"] == ret[1]["data"]

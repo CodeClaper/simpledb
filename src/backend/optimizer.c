@@ -199,11 +199,12 @@ static bool IndexValidForLike(List *select_table_list, LikeNode *like) {
             NoneLeftWildcard(like->value->value.atom->value.strval);
 }
 
-/* If index valid for PredicateNode. 
- * --------------------------------
- * Note: in predicate maybe index-valid,
- * to be simple, they ars regarded as index-invaid.
- * */
+/* If index valid for in predicate. */
+static bool IndexValidForIn(List *select_table_list, InNode *in) {
+    return IndexValidForColumn(select_table_list, in->column);
+}
+
+/* If index valid for PredicateNode. */
 static bool IndexValidForPredicate(List *select_table_list, PredicateNode *predicate) {
     switch (predicate->type) {
         case PRE_COMPARISON:
@@ -211,7 +212,7 @@ static bool IndexValidForPredicate(List *select_table_list, PredicateNode *predi
         case PRE_LIKE:
             return IndexValidForLike(select_table_list, predicate->like);
         case PRE_IN:
-            return false;
+            return IndexValidForIn(select_table_list, predicate->in);
         default:
             UNEXPECTED_VALUE(predicate->type);     
     }

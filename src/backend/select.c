@@ -514,7 +514,7 @@ static bool InternalNodeForComparisonPredicate(SelectPlan *select_plan, KeyValue
     return true;
 }
 
-/* Check if the internal comparison meets like predicate. */
+/* Check if the internal node meets like predicate. */
 static bool InternalNodeForLikePredicate(SelectPlan *select_plan, KeyValue *min_key_value, KeyValue *max_key_value, LikeNode *like) { 
     ColumnNode *column = like->column;
     KeyValue *value = QueryTupleValueItem(like->value);
@@ -523,7 +523,22 @@ static bool InternalNodeForLikePredicate(SelectPlan *select_plan, KeyValue *min_
     return true;
 }
 
-/* Check if the internal meets predicate. */
+/* Check if the internal node meets in predicate. */
+static bool InternalNodeForInPredicate(SelectPlan *select_plan, KeyValue *min_key_value, KeyValue *max_key_value, InNode *in) {
+    ColumnNode *column = in->column;
+    if (StrEq(column->column_name, min_key_value->key) && StrEq(column->column_name, max_key_value->key)) {
+        ListCell *lc;
+        foreach (lc, in->value_list) {
+            KeyValue *value = QueryTupleValueItem((ValueItemNode *)lfirst(lc));
+            if (KeyValueEval(O_LT, min_key_value, value) && KeyValueEval(O_GE, max_key_value, value))
+                return true;
+        }
+        return false;
+    }
+    return true;
+}
+
+/* Check if the internal node meets predicate. */
 static bool InternalNodeForPredicate(SelectPlan *select_plan, KeyValue *min_key_value, KeyValue *max_key_value, PredicateNode *predicate) {
     switch (predicate->type) {
         case PRE_COMPARISON:
@@ -536,9 +551,11 @@ static bool InternalNodeForPredicate(SelectPlan *select_plan, KeyValue *min_key_
                 select_plan, min_key_value, max_key_value, 
                 predicate->like
             );
-        /* For in or like predicate will cause index invalid. */
         case PRE_IN:
-            return true;
+            return InternalNodeForInPredicate(
+                select_plan, min_key_value, max_key_value, 
+                predicate->in
+            );
         default:
             UNEXPECTED_VALUE(predicate->type);
             return false;
