@@ -240,7 +240,7 @@ def test_compare_date_timestamp():
     ]
 
 ## test complex search condition. 
-def test_complex_search_condition():
+def test_complex_search_condition1():
     sql = "select * from Student where age > 9 and age < 12 or (class).studentNum <= 32 and (class).studentNum >= 30;"
     ret = client.execute(sql)
     assert ret["success"] == True
