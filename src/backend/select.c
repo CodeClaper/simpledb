@@ -620,7 +620,9 @@ static bool InternalNodeForBooleanPrimary(SelectPlan *select_plan, KeyValue *min
         case PREDICATE_BOOLEAN_PRIMAYR:
             return InternalNodeForPredicate(select_plan, min_key_value, max_key_value, boolean_primary->predicate, negation);
         case SEARCH_CONDITION_BOOLEAN_PRIMAYR:
-            return !negation ? InternalNodeForSearchCondition(select_plan, min_key_value, max_key_value, boolean_primary->search_condition) : true;
+            return !negation 
+                    ? InternalNodeForSearchCondition(select_plan, min_key_value, max_key_value, boolean_primary->search_condition) 
+                    : true;
         default:
             UNEXPECTED_VALUE(boolean_primary->type);
             return false;
