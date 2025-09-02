@@ -635,12 +635,14 @@ static bool InternalNodeForBooleanTest(SelectPlan *select_plan, KeyValue *min_ke
         case IS_TRUTH_VALUE: 
             return InternalNodeForBooleanPrimary(
                 select_plan, min_key_value, max_key_value, boolean_test->boolean_primary, 
-                negation || !boolean_test->truth_value
+                /* The following is XOR. */
+                negation == boolean_test->truth_value
             );
         case IS_NOT_TRUTH_VALUE: 
             return InternalNodeForBooleanPrimary(
                 select_plan, min_key_value, max_key_value, boolean_test->boolean_primary, 
-                negation || boolean_test->truth_value
+                /* The following is XOR. */
+                negation != boolean_test->truth_value
             );
         default:
             UNEXPECTED_VALUE(boolean_test->type);
