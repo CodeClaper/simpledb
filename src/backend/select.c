@@ -414,7 +414,7 @@ static bool LeafNodeForSearchCondition(SelectResult *select_result, List *meta_c
 }
 
 /* Check if the internal comparison meets comparison. */
-static bool InternalNodeForComparisonPredicate(SelectPlan *select_plan, KeyValue *min_key_value, KeyValue *max_key_value, ComparisonNode *comparison) {
+static bool InternalNodeForComparisonPredicate(SelectPlan *select_plan, KeyValue *min_key_value, KeyValue *max_key_value, ComparisonNode *comparison, bool negation) {
     /* Refer value will cause index invalid */
     if (SatisfyColumnAndReferValueCompparison(comparison->left, comparison->right))
         return true;
@@ -427,12 +427,16 @@ static bool InternalNodeForComparisonPredicate(SelectPlan *select_plan, KeyValue
                 ColumnNode *column = left->column;
                 KeyValue *value = QueryTupleValueItem(right->value);
                 if (StrEq(column->column_name, min_key_value->key) && StrEq(column->column_name, max_key_value->key))
-                    return KeyValueEval(O_LT, min_key_value, value) && KeyValueEval(O_GE, max_key_value, value); 
+                    return !negation 
+                            ? KeyValueEval(O_LT, min_key_value, value) && KeyValueEval(O_GE, max_key_value, value) 
+                            : true; 
             } else if (left->type == SCALAR_VALUE && right->type == SCALAR_COLUMN) {
                 ColumnNode *column = right->column;
                 KeyValue *value = QueryTupleValueItem(left->value);
                 if (StrEq(column->column_name, min_key_value->key) && StrEq(column->column_name, max_key_value->key))
-                    return KeyValueEval(O_LT, min_key_value, value) && KeyValueEval(O_GE, max_key_value, value); 
+                    return !negation 
+                            ? KeyValueEval(O_LT, min_key_value, value) && KeyValueEval(O_GE, max_key_value, value) 
+                            : true;
             }
             break;
         }
@@ -441,13 +445,16 @@ static bool InternalNodeForComparisonPredicate(SelectPlan *select_plan, KeyValue
                 ColumnNode *column = left->column;
                 KeyValue *value = QueryTupleValueItem(right->value);
                 if (StrEq(column->column_name, min_key_value->key) && StrEq(column->column_name, max_key_value->key))
-                    return KeyValueEval(O_GE, min_key_value, value) || KeyValueEval(O_LT, max_key_value, value); 
-
+                    return !negation 
+                            ? true
+                            : KeyValueEval(O_LT, min_key_value, value) && KeyValueEval(O_GE, max_key_value, value);
             } else if (left->type == SCALAR_VALUE && right->type == SCALAR_COLUMN) {
                 ColumnNode *column = right->column;
                 KeyValue *value = QueryTupleValueItem(left->value);
                 if (StrEq(column->column_name, min_key_value->key) && StrEq(column->column_name, max_key_value->key))
-                    return KeyValueEval(O_GE, min_key_value, value) || KeyValueEval(O_LT, max_key_value, value); 
+                    return !negation 
+                            ? true
+                            : KeyValueEval(O_LT, min_key_value, value) && KeyValueEval(O_GE, max_key_value, value); 
             }
             break;
         }
@@ -456,12 +463,16 @@ static bool InternalNodeForComparisonPredicate(SelectPlan *select_plan, KeyValue
                 ColumnNode *column = left->column;
                 KeyValue *value = QueryTupleValueItem(right->value);
                 if (StrEq(column->column_name, min_key_value->key) && StrEq(column->column_name, max_key_value->key))
-                    return KeyValueEval(O_GT, max_key_value, value); 
+                    return !negation 
+                            ? KeyValueEval(O_GT, max_key_value, value) 
+                            : KeyValueEval(O_LT, min_key_value, value); 
             } else if (left->type == SCALAR_VALUE && right->type == SCALAR_COLUMN) {
                 ColumnNode *column = right->column;
                 KeyValue *value = QueryTupleValueItem(left->value);
                 if (StrEq(column->column_name, min_key_value->key) && StrEq(column->column_name, max_key_value->key))
-                    return KeyValueEval(O_LT, min_key_value, value); 
+                    return !negation 
+                            ? KeyValueEval(O_LT, min_key_value, value) 
+                            : KeyValueEval(O_GT, max_key_value, value);
             }
             break;
         }
@@ -470,12 +481,16 @@ static bool InternalNodeForComparisonPredicate(SelectPlan *select_plan, KeyValue
                 ColumnNode *column = left->column;
                 KeyValue *value = QueryTupleValueItem(right->value);
                 if (StrEq(column->column_name, min_key_value->key) && StrEq(column->column_name, max_key_value->key))
-                    return KeyValueEval(O_GE, max_key_value, value); 
+                    return !negation 
+                            ? KeyValueEval(O_GE, max_key_value, value) 
+                            : KeyValueEval(O_LE, min_key_value, value); 
             } else if (left->type == SCALAR_VALUE && right->type == SCALAR_COLUMN) {
                 ColumnNode *column = right->column;
                 KeyValue *value = QueryTupleValueItem(left->value);
                 if (StrEq(column->column_name, min_key_value->key) && StrEq(column->column_name, max_key_value->key))
-                    return KeyValueEval(O_LE, min_key_value, value); 
+                    return !negation 
+                            ? KeyValueEval(O_LE, min_key_value, value) 
+                            : KeyValueEval(O_GE, max_key_value, value);
             }
             break;
         }
@@ -484,12 +499,16 @@ static bool InternalNodeForComparisonPredicate(SelectPlan *select_plan, KeyValue
                 ColumnNode *column = left->column;
                 KeyValue *value = QueryTupleValueItem(right->value);
                 if (StrEq(column->column_name, min_key_value->key) && StrEq(column->column_name, max_key_value->key))
-                    return KeyValueEval(O_LT, min_key_value, value); 
+                    return !negation 
+                            ? KeyValueEval(O_LT, min_key_value, value) 
+                            : KeyValueEval(O_GT, max_key_value, value); 
             } else if (left->type == SCALAR_VALUE && right->type == SCALAR_COLUMN) {
                 ColumnNode *column = right->column;
                 KeyValue *value = QueryTupleValueItem(left->value);
                 if (StrEq(column->column_name, min_key_value->key) && StrEq(column->column_name, max_key_value->key))
-                    return KeyValueEval(O_GT, max_key_value, value); 
+                    return !negation 
+                            ? KeyValueEval(O_GT, max_key_value, value) 
+                            : KeyValueEval(O_LT, min_key_value, value); 
             }
             break;
         }
@@ -498,12 +517,16 @@ static bool InternalNodeForComparisonPredicate(SelectPlan *select_plan, KeyValue
                 ColumnNode *column = left->column;
                 KeyValue *value = QueryTupleValueItem(right->value);
                 if (StrEq(column->column_name, min_key_value->key) && StrEq(column->column_name, max_key_value->key))
-                    return KeyValueEval(O_LE, min_key_value, value); 
+                    return !negation 
+                            ? KeyValueEval(O_LE, min_key_value, value) 
+                            : KeyValueEval(O_GE, max_key_value, value); 
             } else if (left->type == SCALAR_VALUE && right->type == SCALAR_COLUMN) {
                 ColumnNode *column = right->column;
                 KeyValue *value = QueryTupleValueItem(left->value);
                 if (StrEq(column->column_name, min_key_value->key) && StrEq(column->column_name, max_key_value->key))
-                    return KeyValueEval(O_GE, max_key_value, value); 
+                    return !negation 
+                            ? KeyValueEval(O_GE, max_key_value, value) 
+                            : KeyValueEval(O_LE, min_key_value, value); 
             }
             break;
         }
@@ -515,21 +538,50 @@ static bool InternalNodeForComparisonPredicate(SelectPlan *select_plan, KeyValue
 }
 
 /* Check if the internal node meets like predicate. */
-static bool InternalNodeForLikePredicate(SelectPlan *select_plan, KeyValue *min_key_value, KeyValue *max_key_value, LikeNode *like) { 
-    ColumnNode *column = like->column;
-    KeyValue *value = QueryTupleValueItem(like->value);
+static bool InternalNodeForLikePredicate(SelectPlan *select_plan, KeyValue *min_key_value, KeyValue *max_key_value, LikeNode *like, bool negation) { 
+    /* For not like operation, it`s realy hard not to fall into the scope of internal node, 
+     * which means everyone in the scope of internal node is like to the target value. 
+     * Absolutely, it`s not possible so just return true. */
+    if (negation)
+        return true;
+
+    ColumnNode *column;
+    KeyValue *value;
+    char *strVal, *newStrVal;
+    Size len;
+
+    column = like->column;
+    value = QueryTupleValueItem(like->value);
+    strVal = value->value;
+    len = strlen(strVal);
+    AssertFalse(strVal[0] == '%');
+
+    /* Trim right '%s' character if necessary.  */
+    if (strVal[len - 1] == '%') {
+        newStrVal = dstrdup(strVal);
+        newStrVal[len - 1] = '\0';
+        value->value = newStrVal;
+    }
+
     if (StrEq(column->column_name, min_key_value->key) && StrEq(column->column_name, max_key_value->key))
-        return KeyValueEval(O_LT, min_key_value, value) && KeyValueEval(O_GE, max_key_value, value); 
+        return !negation 
+                ? KeyValueEval(O_LT, min_key_value, value) && KeyValueEval(O_GE, max_key_value, value) 
+                : KeyValueEval(O_GE, min_key_value, value) || KeyValueEval(O_LT, max_key_value, value); 
     return true;
 }
 
 /* Check if the internal node meets in predicate. */
-static bool InternalNodeForInPredicate(SelectPlan *select_plan, KeyValue *min_key_value, KeyValue *max_key_value, InNode *in) {
+static bool InternalNodeForInPredicate(SelectPlan *select_plan, KeyValue *min_key_value, KeyValue *max_key_value, InNode *in, bool negation) {
+    /* For not in operation, it`s realy hard not to fall into the scope of internal node. 
+     * Because it`s the whole world escape the in operation target values, so just return true. */
+    if (negation)
+        return true;
+
     ColumnNode *column = in->column;
     if (StrEq(column->column_name, min_key_value->key) && StrEq(column->column_name, max_key_value->key)) {
         ListCell *lc;
         foreach (lc, in->value_list) {
-            KeyValue *value = QueryTupleValueItem((ValueItemNode *)lfirst(lc));
+            KeyValue *value = QueryTupleValueItem((ValueItemNode *) lfirst(lc));
             if (KeyValueEval(O_LT, min_key_value, value) && KeyValueEval(O_GE, max_key_value, value))
                 return true;
         }
@@ -539,22 +591,22 @@ static bool InternalNodeForInPredicate(SelectPlan *select_plan, KeyValue *min_ke
 }
 
 /* Check if the internal node meets predicate. */
-static bool InternalNodeForPredicate(SelectPlan *select_plan, KeyValue *min_key_value, KeyValue *max_key_value, PredicateNode *predicate) {
+static bool InternalNodeForPredicate(SelectPlan *select_plan, KeyValue *min_key_value, KeyValue *max_key_value, PredicateNode *predicate, bool negation) {
     switch (predicate->type) {
         case PRE_COMPARISON:
             return InternalNodeForComparisonPredicate(
                 select_plan, min_key_value, max_key_value, 
-                predicate->comparison
+                predicate->comparison, negation
             );
         case PRE_LIKE:
             return InternalNodeForLikePredicate(
                 select_plan, min_key_value, max_key_value, 
-                predicate->like
+                predicate->like, negation
             );
         case PRE_IN:
             return InternalNodeForInPredicate(
                 select_plan, min_key_value, max_key_value, 
-                predicate->in
+                predicate->in, negation
             );
         default:
             UNEXPECTED_VALUE(predicate->type);
@@ -563,12 +615,12 @@ static bool InternalNodeForPredicate(SelectPlan *select_plan, KeyValue *min_key_
 }
 
 /* Check if the internal node meets the boolean primary. */
-static bool InternalNodeForBooleanPrimary(SelectPlan *select_plan, KeyValue *min_key_value, KeyValue *max_key_value, BooleanPrimaryNode *boolean_primary) {
+static bool InternalNodeForBooleanPrimary(SelectPlan *select_plan, KeyValue *min_key_value, KeyValue *max_key_value, BooleanPrimaryNode *boolean_primary, bool negation) {
     switch (boolean_primary->type) {
         case PREDICATE_BOOLEAN_PRIMAYR:
-            return InternalNodeForPredicate(select_plan, min_key_value, max_key_value, boolean_primary->predicate);
+            return InternalNodeForPredicate(select_plan, min_key_value, max_key_value, boolean_primary->predicate, negation);
         case SEARCH_CONDITION_BOOLEAN_PRIMAYR:
-            return InternalNodeForSearchCondition(select_plan, min_key_value, max_key_value, boolean_primary->search_condition);
+            return !negation ? InternalNodeForSearchCondition(select_plan, min_key_value, max_key_value, boolean_primary->search_condition) : true;
         default:
             UNEXPECTED_VALUE(boolean_primary->type);
             return false;
@@ -576,15 +628,20 @@ static bool InternalNodeForBooleanPrimary(SelectPlan *select_plan, KeyValue *min
 }
 
 /* Check if the internal node meets the boolean test. */
-static bool InternalNodeForBooleanTest(SelectPlan *select_plan, KeyValue *min_key_value, KeyValue *max_key_value, BooleanTestNode *boolean_test) {
-    bool bool_primary_value = InternalNodeForBooleanPrimary(select_plan, min_key_value, max_key_value, boolean_test->boolean_primary);
+static bool InternalNodeForBooleanTest(SelectPlan *select_plan, KeyValue *min_key_value, KeyValue *max_key_value, BooleanTestNode *boolean_test, bool negation) {
     switch (boolean_test->type) {
         case NONE_TRUE_VALUE: 
-            return bool_primary_value;
+            return InternalNodeForBooleanPrimary(select_plan, min_key_value, max_key_value, boolean_test->boolean_primary, negation);
         case IS_TRUTH_VALUE: 
-            return bool_primary_value == boolean_test->truth_value;
+            return InternalNodeForBooleanPrimary(
+                select_plan, min_key_value, max_key_value, boolean_test->boolean_primary, 
+                negation || !boolean_test->truth_value
+            );
         case IS_NOT_TRUTH_VALUE: 
-            return bool_primary_value != boolean_test->truth_value;
+            return InternalNodeForBooleanPrimary(
+                select_plan, min_key_value, max_key_value, boolean_test->boolean_primary, 
+                negation || boolean_test->truth_value
+            );
         default:
             UNEXPECTED_VALUE(boolean_test->type);
             return true;
@@ -593,9 +650,7 @@ static bool InternalNodeForBooleanTest(SelectPlan *select_plan, KeyValue *min_ke
 
 /* Check if the internal node meets the boolean fator. */
 static bool InternalNodeForBooleanFactor(SelectPlan *select_plan, KeyValue *min_key_value, KeyValue *max_key_value, BooleanFactorNode *boolean_factor) {
-    return boolean_factor->is_not
-        ? !InternalNodeForBooleanTest(select_plan, min_key_value,  max_key_value, boolean_factor->boolean_test)
-        : InternalNodeForBooleanTest(select_plan, min_key_value,  max_key_value, boolean_factor->boolean_test);
+    return InternalNodeForBooleanTest(select_plan, min_key_value, max_key_value, boolean_factor->boolean_test, boolean_factor->is_not);
 }
 
 /* Check if the internal node meets the boolean term. */
