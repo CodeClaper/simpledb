@@ -277,6 +277,7 @@ def test_index_valid_for_is_false4():
     ret = client.execute(sql)
     assert_all(ret)
     assert ret[0]["data"] == ret[1]["data"]
+    assert ret[0]["duration"] * 10 < ret[1]["duration"]
 
 ## test index valid for is not true
 def test_index_valid_for_is_not_true1():
