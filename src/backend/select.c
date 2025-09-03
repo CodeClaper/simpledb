@@ -88,31 +88,6 @@ inline static bool LimitClauseIsFull(SelectPlan *select_plan) {
         (select_plan->offset >= select_plan->limitClause->offset + select_plan->limitClause->rows);
 }
 
-/* Check if value in value list. */
-static bool ValueInValueList(List *value_list, void *value, MetaColumn *meta_column) {
-    ListCell *lc;
-    foreach (lc, value_list) {
-        void *target = ValueItemNodeFindValue(lfirst(lc));
-        if (EQ(value, target, meta_column->column_type))
-            return true;
-    }
-    return false;
-}
-
-/* Check if include leaf node satisfy in predicate. */
-static bool LeafNodeForInPredicate(SelectResult *select_result, void *tuple, InNode *in_node) {
-    Table *table = open_table(select_result->table_name);
-    Assert(table != NULL);
-    MetaColumn *meta_column = NameFindMetaColumn(table->meta_table, in_node->column->column_name);
-    if (meta_column != NULL)
-        return ValueInValueList(
-            in_node->value_list, 
-            GetComparableValue(TupeFindValue(tuple, meta_column), meta_column->column_type), 
-            meta_column
-        );
-    return false;
-}
-
 /* Check if value is like string value. */
 static bool ValueLikeStringValue(char *value, char *target) {
     size_t value_len = strlen(value);
@@ -330,6 +305,21 @@ static bool LeafNodeForComparisonPredicate(SelectResult *select_result, List *me
     return KeyValueEval(comparison->type, leftVal, rightVal);
 }
 
+/* Check if include leaf node satisfy in predicate. */
+static bool LeafNodeForInPredicate(SelectResult *select_result, List *meta_columns, 
+                                   void *tuple, InNode *in_node) {
+    ListCell *lc;
+    KeyValue *value, *target;
+
+    value = QueryTupleColumnValue(select_result, meta_columns, in_node->column, tuple);
+    foreach (lc, in_node->value_list) {
+        target = QueryTupleValueItem(lfirst(lc));
+        if (KeyValueEval(O_EQ, value, target))
+            return true;
+    }
+    return false;
+}
+
 /* Check if include leaf node satisfy like predicate. */
 static bool LeafNodeForLikePredicate(SelectResult *select_result, void *tuple, LikeNode *like_node) {
     Table *table = open_table(select_result->table_name);
@@ -349,7 +339,7 @@ static bool LeafNodeForPredicate(SelectResult *select_result, List *meta_columns
         case PRE_COMPARISON:
             return LeafNodeForComparisonPredicate(select_result, meta_columns, tuple, predicate->comparison);
         case PRE_IN:
-            return LeafNodeForInPredicate(select_result, tuple, predicate->in);
+            return LeafNodeForInPredicate(select_result, meta_columns, tuple, predicate->in);
         case PRE_LIKE:
             return LeafNodeForLikePredicate(select_result, tuple, predicate->like);
         default:
