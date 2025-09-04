@@ -164,7 +164,7 @@ void exec_update_statment(UpdateNode *update_node, DBResult *result) {
         db_log(ERROR, "Try to open table '%s' fail.", update_node->table_name);
 
     /* Check out update node. */
-    if (!check_update_node(update_node)) 
+    if (!CheckForUpdate(update_node)) 
         return;
 
     /* Query with conditon, and update satisfied condition row. */

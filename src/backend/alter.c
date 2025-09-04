@@ -98,7 +98,7 @@ static void AlterDropOldColumn(DropColumnDef *drop_column_def, char *table_name,
 
 /* Execute alter table statement. */
 void exec_alter_statement(AlterTableNode *alter_table_node, DBResult *result) {
-    if (check_alter_table(alter_table_node)) {
+    if (CheckForAlterTable(alter_table_node)) {
         AlterTableAction *alter_table_action = alter_table_node->action;
         switch (alter_table_action->type) {
             case ALTER_TO_ADD_COLUMN:

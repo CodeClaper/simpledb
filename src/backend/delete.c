@@ -75,7 +75,7 @@ void exec_delete_statement(DeleteNode *delete_node, DBResult *result) {
     }
 
     /* Check out delete node. */
-    if (!check_delete_node(delete_node)) 
+    if (!CheckForDelete(delete_node)) 
         return;
 
     /* Query with condition, and delete satisfied condition row. */

@@ -298,7 +298,7 @@ void exec_create_table_statement(CreateTableNode *create_table_node, DBResult *r
     Oid oid = FindNextOid();
 
     /* Check valid. */
-    if (!check_create_table(create_table_node)) 
+    if (!CheckForCreateTable(create_table_node)) 
         return;
 
     /* Combine MetaTable. */

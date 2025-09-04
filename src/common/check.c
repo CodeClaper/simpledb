@@ -39,23 +39,23 @@
 #include "tablecache.h"
 #include "optimizer.h"
 
-static bool check_value_item_set_node(MetaTable *meta_table, char *column_name, List *value_list);
-static bool check_scalar_exp(ScalarExpNode *scalar_exp, AliasMap alias_map);
-static bool check_search_condition_node(SearchConditionNode *condition_node, AliasMap alias_map);
-static bool check_scalar_exp_in_seach_condition(ScalarExpNode *scalar_exp);
+static bool CheckForValueList(MetaTable *meta_table, char *column_name, List *value_list);
+static bool CheckForScalarExp(ScalarExpNode *scalar_exp, AliasMap alias_map);
+static bool CheckForSearchCondition(SearchConditionNode *condition_node, AliasMap alias_map);
+static bool CheckSclarExpInSearchCondition(ScalarExpNode *scalar_exp);
 
 /* Get column name in ColumnDefNode. */
-static inline char *get_column_def_name(ColumnDefNode *column_def) {
+static inline char *ColumnDefFindName(ColumnDefNode *column_def) {
     return column_def->column->column;
 }
 
 /* Get data type in ColumnDefNode. */
-static inline DataType get_column_def_data_type(ColumnDefNode *column_def) {
+static inline DataType ColumnDefFindType(ColumnDefNode *column_def) {
     return column_def->data_type->type;
 }
 
 /* Get SearchConditionNode from WhereClauseNode. */
-static SearchConditionNode *get_condition_from_where_clause(WhereClauseNode *where_clause) {
+static SearchConditionNode *WhereClauseFindSearchCondition(WhereClauseNode *where_clause) {
     if (!where_clause)
         return NULL;
     return where_clause->condition;
@@ -63,7 +63,7 @@ static SearchConditionNode *get_condition_from_where_clause(WhereClauseNode *whe
 
 /* Get value from atom. 
  * Notice, CHAR, DATE, TIMESTAMP use '%s' format to pass value. */
-static void *get_value_from_atom(AtomNode *atom_node) {
+static void *AtomGetValue(AtomNode *atom_node) {
     switch (atom_node->type) {
         case A_INT:
             return &atom_node->value.intval;
@@ -84,7 +84,7 @@ static void *get_value_from_atom(AtomNode *atom_node) {
 /* Find meta column in table ref list.
  * Return meta column or NULL if not found.
  * */
-static MetaColumn *find_meta_column_in_table_ref_list(List *list, char *column_name) {
+static MetaColumn *TableRefListFindMetaColumn(List *list, char *column_name) {
     ListCell *lc;
     foreach (lc, list) {
         TableRefNode *table_ref = lfirst(lc);
@@ -101,11 +101,11 @@ static MetaColumn *find_meta_column_in_table_ref_list(List *list, char *column_n
     return NULL;
 }
 
-static bool include_column_for_query_spece(MetaColumn *meta_column, QuerySpecNode *query_spec) {
+static bool CheckQuerySpecMatchColumn(MetaColumn *meta_column, QuerySpecNode *query_spec) {
     SelectionNode *selection = query_spec->selection;
     List *list = query_spec->table_exp->from_clause->from;
     if (selection->all_column) {
-        MetaColumn *target_meta_column = find_meta_column_in_table_ref_list(list, meta_column->column_name);
+        MetaColumn *target_meta_column = TableRefListFindMetaColumn(list, meta_column->column_name);
         if (!target_meta_column) {
             db_log(ERROR, "Lack column '%s' in query spec. ", 
                    meta_column->column_name);
@@ -129,10 +129,10 @@ static bool include_column_for_query_spece(MetaColumn *meta_column, QuerySpecNod
             char *column_name = scalar_exp->column->column_name;
             if (alias_name) {
                 if (StrEq(meta_column->column_name, alias_name)) 
-                    target_meta_column = find_meta_column_in_table_ref_list(list, column_name);
+                    target_meta_column = TableRefListFindMetaColumn(list, column_name);
             } else {
                if (StrEq(meta_column->column_name, column_name)) 
-                    target_meta_column = find_meta_column_in_table_ref_list(list, column_name);
+                    target_meta_column = TableRefListFindMetaColumn(list, column_name);
             }
         }
         if (!target_meta_column) {
@@ -150,58 +150,8 @@ static bool include_column_for_query_spece(MetaColumn *meta_column, QuerySpecNod
     }
 }
 
-/* Check ident node. */
-static bool check_column_node(ColumnNode *column_node, MetaTable *meta_table) {
-    ListCell *lc;
-    foreach (lc, meta_table->meta_columns) {
-        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
-        if (StrEq(meta_column->column_name, column_node->column_name)) {
-            if (column_node->has_sub_column == false)
-                return true;
-            else if (meta_column->column_type == T_REFERENCE && column_node->has_sub_column) {
-                Table *table = open_table(meta_column->table_name);
-                if (column_node->sub_column)
-                    return check_column_node(column_node->sub_column, table->meta_table);
-                else if (column_node->scalar_exp_list) {
-
-                    ListCell *lc;
-                    foreach (lc, column_node->scalar_exp_list) {
-                        ScalarExpNode *scalar_exp = lfirst(lc);
-                        switch (scalar_exp->type) {
-                            case SCALAR_COLUMN:{
-                                check_column_node(scalar_exp->column, table->meta_table);
-                                break;
-                            }
-                            case SCALAR_FUNCTION:
-                                db_log(ERROR, "Not allowed use funtion in nested column. ");
-                                break;
-                            case SCALAR_CALCULATE:
-                            case SCALAR_VALUE:
-                                break;
-                            default:
-                                db_log(PANIC, "Unknown Scalar Express type.");
-                        }
-                    }
-                    return true;
-                }
-            }
-        }
-    }
-    
-    /* Reach here, means column is unknown. */
-    if (column_node->range_variable) 
-        db_log(ERROR, "Unknown column '%s.%s'.", 
-               column_node->range_variable, 
-               column_node->column_name);
-    else 
-        db_log(ERROR, "Unknown column '%s'.", 
-               column_node->column_name);
-
-    return false;
-}
-
 /* Confirm MetaTable via ColumnNode. */
-static MetaTable *confirm_meta_table_via_column(ColumnNode *column, AliasMap alias_map) {
+static MetaTable *ColumnFindMetaTable(ColumnNode *column, AliasMap alias_map) {
     MetaTable *current_meta_table = NULL;
     int times = 0;
 
@@ -249,8 +199,7 @@ static MetaTable *confirm_meta_table_via_column(ColumnNode *column, AliasMap ali
 }
 
 /* Check if type convert pass. */
-static bool check_value_data_type(DataType column_type, AtomNode *atom_node, 
-                                  char *column_name, char *table_name) {
+static bool CheckValueMatchType(DataType column_type, AtomNode *atom_node, char *column_name, char *table_name) {
     switch(column_type) {
         case T_BOOL: {
             if (atom_node->type == A_BOOL)
@@ -299,9 +248,9 @@ static bool check_value_data_type(DataType column_type, AtomNode *atom_node,
 
 /* Check value if valid. 
  * Because, CHAR, DATE, TIMESTAMP use '%s' format to pass value, thus check it. */
-bool check_value_valid(MetaColumn *meta_column, AtomNode *atom_node) {
+bool CheckValueIsValid(MetaColumn *meta_column, AtomNode *atom_node) {
     /* Get value from atom. */
-    void *value = get_value_from_atom(atom_node);
+    void *value = AtomGetValue(atom_node);
 
     switch(meta_column->column_type) {
         case T_BOOL:
@@ -396,7 +345,7 @@ bool check_value_valid(MetaColumn *meta_column, AtomNode *atom_node) {
 
 
 /* Check ValueItemNode. */
-static bool check_value_item_node(MetaTable *meta_table, char *column_name, ValueItemNode *value_item_node) {
+static bool CheckForValueItem(MetaTable *meta_table, char *column_name, ValueItemNode *value_item_node) {
     ListCell *lc;
     foreach (lc, meta_table->meta_columns) {
         MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
@@ -406,8 +355,8 @@ static bool check_value_item_node(MetaTable *meta_table, char *column_name, Valu
             switch (value_item_node->type) {
                 case V_ATOM: {
                     AtomNode *atom_node = value_item_node->value.atom;
-                    return check_value_data_type(meta_column->column_type, atom_node, column_name, meta_table->table_name) && 
-                                check_value_valid(meta_column, atom_node);
+                    return CheckValueMatchType(meta_column->column_type, atom_node, column_name, meta_table->table_name) && 
+                            CheckValueIsValid(meta_column, atom_node);
                 }
                 case V_NULL: {
                     if (meta_column->not_null)
@@ -417,7 +366,7 @@ static bool check_value_item_node(MetaTable *meta_table, char *column_name, Valu
                 }
                 case V_ARRAY: {
                     List *value_list = value_item_node->value.value_list;
-                    return check_value_item_set_node(meta_table, column_name, value_list);
+                    return CheckForValueList(meta_table, column_name, value_list);
                 }
                 default: {
                     UNEXPECTED_VALUE(value_item_node->type);
@@ -432,18 +381,18 @@ static bool check_value_item_node(MetaTable *meta_table, char *column_name, Valu
 }
 
 /* Check ValueItemSetNode. */
-static bool check_value_item_set_node(MetaTable *meta_table, char *column_name, List *value_list) {
+static bool CheckForValueList(MetaTable *meta_table, char *column_name, List *value_list) {
     ListCell *lc;
     foreach (lc, value_list) {
         ValueItemNode *value_item_node = lfirst(lc);
-        if (!check_value_item_node(meta_table, column_name, value_item_node))
+        if (!CheckForValueItem(meta_table, column_name, value_item_node))
             return false;
     }
     return true;
 }
 
 /* Check function value type. */
-static bool check_funtion_value_type(FunctionType type, ColumnNode *column, MetaColumn *meta_column) {
+static bool CheckFunctionForValueType(FunctionType type, ColumnNode *column, MetaColumn *meta_column) {
     if (!column->has_sub_column) {
         switch (type) {
             case F_SUM:
@@ -463,7 +412,7 @@ static bool check_funtion_value_type(FunctionType type, ColumnNode *column, Meta
     } else if (column->sub_column) {
         Table *table = open_table(meta_column->table_name);
         MetaColumn *sub_meta_column = NameFindMetaColumn(table->meta_table, column->sub_column->column_name);
-        return check_funtion_value_type(type, column->sub_column, sub_meta_column);
+        return CheckFunctionForValueType(type, column->sub_column, sub_meta_column);
     } else if (column->has_sub_column) {
         db_log(ERROR, "Function %s not support for reference type column.", 
                GET_FUNCTION_TYPE_NAME(type));
@@ -473,8 +422,57 @@ static bool check_funtion_value_type(FunctionType type, ColumnNode *column, Meta
     return true;
 }
 
+/* Check ident node. */
+static bool CheckForColumn(ColumnNode *column_node, MetaTable *meta_table) {
+    ListCell *lc;
+    foreach (lc, meta_table->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
+        if (StrEq(meta_column->column_name, column_node->column_name)) {
+            if (column_node->has_sub_column == false)
+                return true;
+            else if (meta_column->column_type == T_REFERENCE && column_node->has_sub_column) {
+                Table *table = open_table(meta_column->table_name);
+                if (column_node->sub_column)
+                    return CheckForColumn(column_node->sub_column, table->meta_table);
+                else if (column_node->scalar_exp_list) {
+                    ListCell *lc;
+                    foreach (lc, column_node->scalar_exp_list) {
+                        ScalarExpNode *scalar_exp = lfirst(lc);
+                        switch (scalar_exp->type) {
+                            case SCALAR_COLUMN:{
+                                CheckForColumn(scalar_exp->column, table->meta_table);
+                                break;
+                            }
+                            case SCALAR_FUNCTION:
+                                db_log(ERROR, "Not allowed use funtion in nested column. ");
+                                break;
+                            case SCALAR_CALCULATE:
+                            case SCALAR_VALUE:
+                                break;
+                            default:
+                                db_log(PANIC, "Unknown Scalar Express type.");
+                        }
+                    }
+                    return true;
+                }
+            }
+        }
+    }
+    
+    /* Reach here, means column is unknown. */
+    if (column_node->range_variable) 
+        db_log(ERROR, "Unknown column '%s.%s'.", 
+               column_node->range_variable, 
+               column_node->column_name);
+    else 
+        db_log(ERROR, "Unknown column '%s'.", 
+               column_node->column_name);
+
+    return false;
+}
+
 /* Check function node */
-static bool check_function_node(FunctionNode *function, AliasMap alias_map) {
+static bool CheckForFunction(FunctionNode *function, AliasMap alias_map) {
     FunctionValueNode *value_node = function->value;
     switch(value_node->value_type) {
         case V_INT:
@@ -482,10 +480,10 @@ static bool check_function_node(FunctionNode *function, AliasMap alias_map) {
             return true;
         case V_COLUMN: {
             ColumnNode *column = value_node->column;
-            MetaTable *meta_table = confirm_meta_table_via_column(column, alias_map);
+            MetaTable *meta_table = ColumnFindMetaTable(column, alias_map);
             MetaColumn *meta_column = NameFindMetaColumn(meta_table, column->column_name);
-            return check_funtion_value_type(function->type, column, meta_column) && 
-                        check_column_node(column, meta_table); 
+            return CheckFunctionForValueType(function->type, column, meta_column) && 
+                    CheckForColumn(column, meta_table); 
         }
         default: {
             UNEXPECTED_VALUE(value_node->value_type);
@@ -495,23 +493,23 @@ static bool check_function_node(FunctionNode *function, AliasMap alias_map) {
 }
 
 /* Check CalculateNode. */
-static bool check_calculate_node(CalculateNode *calculate_node, AliasMap alias_map) {
-    return check_scalar_exp(calculate_node->left, alias_map) && 
-            check_scalar_exp(calculate_node->right, alias_map);
+static bool CheckForCalculate(CalculateNode *calculate_node, AliasMap alias_map) {
+    return CheckForScalarExp(calculate_node->left, alias_map) && 
+            CheckForScalarExp(calculate_node->right, alias_map);
 }
 
 /* Check ScalarExpNode if column. */
-static bool check_scalar_exp(ScalarExpNode *scalar_exp, AliasMap alias_map) {
+static bool CheckForScalarExp(ScalarExpNode *scalar_exp, AliasMap alias_map) {
     switch (scalar_exp->type) {
         case SCALAR_COLUMN:{
             ColumnNode *column = scalar_exp->column;
-            MetaTable *meta_table = confirm_meta_table_via_column(column, alias_map);
-            return check_column_node(scalar_exp->column, meta_table);
+            MetaTable *meta_table = ColumnFindMetaTable(column, alias_map);
+            return CheckForColumn(scalar_exp->column, meta_table);
         }
         case SCALAR_FUNCTION:
-            return check_function_node(scalar_exp->function, alias_map);
+            return CheckForFunction(scalar_exp->function, alias_map);
         case SCALAR_CALCULATE:
-            return check_calculate_node(scalar_exp->calculate, alias_map);
+            return CheckForCalculate(scalar_exp->calculate, alias_map);
         case SCALAR_VALUE:
             return true;
         default: {
@@ -522,12 +520,11 @@ static bool check_scalar_exp(ScalarExpNode *scalar_exp, AliasMap alias_map) {
 }
 
 /* Check ScalarExpNode list. */
-static bool check_scalar_exp_list(List *scalar_exp_list, AliasMap alias_map) {
-
+static bool CheckForScalarExpList(List *scalar_exp_list, AliasMap alias_map) {
     ListCell *lc;
     foreach (lc, scalar_exp_list) {
         ScalarExpNode *scalar_exp = lfirst(lc);
-        if (!check_scalar_exp(scalar_exp, alias_map))
+        if (!CheckForScalarExp(scalar_exp, alias_map))
             return false;
     }
 
@@ -535,18 +532,19 @@ static bool check_scalar_exp_list(List *scalar_exp_list, AliasMap alias_map) {
 }
 
 /* Check select items if exist int meta column */
-static bool check_selection(SelectionNode *selection_node, AliasMap alias_map) {
+static bool CheckForSelection(SelectionNode *selection_node, AliasMap alias_map) {
     return selection_node->all_column 
            ? true 
-           : check_scalar_exp_list(selection_node->scalar_exp_list, alias_map);
+           : CheckForScalarExpList(selection_node->scalar_exp_list, alias_map);
 }
 
-static bool check_calulate_in_search_condition(CalculateNode *calculate) {
-    return check_scalar_exp_in_seach_condition(calculate->left) && 
-                check_scalar_exp_in_seach_condition(calculate->right);
+static bool CheckCalculateInSearchCondition(CalculateNode *calculate) {
+    return CheckSclarExpInSearchCondition(calculate->left) && 
+                CheckSclarExpInSearchCondition(calculate->right);
 }
 
-static bool check_function_in_search_condition(FunctionNode *function) {
+/* Check function in search condition. */
+static bool CheckFuntionInSearchCondition(FunctionNode *function) {
     if (IsAggFuncion(function->type)) {
         db_log(ERROR, "Aggregate function not allowd in where.");
         return false;
@@ -554,16 +552,57 @@ static bool check_function_in_search_condition(FunctionNode *function) {
     return true;
 }
 
-/* Check ComparisonNode value.*/
-static bool check_scalar_exp_in_seach_condition(ScalarExpNode *scalar_exp) {
+/* Check atom in search condition.  
+ * Note: this function mainly aims to check 
+ * if exists indirect refer value in search condition. */
+static bool CheckAtomInSeachCondition(AtomNode *atom) {
+    if (atom->type == A_REFERENCE) {
+        ReferValue *referVal = atom->value.referval;
+        switch (referVal->type) {
+            case INDIRECTLY:
+                return true;
+            case DIRECTLY: {
+                db_log(ERROR, "Not allowed use directly refer value in search condition.");
+                return false;
+            }
+            default:
+                UNEXPECTED_VALUE(referVal->type);
+        }
+    }
+    return true;
+}
+
+/* Check value item in search condition. */
+static bool CheckValueItemInSearchCondition(ValueItemNode *value_item) {
+    switch (value_item->type) {
+        case V_ATOM:
+            return CheckAtomInSeachCondition(value_item->value.atom);
+        case V_ARRAY: {
+            ListCell *lc;
+            foreach (lc, value_item->value.value_list) {
+                if (!CheckAtomInSeachCondition((AtomNode*) lfirst(lc)))
+                    return false;
+            }
+            return true;
+        }
+        case V_NULL:
+            return true;
+        default:
+            UNEXPECTED_VALUE(value_item->type);
+    }
+}
+
+/* Check sclar exp in search condition.*/
+static bool CheckSclarExpInSearchCondition(ScalarExpNode *scalar_exp) {
     switch (scalar_exp->type) {
-        case SCALAR_VALUE:
         case SCALAR_COLUMN:
             return true;
+        case SCALAR_VALUE:
+            return CheckValueItemInSearchCondition(scalar_exp->value);
         case SCALAR_CALCULATE:
-            return check_calulate_in_search_condition(scalar_exp->calculate);
+            return CheckCalculateInSearchCondition(scalar_exp->calculate);
         case SCALAR_FUNCTION: 
-            return check_function_in_search_condition(scalar_exp->function); 
+            return CheckFuntionInSearchCondition(scalar_exp->function); 
         default: {
             UNEXPECTED_VALUE(scalar_exp->type);
             return false;
@@ -572,23 +611,34 @@ static bool check_scalar_exp_in_seach_condition(ScalarExpNode *scalar_exp) {
 }
 
 /* Check ComparisonNode.*/
-static bool check_comparison_node(ComparisonNode *comparison, AliasMap alias_map) {
-    return check_scalar_exp_in_seach_condition(comparison->left) && 
-                check_scalar_exp_in_seach_condition(comparison->right);
+static bool CheckForComparisonPredicate(ComparisonNode *comparison, AliasMap alias_map) {
+    return CheckSclarExpInSearchCondition(comparison->left) && 
+                CheckSclarExpInSearchCondition(comparison->right);
+}
+
+/* Check in for value list.*/
+static bool CheckInPredicateForValueList( List *value_list) {
+    ListCell *lc;
+    foreach (lc, value_list) {
+        if (!CheckValueItemInSearchCondition((ValueItemNode *) lfirst(lc)))
+            return false;
+    }
+    return true;
 }
 
 /* Check InNode. */
-static bool check_in_node(InNode *in_node, AliasMap alias_map) {
+static bool CheckForInPredicate(InNode *in_node, AliasMap alias_map) {
     ColumnNode *column = in_node->column;
     /* Confirm MetaTable. */
-    MetaTable *current_meta_table = confirm_meta_table_via_column(column, alias_map);
+    MetaTable *current_meta_table = ColumnFindMetaTable(column, alias_map);
 
-    return check_column_node(in_node->column, current_meta_table) && // check select column
-                check_value_item_set_node(current_meta_table, column->column_name, in_node->value_list);
+    return CheckForColumn(in_node->column, current_meta_table) && // check select column
+                CheckInPredicateForValueList(in_node->value_list) &&
+                    CheckForValueList(current_meta_table, column->column_name, in_node->value_list);
 }
 
 /* Check like data type. */
-static bool check_like_data_type(MetaColumn *meta_column) {
+static bool CheckLikePredicateType(MetaColumn *meta_column) {
     if (meta_column->column_type != T_STRING && meta_column->column_type != T_VARCHAR) {
         db_log(ERROR, "For like predicate, only support string data type.");
         return false;
@@ -597,27 +647,27 @@ static bool check_like_data_type(MetaColumn *meta_column) {
 }
 
 /* Check LikeNode. */
-static bool check_like_node(LikeNode *like_node, AliasMap alias_map) {
+static bool CheckForLikePredicate(LikeNode *like_node, AliasMap alias_map) {
     ColumnNode *column = like_node->column;
 
     /* Confirm MetaTable. */
-    MetaTable *current_meta_table = confirm_meta_table_via_column(column, alias_map);
+    MetaTable *current_meta_table = ColumnFindMetaTable(column, alias_map);
     MetaColumn *meta_column = NameFindMetaColumn(current_meta_table, column->column_name);
 
-    return check_column_node(column, current_meta_table) && // check select column
-                check_like_data_type(meta_column) && 
-                    check_value_item_node(current_meta_table, column->column_name, like_node->value);
+    return CheckForColumn(column, current_meta_table) && // check select column
+                CheckLikePredicateType(meta_column) && 
+                    CheckForValueItem(current_meta_table, column->column_name, like_node->value);
 }
 
 /* Check PredicateNode. */
-static bool check_predicate_node(PredicateNode *predicate_node, AliasMap alias_map) {
+static bool CheckForPredicate(PredicateNode *predicate_node, AliasMap alias_map) {
     switch (predicate_node->type) {
         case PRE_COMPARISON:
-            return check_comparison_node(predicate_node->comparison, alias_map);
+            return CheckForComparisonPredicate(predicate_node->comparison, alias_map);
         case PRE_IN:
-            return check_in_node(predicate_node->in, alias_map);
+            return CheckForInPredicate(predicate_node->in, alias_map);
         case PRE_LIKE:
-            return check_like_node(predicate_node->like, alias_map);
+            return CheckForLikePredicate(predicate_node->like, alias_map);
         default:
             UNEXPECTED_VALUE(predicate_node->type);
             return false;
@@ -625,12 +675,12 @@ static bool check_predicate_node(PredicateNode *predicate_node, AliasMap alias_m
 }
 
 /* Check boolean primary. */
-static bool check_boolean_primary_node(BooleanPrimaryNode *boolean_primary, AliasMap alias_map) {
+static bool CheckForBooleanPrimary(BooleanPrimaryNode *boolean_primary, AliasMap alias_map) {
     switch (boolean_primary->type) {
         case PREDICATE_BOOLEAN_PRIMAYR:
-            return check_predicate_node(boolean_primary->predicate, alias_map);
+            return CheckForPredicate(boolean_primary->predicate, alias_map);
         case SEARCH_CONDITION_BOOLEAN_PRIMAYR:
-            return check_search_condition_node(boolean_primary->search_condition, alias_map);
+            return CheckForSearchCondition(boolean_primary->search_condition, alias_map);
         default:
             UNEXPECTED_VALUE(boolean_primary->type);
             return false;
@@ -638,37 +688,37 @@ static bool check_boolean_primary_node(BooleanPrimaryNode *boolean_primary, Alia
 }
 
 /* Check boolean test. */
-static bool check_boolean_test_node(BooleanTestNode *boolean_test, AliasMap alias_map) {
-    return check_boolean_primary_node(boolean_test->boolean_primary, alias_map);
+static bool CheckForBooleanTest(BooleanTestNode *boolean_test, AliasMap alias_map) {
+    return CheckForBooleanPrimary(boolean_test->boolean_primary, alias_map);
 }
 
 /* Check boolean factor. */
-static bool check_boolean_factor_node(BooleanFactorNode *boolean_factor, AliasMap alias_map) {
-    return check_boolean_test_node(boolean_factor->boolean_test, alias_map);
+static bool CheckForBooleanFactor(BooleanFactorNode *boolean_factor, AliasMap alias_map) {
+    return CheckForBooleanTest(boolean_factor->boolean_test, alias_map);
 }
 
 /* Check boolean term. */
-static bool check_boolean_term_node(BooleanTermNode *boolean_term, AliasMap alias_map) {
+static bool CheckForBooleanTerm(BooleanTermNode *boolean_term, AliasMap alias_map) {
     return boolean_term->and_boolean_term == NULL
-        ? check_boolean_factor_node(boolean_term->boolean_factor, alias_map)
-        : check_boolean_term_node(boolean_term->and_boolean_term, alias_map) &&
-            check_boolean_factor_node(boolean_term->boolean_factor, alias_map);
+        ? CheckForBooleanFactor(boolean_term->boolean_factor, alias_map)
+        : CheckForBooleanTerm(boolean_term->and_boolean_term, alias_map) &&
+            CheckForBooleanFactor(boolean_term->boolean_factor, alias_map);
 }
 
 /* Check condition node. */
-static bool check_search_condition_node(SearchConditionNode *condition_node, AliasMap alias_map) {
+static bool CheckForSearchCondition(SearchConditionNode *condition_node, AliasMap alias_map) {
     if (!condition_node)
         return true;
 
     return condition_node->or_search_condition == NULL
-        ? check_boolean_term_node(condition_node->boolean_term, alias_map)
-        : check_boolean_term_node(condition_node->boolean_term, alias_map) &&
-            check_search_condition_node(condition_node->or_search_condition, alias_map);
+        ? CheckForBooleanTerm(condition_node->boolean_term, alias_map)
+        : CheckForBooleanTerm(condition_node->boolean_term, alias_map) &&
+            CheckForSearchCondition(condition_node->or_search_condition, alias_map);
 }
 
 
 /* Check TableRefNode. */
-static bool check_table_ref(TableRefNode *table_ref) {
+static bool CheckForTableRef(TableRefNode *table_ref) {
     Table *table = open_table(table_ref->table);
     if (table == NULL) {
         db_log(ERROR, "Table '%s' not exist.", table_ref->table);
@@ -678,12 +728,12 @@ static bool check_table_ref(TableRefNode *table_ref) {
 }
 
 /* Check TableRef List. */
-static bool check_table_ref_list(List *list) {
+static bool CheckForTableRefList(List *list) {
     uint32_t len = len_list(list);
     uint32_t i, j;
     for (i = 0; i < len; i++) {
         TableRefNode *table_ref = lfirst(list_nth_cell(list, i));
-        if (!check_table_ref(table_ref))
+        if (!CheckForTableRef(table_ref))
             return false;
 
         for (j = i + 1; j < len; j++) {
@@ -706,20 +756,20 @@ static bool check_table_ref_list(List *list) {
 }
 
 /* Check FromClauseNode. */
-static bool check_from_clause(FromClauseNode *from_clause) {
-    return from_clause == NULL || check_table_ref_list(from_clause->from);
+static bool CheckForFromClause(FromClauseNode *from_clause) {
+    return from_clause == NULL || CheckForTableRefList(from_clause->from);
 }
 
 /* Check WhereClauseNode. */
-static bool check_where_clause(WhereClauseNode *where_clause, AliasMap alias_map) {
+static bool CheckForWhereClause(WhereClauseNode *where_clause, AliasMap alias_map) {
     if (where_clause == NULL)
         return true;
 
-    return check_search_condition_node(where_clause->condition, alias_map);
+    return CheckForSearchCondition(where_clause->condition, alias_map);
 }
 
 /* Check LimitClauseNode. */
-static bool check_limit_clause(LimitClauseNode *limit_clause) {
+static bool CheckForLimitClause(LimitClauseNode *limit_clause) {
     if (NonNull(limit_clause)) {
         if (limit_clause->rows < 0) {
             db_log(ERROR, "LIMIT must not be negative.");
@@ -734,18 +784,18 @@ static bool check_limit_clause(LimitClauseNode *limit_clause) {
 }
 
 /* Check TableExpNode. */
-static bool check_table_exp(TableExpNode *table_exp, AliasMap alias_map) {
-    return check_from_clause(table_exp->from_clause) && 
-                check_where_clause(table_exp->where_clause, alias_map) && 
-                    check_limit_clause(table_exp->limit_clause);
+static bool CheckForTableExp(TableExpNode *table_exp, AliasMap alias_map) {
+    return CheckForFromClause(table_exp->from_clause) && 
+                CheckForWhereClause(table_exp->where_clause, alias_map) && 
+                    CheckForLimitClause(table_exp->limit_clause);
 }
 
 /* Check update unique column. */
-static bool check_unique_column(Table *table, MetaColumn *meta_column, void *value, UpdateNode *update_node) {
+static bool CheckUpdateForUniqueColumn(Table *table, MetaColumn *meta_column, void *value, UpdateNode *update_node) {
     Assert(meta_column->is_unique);
     /* Although this cehck update node, but new select result is SELECT_STMT. */
     SelectResult *select_result = new_select_result(SELECT_STMT, update_node->table_name, true);
-    SearchConditionNode *condition_node = get_condition_from_where_clause(update_node->where_clause);
+    SearchConditionNode *condition_node = WhereClauseFindSearchCondition(update_node->where_clause);
     QueryUnderSearchCondition(condition_node, select_result, SimpleSelectPlan(SelectRow, ARG_NULL, NULL));
     /* If selected rows more than one, 
      * which means at least two rows has same value.*/
@@ -776,8 +826,7 @@ static bool check_unique_column(Table *table, MetaColumn *meta_column, void *val
 }
 
 /* Check assignment set node */
-static bool check_assignment_set_node(UpdateNode *update_node) { 
-
+static bool CheckUpdateForAssignmentList(UpdateNode *update_node) { 
     Table *table = open_table(update_node->table_name);
     List *assignment_list = update_node->assignment_list;
 
@@ -799,13 +848,13 @@ static bool check_assignment_set_node(UpdateNode *update_node) {
         assign_value = ValueItemNodeFindValue(value_node);
 
         /* Check column, check type, check if value valid. */
-        if (!(check_column_node(column_node, table->meta_table) && 
-                check_value_item_node(table->meta_table, meta_column->column_name, value_node))) 
-                return false;
+        if (!(CheckForColumn(column_node, table->meta_table) && 
+                CheckForValueItem(table->meta_table, meta_column->column_name, value_node))) 
+            return false;
 
         /* Check duplicate column value if current column is unque.*/
         if (meta_column->is_unique) {
-            if (!check_unique_column(table, meta_column, assign_value, update_node))
+            if (!CheckUpdateForUniqueColumn(table, meta_column, assign_value, update_node))
                 return false;
         }
     }
@@ -814,7 +863,7 @@ static bool check_assignment_set_node(UpdateNode *update_node) {
 }
 
 /* Check if system reserved table. */
-static bool check_sys_reserved_table(char *table_name) {
+static bool AvoidSysReservedTableName(char *table_name) {
     if (if_table_reserved(table_name)) {
         db_log(ERROR, "Table '%s' is system reserved, not allowd duplication.", table_name); 
         return false;
@@ -823,7 +872,7 @@ static bool check_sys_reserved_table(char *table_name) {
 }
 
 /* Check if table alreay exist. */
-static bool check_duplicate_table(char *table_name) {
+static bool TableAlreadyExists(char *table_name) {
     if (check_table_exist(table_name)) {
         db_log(ERROR, "Table '%s' already exists.", table_name); 
         return false;
@@ -833,8 +882,7 @@ static bool check_duplicate_table(char *table_name) {
 }
 
 /* Check if column already exists. */
-static bool check_if_column_already_exists(List *list, ColumnDefNode *column_def) {
-
+static bool ColumnDefAlearyExists(List *list, ColumnDefNode *column_def) {
     ListCell *lc;
     foreach (lc, list) {
         ColumnDefNode *current_column_def = lfirst(lc);
@@ -846,7 +894,7 @@ static bool check_if_column_already_exists(List *list, ColumnDefNode *column_def
 
 
 /* Check if ColumnDefOptNodeList contains primary key. */
-static bool check_if_contain_primary_key(List *column_def_opt_list) {
+static bool ColumnDefListContainesPrimaryKey(List *column_def_opt_list) {
     if (column_def_opt_list) {
         ListCell *lc;
         foreach (lc, column_def_opt_list) {
@@ -858,8 +906,8 @@ static bool check_if_contain_primary_key(List *column_def_opt_list) {
     return false;
 }
 
-
-static bool check_default_atom_value_type(AtomNode *atom_node, DataType data_type) {
+/* Check if atom_node is match .*/
+static bool CheckForDefaultAtomValueType(AtomNode *atom_node, DataType data_type) {
     switch(data_type) {
         case T_BOOL: {
             if (atom_node->type == A_BOOL)
@@ -912,11 +960,11 @@ static bool check_default_atom_value_type(AtomNode *atom_node, DataType data_typ
 }
 
 /* Check default value type. */
-static bool check_default_value_type(ValueItemNode *value_item_node, DataType data_type) {
+static bool CheckForDefaultValueType(ValueItemNode *value_item_node, DataType data_type) {
     switch (value_item_node->type) {
         case V_ATOM: {
             AtomNode *atom_node = value_item_node->value.atom;
-            return check_default_atom_value_type(atom_node, data_type);
+            return CheckForDefaultAtomValueType(atom_node, data_type);
         }
         case V_NULL: 
             return true;
@@ -931,7 +979,7 @@ static bool check_default_value_type(ValueItemNode *value_item_node, DataType da
 
 
 /* Check if ColumnDefOptNodeList contains conflict default value. */
-static bool check_column_def_opt_list(ColumnDefNode *column_def) {
+static bool CheckForColumnDef(ColumnDefNode *column_def) {
     if (column_def->column_def_opt_list) {
         bool has_defined_not_null = false;
         bool has_defined_default_null = false;
@@ -949,10 +997,10 @@ static bool check_column_def_opt_list(ColumnDefNode *column_def) {
                     break;
                 case OPT_DEFAULT_VALUE: {
                     ValueItemNode *value_item_node = column_def_opt->value;
-                    DataType data_type = get_column_def_data_type(column_def);
-                    if (!check_default_value_type(value_item_node, data_type)) {
+                    DataType data_type = ColumnDefFindType(column_def);
+                    if (!CheckForDefaultValueType(value_item_node, data_type)) {
                         db_log(ERROR, "Invalid default value for '%s', can`t convert to '%s'.", 
-                               get_column_def_name(column_def),
+                               ColumnDefFindName(column_def),
                                GET_DATA_TYPE_NAME(data_type));
                         return false;
                     }
@@ -961,7 +1009,7 @@ static bool check_column_def_opt_list(ColumnDefNode *column_def) {
                 case OPT_COMMENT: {
                     if (strlen(column_def_opt->comment) > MAX_COMMENT_STRING_LENGTH) {
                         db_log(ERROR, "Too long comment for '%s'.", 
-                               get_column_def_name(column_def));
+                               ColumnDefFindName(column_def));
                         return false;
                     }
                     break;
@@ -973,7 +1021,7 @@ static bool check_column_def_opt_list(ColumnDefNode *column_def) {
 
         if (has_defined_not_null && has_defined_default_null) {
             db_log(ERROR, "Invalid default value for '%s'", 
-                   get_column_def_name(column_def));
+                   ColumnDefFindName(column_def));
             return false;
         }
     }
@@ -982,7 +1030,7 @@ static bool check_column_def_opt_list(ColumnDefNode *column_def) {
 }
 
 /* Check if exists duplicate column name. */
-static bool check_table_element_commalist(List *base_table_element_commalist) {
+static bool CheckForBaseTableElementCommalist(List *base_table_element_commalist) {
     List *list = create_list(NODE_COLUMN_DEF);
     bool primary_key_flag = false;
 
@@ -992,13 +1040,13 @@ static bool check_table_element_commalist(List *base_table_element_commalist) {
         switch (base_table_element->type) {
             case TELE_COLUMN_DEF: {
                 ColumnDefNode *current_column_def = base_table_element->column_def;
-                if (check_if_column_already_exists(list, current_column_def)) {
+                if (ColumnDefAlearyExists(list, current_column_def)) {
                     free_list(list);
                     db_log(ERROR, "Column '%s' already exists, not allowd duplicate defination.", 
-                           get_column_def_name(current_column_def));
+                           ColumnDefFindName(current_column_def));
                     return false;
                 }
-                if (check_if_contain_primary_key(current_column_def->column_def_opt_list)) {
+                if (ColumnDefListContainesPrimaryKey(current_column_def->column_def_opt_list)) {
                     if (primary_key_flag) 
                     {
                         free_list(list);
@@ -1008,7 +1056,7 @@ static bool check_table_element_commalist(List *base_table_element_commalist) {
                     else
                         primary_key_flag = true;
                 }
-                if (!check_column_def_opt_list(current_column_def)) {
+                if (!CheckForColumnDef(current_column_def)) {
                     return false;
                 }
                 append_list(list, current_column_def);
@@ -1037,7 +1085,7 @@ static bool check_table_element_commalist(List *base_table_element_commalist) {
 }
 
 /* Check InsertNode for value items. */
-static bool check_insert_node_for_value_items(InsertNode *insert_node, List *value_item_list) {
+static bool CheckInsertForValueItems(InsertNode *insert_node, List *value_item_list) {
     /* Check table exist.*/
     Table *table = open_table(insert_node->table_name);
     if (table == NULL)
@@ -1061,7 +1109,7 @@ static bool check_insert_node_for_value_items(InsertNode *insert_node, List *val
             if (meta_column->sys_reserved)
                 continue;
             ValueItemNode *value_item_node = lfirst(list_nth_cell(value_item_list, __i));
-            if (!check_value_item_node(meta_table, meta_column->column_name, value_item_node))
+            if (!CheckForValueItem(meta_table, meta_column->column_name, value_item_node))
                 return false;
         }
 
@@ -1081,7 +1129,7 @@ static bool check_insert_node_for_value_items(InsertNode *insert_node, List *val
                 db_log(ERROR, "Unknown column '%s'", column_node->column_name);
                 return false;
             }
-            if (!check_value_item_node(meta_table, meta_column->column_name, value_item_node))
+            if (!CheckForValueItem(meta_table, meta_column->column_name, value_item_node))
                 return false;
         }
 
@@ -1091,20 +1139,19 @@ static bool check_insert_node_for_value_items(InsertNode *insert_node, List *val
 }
 
 /* Check InsertNode for VALUES. */
-static bool check_insert_node_for_values(InsertNode *insert_node, List *value_list) {
+static bool CheckInsertForValues(InsertNode *insert_node, List *value_list) {
     ListCell *lc;
     foreach (lc, value_list) {
         List *value_item_list = lfirst(lc);
-        if (!check_insert_node_for_value_items(insert_node, value_item_list))
+        if (!CheckInsertForValueItems(insert_node, value_item_list))
             return false;
     }
-
     return true;
 }
 
 
 /* Check InsertNode for QUERY_SPEC. */
-static bool check_insert_node_for_query_spec(InsertNode *insert_node, QuerySpecNode *query_spec) {
+static bool CheckInsertForQuerySpec(InsertNode *insert_node, QuerySpecNode *query_spec) {
     /* Check table exist.*/
     Table *table = open_table(insert_node->table_name);
     if (table == NULL)
@@ -1115,7 +1162,7 @@ static bool check_insert_node_for_query_spec(InsertNode *insert_node, QuerySpecN
         ListCell *lc;
         foreach (lc, meta_table->meta_columns) {
             MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
-            if (!include_column_for_query_spece(meta_column, query_spec))
+            if (!CheckQuerySpecMatchColumn(meta_column, query_spec))
                 return false;
         }
     } else {
@@ -1123,7 +1170,7 @@ static bool check_insert_node_for_query_spec(InsertNode *insert_node, QuerySpecN
         foreach (lc, insert_node->column_list) {
             ColumnNode *column_node = lfirst(lc);
             MetaColumn *meta_column = NameFindMetaColumn(table->meta_table, column_node->column_name);
-            if (!include_column_for_query_spece(meta_column, query_spec))
+            if (!CheckQuerySpecMatchColumn(meta_column, query_spec))
                 return false;
         }
     }
@@ -1131,13 +1178,12 @@ static bool check_insert_node_for_query_spec(InsertNode *insert_node, QuerySpecN
 }
 
 /* Check ValuesOrQuerySpecNode in InsertNode. */
-static bool check_values_or_query_spec(InsertNode *insert_node, ValuesOrQuerySpecNode *values_or_query_spec) {
-
+static bool CheckInsertForValuesOrQuerySpec(InsertNode *insert_node, ValuesOrQuerySpecNode *values_or_query_spec) {
     switch (values_or_query_spec->type) {
         case VQ_VALUES:
-            return check_insert_node_for_values(insert_node, values_or_query_spec->values);
+            return CheckInsertForValues(insert_node, values_or_query_spec->values);
         case VQ_QUERY_SPEC:
-            return check_insert_node_for_query_spec(insert_node, values_or_query_spec->query_spec);
+            return CheckInsertForQuerySpec(insert_node, values_or_query_spec->query_spec);
         default:
             db_log(ERROR, "Unknown ValuesOrQuerySpecNode type");
             return false;
@@ -1146,14 +1192,13 @@ static bool check_values_or_query_spec(InsertNode *insert_node, ValuesOrQuerySpe
 }
 
 /* Get column name for AddColumnDef. */
-static inline char *get_column_name_from_add_column_def(AddColumnDef *add_column) {
+static inline char *AddColumnDefFindColumnName(AddColumnDef *add_column) {
     return add_column->column_def->column->column;
 }
 
-
 /* Check alter table add-column action*/
-static bool check_alter_table_add_column_action(char *table_name, AddColumnDef *add_column) {
-    char *column_name = get_column_name_from_add_column_def(add_column);
+static bool CheckForAddColumn(char *table_name, AddColumnDef *add_column) {
+    char *column_name = AddColumnDefFindColumnName(add_column);
     /* Check add column if exists. */
     if (ColumnExistsInTable(column_name, table_name)) {
         db_log(ERROR, "Table '%s' already exists column '%s'.", 
@@ -1172,7 +1217,7 @@ static bool check_alter_table_add_column_action(char *table_name, AddColumnDef *
     }
     
     /* Check the column def. */
-    if (!check_column_def_opt_list(add_column->column_def)) {
+    if (!CheckForColumnDef(add_column->column_def)) {
         return false;
     }
 
@@ -1181,12 +1226,14 @@ static bool check_alter_table_add_column_action(char *table_name, AddColumnDef *
 }
 
 /* Check for dorp-column action. */
-static bool check_alter_table_drop_column(char *table_name, DropColumnDef *drop_column_def) {
-    
-    Table *table = open_table(table_name);
-    MetaTable *meta_table = table->meta_table;
+static bool CheckForDropColumn(char *table_name, DropColumnDef *drop_column_def) {
+    Table *table;
+    MetaTable *meta_table;
+    MetaColumn *meta_column;
 
-    MetaColumn *meta_column = NameFindMetaColumn(meta_table, drop_column_def->column_name);
+    table = open_table(table_name);
+    meta_table = table->meta_table;
+    meta_column = NameFindMetaColumn(meta_table, drop_column_def->column_name);
 
     /* Check drop column if exists. */
     if (IsNull(meta_column)) {
@@ -1215,18 +1262,18 @@ static bool check_alter_table_drop_column(char *table_name, DropColumnDef *drop_
 
 
 /* Check alter table action. */
-static bool check_alter_table_action(char *table_name, AlterTableAction *action) {
+static bool CheckForAlterTableAction(char *table_name, AlterTableAction *action) {
     switch (action->type) {
         case ALTER_TO_ADD_COLUMN:
-            return check_alter_table_add_column_action(table_name, action->action.add_column);
+            return CheckForAddColumn(table_name, action->action.add_column);
         case ALTER_TO_DROP_COLUMN:
-            return check_alter_table_drop_column(table_name, action->action.drop_column);
+            return CheckForDropColumn(table_name, action->action.drop_column);
     }
     return true;
 }
 
 /* Check table. */
-static bool check_table(char *table_name) {
+static bool CheckForTable(char *table_name) {
     if (check_table_exist(table_name))
         return true;
     else {
@@ -1236,7 +1283,7 @@ static bool check_table(char *table_name) {
 }
 
 /* Check if table uses refer. */
-static bool if_table_used_refer(Table *table, char *refer_table_name) {
+static bool TableIsRefered(Table *table, char *refer_table_name) {
     MetaTable *meta_table = table->meta_table;
 
     ListCell *lc;
@@ -1255,7 +1302,7 @@ static bool if_table_used_refer(Table *table, char *refer_table_name) {
 }
 
 /* Check SelectNode. */
-bool check_select_node(SelectNode *select_node) {
+bool CheckForSelect(SelectNode *select_node) {
     AliasMap alias_map;
     alias_map.size = 0;
 
@@ -1276,51 +1323,51 @@ bool check_select_node(SelectNode *select_node) {
         alias_map.size++;
     }
 
-    return check_table_exp(select_node->table_exp, alias_map)
-        && check_selection(select_node->selection, alias_map);
+    return CheckForTableExp(select_node->table_exp, alias_map) && 
+            CheckForSelection(select_node->selection, alias_map);
 }
 
 
 /* Check insert node. */
-bool check_insert_node(InsertNode *insert_node) {
-    return check_table(insert_node->table_name)
-           && check_values_or_query_spec(insert_node, insert_node->values_or_query_spec); 
+bool CheckForInsert(InsertNode *insert_node) {
+    return CheckForTable(insert_node->table_name)
+           && CheckInsertForValuesOrQuerySpec(insert_node, insert_node->values_or_query_spec); 
 }
 
 /* Check for update node. */
-bool check_update_node(UpdateNode *update_node) {
+bool CheckForUpdate(UpdateNode *update_node) {
     AliasMap alias_map;
     alias_map.size = 1;
     alias_map.map[0].name = update_node->table_name;
     alias_map.map[0].alias = update_node->table_name;
 
-    return check_table(update_node->table_name) && 
-                check_assignment_set_node(update_node) && 
-                    check_where_clause(update_node->where_clause, alias_map);
+    return CheckForTable(update_node->table_name) && 
+                CheckUpdateForAssignmentList(update_node) && 
+                    CheckForWhereClause(update_node->where_clause, alias_map);
 }
 
 /* Check for delete node. */
-bool check_delete_node(DeleteNode *delete_node) {
+bool CheckForDelete(DeleteNode *delete_node) {
     /* Unimplement. */
     AliasMap alias_map;
     alias_map.size = 1;
     alias_map.map[0].name = delete_node->table_name;
     alias_map.map[0].alias = delete_node->table_name;
 
-    return check_table(delete_node->table_name) && 
-                check_search_condition_node(delete_node->condition_node, alias_map);
+    return CheckForTable(delete_node->table_name) && 
+            CheckForSearchCondition(delete_node->condition_node, alias_map);
 }
 
 /* Check for create table node. */
-bool check_create_table(CreateTableNode *create_table_node) {
-    return check_sys_reserved_table(create_table_node->table_name) &&
-                check_duplicate_table(create_table_node->table_name) && 
-                    check_table_element_commalist(create_table_node->base_table_element_commalist);
+bool CheckForCreateTable(CreateTableNode *create_table_node) {
+    return AvoidSysReservedTableName(create_table_node->table_name) && 
+            TableAlreadyExists(create_table_node->table_name) && 
+                CheckForBaseTableElementCommalist(create_table_node->base_table_element_commalist);
 }
 
 
 /* Check allowed to drop table. */
-bool check_drop_table(char *table_name) {
+bool CheckForDropTable(char *table_name) {
     bool ret = true;
 
     /* Check table exists. */
@@ -1335,7 +1382,7 @@ bool check_drop_table(char *table_name) {
     ListCell *lc;
     foreach (lc, table_list) {
         Table *table = (Table *) lfirst(lc);
-        if (if_table_used_refer(table, table_name))  {
+        if (TableIsRefered(table, table_name))  {
             ret = false;
             break;
         }
@@ -1345,7 +1392,7 @@ bool check_drop_table(char *table_name) {
 }
 
 /* Check for AlterTableNode. */
-bool check_alter_table(AlterTableNode *alter_table) {
-    return check_table(alter_table->table_name)
-            && check_alter_table_action(alter_table->table_name, alter_table->action);
+bool CheckForAlterTable(AlterTableNode *alter_table) {
+    return CheckForTable(alter_table->table_name)
+            && CheckForAlterTableAction(alter_table->table_name, alter_table->action);
 }

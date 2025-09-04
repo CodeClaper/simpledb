@@ -216,9 +216,22 @@ static KeyValue *QueryTupleValue(SelectResult *select_result, List *meta_columns
     }
 }
 
+static inline Refer *ReferValueFindRefer(ReferValue *refer_value, MetaColumn *meta_column) {
+    switch (refer_value->type) {
+        case DIRECTLY:
+            panic("Logic error");
+            break;
+        case INDIRECTLY:
+            return fetch_refer(meta_column, refer_value->condition);
+        default:
+            UNEXPECTED_VALUE(refer_value->type);
+    }
+    return NULL;
+}
 
-static inline ReferValue *ScalarExpFindReferValue(ScalarExpNode *scalar_exp) {
-    return scalar_exp->value->value.atom->value.referval;
+static inline Refer *ScalarExpFindRefer(ScalarExpNode *scalar_exp, MetaColumn *meta_column) {
+    ReferValue *refer_value = scalar_exp->value->value.atom->value.referval;
+    return ReferValueFindRefer(refer_value, meta_column);
 }
 
 static bool ValueItemIsReferValue(ValueItemNode *value_item) {
@@ -250,7 +263,6 @@ static bool ScalarExpIsReferValue(ScalarExpNode *scalar_exp) {
     return false;
 }
 
-
 /* If satisfy columnn and refer value in comparison. */
 static bool SatisfyColumnAndReferValueCompparison(ScalarExpNode *left, ScalarExpNode *right) {
     if (ScalarExpIsReferValue(left)) {
@@ -264,25 +276,22 @@ static bool SatisfyColumnAndReferValueCompparison(ScalarExpNode *left, ScalarExp
         else
             db_log(ERROR, "Refer value must compare with column.");
     }
-
     return false;
 }
 
-static bool ColumnAndReferValueCompparison(SelectResult *select_result, List *meta_columns, CompareType compare_type, 
-                                           ScalarExpNode *left, ScalarExpNode *right, void *tuple) {
+static bool ColumnAndReferValueCompparison(SelectResult *select_result, List *meta_columns, 
+                                           CompareType compare_type, ScalarExpNode *left, 
+                                           ScalarExpNode *right, void *tuple) {
     MetaColumn *target_meta_column;
-    ReferValue *referVal;
     void *source, *target;
 
     if (ScalarExpIsReferValue(right)) {
         target_meta_column = ColumnNodeFindMetaColumn(select_result, meta_columns, left->column);
-        referVal = ScalarExpFindReferValue(right);
+        target = ScalarExpFindRefer(right, target_meta_column);
         source = TupeFindValue(tuple, target_meta_column);
-        target = fetch_refer(target_meta_column, referVal->condition);
     } else {
         target_meta_column = ColumnNodeFindMetaColumn(select_result, meta_columns, right->column);
-        referVal = ScalarExpFindReferValue(left);
-        source = fetch_refer(target_meta_column, referVal->condition);
+        source = ScalarExpFindRefer(left, target_meta_column);
         target = TupeFindValue(tuple, target_meta_column);
     }
 
@@ -296,7 +305,8 @@ static bool LeafNodeForComparisonPredicate(SelectResult *select_result, List *me
     if (SatisfyColumnAndReferValueCompparison(comparison->left, comparison->right))
         return ColumnAndReferValueCompparison(select_result, 
                                               meta_columns, 
-                                              comparison->type, comparison->left, 
+                                              comparison->type, 
+                                              comparison->left, 
                                               comparison->right, 
                                               tuple);
     /* Do others normally. */
@@ -308,12 +318,18 @@ static bool LeafNodeForComparisonPredicate(SelectResult *select_result, List *me
 /* Check if include leaf node satisfy in predicate. */
 static bool LeafNodeForInPredicate(SelectResult *select_result, List *meta_columns, 
                                    void *tuple, InNode *in_node) {
-    ListCell *lc;
+    MetaColumn *meta_column;
     KeyValue *value, *target;
 
+    meta_column = ColumnNodeFindMetaColumn(select_result, meta_columns, in_node->column);
     value = QueryTupleColumnValue(select_result, meta_columns, in_node->column, tuple);
+
+    ListCell *lc;
     foreach (lc, in_node->value_list) {
-        target = QueryTupleValueItem(lfirst(lc));
+        target = QueryTupleValueItem((ValueItemNode *) lfirst(lc));
+        /* For referenct type, convert ReferValue to Refer value.  */
+        if (meta_column->column_type == T_REFERENCE && target->data_type == T_REFERENCE)
+            target->value = ReferValueFindRefer(target->value, meta_column);
         if (KeyValueEval(O_EQ, value, target))
             return true;
     }
@@ -2542,7 +2558,7 @@ static SelectResult *QueryMultiTableUnderSearchCondition(SelectNode *select_node
 /* Execute select statement. */
 void exec_select_statement(SelectNode *select_node, DBResult *result) {
     /* Check SelectNode valid. */
-    check_select_node(select_node);
+    CheckForSelect(select_node);
 
     /* Query multiple table with conditon and get select result which is after row filtered. */
     SelectResult *select_result = QueryMultiTableUnderSearchCondition(select_node, result);
@@ -2555,8 +2571,8 @@ void exec_select_statement(SelectNode *select_node, DBResult *result) {
     result->data = select_result;
     result->success = true;
     result->message = FormatStr("Query %d rows data from table '%s' successfully.", 
-                             result->rows, 
-                             select_result->table_name);
+                                result->rows, 
+                                select_result->table_name);
 
     /* Make up success result. */
     db_log(SUCCESS, "Query %d rows data from table '%s' successfully.", 

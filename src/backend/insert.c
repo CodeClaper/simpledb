@@ -380,7 +380,7 @@ static List *insert_for_query_spec(InsertNode *insert_node) {
  * */
 List *exec_insert_statement(InsertNode *insert_node) {
     /* Check if insert node valid. */
-    if (!check_insert_node(insert_node)) 
+    if (!CheckForInsert(insert_node)) 
         return NULL;
 
     ValuesOrQuerySpecNode *values_or_query_spec = insert_node->values_or_query_spec;
