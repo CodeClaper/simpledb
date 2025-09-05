@@ -21,7 +21,7 @@ void free_value(void *value, DataType data_type) {
             case T_REFERENCE:
                 free_refer((Refer *)value);
                 break;
-            case T_ROW:
+            case T_OBJECT:
                 free_row((Row *)value);
                 break;
             default:

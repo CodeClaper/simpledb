@@ -94,7 +94,7 @@ static void json_key_value_inner(char *key, void *value, DataType type) {
             json_row(subrow);
             break;
         }
-        case T_ROW: {
+        case T_OBJECT: {
             db_send("\"%s\": ", key);
             Row *subrow = (Row *)value;
             json_row(subrow);

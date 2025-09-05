@@ -65,7 +65,7 @@ void *copy_value(void *value, DataType data_type) {
             return copy_strrefer((StrRefer *) value);
         case T_REFERENCE: 
             return copy_refer(value);
-        case T_ROW:
+        case T_OBJECT:
             return copy_row(value);
         default: {
             UNEXPECTED_VALUE("Not supported data type occurs at <copy_value>.");

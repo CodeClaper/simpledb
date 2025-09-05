@@ -135,16 +135,31 @@ static MetaColumn *ColumnNodeFindMetaColumn(SelectPlan *select_plan, List *meta_
     return target_meta_column;
 }
 
+static Row *QuerySubRowFromSubTuple(SelectPlan *select_plan, List *meta_columns, List *scalar_exp_list, void *sub_tuple) {
+    Row *sub_row = NewRow();
+    ListCell *lc;
+    foreach (lc, scalar_exp_list) {
+        ScalarExpNode *scalar_exp = lfirst(lc);
+        KeyValue *key_value = QueryTupleValue(select_plan, meta_columns, scalar_exp, sub_tuple);
+        if (scalar_exp->alias) {
+            /* Rename as alias. */
+            key_value->key = dstrdup(scalar_exp->alias);
+        }
+        append_list(sub_row->data, key_value);
+    }
+    return sub_row;
+}
+
 /* Query tuple for sub column value. */
 static KeyValue *QueryTupleColumnValueForSubColumn(SelectPlan *select_plan, MetaColumn *target_meta_column, ColumnNode *column, void *value) {
-    Assert(column->has_sub_column);
+    Assert(target_meta_column->column_type == T_REFERENCE && column->has_sub_column);
+    void *sub_tuple = DefineTuple((Refer *) value);
+    Table *sub_table = open_table(target_meta_column->table_name);
     if (column->sub_column != NULL) {
-        Assert(target_meta_column->column_type == T_REFERENCE);
-        void *sub_tuple = DefineTuple((Refer *) value);
-        Table *sub_table = open_table(target_meta_column->table_name);
         return QueryTupleColumnValue(select_plan, sub_table->meta_table->meta_columns, column->sub_column, sub_tuple);
     } else if (!list_empty(column->scalar_exp_list)) {
-        db_log(ERROR, "Not support sub column scalar exp list for search conditon.");
+        Row *sub_row = QuerySubRowFromSubTuple(select_plan, sub_table->meta_table->meta_columns, column->scalar_exp_list, sub_tuple);
+        return new_key_value(target_meta_column->column_name, sub_row, T_OBJECT, target_meta_column->table_name);
     }
     return NULL;
 }
@@ -1332,7 +1347,7 @@ static AtomNode *GenerateAtomNode(MetaColumn *meta_column, void *value) {
             break;
         }
         case T_REFERENCE:
-        case T_ROW:
+        case T_OBJECT:
         case T_UNKNOWN:
             panic("Cant convert type to AtomNode.");
         break;
@@ -1542,7 +1557,7 @@ static KeyValue *CalcSumValue(ColumnNode *column, SelectResult *select_result, S
                 break;
             }
             case T_REFERENCE: 
-            case T_ROW: {
+            case T_OBJECT: {
                 db_log(ERROR, "Reference type not used for sum function.");
                 break;
             }
@@ -1582,7 +1597,7 @@ static KeyValue *CalcAvgValue(ColumnNode *column, SelectResult *select_result, S
                 break;
             }
             case T_REFERENCE: 
-            case T_ROW: {
+            case T_OBJECT: {
                 db_log(ERROR, "Reference type not used for avg function.");
                 break;
             }
@@ -1745,7 +1760,7 @@ static KeyValue *QueryFunctionColumnValue(FunctionNode *function, SelectResult *
 /* Query column value. */
 static KeyValue *QueryRowColumnValue(SelectPlan *select_plan, ColumnNode *column, Row *row) {
     if (row == NULL) 
-        return new_key_value(column->column_name, NULL, T_ROW, NULL);
+        return new_key_value(column->column_name, NULL, T_OBJECT, NULL);
 
     /* Get table name via alias name. */
     char *table_name = SearchTableNameViaAlias(select_plan, column->range_variable);
@@ -1770,9 +1785,9 @@ static KeyValue *QueryRowColumnValue(SelectPlan *select_plan, ColumnNode *column
                     return sub_key_value;
                 } else if (column->has_sub_column && column->scalar_exp_list) {
                     Row *filtered_subrow = QueryColumnsSelectOneRow(select_plan, column->scalar_exp_list, sub_row);
-                    return new_key_value(column->column_name, filtered_subrow, T_ROW, table_name);
+                    return new_key_value(column->column_name, filtered_subrow, T_OBJECT, table_name);
                 } else if (!column->has_sub_column) {
-                    return new_key_value(column->column_name, sub_row, T_ROW, table_name); 
+                    return new_key_value(column->column_name, sub_row, T_OBJECT, table_name); 
                 }
             }
             else if (column->has_sub_column) 

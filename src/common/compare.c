@@ -395,9 +395,9 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
             }
             break;
         }
-        case T_ROW: {
+        case T_OBJECT: {
             switch (right->data_type) {
-                case T_ROW:
+                case T_OBJECT:
                     /* For comparing tow rows, just compare their pointer, 
                      * maybe this is not right way, consider it int future. */
                     return left->value == right->value;
@@ -412,7 +412,7 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
     }
 
 ERR_TYPE:
-    db_log(ERROR, "Can`t compare %s with %s", 
+    db_log(ERROR, "Can`t compare %s with %s.", 
            GET_DATA_TYPE_NAME(left->data_type), 
            GET_DATA_TYPE_NAME(right->data_type));
 
@@ -669,9 +669,9 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
             }
             break;
         }
-        case T_ROW: {
+        case T_OBJECT: {
             switch (right->data_type) {
-                case T_ROW:
+                case T_OBJECT:
                     db_log(ERROR, "Not implement data type when operate GT.");
                 default:
                     goto ERR_TYPE;
@@ -685,7 +685,7 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
     }
 
 ERR_TYPE:
-    db_log(ERROR, "Can`t compare %s with %s", 
+    db_log(ERROR, "Can`t compare %s with %s.", 
            GET_DATA_TYPE_NAME(left->data_type), 
            GET_DATA_TYPE_NAME(right->data_type));
 
