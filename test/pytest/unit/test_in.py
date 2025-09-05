@@ -78,6 +78,28 @@ def test_in_direct_refer_values():
     ret = client.execute(sql)
     assert ret["success"] == False
     assert ret["message"] == 'Not allowed use directly refer value in search condition.'
+
+## test in subcolumn.
+def test_in_subcolumn1():
+    sql = "select * from Student where (class).studentNum in (28, 33);"
+    ret = client.execute(sql)
+    print(ret)
+    assert ret["success"] == True
+    assert ret["data"] == [
+        {'id': 'S003', 'name': 'ben', 'age': 12, 'birth': '2012-04-23', 'class': {'id': 'C002', 'location': 'Middle', 'studentNum': 28}}, 
+        {'id': 'S004', 'name': 'david', 'age': 14, 'birth': '2010-01-05', 'class': {'id': 'C002', 'location': 'Middle', 'studentNum': 28}}, 
+        {'id': 'S005', 'name': 'kunting', 'age': 9, 'birth': '2015-06-23', 'class': {'id': 'C002', 'location': 'Middle', 'studentNum': 28}}, 
+        {'id': 'S006', 'name': 'bob', 'age': 9, 'birth': '2015-07-07', 'class': {'id': 'C003', 'location': 'South side', 'studentNum': 33}}, 
+        {'id': 'S007', 'name': 'july', 'age': 11, 'birth': '2013-03-05', 'class': {'id': 'C003', 'location': 'South side', 'studentNum': 33}}
+    ]
+
+## test in subcolumn.
+def test_in_subcolumn2():
+    sql = "select * from Student where class{studentNum} in (28, 33);"
+    ret = client.execute(sql)
+    print(ret)
+    assert ret["success"] == False
+    assert ret["message"] == "Can`t compare object with long."
  
 ## drop mock tables   
 def test_drop_mock_tables():
