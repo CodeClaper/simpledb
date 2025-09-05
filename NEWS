@@ -2,3 +2,6 @@
 2. Stream output --Down.
 3. Multi-table query --Ongoing.
 4. Expand the search condition --Ongoing.
+5. Row lock.
+6. Index.
+7. Subquery.
