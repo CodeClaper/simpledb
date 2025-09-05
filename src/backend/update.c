@@ -173,8 +173,8 @@ void exec_update_statment(UpdateNode *update_node, DBResult *result) {
 
     /* Query with update row operation. */
     QueryUnderSearchCondition(
-        condition_node, select_result, 
-        SimpleSelectPlan(UpdateTuple, ARG_ASSIGNMENT_LIST, update_node->assignment_list)
+        select_result, 
+        SimpleSelectPlan(UpdateTuple, ARG_ASSIGNMENT_LIST, update_node->assignment_list, condition_node)
     );
     
     /* Combine the result. */

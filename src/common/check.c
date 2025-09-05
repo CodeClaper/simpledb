@@ -793,10 +793,15 @@ static bool CheckForTableExp(TableExpNode *table_exp, AliasMap alias_map) {
 /* Check update unique column. */
 static bool CheckUpdateForUniqueColumn(Table *table, MetaColumn *meta_column, void *value, UpdateNode *update_node) {
     Assert(meta_column->is_unique);
+
+    SelectResult *select_result;
+    SearchConditionNode *condition;
+
     /* Although this cehck update node, but new select result is SELECT_STMT. */
-    SelectResult *select_result = new_select_result(SELECT_STMT, update_node->table_name, true);
-    SearchConditionNode *condition_node = WhereClauseFindSearchCondition(update_node->where_clause);
-    QueryUnderSearchCondition(condition_node, select_result, SimpleSelectPlan(SelectRow, ARG_NULL, NULL));
+    select_result = new_select_result(SELECT_STMT, update_node->table_name, true);
+    condition = WhereClauseFindSearchCondition(update_node->where_clause);
+    QueryUnderSearchCondition(select_result, SimpleSelectPlan(SelectRow, ARG_NULL, NULL, condition));
+
     /* If selected rows more than one, 
      * which means at least two rows has same value.*/
     if (select_result->row_size > 1) {

@@ -12,6 +12,7 @@ static bool OnlyScanIndex(SelectNode *selectNode);
 static bool IndexValidForSelectNode(List *select_table_list, SelectNode *selectNode);
 static bool IndexValidForSearchCondition(List *select_table_list, SearchConditionNode *search_condition);
 static LimitClauseNode *SelectNodeFindLimitClause(SelectNode *selectNode);
+static SearchConditionNode *SelectNodeFindCondition(SelectNode *selectNode);
 static List *SelectNodeFindTables(SelectNode *selectNode);
 static ROW_HANDLER DefineRowHandler(SelectPlan *select_plan);
 
@@ -19,6 +20,7 @@ static ROW_HANDLER DefineRowHandler(SelectPlan *select_plan);
 SelectPlan *OptimizeSelect(SelectNode *selectNode, StatementType stmt_type) {
     SelectPlan *select_plan = instance(SelectPlan);
     select_plan->stmt_type = stmt_type;
+    select_plan->condition = SelectNodeFindCondition(selectNode);
     select_plan->selectTableList = SelectNodeFindTables(selectNode);
     select_plan->onlyAll = OnlySelectAllInSelection(selectNode);
     select_plan->onlyCount = OnlyCountInSelection(selectNode);
@@ -34,8 +36,9 @@ SelectPlan *OptimizeSelect(SelectNode *selectNode, StatementType stmt_type) {
 }
 
 /* Generate a Simple SelectPlan. */
-SelectPlan *SimpleSelectPlan(ROW_HANDLER rowHanler, ROW_HANDLER_ARG_TYPE type, void *arg) {
+SelectPlan *SimpleSelectPlan(ROW_HANDLER rowHanler, ROW_HANDLER_ARG_TYPE type, void *arg, SearchConditionNode *condition) {
     SelectPlan *select_plan = instance(SelectPlan);
+    select_plan->condition = condition;
     select_plan->rowHanler = rowHanler;
     select_plan->type = type;
     select_plan->arg = arg;
@@ -289,6 +292,15 @@ static List *SelectNodeFindTables(SelectNode *selectNode) {
     }
 
     return select_table_list;
+}
+
+/* Get TableExpNode condition. 
+ * If exists where clause, return its condition.
+ * Else, return NULL. */
+static SearchConditionNode *SelectNodeFindCondition(SelectNode *selectNode) {
+    if (selectNode->table_exp == NULL || selectNode->table_exp->where_clause == NULL)
+        return NULL;
+    return selectNode->table_exp->where_clause->condition;
 }
 
 /* Define which ROW_HANDLER. 

@@ -27,6 +27,7 @@ typedef struct SelectPlan {
     bool onlyCount;                 /* Only count int select statement. */
     bool onlyScanIndex;             /* Only scan index. */
     bool indexValid;                /* Index if valid. */
+    SearchConditionNode *condition; /* The search condition. */
     List *selectTableList;          /* List of SelectTable. */
     volatile int32_t offset;        /* Current offset. Need volatile in parall calculating.*/
     LimitClauseNode *limitClause;   /* LimitClauseNode. */
@@ -41,7 +42,6 @@ typedef struct SelectFromInternalChildTaskArgs {
     SelectResult *select_result;
     uint32_t page_num;
     uint32_t keys_num;
-    SearchConditionNode *condition;
     Table *table;
     SelectPlan *select_plan;
 } SelectFromInternalChildTaskArgs;
@@ -75,10 +75,10 @@ Row *DefineVisibleRow(Refer *refer);
 SelectResult *SelectWithColumnValue(Oid oid, MetaColumn *meta_column, void *value);
 
 /* Query with condition inner. */
-void QueryUnderSearchConditionInner(Oid oid, SearchConditionNode *condition, SelectResult *select_result, SelectPlan *select_plan);
+void QueryUnderSearchConditionInner(Oid oid, SelectResult *select_result, SelectPlan *select_plan);
 
 /* Query with condition. */
-void QueryUnderSearchCondition(SearchConditionNode *condition, SelectResult *select_result, SelectPlan *select_plan);
+void QueryUnderSearchCondition(SelectResult *select_result, SelectPlan *select_plan);
 
 /* Execute select statement. */
 void exec_select_statement(SelectNode *select_node, DBResult *result);

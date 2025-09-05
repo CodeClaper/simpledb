@@ -71,7 +71,7 @@ static KeyValue *QueryTupleValue(SelectPlan *select_plan, List *meta_columns, Sc
 static char *SearchTableNameViaAlias(SelectPlan *select_plan, char *alias_name);
 static Row *QueryColumnsSelectOneRow(SelectPlan *select_plan, List *scalar_exp_set, Row *row);
 static KeyValue *QueryRowColumnValue(SelectPlan *select_plan, ColumnNode *column, Row *row);
-static bool InternalNodeForSearchCondition(SelectPlan *select_plan, KeyValue *min_key_value, KeyValue *max_key_value, SearchConditionNode *condition_node);
+static bool InternalNodeForSearchCondition(SelectPlan *select_plan, KeyValue *min_key_value, KeyValue *max_key_value, SearchConditionNode *search_condition);
 static bool LeafNodeForSearchCondition(SelectPlan *select_plan, List *meta_columns, void *tuple, SearchConditionNode *search_condition);
 static KeyValue *CalcAddition(KeyValue *left, KeyValue *right);
 static KeyValue *CalcSubstraction(KeyValue *left, KeyValue *right);
@@ -665,15 +665,15 @@ static bool InternalNodeForBooleanTerm(SelectPlan *select_plan, KeyValue *min_ke
 }
 
 /* Check if the internal node meet the search condition. */
-static bool InternalNodeForSearchCondition(SelectPlan *select_plan, KeyValue *min_key_value, KeyValue *max_key_value, SearchConditionNode *condition_node) {
+static bool InternalNodeForSearchCondition(SelectPlan *select_plan, KeyValue *min_key_value, KeyValue *max_key_value, SearchConditionNode *condition) {
     /* If index is invalid, just return true. */
     if (!select_plan->indexValid)
         return true;
 
-    return condition_node->or_search_condition == NULL 
-        ? InternalNodeForBooleanTerm(select_plan, min_key_value, max_key_value, condition_node->boolean_term)
-        : InternalNodeForBooleanTerm(select_plan, min_key_value, max_key_value, condition_node->boolean_term) || 
-            InternalNodeForSearchCondition(select_plan, min_key_value, max_key_value, condition_node->or_search_condition);
+    return condition->or_search_condition == NULL 
+        ? InternalNodeForBooleanTerm(select_plan, min_key_value, max_key_value, condition->boolean_term)
+        : InternalNodeForBooleanTerm(select_plan, min_key_value, max_key_value, condition->boolean_term) || 
+            InternalNodeForSearchCondition(select_plan, min_key_value, max_key_value, condition->or_search_condition);
 }
 
 
@@ -891,8 +891,7 @@ static char *SearchTableNameViaAlias(SelectPlan *select_plan, char *alias_name) 
 /* Scan from leaf node. 
  * -------------------
  * Note that: Scan-index operation only supports for one-table query. */
-static void ScanLeafNode(SelectResult *select_result, SearchConditionNode *condition, 
-                         uint32_t page_num, Table *table, SelectPlan *select_plan) {
+static void ScanLeafNode(SelectResult *select_result, uint32_t page_num, Table *table, SelectPlan *select_plan) {
     /* Get cell number, key length and value lenght. */
     uint32_t key_len, value_len, default_value_len, cell_num;
     Buffer buffer;
@@ -927,8 +926,8 @@ static void ScanLeafNode(SelectResult *select_result, SearchConditionNode *condi
 }
 
 /* Select through leaf node. */
-static void SelectLeafNode(SelectResult *select_result, SearchConditionNode *condition, 
-                           uint32_t page_num, Table *table, SelectPlan *select_plan) {
+static void SelectLeafNode(SelectResult *select_result, uint32_t page_num, 
+                           Table *table, SelectPlan *select_plan) {
     /* Get cell number, key length and value lenght. */
     uint32_t key_len, value_len, default_value_len, cell_num ;
     Buffer buffer;
@@ -971,7 +970,7 @@ static void SelectLeafNode(SelectResult *select_result, SearchConditionNode *con
 
         /* If has nested, deep seek nested. */
         if (nested != NULL) {
-            QueryUnderSearchCondition(condition, nested, select_plan);
+            QueryUnderSearchCondition(nested, select_plan);
             continue;
         }
 
@@ -990,7 +989,7 @@ static void SelectLeafNode(SelectResult *select_result, SearchConditionNode *con
         Assert(ntuple != NULL);
         
         /* Filt the leaf node. */
-        if (LeafNodeForSearchCondition(select_plan, columns, ntuple, condition)) 
+        if (LeafNodeForSearchCondition(select_plan, columns, ntuple, select_plan->condition)) 
             select_plan->rowHanler(ntuple, head, select_plan->type, select_plan->arg);
         
         /* When nested not null, means ntuple dalloc new memory. */
@@ -1003,8 +1002,8 @@ static void SelectLeafNode(SelectResult *select_result, SearchConditionNode *con
 }
 
 /* Select through internal node. */
-static void SelectInternalNode(SelectResult *select_result, SearchConditionNode *condition, 
-                               uint32_t page_num, Table *table, SelectPlan *select_plan) {
+static void SelectInternalNode(SelectResult *select_result, uint32_t page_num, 
+                               Table *table, SelectPlan *select_plan) {
     /* If LimitClauseNode full, not continue. */
     if (LimitClauseIsFull(select_plan))
         return;
@@ -1040,7 +1039,7 @@ static void SelectInternalNode(SelectResult *select_result, SearchConditionNode 
             KeyValue *max_key_value = new_key_value(primary_meta_column->column_name, max_key, primary_meta_column->column_type, GET_TABLE_NAME(table));
             KeyValue *min_key_value = new_key_value(primary_meta_column->column_name, min_key, primary_meta_column->column_type, GET_TABLE_NAME(table));
             /* Filter the internal node. */
-            if (!InternalNodeForSearchCondition(select_plan, min_key_value, max_key_value, condition))
+            if (!InternalNodeForSearchCondition(select_plan, min_key_value, max_key_value, select_plan->condition))
                 continue;
         }
 
@@ -1054,19 +1053,19 @@ static void SelectInternalNode(SelectResult *select_result, SearchConditionNode 
             case LEAF_NODE: {
                 if (select_plan->onlyScanIndex)
                     ScanLeafNode(
-                        select_result, condition, child_page_num, 
+                        select_result, child_page_num, 
                         table, select_plan
                     );
                 else
                     SelectLeafNode(
-                        select_result, condition, child_page_num, 
+                        select_result, child_page_num, 
                         table, select_plan
                     );
                 break;
             }
             case INTERNAL_NODE:
                 SelectInternalNode(
-                    select_result, condition, child_page_num, 
+                    select_result, child_page_num, 
                     table, select_plan
                 );
                 break;
@@ -1088,22 +1087,19 @@ static void SelectInternalNode(SelectResult *select_result, SearchConditionNode 
         case LEAF_NODE: {
             if (select_plan->onlyScanIndex)
                 ScanLeafNode(
-                    select_result, 
-                    condition, right_child_page_num, 
+                    select_result, right_child_page_num, 
                     table, select_plan
                 );
             else
                 SelectLeafNode(
-                    select_result, 
-                    condition, right_child_page_num, 
+                    select_result, right_child_page_num, 
                     table, select_plan
                 );
             break;
         }
         case INTERNAL_NODE:
             SelectInternalNode(
-                select_result, 
-                condition, right_child_page_num, 
+                select_result, right_child_page_num, 
                 table, select_plan
             );
             break;
@@ -1126,7 +1122,6 @@ static void SelectInternalNodeChildTask(void *taskArg) {
     SelectFromInternalChildTaskArgs *args = (SelectFromInternalChildTaskArgs *) taskArg;
     uint32_t child_page_num = args->page_num;
     SelectResult *select_result = args->select_result;
-    SearchConditionNode *condition = args->condition;
     Table *table = args->table;
     SelectPlan *select_plan = args->select_plan;
     Buffer child_buffer;
@@ -1138,13 +1133,13 @@ static void SelectInternalNodeChildTask(void *taskArg) {
     switch (get_node_type(child_node)) {
         case LEAF_NODE:
             SelectLeafNode(
-                select_result, condition, child_page_num, 
+                select_result, child_page_num, 
                 table, select_plan
             );
             break;
         case INTERNAL_NODE:
             SelectInternalNode(
-                select_result, condition, child_page_num, 
+                select_result, child_page_num, 
                 table, select_plan
             );
             break;
@@ -1158,8 +1153,7 @@ static void SelectInternalNodeChildTask(void *taskArg) {
 }
 
 /* Select through internal node. */
-static void SelectInternalNodeAsync(SelectResult *select_result, SearchConditionNode *condition, 
-                                    uint32_t page_num, Table *table, SelectPlan *select_plan) {
+static void SelectInternalNodeAsync(SelectResult *select_result, uint32_t page_num, Table *table, SelectPlan *select_plan) {
     /* If LimitClauseNode full, not continue. */
     if (LimitClauseIsFull(select_plan))
         return;
@@ -1192,7 +1186,7 @@ static void SelectInternalNodeAsync(SelectResult *select_result, SearchCondition
                     : GetComparableValue(get_internal_node_key(internal_node, i - 1, key_len, value_len), primary_meta_column->column_type);
         KeyValue *max_key_value = new_key_value(primary_meta_column->column_name, max_key, primary_meta_column->column_type, GET_TABLE_NAME(table));
         KeyValue *min_key_value = new_key_value(primary_meta_column->column_name, min_key, primary_meta_column->column_type, GET_TABLE_NAME(table));
-        if (!InternalNodeForSearchCondition(select_plan, min_key_value, max_key_value, condition))
+        if (!InternalNodeForSearchCondition(select_plan, min_key_value, max_key_value, select_plan->condition))
             continue;
         
         uint32_t child_page_num = get_internal_node_child(internal_node, i, key_len, value_len);
@@ -1201,7 +1195,6 @@ static void SelectInternalNodeAsync(SelectResult *select_result, SearchCondition
         taskArgs[taskNum]->select_result = selectResults[taskNum];
         taskArgs[taskNum]->page_num = child_page_num;
         taskArgs[taskNum]->keys_num = keys_num;
-        taskArgs[taskNum]->condition = condition;
         taskArgs[taskNum]->table = table;
         taskArgs[taskNum]->select_plan = select_plan;
         taskNum++;
@@ -1214,7 +1207,6 @@ static void SelectInternalNodeAsync(SelectResult *select_result, SearchCondition
     taskArgs[taskNum]->select_result = selectResults[taskNum];
     taskArgs[taskNum]->page_num = right_child_page_num;
     taskArgs[taskNum]->keys_num = keys_num;
-    taskArgs[taskNum]->condition = condition;
     taskArgs[taskNum]->table = table;
     taskArgs[taskNum]->select_plan = select_plan;
     taskNum++;
@@ -1250,7 +1242,7 @@ static bool AsyncCondition(SelectResult *select_result) {
 }
 
 /* Query with condition inner. */
-void QueryUnderSearchConditionInner(Oid oid, SearchConditionNode *condition, SelectResult *select_result, SelectPlan *select_plan) {
+void QueryUnderSearchConditionInner(Oid oid, SelectResult *select_result, SelectPlan *select_plan) {
     Table *table;
     Buffer buffer;
     void *root;
@@ -1267,12 +1259,12 @@ void QueryUnderSearchConditionInner(Oid oid, SearchConditionNode *condition, Sel
         case LEAF_NODE: {
             if (select_plan->onlyScanIndex)
                 ScanLeafNode(
-                    select_result, condition, table->root_page_num, 
+                    select_result, table->root_page_num, 
                     table, select_plan
                 );
             else
                 SelectLeafNode(
-                    select_result, condition, table->root_page_num, 
+                    select_result,table->root_page_num, 
                     table, select_plan
                 );
             break;
@@ -1280,12 +1272,12 @@ void QueryUnderSearchConditionInner(Oid oid, SearchConditionNode *condition, Sel
         case INTERNAL_NODE: {
             if (AsyncCondition(select_result)) 
                 SelectInternalNodeAsync(
-                    select_result, condition, table->root_page_num,
+                    select_result, table->root_page_num,
                     table, select_plan
                 );
             else
                 SelectInternalNode(
-                    select_result, condition, table->root_page_num,
+                    select_result, table->root_page_num,
                     table, select_plan
                 );
             break;
@@ -1299,14 +1291,14 @@ void QueryUnderSearchConditionInner(Oid oid, SearchConditionNode *condition, Sel
 }
 
 /* Query with condition. */
-void QueryUnderSearchCondition(SearchConditionNode *condition, SelectResult *select_result, SelectPlan *select_plan) {
+void QueryUnderSearchCondition(SelectResult *select_result, SelectPlan *select_plan) {
     /* Check if table exists. */
     Table *table = open_table(select_result->table_name);
     if (table == NULL) {
         db_log(ERROR, "Table %s not exist.", select_result->table_name);
         return;
     }
-    QueryUnderSearchConditionInner(GET_TABLE_OID(table), condition, select_result, select_plan);
+    QueryUnderSearchConditionInner(GET_TABLE_OID(table), select_result, select_plan);
 }
 
 /* Combine AtomNode by column and value. */
@@ -1396,7 +1388,7 @@ SelectResult *SelectWithColumnValue(Oid oid, MetaColumn *meta_column, void *valu
     Assert(table != NULL);
     SearchConditionNode *condtion = ColumnValueConvertCondition(meta_column, value);
     SelectResult *result = new_select_result(SELECT_STMT, GET_TABLE_NAME(table), true);
-    QueryUnderSearchConditionInner(oid, condtion, result, SimpleSelectPlan(SelectRow, ARG_NULL, NULL));
+    QueryUnderSearchConditionInner(oid, result, SimpleSelectPlan(SelectRow, ARG_NULL, NULL, condtion));
     return result;
 }
 
@@ -2449,16 +2441,6 @@ static void QueryWithSelection(SelectionNode *selection, SelectResult *select_re
         QueryColumnsSelection(selection->scalar_exp_list, select_result, select_plan);
 }
 
-/* Get TableExpNode condition. 
- * If exists where clause, return its condition.
- * Else, return NULL. */
-static inline SearchConditionNode *GetTableExpSeachCondition(TableExpNode *table_exp) {
-    WhereClauseNode *where_clause = table_exp->where_clause;
-    if (where_clause)
-        return where_clause->condition;
-    else 
-        return NULL;
-}
 
 /* Do before query condition. */
 static void DoBeforeQuerySeachCondition(SelectPlan *select_plan) {
@@ -2485,7 +2467,6 @@ static void DoAfterQuerySearchCondition(SelectPlan *select_plan, SelectResult *s
 static SelectResult *QueryMultiTableUnderSearchCondition(SelectNode *select_node, DBResult *dbresult, SelectPlan *select_plan) {
     List *table_list;
     SelectResult *head, *pres;
-    SearchConditionNode *condition;
 
     /* If no from clause, return an empty select result. */
     if (IsNull(select_node->table_exp->from_clause)) 
@@ -2495,7 +2476,6 @@ static SelectResult *QueryMultiTableUnderSearchCondition(SelectNode *select_node
     Assert(len_list(table_list) > 0);
     head = NULL;
     pres = NULL;
-    condition = GetTableExpSeachCondition(select_node->table_exp);
 
     /* Build the chain of SelectResult. */
     ListCell *lc;
@@ -2521,7 +2501,7 @@ static SelectResult *QueryMultiTableUnderSearchCondition(SelectNode *select_node
     DoBeforeQuerySeachCondition(select_plan);
 
     /* Do query condition. */
-    QueryUnderSearchCondition(condition, head, select_plan);
+    QueryUnderSearchCondition(head, select_plan);
 
     /* Do after query condition. */
     DoAfterQuerySearchCondition(select_plan, head, dbresult);

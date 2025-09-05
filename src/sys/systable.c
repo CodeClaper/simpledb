@@ -237,8 +237,8 @@ static Object OidFindObjectInner(Oid oid) {
     
     /* Query. */
     QueryUnderSearchConditionInner(
-        SYS_ROOT_OID, condition, result, 
-        SimpleSelectPlan(SelectTuple, ARG_NULL, NULL)
+        SYS_ROOT_OID, result, 
+        SimpleSelectPlan(SelectTuple, ARG_NULL, NULL, condition)
     );
 
     /* Logically, we will get one row data. */
@@ -287,8 +287,8 @@ static Oid RelnameAndReltypeFindOid(char *relname, ObjectType reltype) {
 
     /* Query. */
     QueryUnderSearchConditionInner(
-        SYS_ROOT_OID, condition, result, 
-        SimpleSelectPlan(SelectTuple, ARG_NULL, NULL)
+        SYS_ROOT_OID, result, 
+        SimpleSelectPlan(SelectTuple, ARG_NULL, NULL, condition)
     );
 
     /* The rows number maybe zero, which means the table not exists. 
@@ -372,8 +372,8 @@ List *FindAllObject() {
     result = new_select_result(SELECT_STMT, SYS_TABLE_NAME, true);
     /* Query. */
     QueryUnderSearchConditionInner(
-        SYS_ROOT_OID, NULL, result, 
-        SimpleSelectPlan(SelectTuple, ARG_NULL, NULL)
+        SYS_ROOT_OID, result, 
+        SimpleSelectPlan(SelectTuple, ARG_NULL, NULL, NULL)
     );
 
     return TuplesConvertObjectList(result->tuples);
@@ -488,8 +488,8 @@ bool RemoveObject(Oid oid) {
     
     /* Query. */
     QueryUnderSearchConditionInner(
-        SYS_ROOT_OID, condition, result, 
-        SimpleSelectPlan(delete_row, ARG_NULL, NULL)
+        SYS_ROOT_OID, result, 
+        SimpleSelectPlan(delete_row, ARG_NULL, NULL, condition)
     );
     
     return result->row_size > 0;

@@ -192,25 +192,28 @@ Refer *define_refer(Table *table, void *key) {
 
 /* Fetch Refer. 
  * If found no one or many one, return NULL.  */
-Refer *fetch_refer(MetaColumn *meta_column, SearchConditionNode *condition_node) {
-    Table *table = open_table(meta_column->table_name);
-    /* Make a new SelectResult. */
-    SelectResult *select_result = new_select_result(UNKONWN_STMT, meta_column->table_name, true);
+Refer *fetch_refer(MetaColumn *meta_column, SearchConditionNode *condition) {
+    Table *table;
+    SelectResult *select_result;
+    Refer *refer;
+    uint32_t row_size;
+
+    refer = NULL;
+    table = open_table(meta_column->table_name);
+    select_result = new_select_result(UNKONWN_STMT, meta_column->table_name, true);
 
     QueryUnderSearchCondition(
-        condition_node, select_result, 
-        SimpleSelectPlan(SelectRow, ARG_NULL, NULL)
+        select_result, 
+        SimpleSelectPlan(SelectRow, ARG_NULL, NULL, condition)
     );
 
-    Refer *refer = NULL;
-    uint32_t row_size = QueueSize(select_result->rows);
+    row_size = QueueSize(select_result->rows);
     if (row_size > 1) {
         db_log(ERROR, 
                "Expected to one reference, but found %d, maybe you can use 'in' as for array.", 
                select_result->row_size);
         return NULL;
-    }
-    else if (row_size == 1) {
+    } else if (row_size == 1) {
         /* Take the first row as refered. Maybe row size should be one, but now there is no check. */
         Row *row = qfirst(QueueHead(select_result->rows));
         void *key = RowFindKey(row, table->meta_table);
@@ -358,8 +361,8 @@ static void update_table_refer(MetaTable *meta_table, ReferUpdateEntity *refer_u
 
     /* Traverse rows to update refer. */
     QueryUnderSearchCondition(
-        NULL, select_result, 
-        SimpleSelectPlan(update_row_refer, ARG_REFER_UPDATE_ENTITY, refer_update_entity)
+        select_result, 
+        SimpleSelectPlan(update_row_refer, ARG_REFER_UPDATE_ENTITY, refer_update_entity, NULL)
     );
 }
 
