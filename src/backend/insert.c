@@ -274,6 +274,7 @@ static Row *SelectRowToInsertRow(Row *select_row, Table *table) {
 }
 
 /* Insert one row. 
+ * ---------------
  * Return the row refer, 
  * Throw error by log if fail. */
 Refer *insert_one_row(Table *table, Row *row) {
@@ -286,8 +287,9 @@ Refer *insert_one_row(Table *table, Row *row) {
 
     /* Check if duplicate key. */
     if (UserPrimaryKeyExists(table->meta_table) && 
-            check_duplicate_key(key, refer) && 
-                !refer_is_deleted(refer)) {
+        check_duplicate_key(key, refer) && 
+        !refer_is_deleted(refer)
+    ) {
         char *keyStr = primary_key_meta_column->column_type == T_STRING
                 ? QueryStringValue(key)
                 : get_key_str(key, primary_key_meta_column->column_type);
@@ -306,6 +308,7 @@ Refer *insert_one_row(Table *table, Row *row) {
 }
 
 /* Insert for values case. 
+ * ----------------------
  * Return list of Refer. */
 List *insert_for_values(InsertNode *insert_node) {
     Table *table;
@@ -375,9 +378,9 @@ static List *insert_for_query_spec(InsertNode *insert_node) {
 }
 
 /* Execute insert statement. 
+ * --------------------------
  * Return Refer List if it excutes successfully,
- * otherwise, return NULL.
- * */
+ * otherwise, return NULL. */
 List *exec_insert_statement(InsertNode *insert_node) {
     /* Check if insert node valid. */
     if (!CheckForInsert(insert_node)) 
