@@ -38,6 +38,7 @@
 #include "log.h"
 #include "utils.h"
 #include "row.h"
+#include "rowlock.h"
 #include "jsonwriter.h"
 #include "instance.h"
 #include "strheaptable.h"
@@ -284,6 +285,9 @@ Refer *insert_one_row(Table *table, Row *row) {
     void *key = RowFindKey(row, table->meta_table);
     Assert(key != NULL);
     Refer *refer = define_refer(table, key);
+    
+    /* Acquire the row lock. Maybe block here. */
+    AcquireRowLock(GET_TABLE_OID(table), key);
 
     /* Check if duplicate key. */
     if (UserPrimaryKeyExists(table->meta_table) && 

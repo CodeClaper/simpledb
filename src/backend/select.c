@@ -1721,7 +1721,6 @@ KeyValue *QueryMaxFunctionValue(FunctionValueNode *value, SelectResult *select_r
     }
 } 
 
-
 /* Query min function. */
 KeyValue *QueryMinFunctionValue(FunctionValueNode *value, SelectResult *select_result, SelectPlan *select_plan) {
     switch (value->value_type) {

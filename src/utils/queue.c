@@ -119,6 +119,9 @@ static void DeleteQueueCell(Queue *queue, QueueCell *qc) {
     if (queue->head == qc) 
         queue->head = qc->next;
 
+    if (queue->head == NULL)
+        queue->tail = NULL;
+
     if (qc->pres != NULL) 
         qc->pres->next = qc->next;
     
@@ -200,6 +203,16 @@ void DeleteQueue(Queue *queue, void *item) {
         default:
             DeleteQueuePtr(queue, item);
             break;
+    }
+}
+
+/* Delete from item if meets the condition. */
+void DeleteQueueUnderCondition(Queue *queue, QUEUE_CONDTION condition) {
+    QueueCell *qc;
+    qforeach (qc, queue) {
+        if (condition(qc)) {
+            DeleteQueueCell(queue, qc);
+        }
     }
 }
 

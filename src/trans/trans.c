@@ -79,6 +79,7 @@
 #include "instance.h"
 #include "spinlock.h"
 #include "sysstate.h"
+#include "rowlock.h"
 
 /* 
  * The trans chain stores active transactions. 
@@ -262,13 +263,14 @@ void CommitTransaction() {
     /* Commit Xlog. */
     CommitXlog();
 
+    /* Release all row locks. */
+    ReleaseAllRowLock();
+
     /* Destroy transaction. */
     DestroyTransaction(); 
-    db_log(
-        INFO,
-        "Commit the transaction xid: %"PRId64" successfully.", 
-        entry->xid
-    );
+    
+    /* Print out success log. */
+    db_log(INFO, "Commit the transaction xid: %"PRId64" successfully.", entry->xid);
     db_log(SUCCESS, "Commit the transaction successfully");
 }
 
@@ -278,9 +280,11 @@ void AutoCommitTransaction() {
 
     /* Only deal with auto-commit transaction. */
     if (entry != NULL && entry->auto_commit) {
-
         /* Commit Xlog. */
         CommitXlog();
+
+        /* Release all row locks. */
+        ReleaseAllRowLock();
 
         /* Destroy transaction. */
         DestroyTransaction();

@@ -6,7 +6,6 @@
 #ifndef QUEUE_H
 #define QUEUE_H
 
-
 typedef struct Queue {
     NodeTag tag;
     volatile Size size;
@@ -20,7 +19,6 @@ typedef struct QueueCell {
     struct QueueCell *next;
 } QueueCell;
 
-
 #define NIQ (Queue *)(NULL)
 
 #define qfirst(qc) (((qc)->data)->ptr_value)
@@ -32,6 +30,9 @@ typedef struct QueueCell {
 /* qforeach: a macro for looping throngh a queue. */
 #define qforeach(qc, queue)\
     for (qc = queue->head; qc != NULL; qc = qc->next)
+
+/* Function pointer about QueueConditon. */
+typedef bool (*QUEUE_CONDTION)(QueueCell *qc);
 
 /* Queue if empty. */
 static inline bool QueueIsEmpty(Queue *queue) {
@@ -64,6 +65,9 @@ void ConcatQueue(Queue *queue1, Queue *queue2);
 
 /* Delete item from the Queue. */
 void DeleteQueue(Queue *queue, void *item);
+
+/* Delete from item if meets the condition. */
+void DeleteQueueUnderCondition(Queue *queue, QUEUE_CONDTION condition);
 
 /* If the int item is the member of queue.  */
 bool QueueMemberInt(Queue *queue, int item);

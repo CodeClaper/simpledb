@@ -27,6 +27,7 @@
 #include "tablecache.h"
 #include "fdesc.h"
 #include "tablelock.h"
+#include "rowlock.h"
 #include "log.h"
 #include "shmgr.h"
 #include "shmem.h"
@@ -102,6 +103,9 @@ static void init_db() {
 
     /* Initialise table lock. */
     init_table_lock();
+
+    /* Initialise row lock. */
+    InitRowLock();
 
     /* Init pager. */
     InitPager();
