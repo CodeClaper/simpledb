@@ -25,6 +25,8 @@ const char *program_name;
 
 /* DB Start. */
 static void db_start() {
+    /* Load configuration. */
+    conf = load_conf();
 
     /* MemoryContext init.*/
     MemoryContextInit();
@@ -38,7 +40,6 @@ static void db_start() {
     /* Initialise fesc.*/
     init_fdesc();
 
-
     /* Initialise transaction. */
     InitTrans();
 
@@ -50,9 +51,6 @@ static void db_start() {
 
     /* Initialise table lock. */
     init_table_lock();
-
-    /* Load configuration. */
-    conf = load_conf();
 
     /* Initialise table cache. */
     InitTableCache();
