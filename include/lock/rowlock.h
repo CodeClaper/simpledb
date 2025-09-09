@@ -16,3 +16,5 @@ void AcquireRowLock(Refer *refer, void *key);
 /* Release all row locks under current transaction. */
 void ReleaseAllRowLock();
 
+/* Update the row lock refer. */
+void UpdateRowLockRefer(Refer *oldRefer, Refer *newRefer);

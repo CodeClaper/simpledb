@@ -1084,8 +1084,8 @@ static void insert_internal_node_cell(Table *table, uint32_t page_num, uint32_t 
         /* Right child always is the node which has the maximum key. */
         if (GE(GetComparableValue(new_child_max_key, primary_key_meta_column->column_type), 
                           GetComparableValue(right_child_max_key, primary_key_meta_column->column_type), 
-                          primary_key_meta_column->column_type)) 
-        {
+                          primary_key_meta_column->column_type)
+        ) {
             /* Replace old right child */
             set_internal_node_child(internal_node, keys_num, right_child_page_num, key_len, default_value_len);
             set_internal_node_key(internal_node, keys_num, right_child_max_key, key_len, default_value_len);
@@ -1111,8 +1111,8 @@ static void insert_internal_node_cell(Table *table, uint32_t page_num, uint32_t 
             void *default_key = get_internal_node_key(internal_node, new_child_max_key_index, key_len, default_value_len);
             if (EQ(GetComparableValue(default_key, primary_key_meta_column->column_type), 
                       GetComparableValue(new_child_max_key, primary_key_meta_column->column_type), 
-                      primary_key_meta_column->column_type)) 
-            {
+                      primary_key_meta_column->column_type)
+            ) {
                 /* Move the right cells and make space for the new one. */
                 int i;
                 for (i = keys_num; i > new_child_max_key_index + 1; i--) {

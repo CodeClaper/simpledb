@@ -30,6 +30,7 @@
 #include "asserts.h"
 #include "table.h"
 #include "log.h"
+#include "rowlock.h"
 #include "instance.h"
 #include "tablecache.h"
 #include "optimizer.h"
@@ -392,16 +393,19 @@ void update_related_tables_refer(ReferUpdateEntity *refer_update_entity) {
  * must to update row reference value which pointer to it. */
 void update_refer(Oid oid, int32_t old_page_num, int32_t old_cell_num, 
                   int32_t new_page_num, int32_t new_cell_num) {
-    Refer *old_one = new_refer(oid, old_page_num, old_cell_num);
-    Refer *new_one = new_refer(oid, new_page_num, new_cell_num);
-    ReferUpdateEntity *refer_update_entity = new_refer_update_entity(old_one, new_one);
+    Refer *oldRefer, *newRefer;
+    ReferUpdateEntity *ruEntity;
+
+    oldRefer = new_refer(oid, old_page_num, old_cell_num);
+    newRefer = new_refer(oid, new_page_num, new_cell_num);
+    ruEntity = new_refer_update_entity(oldRefer, newRefer);
    
     /* Update related tables. */
-    update_related_tables_refer(refer_update_entity);
+    update_related_tables_refer(ruEntity);
 
     /* Update Xlog. */
-    UpdateXlogEntryRefer(refer_update_entity);
+    UpdateXlogEntryRefer(ruEntity);
 
     /* Free memory. */
-    free_refer_update_entity(refer_update_entity);
+    free_refer_update_entity(ruEntity);
 }

@@ -111,3 +111,12 @@ void ReleaseAllRowLock() {
     }
 }
 
+/* Update the row lock refer. */
+void UpdateRowLockRefer(Refer *oldRefer, Refer *newRefer) {
+    RowLockEntry *rlock = FindRowLock(oldRefer);
+    if (rlock != NULL) {
+        rlock->refer->oid = newRefer->oid;
+        rlock->refer->page_num = newRefer->page_num;
+        rlock->refer->cell_num = newRefer->cell_num;
+    }
+}

@@ -286,9 +286,6 @@ Refer *insert_one_row(Table *table, Row *row) {
     Assert(key != NULL);
     Refer *refer = define_refer(table, key);
     
-    /* Acquire the row lock. Maybe block here. */
-    AcquireRowLock(refer, key);
-
     /* Check if duplicate key. */
     if (UserPrimaryKeyExists(table->meta_table) && 
         check_duplicate_key(key, refer) && 
