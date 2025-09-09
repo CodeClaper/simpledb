@@ -19,6 +19,13 @@ static int *num;
 #define COUNT_NUM 100000
 #define WORKER_NUM 20
 
+static void work_without_lock() {
+    int i;
+    for (i = 0; i < COUNT_NUM; i++) {
+        (*num)++;
+    }
+}
+
 static void work_with_writelock(RWLockEntry *lock) {
     int i;
     for (i = 0; i < COUNT_NUM; i++) {
@@ -82,6 +89,31 @@ static void work_with_double_writelock(RWLockEntry *lock) {
         ReleaseRWlock(lock);
         ReleaseRWlock(lock);
     }
+}
+
+TEST(rwlock, test_without_lock) {
+    switch_shared();
+    num = instance(int);
+    *num = 0;
+    switch_local();
+
+    int i;
+    for (i = 0; i < WORKER_NUM; i++) {
+        Pid pid  = fork();
+        if (pid < 0) {
+            perror("Bad fork");
+            exit(1);
+        } else if (pid == 0) {
+            work_without_lock();
+            exit(0);
+        }
+    }
+
+    for (i = 0; i < WORKER_NUM; i++) {
+        wait(NULL);
+    }
+
+    ASSERT_NE(2000000, *num);
 }
 
 TEST(rwlock, test_rwlock_concurrent) {
