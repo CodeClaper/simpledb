@@ -1,5 +1,6 @@
 #include <stdbool.h>
 #include "rowlock.h"
+#include "bufpool.h"
 #include "spinlock.h"
 #include "refer.h"
 #include "trans.h"
@@ -8,6 +9,7 @@
 #include "copy.h"
 #include "table.h"
 #include "meta.h"
+#include "ltree.h"
 #include "compare.h"
 
 static Queue *RowLockTable;
@@ -22,30 +24,25 @@ void InitRowLock() {
 /* Find the row lock entry. 
  * Return NULL if not found.
  * */
-static RowLockEntry *FindRowLock(Oid oid, void *key) {
-    Table *table = open_table_inner(oid);
-    MetaColumn *primary_meta_column = MetaTableFindPrimaryKey(table->meta_table);
-
+static RowLockEntry *FindRowLock(Refer *refer) {
     QueueCell *qc;
     qforeach(qc, RowLockTable) {
         RowLockEntry *rlock = (RowLockEntry *) qfirst(qc);
-        if (rlock->oid == oid && EQ(rlock->key, key, primary_meta_column->column_type))
+        if (refer_equals(refer, rlock->refer))
             return rlock;
     }
     return NULL;
 }
 
 /* Append new RowLock. */
-static RowLockEntry *AppendNewRowLock(Oid oid, void *key) {
-    Table *table = open_table_inner(oid);
-    MetaColumn *primary_meta_column = MetaTableFindPrimaryKey(table->meta_table);
+static RowLockEntry *AppendNewRowLock(Refer *refer) {
+    RowLockEntry *rlock;
 
     switch_shared();
-    RowLockEntry *rlock = instance(RowLockEntry);
-    rlock->oid = oid;
-    rlock->key = copy_value2(key, primary_meta_column);
+    rlock = instance(RowLockEntry);
+    rlock->refer = copy_refer(refer);
     rlock->acquirer = GetCurrentXid();
-    rlock->lock = SPIN_UN_LOCKED_STATUS;
+    rlock->lock = SPIN_LOCKED_STATUS;
     AppendQueue(RowLockTable, rlock);
     switch_local();
 
@@ -58,27 +55,46 @@ static inline bool RowLockCondition(RowLockEntry *rlock) {
 }
 
 /* Acquire the row lock, will block if fail. */
-void AcquireRowLock(Oid oid, void *key) {
+void AcquireRowLock(Refer *refer, void *key) {
+    Table *table;
+    MetaColumn *pmeta_column;
+    Buffer buffer;
+    void *block, *target_key;
     RowLockEntry *rlock;
+    Xid current_xid;
 
-    rlock = FindRowLock(oid, key);
-    if (rlock != NULL) {
-        if (!RowLockCondition(rlock))
-            acquire_spin_lock(&rlock->lock);
-    } else {
-        rlock = AppendNewRowLock(oid, key);
-        acquire_spin_lock(&rlock->lock);
-    }
+    table = open_table_inner(refer->oid);
+    pmeta_column = MetaTableFindPrimaryKey(table->meta_table);
+    buffer = ReadBuffer(refer->oid, refer->page_num);
+    current_xid = GetCurrentXid();
+    LockBuffer(buffer, RW_WRITER);
+
+    block = GetBufferPage(buffer);
+    target_key = get_leaf_node_cell_key(block, refer->cell_num, table->key_len, 
+                                        table->index_value_len, table->heap_value_len);
+
+    /* If not found, append new one. */
+    rlock = FindRowLock(refer);
+    if (rlock == NULL)
+        rlock = AppendNewRowLock(refer);
+
+    /* The scope of lock reaches there. */
+    UnlockBuffer(buffer);
+    ReleaseBuffer(buffer);
+
+    /* No key conflict. */
+    if (NE(key, target_key, pmeta_column->column_type)) 
+        return;
+
+    /* Allow reenter. */
+    if (rlock->acquirer == current_xid) 
+        return;
+
+    /* Block if fail. */
+    acquire_spin_lock(&rlock->lock);
+    rlock->acquirer = GetCurrentXid();
 }
 
-/* Release the row lock. */
-void ReleaseRowLock(Oid oid, void *key) {
-    RowLockEntry *rlock = FindRowLock(oid, key);
-    Assert(rlock != NULL);
-    Assert(rlock->acquirer == GetCurrentXid());
-    release_spin_lock(&rlock->lock);
-    DeleteQueue(RowLockTable, rlock);
-}
 
 /* Release all row locks under current transaction. */
 void ReleaseAllRowLock() {

@@ -2,8 +2,7 @@
 #include "spinlock.h"
 
 typedef struct RowLockEntry {
-    Oid oid;
-    void *key;
+    Refer *refer;
     s_lock lock;
     Xid acquirer;
 } RowLockEntry;
@@ -12,10 +11,7 @@ typedef struct RowLockEntry {
 void InitRowLock();
 
 /* Acquire the row lock, will block if fail. */
-void AcquireRowLock(Oid oid, void *key);
-
-/* Release the row lock. */
-void ReleaseRowLock(Oid oid, void *key);
+void AcquireRowLock(Refer *refer, void *key);
 
 /* Release all row locks under current transaction. */
 void ReleaseAllRowLock();

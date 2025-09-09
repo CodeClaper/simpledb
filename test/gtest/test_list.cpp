@@ -1,6 +1,4 @@
 #include "gtest/gtest.h"
-#include <cstring>
-
 extern "C" {
 #include "list.h"
 #include "data.h"
