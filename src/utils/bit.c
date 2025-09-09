@@ -36,3 +36,9 @@ int leftmost_32_pos(uint32_t word) {
         shift -=8;
     return shift + leftmost_one_pos[(word >> shift) & 255];
 }
+
+
+/* Check if the pinter is align. */
+int is_aligned(void *ptr, size_t alignment) {
+      return ((uintptr_t)ptr & (alignment - 1)) == 0;
+}
