@@ -1052,17 +1052,25 @@ static void insert_and_split_internal_node(Table *table, uint32_t old_internal_p
 static void insert_internal_node_cell(Table *table, uint32_t page_num, uint32_t new_child_page_num, 
                                       uint32_t key_len, uint32_t value_len, uint32_t default_value_len) {
     /* Get buffer. */
-    Oid oid = GET_TABLE_OID(table);
-    Buffer buffer = ReadBuffer(oid, page_num);
-    Buffer new_child_buffer = ReadBuffer(oid, new_child_page_num);
+    Oid oid;
+    Buffer buffer, new_child_buffer;
+    void *internal_node, *new_child_node;
+    MetaColumn *primary_key_meta_column;
+    uint32_t keys_num;
+
+    oid = GET_TABLE_OID(table);
+    buffer = ReadBuffer(oid, page_num);
+    new_child_buffer = ReadBuffer(oid, new_child_page_num);
+
     LockBuffer(buffer, RW_READERS);
     LockBuffer(new_child_buffer, RW_READERS);
-    void *internal_node = GetBufferPage(buffer);
-    void *new_child_node = GetBufferPage(new_child_buffer);
+
+    internal_node = GetBufferPage(buffer);
+    new_child_node = GetBufferPage(new_child_buffer);
 
     /* Get primary key column meta info. */
-    MetaColumn *primary_key_meta_column = MetaTableFindPrimaryKey(table->meta_table);
-    uint32_t keys_num = get_internal_node_keys_num(internal_node, default_value_len);
+    primary_key_meta_column = MetaTableFindPrimaryKey(table->meta_table);
+    keys_num = get_internal_node_keys_num(internal_node, default_value_len);
 
     /* Upgrade buffer lock to RW_WRITE. */
     UpgradeLockBuffer(buffer);
@@ -1070,16 +1078,19 @@ static void insert_internal_node_cell(Table *table, uint32_t page_num, uint32_t 
     /* Check if overflow after inserting.*/
     if (overflow_internal_node(internal_node, keys_num, key_len, default_value_len)) 
         insert_and_split_internal_node(table, page_num, new_child_page_num);
-    else 
-    {
+    else {
         /* Get new child node max key and position in parent node. */
-        void *new_child_max_key = get_max_key(table, new_child_node, key_len, value_len, default_value_len);
+        void *new_child_max_key;
+        uint32_t right_child_page_num;
+        Buffer right_child_buffer;
+        void *right_child, *right_child_max_key;
 
+        new_child_max_key = get_max_key(table, new_child_node, key_len, value_len, default_value_len);
         /* Get right child node and right child node max key. */
-        uint32_t right_child_page_num = get_internal_node_right_child(internal_node, default_value_len);
-        Buffer right_child_buffer = ReadBuffer(oid, right_child_page_num);
-        void *right_child = GetBufferPage(right_child_buffer);
-        void *right_child_max_key = get_max_key(table, right_child, key_len, value_len, default_value_len);
+        right_child_page_num = get_internal_node_right_child(internal_node, default_value_len);
+        right_child_buffer = ReadBuffer(oid, right_child_page_num);
+        right_child = GetBufferPage(right_child_buffer);
+        right_child_max_key = get_max_key(table, right_child, key_len, value_len, default_value_len);
 
         /* Right child always is the node which has the maximum key. */
         if (GE(GetComparableValue(new_child_max_key, primary_key_meta_column->column_type), 
@@ -1427,7 +1438,8 @@ void insert_row_data(Row *row, Refer *refer) {
 }
 
 /* Check if overflow after appending new column for leaf node. */
-static bool overflow_leaf_node_new_column(void *leaf_node, MetaColumn *new_column, uint32_t key_len, uint32_t value_len, uint32_t default_value_len) {
+static bool overflow_leaf_node_new_column(void *leaf_node, MetaColumn *new_column, uint32_t key_len, 
+                                          uint32_t value_len, uint32_t default_value_len) {
     uint32_t after_len;
     uint32_t cell_num, row_len;
 

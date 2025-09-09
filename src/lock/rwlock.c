@@ -126,34 +126,44 @@ static void AcquireRWLockInner(RWLockEntry *lock_entry, RWLockMode mode) {
     Pid cur_pid = GetCurrentPid();
     /* Add waiting count. */
     IncreaseWaiting(lock_entry, mode);
-retry_lab:
+retry:
     while (__sync_lock_test_and_set(&lock_entry->content_lock, 1)) {
         while (lock_entry->content_lock) {
             if (ReenterCondition(lock_entry, cur_pid, mode)) 
-                goto acquire_lock_lab;
+                goto acquire;
 
             if (lock_spin(DEFAULT_SPIN_INTERVAL))
                 lock_sleep(DEFAULT_SPIN_INTERVAL);
         }
     }
-acquire_lock_lab:
+acquire:
     acquire_spin_lock(&lock_entry->sync_lock);
+
     /* Avoid writer acquire the lock after a reder reenter. */
     if (mode == RW_WRITER && lock_entry->mode == RW_READERS && lock_entry->owner_num > 0) {
         release_spin_lock(&lock_entry->sync_lock);
-        goto retry_lab;
+        goto retry;
     }
+
     /* Avoid reader reenter adter a writer acquire the lock.  
      * Avoid reader reenter after before reader has upgraded. */
     if (mode == RW_READERS && lock_entry->mode == RW_WRITER && lock_entry->writer != cur_pid) {
         release_spin_lock(&lock_entry->sync_lock);
-        goto retry_lab;
+        goto retry;
     }
+    
     lock_entry->content_lock = SPIN_LOCKED_STATUS;
+
+    /* Descrease waiting number. */
     DecreaseWaiting(lock_entry, mode);
+
     if (mode == RW_WRITER)
         lock_entry->writer = cur_pid;
+
+    /* Increase owner number. */
     IncreaseOwner(lock_entry);
+
+    /* Increase the mode */
     if (mode > lock_entry->mode)
         lock_entry->mode = mode;
     release_spin_lock(&lock_entry->sync_lock);
