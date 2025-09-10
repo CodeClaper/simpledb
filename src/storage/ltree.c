@@ -177,6 +177,17 @@ uint32_t get_leaf_node_cell_num(void *node, uint32_t default_value_len) {
     }
 }
 
+/* Get leaf node cell number pointer. */
+uint32_t *get_leaf_node_cell_num_pointer(void *node, uint32_t default_value_len) {
+    if (is_root_node(node)) {
+        uint32_t column_size = get_column_size(node);
+        return (uint32_t *)(node + ROOT_NODE_META_COLUMN_SIZE_OFFSET + ROOT_NODE_META_COLUMN_SIZE_SIZE + 
+                ROOT_NODE_META_COLUMN_SIZE * column_size + default_value_len);
+    } else {
+        return (uint32_t *)(node + CELL_NUM_OFFSET);
+    }
+}
+
 /* Set leaf node cell number. */
 static void set_leaf_node_cell_num(void *node, uint32_t default_value_len, uint32_t cell_num) {
     if (is_root_node(node)) {
@@ -776,10 +787,10 @@ static void copy_root_to_leaf_node(Table *table, uint32_t new_page_num,
     initial_leaf_node(leaf_node, default_value_len, false);
     set_leaf_node_cell_num(leaf_node, default_value_len, get_leaf_node_cell_num(root, default_value_len));
     set_leaf_node_next_leaf(leaf_node, default_value_len, get_leaf_node_next_leaf(root, default_value_len));
-    uint32_t cell_num = get_leaf_node_cell_num(root, default_value_len); 
+    uint32_t *cell_num = get_leaf_node_cell_num_pointer(root, default_value_len); 
 
     uint32_t i;
-    for (i = 0; i < cell_num; i++) {
+    for (i = 0; i < *cell_num; i++) {
         set_leaf_node_cell_key(
             leaf_node, i, 
             key_len, value_len, default_value_len, 
@@ -1192,10 +1203,10 @@ static void insert_and_split_leaf_node(Row *row, Refer *refer) {
     void *old_node = GetBufferPage(old_buffer);
     uint32_t parent_page_num = get_parent_pointer(old_node);
     /* Get the old leaf node cell count.*/
-    uint32_t cell_num = get_leaf_node_cell_num(old_node, default_value_len);
+    uint32_t *cell_num = get_leaf_node_cell_num_pointer(old_node, default_value_len);
 
     /* Double check for concurrency. */
-    if (!overflow_leaf_node(old_node, key_len, value_len, default_value_len, cell_num)) {
+    if (!overflow_leaf_node(old_node, key_len, value_len, default_value_len, *cell_num)) {
         ReleaseBuffer(old_buffer);
         insert_leaf_node_new_cell(row, refer);
         return;
@@ -1223,13 +1234,13 @@ static void insert_and_split_leaf_node(Row *row, Refer *refer) {
     /* All existing keys plus new key should should be divided 
      * evenly between old (left) and new (right) nodes.
      * Starting from the right, move each key to correct position. */
-    uint32_t RIGHT_SPLIT_COUNT = (cell_num + 1) / 2;
-    uint32_t LEFT_SPLIT_COUNT = (cell_num + 1) - RIGHT_SPLIT_COUNT;
+    uint32_t RIGHT_SPLIT_COUNT = (*cell_num + 1) / 2;
+    uint32_t LEFT_SPLIT_COUNT = (*cell_num + 1) - RIGHT_SPLIT_COUNT;
 
     /* Notice, cant make i uint32_t when i decrease, 
      * when i = 0 and decrease, it still satisfy i >= 0. */
     int i; 
-    for (i = cell_num; i >= 0; i--) {
+    for (i = *cell_num; i >= 0; i--) {
         /* If index GT than LEAF_SPLIT_COUNT, destination is new old, 
          * othersize, stay in the old node. */
         void *destination_node = (i >= LEFT_SPLIT_COUNT) 
@@ -1327,7 +1338,7 @@ static void insert_and_split_leaf_node(Row *row, Refer *refer) {
 static void insert_leaf_node_new_cell(Row *row, Refer *refer) {
     Table *table;
     void *key;
-    uint32_t cell_num, value_len, key_len, default_value_len, cell_length;
+    uint32_t *cell_num, value_len, key_len, default_value_len, cell_length;
 
     table = open_table_inner(refer->oid);
     key = RowFindKey(row, table->meta_table);
@@ -1339,16 +1350,16 @@ static void insert_leaf_node_new_cell(Row *row, Refer *refer) {
     default_value_len = table->heap_value_len;
     value_len = table->index_value_len;
     key_len = table->key_len;
-    cell_num = get_leaf_node_cell_num(node, default_value_len);
+    cell_num = get_leaf_node_cell_num_pointer(node, default_value_len);
     cell_length = value_len + key_len;
 
-    if (refer->cell_num < cell_num) {
+    if (refer->cell_num < *cell_num) {
         /* Upgrade lock buffer to RW_WRITE. */
         UpgradeLockBuffer(buffer);
 
         /* Make room for new cell. */
         int i;
-        for (i = cell_num; i > refer->cell_num; i--) {
+        for (i = *cell_num; i > refer->cell_num; i--) {
             /* Movement. */
             memcpy(
                 get_leaf_node_cell(node, key_len, value_len, default_value_len, i), 
@@ -1375,9 +1386,9 @@ static void insert_leaf_node_new_cell(Row *row, Refer *refer) {
            destination, value_len);
     
     /* Check if the max key in leaf node has changed, that may impact the parent internal node. */
-    if (!is_root_node(node) && refer->cell_num == cell_num) {
+    if (!is_root_node(node) && refer->cell_num == *cell_num) {
         uint32_t parent_page_num = get_parent_pointer(node);
-        void *old_max_key = get_leaf_node_cell_key(node, cell_num - 1, key_len, value_len, default_value_len);
+        void *old_max_key = get_leaf_node_cell_key(node, *cell_num - 1, key_len, value_len, default_value_len);
         MetaColumn *primary_key_meta_column = MetaTableFindPrimaryKey(table->meta_table);
         /* Logic check.*/
         Assert(GE(GetComparableValue(key, primary_key_meta_column->column_type), 
@@ -1529,7 +1540,7 @@ static void split_root_leaf_node_append_column(uint32_t page_num, Table *table, 
     Oid oid;
     Buffer buffer, new_buffer;
     void *leaf_node, *new_node;
-    uint32_t key_len, value_len, default_value_len, cell_len, cell_num, next_unused_page_num;
+    uint32_t key_len, value_len, default_value_len, cell_len, *cell_num, next_unused_page_num;
 
     oid = GET_TABLE_OID(table);
     buffer = ReadBuffer(oid, page_num);
@@ -1540,7 +1551,7 @@ static void split_root_leaf_node_append_column(uint32_t page_num, Table *table, 
     value_len = table->index_value_len;
     default_value_len = table->heap_value_len;
     cell_len = key_len + value_len;
-    cell_num = get_leaf_node_cell_num(leaf_node, default_value_len);
+    cell_num = get_leaf_node_cell_num_pointer(leaf_node, default_value_len);
     next_unused_page_num = GetNextUnusedPageNum(table);
 
     /* Get new leaf node, if not exists, pager will generate a new one. */
@@ -1556,11 +1567,11 @@ static void split_root_leaf_node_append_column(uint32_t page_num, Table *table, 
     /* All existing keys plus new key should should be divided 
      * evenly between old (left) and new (right) nodes.
      * Starting from the tail, move each key to correct position. */
-    uint32_t RIGHT_SPLIT_COUNT = cell_num / 2;
-    uint32_t LEFT_SPLIT_COUNT = cell_num  - RIGHT_SPLIT_COUNT;
+    uint32_t RIGHT_SPLIT_COUNT = *cell_num / 2;
+    uint32_t LEFT_SPLIT_COUNT = *cell_num  - RIGHT_SPLIT_COUNT;
 
     int i; 
-    for (i = cell_num; i >= 0; i--) {
+    for (i = *cell_num; i >= 0; i--) {
         /* If index GT than LEAF_SPLIT_COUNT, destination is new old, othersize, stay in the old node. */
         void *destination_node = i >= LEFT_SPLIT_COUNT ? new_node : leaf_node;
         uint32_t destination_page = i  >= LEFT_SPLIT_COUNT ? next_unused_page_num : page_num;

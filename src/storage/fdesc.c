@@ -103,7 +103,6 @@ void unregister_fdesc(Oid oid) {
  * Fistly find in F_DESC_LIST.
  * If missing, load file descriptor and register it. */
 FDesc get_file_desc(Oid oid) {
-
     /* Fistly find in F_DESC_LIST. */
     FDesc desc = find_fdesc(oid);
     /* If missing cache.*/

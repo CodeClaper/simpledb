@@ -254,6 +254,7 @@ Buffer ReadBuffer(Oid oid, BlockNum blockNum) {
     BufferTag tag;
     BufferDesc *desc;
     
+    AssertFalse(ZERO_OID(oid));
     memset(&tag, 0, sizeof(BufferTag));
     tag.oid = oid;
     tag.blockNum = blockNum;
@@ -353,3 +354,14 @@ RWLockMode GetLockModeBuffer(Buffer buffer) {
     return desc->lock.content_lock;
 }
 
+/* Get locked BufferDesc. */
+List *GetLockedBufferDescList() {
+    List *li = create_list(NODE_BUFFER_DESC);
+    /* Init BDescTable. */
+    for (Index i = 0; i < BUFFER_SLOT_NUM; i++) {
+        BufferDesc *desc = (BufferDesc *)(bDescTable + i);
+        if (desc->lock.content_lock == SPIN_LOCKED_STATUS)
+            append_list(li, desc);
+    }
+    return li;
+}

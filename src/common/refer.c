@@ -391,8 +391,7 @@ void update_related_tables_refer(ReferUpdateEntity *refer_update_entity) {
 /* Update Refer 
  * When referenct target be changed (updated or deleted), 
  * must to update row reference value which pointer to it. */
-void update_refer(Oid oid, int32_t old_page_num, int32_t old_cell_num, 
-                  int32_t new_page_num, int32_t new_cell_num) {
+void update_refer(Oid oid, int32_t old_page_num, int32_t old_cell_num, int32_t new_page_num, int32_t new_cell_num) {
     Refer *oldRefer, *newRefer;
     ReferUpdateEntity *ruEntity;
 

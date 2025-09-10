@@ -101,4 +101,7 @@ void MakeBufferNormal(Buffer buffer);
 /* Get Lock Mode. */
 RWLockMode GetLockModeBuffer(Buffer buffer);
 
+/* Get locked BufferDesc. */
+List *GetLockedBufferDescList();
+
 #endif

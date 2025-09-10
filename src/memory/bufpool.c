@@ -35,7 +35,8 @@ inline void *GetBufferBlock(Buffer buffer) {
 void BufferReadBlock(BufferTag *tag, Buffer buffer) {
     FDesc fdesc; 
     void *block; 
-
+    
+    AssertFalse(ZERO_OID(tag->oid));
     fdesc = get_file_desc(tag->oid);
     block = GetBufferBlock(buffer);
 
