@@ -912,25 +912,135 @@ static void create_new_root_node(Table *table, uint32_t right_child_page_num,
     ReleaseBuffer(root_buffer);
 }
 
+/* Insert internal node a new cell. */
+static void insert_internal_node_new_cell(Table *table, uint32_t page_num, uint32_t new_child_page_num, 
+                                          uint32_t key_len, uint32_t value_len, uint32_t default_value_len) {
+    Oid oid;
+    Buffer buffer, new_child_buffer, right_child_buffer;
+    void *internal_node, *new_child_node, *new_child_max_key;
+    MetaColumn *primary_key_meta_column;
+    uint32_t *keys_num, right_child_page_num;
+    void *right_child, *right_child_max_key;
+
+    oid = GET_TABLE_OID(table);
+    buffer = ReadBuffer(oid, page_num);
+    new_child_buffer = ReadBuffer(oid, new_child_page_num);
+
+    LockBuffer(buffer, RW_READERS);
+    LockBuffer(new_child_buffer, RW_READERS);
+
+    internal_node = GetBufferPage(buffer);
+    new_child_node = GetBufferPage(new_child_buffer);
+
+    /* Get primary key column meta info. */
+    primary_key_meta_column = MetaTableFindPrimaryKey(table->meta_table);
+    keys_num = get_internal_node_keys_num_pointer(internal_node, default_value_len);
+
+    new_child_max_key = get_max_key(table, new_child_node, key_len, value_len, default_value_len);
+    /* Get right child node and right child node max key. */
+    right_child_page_num = get_internal_node_right_child(internal_node, default_value_len);
+    right_child_buffer = ReadBuffer(oid, right_child_page_num);
+    right_child = GetBufferPage(right_child_buffer);
+    right_child_max_key = get_max_key(table, right_child, key_len, value_len, default_value_len);
+
+    /* Right child always is the node which has the maximum key. */
+    if (GE(GetComparableValue(new_child_max_key, primary_key_meta_column->column_type), 
+                      GetComparableValue(right_child_max_key, primary_key_meta_column->column_type), 
+                      primary_key_meta_column->column_type)
+    ) {
+        /* Replace old right child */
+        set_internal_node_child(internal_node, *keys_num, right_child_page_num, key_len, default_value_len);
+        set_internal_node_key(internal_node, *keys_num, right_child_max_key, key_len, default_value_len);
+        if (!is_root_node(internal_node)) {
+            uint32_t parent_page_num = get_parent_pointer(internal_node);
+            update_internal_node_key(
+                table, parent_page_num, 
+                right_child_max_key, new_child_max_key, 
+                key_len, value_len, default_value_len, 
+                primary_key_meta_column->column_type
+            );
+        }
+        set_internal_node_right_child(internal_node, default_value_len, new_child_page_num);
+    } else {
+        /* If not exist in the right child node, then exist in the cells. */ 
+        uint32_t new_child_max_key_index = get_internal_node_key_index(
+            internal_node, new_child_max_key, *keys_num, 
+            key_len, default_value_len, 
+            primary_key_meta_column->column_type
+        );
+
+        /* Check the default key if EQs the inserting one. */
+        void *default_key = get_internal_node_key(internal_node, new_child_max_key_index, key_len, default_value_len);
+        if (EQ(GetComparableValue(default_key, primary_key_meta_column->column_type), 
+                  GetComparableValue(new_child_max_key, primary_key_meta_column->column_type), 
+                  primary_key_meta_column->column_type)
+        ) {
+            /* Move the right cells and make space for the new one. */
+            int i;
+            for (i = *keys_num; i > new_child_max_key_index + 1; i--) {
+                uint32_t cell_len = key_len + INTERNAL_NODE_CELL_CHILD_SIZE;
+                memcpy(get_internal_node_cell(internal_node, i, key_len, default_value_len), 
+                       get_internal_node_cell(internal_node, i - 1, key_len, default_value_len), 
+                       cell_len); 
+            } 
+            set_internal_node_key(internal_node, new_child_max_key_index + 1, new_child_max_key, key_len, default_value_len);
+            set_internal_node_child(internal_node, new_child_max_key_index + 1, new_child_page_num, key_len, default_value_len);
+        } else {
+            /* Move the right cells and make space for the new one. */
+            int i;
+            for (i = *keys_num; i > new_child_max_key_index; i--) {
+                uint32_t cell_len = key_len + INTERNAL_NODE_CELL_CHILD_SIZE;
+                memcpy(get_internal_node_cell(internal_node, i, key_len, default_value_len), 
+                       get_internal_node_cell(internal_node, i - 1, key_len, default_value_len), 
+                       cell_len); 
+            } 
+            set_internal_node_key(internal_node, new_child_max_key_index, new_child_max_key, key_len, default_value_len);
+            set_internal_node_child(internal_node,  new_child_max_key_index, new_child_page_num, key_len, default_value_len);
+        }
+    }
+
+    /* Increase keys number. */
+    set_internal_node_keys_num(internal_node, default_value_len, *keys_num + 1);
+
+    /* Flush disk. */
+    MakeBufferDirty(buffer);
+
+    UnlockBuffer(new_child_buffer);
+    UnlockBuffer(buffer);
+
+    /* Release right child buffer. */
+    ReleaseBuffer(right_child_buffer);
+    ReleaseBuffer(new_child_buffer);
+    ReleaseBuffer(buffer);
+}
+
+
 /* When internal node is full, there is a need to generate a new internal node. 
  * And half hight cells in the old internal node will be moved into the new one. */
-static void insert_and_split_internal_node(Table *table, uint32_t old_internal_page_num, 
-                                           uint32_t new_child_page_num) {
+static void insert_and_split_internal_node(Table *table, uint32_t old_internal_page_num, uint32_t new_child_page_num, 
+                                           uint32_t key_len, uint32_t value_len, uint32_t default_value_len) {
     Buffer old_buffer, new_buffer;
     void *old_internal_node, *new_internal_node;
-    uint32_t *keys_num, next_unused_page_num, key_len, value_len, default_value_len, cell_len;
+    uint32_t *keys_num, next_unused_page_num, cell_len;
 
     /* Get old internal node. */
     old_buffer = ReadBuffer(GET_TABLE_OID(table), old_internal_page_num);
     old_internal_node = GetBufferPage(old_buffer);
 
-    default_value_len = table->heap_value_len;
-    value_len = table->index_value_len;
-    key_len = table->key_len;
     keys_num = get_internal_node_keys_num_pointer(old_internal_node, default_value_len);
     cell_len = key_len + INTERNAL_NODE_CELL_CHILD_SIZE;
 
     MetaColumn *primary_key_meta_column = MetaTableFindPrimaryKey(table->meta_table);
+
+    /* Upgrade old buffer lock to RW_WRITE. */
+    UpgradeLockBuffer(old_buffer);
+    
+    /* Double check for concurrency. */
+    if (!overflow_internal_node(old_internal_node, *keys_num, key_len, default_value_len)) {
+        ReleaseBuffer(old_buffer);
+        insert_internal_node_new_cell(table, old_internal_page_num, new_child_page_num, key_len, value_len, default_value_len);
+        return;
+    }
     
     /* Get new internal node. */
     next_unused_page_num = GetNextUnusedPageNum(table);
@@ -1070,116 +1180,13 @@ static void insert_and_split_internal_node(Table *table, uint32_t old_internal_p
     ReleaseBuffer(right_buffer);
 }
 
-/* Insert internal node a new cell. */
-static void insert_internal_node_new_cell(Table *table, uint32_t page_num, uint32_t new_child_page_num, 
-                                          uint32_t key_len, uint32_t value_len, uint32_t default_value_len) {
-    Oid oid;
-    Buffer buffer, new_child_buffer, right_child_buffer;
-    void *internal_node, *new_child_node, *new_child_max_key;
-    MetaColumn *primary_key_meta_column;
-    uint32_t *keys_num, right_child_page_num;
-    void *right_child, *right_child_max_key;
-
-    oid = GET_TABLE_OID(table);
-    buffer = ReadBuffer(oid, page_num);
-    new_child_buffer = ReadBuffer(oid, new_child_page_num);
-
-    LockBuffer(buffer, RW_READERS);
-    LockBuffer(new_child_buffer, RW_READERS);
-
-    internal_node = GetBufferPage(buffer);
-    new_child_node = GetBufferPage(new_child_buffer);
-
-    /* Get primary key column meta info. */
-    primary_key_meta_column = MetaTableFindPrimaryKey(table->meta_table);
-    keys_num = get_internal_node_keys_num_pointer(internal_node, default_value_len);
-
-    new_child_max_key = get_max_key(table, new_child_node, key_len, value_len, default_value_len);
-    /* Get right child node and right child node max key. */
-    right_child_page_num = get_internal_node_right_child(internal_node, default_value_len);
-    right_child_buffer = ReadBuffer(oid, right_child_page_num);
-    right_child = GetBufferPage(right_child_buffer);
-    right_child_max_key = get_max_key(table, right_child, key_len, value_len, default_value_len);
-
-    /* Right child always is the node which has the maximum key. */
-    if (GE(GetComparableValue(new_child_max_key, primary_key_meta_column->column_type), 
-                      GetComparableValue(right_child_max_key, primary_key_meta_column->column_type), 
-                      primary_key_meta_column->column_type)
-    ) {
-        /* Replace old right child */
-        set_internal_node_child(internal_node, *keys_num, right_child_page_num, key_len, default_value_len);
-        set_internal_node_key(internal_node, *keys_num, right_child_max_key, key_len, default_value_len);
-        if (!is_root_node(internal_node)) {
-            uint32_t parent_page_num = get_parent_pointer(internal_node);
-            update_internal_node_key(
-                table, parent_page_num, 
-                right_child_max_key, new_child_max_key, 
-                key_len, value_len, default_value_len, 
-                primary_key_meta_column->column_type
-            );
-        }
-        set_internal_node_right_child(internal_node, default_value_len, new_child_page_num);
-    } else {
-        /* If not exist in the right child node, then exist in the cells. */ 
-        uint32_t new_child_max_key_index = get_internal_node_key_index(
-            internal_node, new_child_max_key, *keys_num, 
-            key_len, default_value_len, 
-            primary_key_meta_column->column_type
-        );
-
-        /* Check the default key if EQs the inserting one. */
-        void *default_key = get_internal_node_key(internal_node, new_child_max_key_index, key_len, default_value_len);
-        if (EQ(GetComparableValue(default_key, primary_key_meta_column->column_type), 
-                  GetComparableValue(new_child_max_key, primary_key_meta_column->column_type), 
-                  primary_key_meta_column->column_type)
-        ) {
-            /* Move the right cells and make space for the new one. */
-            int i;
-            for (i = *keys_num; i > new_child_max_key_index + 1; i--) {
-                uint32_t cell_len = key_len + INTERNAL_NODE_CELL_CHILD_SIZE;
-                memcpy(get_internal_node_cell(internal_node, i, key_len, default_value_len), 
-                       get_internal_node_cell(internal_node, i - 1, key_len, default_value_len), 
-                       cell_len); 
-            } 
-            set_internal_node_key(internal_node, new_child_max_key_index + 1, new_child_max_key, key_len, default_value_len);
-            set_internal_node_child(internal_node, new_child_max_key_index + 1, new_child_page_num, key_len, default_value_len);
-        } else {
-            /* Move the right cells and make space for the new one. */
-            int i;
-            for (i = *keys_num; i > new_child_max_key_index; i--) {
-                uint32_t cell_len = key_len + INTERNAL_NODE_CELL_CHILD_SIZE;
-                memcpy(get_internal_node_cell(internal_node, i, key_len, default_value_len), 
-                       get_internal_node_cell(internal_node, i - 1, key_len, default_value_len), 
-                       cell_len); 
-            } 
-            set_internal_node_key(internal_node, new_child_max_key_index, new_child_max_key, key_len, default_value_len);
-            set_internal_node_child(internal_node,  new_child_max_key_index, new_child_page_num, key_len, default_value_len);
-        }
-    }
-
-    /* Increase keys number. */
-    set_internal_node_keys_num(internal_node, default_value_len, *keys_num + 1);
-
-    /* Flush disk. */
-    MakeBufferDirty(buffer);
-
-    UnlockBuffer(new_child_buffer);
-    UnlockBuffer(buffer);
-
-    /* Release right child buffer. */
-    ReleaseBuffer(right_child_buffer);
-    ReleaseBuffer(new_child_buffer);
-    ReleaseBuffer(buffer);
-}
-
 /* Insert new internal node cell. */
 static void insert_internal_node_cell(Table *table, uint32_t page_num, uint32_t new_child_page_num, 
                                       uint32_t key_len, uint32_t value_len, uint32_t default_value_len) {
     /* Get buffer. */
     Oid oid;
     Buffer buffer;
-    void *internal_node, *new_child_node;
-    MetaColumn *primary_key_meta_column;
+    void *internal_node;
     uint32_t *keys_num;
 
     oid = GET_TABLE_OID(table);
@@ -1188,14 +1195,13 @@ static void insert_internal_node_cell(Table *table, uint32_t page_num, uint32_t 
     internal_node = GetBufferPage(buffer);
 
     /* Get primary key column meta info. */
-    primary_key_meta_column = MetaTableFindPrimaryKey(table->meta_table);
     keys_num = get_internal_node_keys_num_pointer(internal_node, default_value_len);
 
     /* Check if overflow after inserting.*/
     if (overflow_internal_node(internal_node, *keys_num, key_len, default_value_len))
-        insert_and_split_internal_node(table, page_num, new_child_page_num);
+        insert_and_split_internal_node(table, page_num, new_child_page_num, key_len, value_len, default_value_len);
     else 
-        insert_internal_node_new_cell(table, page_num, new_child_page_num,key_len, value_len, default_value_len);
+        insert_internal_node_new_cell(table, page_num, new_child_page_num, key_len, value_len, default_value_len);
 
     /* Unlock buffer. */
     UnlockBuffer(buffer);
