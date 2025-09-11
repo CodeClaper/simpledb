@@ -203,8 +203,12 @@ void AcquireRWlock(RWLockEntry *lock_entry, RWLockMode mode) {
  * Upgrade means the lock mode changes from RW_READERS to RW_WRITER. */
 void UpgradeRWlock(RWLockEntry *lock_entry) {
     Assert(NOT_INIT_LOCK(lock_entry));
-    Assert(lock_entry->mode == RW_READERS);
-    Assert(lock_entry->content_lock == SPIN_LOCKED_STATUS);
+    //Assert(lock_entry->mode == RW_READERS);
+    // Assert(lock_entry->content_lock == SPIN_LOCKED_STATUS);
+        
+    /* Allow UpgradeRWlock repeatedly. */
+    if (lock_entry->mode == RW_WRITER && lock_entry->writer == GetCurrentPid())
+        return;
     
     DecreaseOwner(lock_entry);
 
