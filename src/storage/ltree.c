@@ -599,7 +599,10 @@ static void update_internal_node_key(Table *table, uint32_t page_num, void *old_
     /* If old key GT than the max key, it means it exist in the right child node. 
      * No need to change cells key. Otherwise, it means the key in the cells, 
      * need to be replaced with new one. */
-    if (!GT(GetComparableValue(old_key, key_data_type), GetComparableValue(max_key, key_data_type), key_data_type)) {
+    if (!GT(GetComparableValue(old_key, key_data_type), 
+            GetComparableValue(max_key, key_data_type), 
+            key_data_type)
+    ) {
         UpgradeLockBuffer(buffer);
         uint32_t key_index = get_internal_node_key_index(internal_node, old_key, *keys_num, key_len, default_value_len, key_data_type);
         void *key = get_internal_node_key(internal_node, key_index, key_len, default_value_len);
@@ -616,7 +619,8 @@ static void update_internal_node_key(Table *table, uint32_t page_num, void *old_
      * also need to change its parent key. */
     if (!is_root_node(internal_node) && 
             (EQ(GetComparableValue(old_key, key_data_type), GetComparableValue(absolute_max_key, key_data_type), key_data_type) || 
-                EQ(GetComparableValue(new_key, key_data_type), GetComparableValue(absolute_max_key, key_data_type), key_data_type))) { 
+                EQ(GetComparableValue(new_key, key_data_type), GetComparableValue(absolute_max_key, key_data_type), key_data_type))
+    ) { 
         /* Get parent node buffer and lock it. */
         uint32_t parent_page_num = get_parent_pointer(internal_node);
         update_internal_node_key(table, parent_page_num, old_key, new_key, key_len, value_len, default_value_len, key_data_type);
@@ -723,10 +727,12 @@ void resort_internal_node_cells(Table *table, uint32_t page_num, uint32_t key_le
     List *list;
     
     buffer = ReadBuffer(GET_TABLE_OID(table), page_num);
+    // UpgradeLockBuffer(buffer);
     internal_node = GetBufferPage(buffer);
     keys_num = get_internal_node_keys_num_pointer(internal_node, default_value_len);
 
     if (!check_internal_node_cells_mass(internal_node, *keys_num, key_len, default_value_len, data_type)) {
+        // DowngradeLockBuffer(buffer);
         ReleaseBuffer(buffer);
         return;
     }
@@ -778,6 +784,7 @@ void resort_internal_node_cells(Table *table, uint32_t page_num, uint32_t key_le
 
     /* Make page dirty. */
     MakeBufferDirty(buffer);
+    // DowngradeLockBuffer(buffer);
     ReleaseBuffer(buffer);
 }
 
@@ -861,7 +868,11 @@ static void create_new_root_node(Table *table, uint32_t right_child_page_num,
 
     oid = GET_TABLE_OID(table);
     root_buffer = ReadBuffer(oid, table->root_page_num);
+    UpgradeLockBuffer(root_buffer);
+
     right_buffer = ReadBuffer(oid, right_child_page_num);
+    LockBuffer(right_buffer, RW_WRITER);
+
     root = GetBufferPage(root_buffer);
     right_child = GetBufferPage(right_buffer);
 
@@ -869,6 +880,7 @@ static void create_new_root_node(Table *table, uint32_t right_child_page_num,
      * The pager size has increased. */
     uint32_t next_unused_page_num = GetNextUnusedPageNum(table);
     left_buffer = ReadBuffer(GET_TABLE_OID(table), next_unused_page_num);
+    LockBuffer(left_buffer, RW_WRITER);
 
     /* Keep old root, generate a new leaf (or internal) node, 
      * and copy old root data to the new one. */
@@ -904,6 +916,9 @@ static void create_new_root_node(Table *table, uint32_t right_child_page_num,
     MakeBufferDirty(left_buffer);
     MakeBufferDirty(right_buffer);
     MakeBufferDirty(root_buffer);
+
+    UnlockBuffer(right_buffer);
+    UnlockBuffer(left_buffer);
 
     /* Release buffer. */
     ReleaseBuffer(left_buffer);
@@ -1071,8 +1086,8 @@ static void insert_and_split_internal_node(Table *table, uint32_t old_internal_p
     /* Maybe the new child is GT than max key, need to compare. */
     if (GT(GetComparableValue(new_child_max_key, primary_key_meta_column->column_type), 
                 GetComparableValue(right_node_max_key, primary_key_meta_column->column_type), 
-                primary_key_meta_column->column_type)) 
-    {
+                primary_key_meta_column->column_type)
+    ) {
         /* If yes, replace the new child with the origin old right child. */ 
         set_internal_node_right_child(old_internal_node, default_value_len, new_child_page_num);
         if (!is_root_node(old_internal_node)) {
@@ -1171,6 +1186,9 @@ static void insert_and_split_internal_node(Table *table, uint32_t old_internal_p
         MakeBufferDirty(old_buffer);
         MakeBufferDirty(new_buffer);
     }
+
+    /* Downgrade old buffer lock to RW_READERS. */
+    DowngradeLockBuffer(old_buffer);
 
     /* Release the old right page buffer.*/
     ReleaseBuffer(old_buffer);
@@ -1436,6 +1454,9 @@ static void insert_and_split_leaf_node(Row *row, Refer *refer, uint32_t key_len,
         MakeBufferDirty(old_buffer);
         MakeBufferDirty(new_buffer);
     }
+
+    /* Downgrade old buffer lock to RW_READERS. */
+    DowngradeLockBuffer(old_buffer);
 
     /* Release new page buffer. */
     ReleaseBuffer(new_buffer);
