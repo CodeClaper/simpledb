@@ -581,12 +581,14 @@ void initial_internal_node(void *internal_node, bool is_root) {
 static void update_internal_node_key(Table *table, uint32_t page_num, void *old_key, void *new_key, 
                                      uint32_t key_len, uint32_t value_len, uint32_t default_value_len, 
                                      DataType key_data_type) {
+    Oid oid;
     Buffer buffer;
     uint32_t *keys_num;
     void *internal_node;
     void *max_key, *absolute_max_key;
 
-    buffer = ReadBuffer(GET_TABLE_OID(table), page_num);
+    oid = GET_TABLE_OID(table);
+    buffer = ReadBuffer(oid, page_num);
     LockBuffer(buffer, RW_READERS);
     internal_node = GetBufferPage(buffer);
     keys_num = get_internal_node_keys_num_pointer(internal_node, default_value_len);  
@@ -618,8 +620,8 @@ static void update_internal_node_key(Table *table, uint32_t page_num, void *old_
     /* If internal has parent node, and change its absolute max key, 
      * also need to change its parent key. */
     if (!is_root_node(internal_node) && 
-            (EQ(GetComparableValue(old_key, key_data_type), GetComparableValue(absolute_max_key, key_data_type), key_data_type) || 
-                EQ(GetComparableValue(new_key, key_data_type), GetComparableValue(absolute_max_key, key_data_type), key_data_type))
+         (EQ(GetComparableValue(old_key, key_data_type), GetComparableValue(absolute_max_key, key_data_type), key_data_type) || 
+          EQ(GetComparableValue(new_key, key_data_type), GetComparableValue(absolute_max_key, key_data_type), key_data_type))
     ) { 
         /* Get parent node buffer and lock it. */
         uint32_t parent_page_num = get_parent_pointer(internal_node);
