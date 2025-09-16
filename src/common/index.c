@@ -44,10 +44,10 @@
     ReleaseBuffer(buffer);
 
     /* Get result. */
-    return (target < node + PAGE_SIZE) && EQ(
-        GetComparableValue(target, primary_key_meta_column->column_type), 
-        GetComparableValue(key, primary_key_meta_column->column_type), 
-        primary_key_meta_column->column_type
+    return (target < node + PAGE_SIZE) && 
+            EQ(GetComparableValue(target, primary_key_meta_column->column_type), 
+               GetComparableValue(key, primary_key_meta_column->column_type), 
+               primary_key_meta_column->column_type
     );
 }
 

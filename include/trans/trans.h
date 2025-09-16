@@ -6,6 +6,10 @@
 /* Initialise transaction. */
 void InitTrans();
 
+/* Check if a transaction is active()
+ * Active transaction is an uncommitted transaction. */
+bool IsActive(Xid xid);
+
 /* Is visible by created_xid and expired_xid. */
 bool IsVisibleInner(Xid created_xid, Xid expired_xid, TransEntry *current);
 

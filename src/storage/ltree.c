@@ -2226,40 +2226,6 @@ void drop_column(uint32_t page_num, Table *table, int pos) {
     ReleaseBuffer(buffer);
 }
 
-/* If row is deleted*/
-bool refer_is_deleted(Refer *refer) {
-    uint32_t key_len, value_len, default_value_len;
-
-    Table *table = open_table_inner(refer->oid);
-    key_len = table->key_len; 
-    value_len = table->index_value_len; 
-    default_value_len = table->heap_value_len;
-
-    /* Get the leaf node buffer. */
-    Buffer buffer = ReadBuffer(refer->oid, refer->page_num);
-    void *leaf_node = GetBufferPage(buffer);
-    void *destination = get_leaf_node_cell_value(leaf_node, key_len, value_len, default_value_len, refer->cell_num);
- 
-    int offset = REFER_SIZE;
-    ListCell *lc;
-    foreach (lc, table->meta_table->meta_columns) {
-        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
-        if (meta_column->sys_reserved && 
-                strcmp(meta_column->column_name, EXPIRED_XID_COLUMN_NAME) == 0) {
-            Xid expired_xid = *(Xid *)(destination + offset);
-            ReleaseBuffer(buffer);
-            return expired_xid != 0;
-        }
-        if (meta_column->sys_reserved)
-            offset += meta_column->column_length;
-    }
-
-    /* Release the leaf node buffer. */
-    ReleaseBuffer(buffer);
-
-    return false;
-}
-
 /* When root is empty to do. */
 static void make_empty_root_node(Table *table) {
     Buffer buffer;

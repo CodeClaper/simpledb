@@ -7,6 +7,7 @@
  * (1) Plain insert values statment, includes all column or special part column.
  * (2) Insert with subselect statment.
  *********************************************************************************************/
+#include "bufpool.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -274,6 +275,54 @@ static Row *SelectRowToInsertRow(Row *select_row, Table *table) {
     return insert_row;
 }
 
+static bool WaitForDuplicateKey(Refer *refer) {
+    bool flag = false;
+    Buffer buffer;
+    Table *table;
+    void *leaf_node, *destination;
+    uint32_t key_len, value_len, default_value_len;
+    Xid current_xid, created_xid, expired_xid;
+
+    table = open_table_inner(refer->oid);
+    key_len = table->key_len; 
+    value_len = table->index_value_len; 
+    default_value_len = table->heap_value_len;
+    current_xid = GetCurrentXid();
+
+retry:
+    /* Get the leaf node buffer. */
+    buffer = ReadBuffer(refer->oid, refer->page_num);
+    leaf_node = GetBufferPage(buffer);
+    destination = get_leaf_node_cell_value(leaf_node, key_len, value_len, default_value_len, refer->cell_num);
+    created_xid = get_index_created_xid(destination);
+    expired_xid = get_index_expired_xid(destination);
+    Assert(created_xid != 0);
+    
+    if (expired_xid == 0) {
+        /* Block here until the created transaction fade out. */
+        while (current_xid != created_xid && IsActive(created_xid)) {
+            while (IsActive(created_xid)) {
+                lock_sleep(DEFAULT_SPIN_INTERVAL);
+            }
+            /* Retry is necessary for scene when the same 
+             * transaction creates a row and then deletes it. */
+            goto retry;
+        }
+        flag = true;
+    } else {
+        /* Block here until the expired transaction fade out. */
+        while (current_xid != expired_xid && IsActive(expired_xid)) {
+            lock_sleep(DEFAULT_SPIN_INTERVAL);
+        }
+        flag = false;
+    }
+
+    /* Release the leaf node buffer. */
+    ReleaseBuffer(buffer);
+
+    return flag;
+}
+
 /* Insert one row. 
  * ---------------
  * Return the row refer, 
@@ -289,7 +338,7 @@ Refer *insert_one_row(Table *table, Row *row) {
     /* Check if duplicate key. */
     if (UserPrimaryKeyExists(table->meta_table) && 
         check_duplicate_key(key, refer) && 
-        !refer_is_deleted(refer)
+        WaitForDuplicateKey(refer)
     ) {
         char *keyStr = primary_key_meta_column->column_type == T_STRING
                 ? QueryStringValue(key)

@@ -91,9 +91,6 @@ void insert_row_data(Row *row, Refer *refer);
 /* Delete the row data. */
 void delete_row_data(void *key, Refer *refer);
 
-/* If the refer is deleted*/
-bool refer_is_deleted(Refer *refer);
-
 /* Deserialize meta column. */
 MetaColumn *deserialize_meta_column(void *destination);
 

@@ -205,7 +205,7 @@ static void DestroyTransaction() {
 
 /* Check if a transaction is active()
  * Active transaction is an uncommitted transaction. */
-static bool IsActive(Xid xid) {
+bool IsActive(Xid xid) {
     bool active = false;
     /* Lock here is necessary to avoid to read 
      * the trans chain while it is being modified. */
