@@ -674,6 +674,7 @@ static void reset_parent(Table *table, uint32_t parent_page_num) {
 
     oid = GET_TABLE_OID(table);
     buffer = ReadBuffer(oid, parent_page_num);
+    LockBuffer(buffer, RW_READERS);
     internal_node = GetBufferPage(buffer);
 
     key_len = table->key_len;
@@ -688,12 +689,14 @@ static void reset_parent(Table *table, uint32_t parent_page_num) {
 
         child_page_num = get_internal_node_child(internal_node, i, key_len, default_value_len);
         child_buffer = ReadBuffer(oid, child_page_num);
+        LockBuffer(child_buffer, RW_WRITER);
         child_node = GetBufferPage(child_buffer);
         
         /* Reset parent. */
         set_parent_pointer(child_node, parent_page_num); 
 
         MakeBufferDirty(child_buffer);
+        UnlockBuffer(child_buffer);
         ReleaseBuffer(child_buffer);
     }
 
@@ -702,6 +705,7 @@ static void reset_parent(Table *table, uint32_t parent_page_num) {
 
     /* Reader right buffer. */
     right_child_buffer = ReadBuffer(oid, right_child_page_num);
+    LockBuffer(right_child_buffer, RW_WRITER);
     right_node = GetBufferPage(right_child_buffer);
 
     /* Reset parent. */
@@ -710,7 +714,10 @@ static void reset_parent(Table *table, uint32_t parent_page_num) {
     MakeBufferDirty(right_child_buffer);
 
     /* Release buffer. */
+    UnlockBuffer(right_child_buffer);
     ReleaseBuffer(right_child_buffer);
+
+    UnlockBuffer(buffer);
     ReleaseBuffer(buffer);
 }
 
