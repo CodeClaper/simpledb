@@ -743,23 +743,26 @@ static inline int internal_node_cell_entry_comparator(const ListCell *lc1, const
 }
 
 /* Resort the internal node cells. 
+ * ------------------------------
  * Sometimes, mass of internal node cells may happer when children splitting.
  * It's necessary to resort internal node cells.
  * */
 void resort_internal_node_cells(Table *table, uint32_t page_num, uint32_t key_len, 
                                 uint32_t value_len, uint32_t default_value_len, DataType data_type) {
+    Oid oid;
     uint32_t *keys_num, index;
     Buffer buffer;
     void *internal_node;
     List *list;
     
-    buffer = ReadBuffer(GET_TABLE_OID(table), page_num);
-    // UpgradeLockBuffer(buffer);
+    oid = GET_TABLE_OID(table);
+    buffer = ReadBuffer(oid, page_num);
+    LockBuffer(buffer, RW_READERS);
     internal_node = GetBufferPage(buffer);
     keys_num = get_internal_node_keys_num_pointer(internal_node, default_value_len);
 
     if (!check_internal_node_cells_mass(internal_node, *keys_num, key_len, default_value_len, data_type)) {
-        // DowngradeLockBuffer(buffer);
+        UnlockBuffer(buffer);
         ReleaseBuffer(buffer);
         return;
     }
@@ -790,6 +793,7 @@ void resort_internal_node_cells(Table *table, uint32_t page_num, uint32_t key_le
 
     /* Resort*/
     list_qsort(list, internal_node_cell_entry_comparator);
+    UpgradeLockBuffer(buffer);
 
     /* Reset into internal node cells. */
     for (index = 0; index < *keys_num; index++) {
@@ -811,7 +815,8 @@ void resort_internal_node_cells(Table *table, uint32_t page_num, uint32_t key_le
 
     /* Make page dirty. */
     MakeBufferDirty(buffer);
-    // DowngradeLockBuffer(buffer);
+    DowngradeLockBuffer(buffer);
+    UnlockBuffer(buffer);
     ReleaseBuffer(buffer);
 }
 
@@ -1197,18 +1202,18 @@ static void insert_and_split_internal_node(Table *table, uint32_t old_internal_p
          * */
         uint32_t parent_page_num = get_parent_pointer(old_internal_node);
         void *new_max_key = get_max_key(table, old_internal_node, key_len, value_len, default_value_len);
-        update_internal_node_key(
-            table, parent_page_num, 
-            old_max_key, new_max_key, 
-            key_len, value_len, default_value_len,
-            primary_key_meta_column->column_type
-        );
+        update_internal_node_key(table, parent_page_num, old_max_key, new_max_key, 
+                                 key_len, value_len, default_value_len, 
+                                 primary_key_meta_column->column_type);
 
         /* And insert a new cell about the new leaf node to the parent internal node. */
-        insert_internal_node_cell(table, parent_page_num, next_unused_page_num, key_len, value_len, default_value_len);
+        insert_internal_node_cell(table, parent_page_num, next_unused_page_num, 
+                                  key_len, value_len, default_value_len);
 
         /* Parent internla node cells may mass, so resort the cells. */
-        resort_internal_node_cells(table, parent_page_num, key_len, value_len, default_value_len, primary_key_meta_column->column_type);
+        resort_internal_node_cells(table, parent_page_num, 
+                                   key_len, value_len, default_value_len, 
+                                   primary_key_meta_column->column_type);
 
         MakeBufferDirty(old_buffer);
         MakeBufferDirty(new_buffer);
