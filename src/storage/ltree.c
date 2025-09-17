@@ -527,8 +527,10 @@ static void *get_max_key(Table *table, void *node, uint32_t key_len,
         case INTERNAL_NODE: {
             uint32_t right_child_page_num = get_internal_node_right_child(node, default_value_len);
             Buffer buffer = ReadBuffer(GET_TABLE_OID(table), right_child_page_num);
+            LockBuffer(buffer, RW_READERS);
             void *right_child = GetBufferPage(buffer);
             void *right_child_max_value = get_max_key(table, right_child, key_len, value_len, default_value_len);
+            UnlockBuffer(buffer);
             ReleaseBuffer(buffer);
             return right_child_max_value;
         }
