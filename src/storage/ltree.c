@@ -659,25 +659,38 @@ static bool overflow_internal_node(void *internal_node, uint32_t keys_num,
     }
 }
 
-/* Redefine parent page number.
+/* Reset parent page number.
+ * ----------------------------
  * When a internal node page number changed, if it has children nodes, 
  * we also need to redefine parent page number in the children nodes. */
-static void redefine_parent(Table *table, uint32_t page_num) {
+static void reset_parent(Table *table, uint32_t parent_page_num) {
     /* Read buffer. */
-    Buffer buffer = ReadBuffer(GET_TABLE_OID(table), page_num);
-    void *internal_node = GetBufferPage(buffer);
-
+    Oid oid;
+    Buffer buffer, right_child_buffer;
+    void *internal_node, *right_node;
     uint32_t key_len, default_value_len, *keys_num, right_child_page_num;
+
+    oid = GET_TABLE_OID(table);
+    buffer = ReadBuffer(oid, parent_page_num);
+    internal_node = GetBufferPage(buffer);
+
     key_len = table->key_len;
     default_value_len = table->heap_value_len;
     keys_num = get_internal_node_keys_num_pointer(internal_node, default_value_len);
 
     /* Redefine each child node parent page. */
     for (int i = 0; i < *keys_num; i++) {
-        uint32_t child_page_num = get_internal_node_child(internal_node, i, key_len, default_value_len);
-        Buffer child_buffer = ReadBuffer(GET_TABLE_OID(table), child_page_num);
-        void *child_node = GetBufferPage(child_buffer);
-        set_parent_pointer(child_node, page_num); 
+        uint32_t child_page_num;
+        Buffer child_buffer;
+        void *child_node;
+
+        child_page_num = get_internal_node_child(internal_node, i, key_len, default_value_len);
+        child_buffer = ReadBuffer(oid, child_page_num);
+        child_node = GetBufferPage(child_buffer);
+        
+        /* Reset parent. */
+        set_parent_pointer(child_node, parent_page_num); 
+
         MakeBufferDirty(child_buffer);
         ReleaseBuffer(child_buffer);
     }
@@ -686,9 +699,12 @@ static void redefine_parent(Table *table, uint32_t page_num) {
     right_child_page_num = get_internal_node_right_child(internal_node, default_value_len);
 
     /* Reader right buffer. */
-    Buffer right_child_buffer = ReadBuffer(GET_TABLE_OID(table), right_child_page_num);
-    void *right_node = GetBufferPage(right_child_buffer);
-    set_parent_pointer(right_node, page_num);
+    right_child_buffer = ReadBuffer(oid, right_child_page_num);
+    right_node = GetBufferPage(right_child_buffer);
+
+    /* Reset parent. */
+    set_parent_pointer(right_node, parent_page_num);
+
     MakeBufferDirty(right_child_buffer);
 
     /* Release buffer. */
@@ -895,7 +911,7 @@ static void create_new_root_node(Table *table, uint32_t right_child_page_num,
             break;
         case INTERNAL_NODE:
             copy_root_to_internal_node(root, left_child, key_len, default_value_len);
-            redefine_parent(table, next_unused_page_num);
+            reset_parent(table, next_unused_page_num);
             break;
         default:
             UNEXPECTED_VALUE(node_type);
@@ -1146,7 +1162,7 @@ static void insert_and_split_internal_node(Table *table, uint32_t old_internal_p
     );
 
     /* Rest parent for new internal node.*/
-    redefine_parent(table, next_unused_page_num);
+    reset_parent(table, next_unused_page_num);
 
     /* For old internal node, it uses its last cell as it right child. */
     set_internal_node_keys_num(old_internal_node, default_value_len, LEFT_SPLIT_COUNT);
@@ -1157,7 +1173,7 @@ static void insert_and_split_internal_node(Table *table, uint32_t old_internal_p
     );
     set_internal_node_keys_num(old_internal_node, default_value_len, LEFT_SPLIT_COUNT - 1);
 
-    redefine_parent(table, old_internal_page_num);
+    reset_parent(table, old_internal_page_num);
 
     /* If old internal is root, need to create new root. */
     if (is_root_node(old_internal_node)) 
@@ -1714,7 +1730,7 @@ static void split_root_internal_node_append_column(uint32_t page_num, Table *tab
     );
 
     /* Rest parent for new internal node.*/
-    redefine_parent(table, next_unused_page_num);
+    reset_parent(table, next_unused_page_num);
 
     /* For old internal node, it uses its last cell as it right child. */
     set_internal_node_keys_num(old_internal_node, default_value_len, LEFT_SPLIT_COUNT);
@@ -1725,7 +1741,7 @@ static void split_root_internal_node_append_column(uint32_t page_num, Table *tab
     );
     set_internal_node_keys_num(old_internal_node, default_value_len, LEFT_SPLIT_COUNT - 1);
 
-    redefine_parent(table, page_num);
+    reset_parent(table, page_num);
 
     /* Flush page.*/
     MakeBufferDirty(buffer);
