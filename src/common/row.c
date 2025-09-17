@@ -46,11 +46,10 @@ void *RowFindKey(Row *row, MetaTable *meta_table) {
     Assert(row != NULL);
     Assert(meta_table != NULL);
     
+    ListCell *lc;
     MetaColumn *primary_meta_column;
 
     primary_meta_column = MetaTableFindPrimaryKey(meta_table);
-
-    ListCell *lc;
     foreach (lc, row->data) {
         KeyValue *key_value = (KeyValue *) lfirst(lc);
         AssertFalse(StrIsEmpty(key_value->table_name));

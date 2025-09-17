@@ -292,8 +292,12 @@ static bool WaitForDuplicateKey(Refer *refer) {
 retry:
     /* Get the leaf node buffer. */
     buffer = ReadBuffer(refer->oid, refer->page_num);
-    leaf_node = GetBufferPage(buffer);
+    LockBuffer(buffer, RW_READERS);
+    leaf_node = GetBufferPageCopy(buffer);
     destination = get_leaf_node_cell_value(leaf_node, key_len, value_len, default_value_len, refer->cell_num);
+    UnlockBuffer(buffer);
+    ReleaseBuffer(buffer);
+
     created_xid = get_index_created_xid(destination);
     expired_xid = get_index_expired_xid(destination);
     Assert(created_xid != 0);
@@ -317,9 +321,7 @@ retry:
         flag = false;
     }
 
-    /* Release the leaf node buffer. */
-    ReleaseBuffer(buffer);
-
+    dfree(leaf_node);
     return flag;
 }
 

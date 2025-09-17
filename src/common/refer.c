@@ -142,6 +142,7 @@ static Refer *define_refer_from_internal_node(Table *table, void *internal_node,
 
     /* Get the child node buffer. */
     Buffer buffer = ReadBuffer(GET_TABLE_OID(table), child_page_num);
+    LockBuffer(buffer, RW_READERS);
     void *child_node = GetBufferPage(buffer);
     NodeType node_type = get_node_type(child_node);
     switch(node_type) {
@@ -157,6 +158,7 @@ static Refer *define_refer_from_internal_node(Table *table, void *internal_node,
     }
 
     /* Release the child node buffer. */
+    UnlockBuffer(buffer);
     ReleaseBuffer(buffer);
 
     return refer;
@@ -171,6 +173,7 @@ Refer *define_refer(Table *table, void *key) {
 
     /* Get root node buffer. */
     Buffer buffer = ReadBuffer(GET_TABLE_OID(table), table->root_page_num);
+    LockBuffer(buffer, RW_READERS);
     void *root_node = GetBufferPage(buffer);
     NodeType node_type = get_node_type(root_node);
     switch(node_type) {
@@ -186,6 +189,7 @@ Refer *define_refer(Table *table, void *key) {
     }
 
     /* Release the root buffer. */
+    UnlockBuffer(buffer);
     ReleaseBuffer(buffer);
 
     return refer;
