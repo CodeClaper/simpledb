@@ -1279,22 +1279,21 @@ static void insert_internal_node_cell(Table *table, uint32_t page_num, uint32_t 
 static void insert_leaf_node_new_cell(Row *row, Refer *refer, uint32_t key_len, 
                                       uint32_t value_len, uint32_t default_value_len) {
     Table *table;
-    void *key;
+    Buffer buffer;
+    void *key, *node, *destination;
     uint32_t *cell_num, cell_length;
 
     table = open_table_inner(refer->oid);
     key = RowFindKey(row, table->meta_table);
 
     /* Get the node buffer. */
-    Buffer buffer = ReadBuffer(refer->oid, refer->page_num);  
-    void *node = GetBufferPage(buffer);
-    
+    buffer = ReadBuffer(refer->oid, refer->page_num);  
+    UpgradeLockBuffer(buffer);
+    node = GetBufferPage(buffer);
     cell_num = get_leaf_node_cell_num_pointer(node, default_value_len);
     cell_length = value_len + key_len;
 
     if (refer->cell_num < *cell_num) {
-        /* Upgrade lock buffer to RW_WRITE. */
-        UpgradeLockBuffer(buffer);
 
         /* Make room for new cell. */
         int i;
@@ -1314,33 +1313,34 @@ static void insert_leaf_node_new_cell(Row *row, Refer *refer, uint32_t key_len,
             );
         }
         
-        /* Downgrade lock to RW_READERS. */
-        DowngradeLockBuffer(buffer);
     }
     
     /* Insert the new row. */
     set_leaf_node_cell_key(node, refer->cell_num, key_len, value_len, default_value_len, key);
-    void *destination = seriable_index_value(row, refer);
+    destination = seriable_index_value(row, refer);
     memcpy(get_leaf_node_cell_value(node, key_len, value_len, default_value_len, refer->cell_num), 
-           destination, value_len);
+           destination, 
+           value_len);
     
     /* Check if the max key in leaf node has changed, that may impact the parent internal node. */
     if (!is_root_node(node) && refer->cell_num == *cell_num) {
-        uint32_t parent_page_num = get_parent_pointer(node);
-        void *old_max_key = get_leaf_node_cell_key(node, *cell_num - 1, key_len, value_len, default_value_len);
-        MetaColumn *primary_key_meta_column = MetaTableFindPrimaryKey(table->meta_table);
+        uint32_t parent_page_num;
+        void *old_max_key;
+        MetaColumn *primary_key_meta_column;
+
+        parent_page_num = get_parent_pointer(node);
+        old_max_key = get_leaf_node_cell_key(node, *cell_num - 1, key_len, value_len, default_value_len);
+        primary_key_meta_column = MetaTableFindPrimaryKey(table->meta_table);
         /* Logic check.*/
         Assert(GE(GetComparableValue(key, primary_key_meta_column->column_type), 
-                             GetComparableValue(old_max_key, primary_key_meta_column->column_type), 
-                             primary_key_meta_column->column_type));
+                  GetComparableValue(old_max_key, primary_key_meta_column->column_type), 
+                  primary_key_meta_column->column_type));
 
         /* Update internal node key. */
-        update_internal_node_key(
-            table, parent_page_num, 
-            old_max_key, key, 
-            key_len, value_len, default_value_len, 
-            primary_key_meta_column->column_type
-        );
+        update_internal_node_key(table, parent_page_num, 
+                                 old_max_key, key, 
+                                 key_len, value_len, default_value_len, 
+                                 primary_key_meta_column->column_type);
     }
     
     /* Cell number increases. */
@@ -1349,10 +1349,11 @@ static void insert_leaf_node_new_cell(Row *row, Refer *refer, uint32_t key_len,
     /* Flush into disk. */
     MakeBufferDirty(buffer);
 
-    dfree(destination);
-
     /* Release the buffer. */
+    DowngradeLockBuffer(buffer);
     ReleaseBuffer(buffer);
+
+    dfree(destination);
 }
 
 /* When page full, it will generate a new leaf node. 
@@ -1379,15 +1380,15 @@ static void insert_and_split_leaf_node(Row *row, Refer *refer, uint32_t key_len,
     /* Get the old leaf node cell count.*/
     uint32_t *cell_num = get_leaf_node_cell_num_pointer(old_node, default_value_len);
 
-    /* Upgrade old buffer lock to RW_WRITE. */
-    UpgradeLockBuffer(old_buffer);
-
     /* Double check for concurrency. */
     if (!overflow_leaf_node(old_node, key_len, value_len, default_value_len, *cell_num)) {
         ReleaseBuffer(old_buffer);
         insert_leaf_node_new_cell(row, refer, key_len, value_len, default_value_len);
         return;
     }
+
+    /* Upgrade old buffer lock to RW_WRITE. */
+    UpgradeLockBuffer(old_buffer);
 
     /* Get the old leaf node max key. */
     void *old_max_key = get_max_key(table, old_node, key_len, value_len, default_value_len);
