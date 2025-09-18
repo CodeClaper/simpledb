@@ -694,8 +694,8 @@ static void reset_parent(Table *table, uint32_t parent_page_num) {
         
         /* Reset parent. */
         set_parent_pointer(child_node, parent_page_num); 
-
         MakeBufferDirty(child_buffer);
+
         UnlockBuffer(child_buffer);
         ReleaseBuffer(child_buffer);
     }
@@ -1073,21 +1073,20 @@ static void insert_internal_node_new_cell(Table *table, uint32_t page_num, uint3
  * And half hight cells in the old internal node will be moved into the new one. */
 static void insert_and_split_internal_node(Table *table, uint32_t old_internal_page_num, uint32_t new_child_page_num, 
                                            uint32_t key_len, uint32_t value_len, uint32_t default_value_len) {
+    Oid oid;
     Buffer old_buffer, new_buffer;
+    MetaColumn *primary_key_meta_column;
     void *old_internal_node, *new_internal_node;
     uint32_t *keys_num, next_unused_page_num, cell_len;
 
+    oid = GET_TABLE_OID(table);
     /* Get old internal node. */
-    old_buffer = ReadBuffer(GET_TABLE_OID(table), old_internal_page_num);
+    old_buffer = ReadBuffer(oid, old_internal_page_num);
     old_internal_node = GetBufferPage(old_buffer);
 
     keys_num = get_internal_node_keys_num_pointer(old_internal_node, default_value_len);
     cell_len = key_len + INTERNAL_NODE_CELL_CHILD_SIZE;
-
-    MetaColumn *primary_key_meta_column = MetaTableFindPrimaryKey(table->meta_table);
-
-    /* Upgrade old buffer lock to RW_WRITE. */
-    UpgradeLockBuffer(old_buffer);
+    primary_key_meta_column = MetaTableFindPrimaryKey(table->meta_table);
     
     /* Double check for concurrency. */
     if (!overflow_internal_node(old_internal_node, *keys_num, key_len, default_value_len)) {
@@ -1095,10 +1094,14 @@ static void insert_and_split_internal_node(Table *table, uint32_t old_internal_p
         insert_internal_node_new_cell(table, old_internal_page_num, new_child_page_num, key_len, value_len, default_value_len);
         return;
     }
+
+    /* Upgrade old buffer lock to RW_WRITE. */
+    UpgradeLockBuffer(old_buffer);
     
     /* Get new internal node. */
     next_unused_page_num = GetNextUnusedPageNum(table);
-    new_buffer = ReadBuffer(GET_TABLE_OID(table), next_unused_page_num);
+    new_buffer = ReadBuffer(oid, next_unused_page_num);
+    LockBuffer(new_buffer, RW_WRITER);
     new_internal_node = GetBufferPage(new_buffer);
 
     initial_internal_node(new_internal_node, false);
@@ -1107,42 +1110,48 @@ static void insert_and_split_internal_node(Table *table, uint32_t old_internal_p
     set_internal_node_right_child(new_internal_node, default_value_len, 0);
     
     /* Get the new child node. */
-    Buffer new_child_buffer = ReadBuffer(GET_TABLE_OID(table), new_child_page_num);
+    Buffer new_child_buffer = ReadBuffer(oid, new_child_page_num);
+    LockBuffer(new_child_buffer, RW_READERS);
     void *new_child_node = GetBufferPage(new_child_buffer);
 
     /* Get the new child node max key and position in parent node. */
     void *new_child_max_key = get_max_key(table, new_child_node, key_len, value_len, default_value_len);
-    uint32_t new_child_max_key_index = get_internal_node_key_index(
-        old_internal_node, new_child_max_key, 
-        *keys_num, key_len, default_value_len,
-        primary_key_meta_column->column_type
-    );
-
+    uint32_t new_child_max_key_index = get_internal_node_key_index(old_internal_node, new_child_max_key, 
+                                                                   *keys_num, key_len, default_value_len, 
+                                                                   primary_key_meta_column->column_type);
     uint32_t old_right_page_num = get_internal_node_right_child(old_internal_node, default_value_len);
-    Buffer right_buffer = ReadBuffer(GET_TABLE_OID(table), old_right_page_num);
+    Buffer right_buffer = ReadBuffer(oid, old_right_page_num);
+    LockBuffer(right_buffer, RW_READERS);
     void *right_node = GetBufferPage(right_buffer);
     void *right_node_max_key = get_max_key(table, right_node, key_len, value_len, default_value_len);
 
     /* Maybe the new child is GT than max key, need to compare. */
     if (GT(GetComparableValue(new_child_max_key, primary_key_meta_column->column_type), 
-                GetComparableValue(right_node_max_key, primary_key_meta_column->column_type), 
-                primary_key_meta_column->column_type)
+           GetComparableValue(right_node_max_key, primary_key_meta_column->column_type), 
+           primary_key_meta_column->column_type)
     ) {
         /* If yes, replace the new child with the origin old right child. */ 
         set_internal_node_right_child(old_internal_node, default_value_len, new_child_page_num);
         if (!is_root_node(old_internal_node)) {
             uint32_t parent_page = get_parent_pointer(old_internal_node);
-            update_internal_node_key(
-                table, parent_page, 
-                right_node_max_key, new_child_max_key, 
-                key_len, value_len, default_value_len, 
-                primary_key_meta_column->column_type
-            );
+            update_internal_node_key(table, parent_page, 
+                                     right_node_max_key, new_child_max_key, 
+                                     key_len, value_len, default_value_len, 
+                                     primary_key_meta_column->column_type);
         }
         new_child_max_key = right_node_max_key;
         new_child_max_key_index = *keys_num; 
         new_child_page_num = old_right_page_num;
     }
+
+    /* Unlock and release the buffer in advance to 
+     * avoid subsequent operations like <reset_parent>. */
+    UnlockBuffer(new_child_buffer);
+    UnlockBuffer(right_buffer);
+
+    ReleaseBuffer(new_child_buffer);
+    ReleaseBuffer(right_buffer);
+
 
     /* Get internal node absolute max key.*/
     void *old_max_key = get_max_key(table, old_internal_node, key_len, value_len, default_value_len);
@@ -1222,25 +1231,23 @@ static void insert_and_split_internal_node(Table *table, uint32_t old_internal_p
         resort_internal_node_cells(table, parent_page_num, 
                                    key_len, value_len, default_value_len, 
                                    primary_key_meta_column->column_type);
-
-        MakeBufferDirty(old_buffer);
-        MakeBufferDirty(new_buffer);
     }
 
-    /* Downgrade old buffer lock to RW_READERS. */
+    MakeBufferDirty(old_buffer);
+    MakeBufferDirty(new_buffer);
+
+    /* Unlock or donwngrade lock. */
+    UnlockBuffer(new_buffer);
     DowngradeLockBuffer(old_buffer);
 
     /* Release the old right page buffer.*/
-    ReleaseBuffer(old_buffer);
     ReleaseBuffer(new_buffer);
-    ReleaseBuffer(new_child_buffer);
-    ReleaseBuffer(right_buffer);
+    ReleaseBuffer(old_buffer);
 }
 
 /* Insert new internal node cell. */
 static void insert_internal_node_cell(Table *table, uint32_t page_num, uint32_t new_child_page_num, 
                                       uint32_t key_len, uint32_t value_len, uint32_t default_value_len) {
-    /* Get buffer. */
     Oid oid;
     Buffer buffer;
     void *internal_node;
@@ -1745,24 +1752,21 @@ static void split_root_internal_node_append_column(uint32_t page_num, Table *tab
 
     /* For new internal node, it uses old internall node right node as right node. */
     set_internal_node_keys_num(new_internal_node, default_value_len, RIGHT_SPLIT_COUNT);
-    set_internal_node_right_child(
-        new_internal_node, 
-        default_value_len, 
-        get_internal_node_right_child(old_internal_node, default_value_len)
-    );
+    set_internal_node_right_child(new_internal_node, 
+                                  default_value_len, 
+                                  get_internal_node_right_child(old_internal_node, default_value_len));
 
     /* Rest parent for new internal node.*/
     reset_parent(table, next_unused_page_num);
 
     /* For old internal node, it uses its last cell as it right child. */
     set_internal_node_keys_num(old_internal_node, default_value_len, LEFT_SPLIT_COUNT);
-    set_internal_node_right_child(
-        old_internal_node, 
-        default_value_len, 
-        get_internal_node_child(old_internal_node, LEFT_SPLIT_COUNT - 1, key_len, default_value_len)
-    );
+    set_internal_node_right_child(old_internal_node, 
+                                  default_value_len, 
+                                  get_internal_node_child(old_internal_node, LEFT_SPLIT_COUNT - 1, key_len, default_value_len));
     set_internal_node_keys_num(old_internal_node, default_value_len, LEFT_SPLIT_COUNT - 1);
 
+    /* Rest parent for old internal node.*/
     reset_parent(table, page_num);
 
     /* Flush page.*/

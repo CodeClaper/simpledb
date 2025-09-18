@@ -207,7 +207,8 @@ void UpgradeRWlock(RWLockEntry *lock_entry) {
     // Assert(lock_entry->content_lock == SPIN_LOCKED_STATUS);
         
     /* Allow UpgradeRWlock repeatedly. */
-    if (lock_entry->mode == RW_WRITER && lock_entry->writer == GetCurrentPid())
+    Pid curpid = GetCurrentPid();
+    if (lock_entry->mode == RW_WRITER && lock_entry->writer == curpid)
         return;
     
     DecreaseOwner(lock_entry);
@@ -227,7 +228,7 @@ void UpgradeRWlock(RWLockEntry *lock_entry) {
     lock_entry->content_lock = SPIN_LOCKED_STATUS;
     lock_entry->mode = RW_WRITER;
     lock_entry->owner_num = 1;
-    lock_entry->writer = GetCurrentPid();
+    lock_entry->writer = curpid;
     lock_entry->upgrading = false;
 
     /* Relase sync_lock. */
