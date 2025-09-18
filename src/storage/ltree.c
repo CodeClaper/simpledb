@@ -824,19 +824,27 @@ void resort_internal_node_cells(Table *table, uint32_t page_num, uint32_t key_le
 /* Covnert root node to leaf node */
 static void copy_root_to_leaf_node(Table *table, uint32_t new_page_num, 
                                    uint32_t key_len, uint32_t value_len, uint32_t default_value_len) {
-    /* Read the root buffer. */
-    Buffer rbuffer = ReadBuffer(GET_TABLE_OID(table), table->root_page_num);
-    void *root = GetBufferPage(rbuffer);
-    Oid oid = GET_TABLE_OID(table);
+    Oid oid;
+    Buffer rbuffer, nbuffer;
+    void *root, *leaf_node;
+    uint32_t *cell_num;
+
+    oid = GET_TABLE_OID(table);
+
+    /* Read root buffer. */
+    rbuffer = ReadBuffer(oid, table->root_page_num);
+    UpgradeLockBuffer(rbuffer);
+    root = GetBufferPage(rbuffer);
 
     /* Read the new buffer. */
-    Buffer nbuffer = ReadBuffer(oid, new_page_num);
-    void *leaf_node = GetBufferPage(nbuffer);
+    nbuffer = ReadBuffer(oid, new_page_num);
+    UpgradeLockBuffer(nbuffer);
+    leaf_node = GetBufferPage(nbuffer);
 
     initial_leaf_node(leaf_node, default_value_len, false);
     set_leaf_node_cell_num(leaf_node, default_value_len, get_leaf_node_cell_num(root, default_value_len));
     set_leaf_node_next_leaf(leaf_node, default_value_len, get_leaf_node_next_leaf(root, default_value_len));
-    uint32_t *cell_num = get_leaf_node_cell_num_pointer(root, default_value_len); 
+    cell_num = get_leaf_node_cell_num_pointer(root, default_value_len); 
 
     uint32_t i;
     for (i = 0; i < *cell_num; i++) {
@@ -892,8 +900,7 @@ static void copy_root_to_internal_node(void *root, void *internal_node,
 
 /* Create new root node. */
 static void create_new_root_node(Table *table, uint32_t right_child_page_num, 
-                                 uint32_t key_len, uint32_t value_len, 
-                                 uint32_t default_value_len) {
+                                 uint32_t key_len, uint32_t value_len, uint32_t default_value_len) {
     Oid oid;
     Buffer root_buffer, left_buffer, right_buffer;
     void *root, *left_child, *right_child;
@@ -911,13 +918,12 @@ static void create_new_root_node(Table *table, uint32_t right_child_page_num,
     /* Notice that, current next unused page num is not right child page num. 
      * The pager size has increased. */
     uint32_t next_unused_page_num = GetNextUnusedPageNum(table);
-    left_buffer = ReadBuffer(GET_TABLE_OID(table), next_unused_page_num);
+    left_buffer = ReadBuffer(oid, next_unused_page_num);
     LockBuffer(left_buffer, RW_WRITER);
+    left_child = GetBufferPage(left_buffer);
 
     /* Keep old root, generate a new leaf (or internal) node, 
      * and copy old root data to the new one. */
-    left_child = GetBufferPage(left_buffer);
-
     NodeType node_type = get_node_type(root);
     switch(node_type) {
         case LEAF_NODE:
