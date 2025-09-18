@@ -1294,7 +1294,6 @@ static void insert_leaf_node_new_cell(Row *row, Refer *refer, uint32_t key_len,
     cell_length = value_len + key_len;
 
     if (refer->cell_num < *cell_num) {
-
         /* Make room for new cell. */
         int i;
         for (i = *cell_num; i > refer->cell_num; i--) {
@@ -1312,7 +1311,6 @@ static void insert_leaf_node_new_cell(Row *row, Refer *refer, uint32_t key_len,
                 new_refer(refer->oid, refer->page_num, i)
             );
         }
-        
     }
     
     /* Insert the new row. */
@@ -1395,9 +1393,8 @@ static void insert_and_split_leaf_node(Row *row, Refer *refer, uint32_t key_len,
 
     /* Page num start with zero, so the page size is the next page num. */
     uint32_t next_unused_page_num = GetNextUnusedPageNum(table);
-
-    /* Get new leaf node, if not exists, pager will generate a new one. */
     Buffer new_buffer = ReadBuffer(oid, next_unused_page_num);
+    LockBuffer(new_buffer, RW_WRITER);
     void *new_node = GetBufferPage(new_buffer);
     initial_leaf_node(new_node, default_value_len, false);
 
@@ -1503,7 +1500,8 @@ static void insert_and_split_leaf_node(Row *row, Refer *refer, uint32_t key_len,
         MakeBufferDirty(new_buffer);
     }
 
-    /* Downgrade old buffer lock to RW_READERS. */
+    /* Downgrade old buffer and unlock new buffer. */
+    UnlockBuffer(new_buffer);
     DowngradeLockBuffer(old_buffer);
 
     /* Release new page buffer. */
