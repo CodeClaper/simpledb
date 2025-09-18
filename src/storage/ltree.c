@@ -978,7 +978,7 @@ static void insert_internal_node_new_cell(Table *table, uint32_t page_num, uint3
     buffer = ReadBuffer(oid, page_num);
     new_child_buffer = ReadBuffer(oid, new_child_page_num);
 
-    LockBuffer(buffer, RW_READERS);
+    UpgradeLockBuffer(buffer);
     LockBuffer(new_child_buffer, RW_READERS);
 
     internal_node = GetBufferPage(buffer);
@@ -987,18 +987,19 @@ static void insert_internal_node_new_cell(Table *table, uint32_t page_num, uint3
     /* Get primary key column meta info. */
     primary_key_meta_column = MetaTableFindPrimaryKey(table->meta_table);
     keys_num = get_internal_node_keys_num_pointer(internal_node, default_value_len);
-
     new_child_max_key = get_max_key(table, new_child_node, key_len, value_len, default_value_len);
+
     /* Get right child node and right child node max key. */
     right_child_page_num = get_internal_node_right_child(internal_node, default_value_len);
     right_child_buffer = ReadBuffer(oid, right_child_page_num);
+    LockBuffer(right_child_buffer, RW_READERS);
     right_child = GetBufferPage(right_child_buffer);
     right_child_max_key = get_max_key(table, right_child, key_len, value_len, default_value_len);
 
     /* Right child always is the node which has the maximum key. */
     if (GE(GetComparableValue(new_child_max_key, primary_key_meta_column->column_type), 
-                      GetComparableValue(right_child_max_key, primary_key_meta_column->column_type), 
-                      primary_key_meta_column->column_type)
+           GetComparableValue(right_child_max_key, primary_key_meta_column->column_type), 
+           primary_key_meta_column->column_type)
     ) {
         /* Replace old right child */
         set_internal_node_child(internal_node, *keys_num, right_child_page_num, key_len, default_value_len);
@@ -1057,8 +1058,9 @@ static void insert_internal_node_new_cell(Table *table, uint32_t page_num, uint3
     /* Flush disk. */
     MakeBufferDirty(buffer);
 
+    UnlockBuffer(right_child_buffer);
     UnlockBuffer(new_child_buffer);
-    UnlockBuffer(buffer);
+    DowngradeLockBuffer(buffer);
 
     /* Release right child buffer. */
     ReleaseBuffer(right_child_buffer);
