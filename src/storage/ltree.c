@@ -1509,13 +1509,12 @@ static void insert_and_split_leaf_node(Row *row, Refer *refer, uint32_t key_len,
     ReleaseBuffer(old_buffer);
 }
 
-
 /* Insert a new cell in leaf node */
 void insert_row_data(Row *row, Refer *refer) {
     Buffer buffer;
     void *node;
     uint32_t cell_num, value_len, key_len, default_value_len;
-    Table *table;;
+    Table *table;
 
     /* Get the node buffer. */
     table = open_table_inner(refer->oid);

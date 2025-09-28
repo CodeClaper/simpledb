@@ -1,9 +1,9 @@
 includedir = ../include
-SUBDIRS := backend common json lock memory parser heap storage trans utils sys
+SUBDIRS := backend common json lock memory ltree parser heap storage trans utils sys
 CC = gcc
 OBJS := $(patsubst %.c, %.o, $(shell find $(SUBDIRS) -name "*.c"))
 
-headerdirs = $(includedir)/common $(includedir)/json $(includedir)/lock $(includedir)/memory $(includedir)/parser \
+headerdirs = $(includedir)/common $(includedir)/json $(includedir)/lock $(includedir)/memory $(includedir)/ltree $(includedir)/parser \
 			 $(includedir)/sys $(includedir)/backend $(includedir)/storage $(includedir)/trans $(includedir)/utils
 
 headers := $(shell find $(headerdirs) -name "*.h")
