@@ -1021,9 +1021,6 @@ static void insert_internal_node_new_cell(Table *table, uint32_t page_num, uint3
 
     /* Get right child node and right child node max key. */
     right_child_page_num = get_internal_node_right_child(internal_node, default_value_len);
-    /*right_child_buffer = ReadBuffer(oid, right_child_page_num);*/
-    /*LockBuffer(right_child_buffer, RW_READERS);*/
-    /*right_child = GetBufferPage(right_child_buffer);*/
     right_child_max_key = get_max_key(table, internal_node, key_len, value_len, default_value_len);
 
     /* Right child always is the node which has the maximum key. */
@@ -1150,9 +1147,7 @@ static void insert_and_split_internal_node(Table *table, uint32_t old_internal_p
     uint32_t new_child_max_key_index = get_internal_node_key_index(old_internal_node, new_child_max_key, 
                                                                    keys_num, key_len, default_value_len, 
                                                                    primary_key_meta_column->column_type);
-    // Buffer right_buffer = ReadBuffer(oid, old_right_page_num);
-   //  LockBuffer(right_buffer, RW_READERS);
-    // void *right_node = GetBufferPage(right_buffer);
+    /* Get right child max key. */
     uint32_t old_right_page_num = get_internal_node_right_child(old_internal_node, default_value_len);
     void *right_child_max_key = get_max_key(table, old_internal_node, key_len, value_len, default_value_len);
 
