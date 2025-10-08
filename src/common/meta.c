@@ -404,7 +404,16 @@ MetaColumn *MetaTableFindPrimaryKey(MetaTable *meta_table) {
     return NULL; 
 }
 
-
+/* Get meta column data type. */
+DataType MetaTableFindPrimaryDataType(MetaTable *meta_table) {
+    ListCell *lc;
+    foreach (lc, meta_table->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
+        if (meta_column->is_primary)
+            return meta_column->column_type;
+    }
+    return T_UNKNOWN; 
+}
 
 /* Get all meta column info by column name including system reserved column. 
  * Return NULL if not found. */

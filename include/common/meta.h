@@ -64,6 +64,9 @@ MetaColumn *NameFindAllMetaColumn(MetaTable *meta_table, char *name);
 /* Get meta column of primary key. */
 MetaColumn *MetaTableFindPrimaryKey(MetaTable *meta_table);
 
+/* Get meta column data type. */
+DataType MetaTableFindPrimaryDataType(MetaTable *meta_table);
+
 /* Check if table exists the column. */
 bool ColumnExistsInTable(char *column_name, char *table_name);
 
