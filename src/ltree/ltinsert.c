@@ -32,7 +32,7 @@ static void BtreeInsertForInternalNode(Oid oid, void *key, void *search_key, uin
     if (NodeHasSplit(search_key, high_key, ptype) &&
         GT(GetComparableValue(key, ptype), GetComparableValue(high_key, ptype), ptype)
     ) {
-        next_page = 
+        //
     }
 
     dfree(internal_node);

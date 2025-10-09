@@ -6,13 +6,13 @@
 #include "meta.h"
 
 /* Get node type. */
-inline NodeType GetNodeType(void *node) {
+NodeType GetNodeType(void *node) {
     uint8_t value = *(uint8_t *) (node + NODE_TYPE_OFFSET);
     return (NodeType) value;
 }
 
 /* If a root node */
-inline bool NodeIsRoot(void *node) {
+static inline bool NodeIsRoot(void *node) {
     uint8_t value = *(uint8_t *) (node + IS_ROOT_OFFSET);
     return (bool) value;
 }
@@ -37,7 +37,7 @@ void *InternalNodeGetRightKey(void *internal_node, uint32_t default_value_len) {
     if (NodeIsRoot(internal_node)) {
         uint32_t column_size = RootNodeGetColumnSize(internal_node);
         return (internal_node + ROOT_NODE_META_COLUMN_SIZE_OFFSET + ROOT_NODE_META_COLUMN_SIZE_SIZE + 
-                ROOT_NODE_META_COLUMN_SIZE * column_size + default_value_len + KEYS_NUM_SIZE + RIGHT_CHILD_SIZE);
+                ROOT_NODE_META_COLUMN_SIZE * column_size + default_value_len + KEYS_NUM_SIZE + INTERNAL_NODE_NEXT_SIBLING_SIZE + RIGHT_CHILD_SIZE);
     } else 
         return (internal_node + RIGHT_CHILD_OFFSET + RIGHT_CHILD_SIZE);
 }
@@ -48,10 +48,10 @@ void *InternalNodeGetCellKey(void *internal_node, uint32_t key_len, uint32_t def
     if (NodeIsRoot(internal_node)) {
         uint32_t column_size = RootNodeGetColumnSize(internal_node);
         return (internal_node + ROOT_NODE_META_COLUMN_SIZE_OFFSET + ROOT_NODE_META_COLUMN_SIZE_SIZE + 
-                ROOT_NODE_META_COLUMN_SIZE * column_size + default_value_len + KEYS_NUM_SIZE + 
+                ROOT_NODE_META_COLUMN_SIZE * column_size + default_value_len + KEYS_NUM_SIZE + INTERNAL_NODE_NEXT_SIBLING_SIZE +
                 RIGHT_CHILD_SIZE + key_len + cell_len * index + INTERNAL_NODE_CELL_CHILD_SIZE); 
     } else {
-        uint32_t internal_head_len = COMMON_NODE_HEADER_SIZE + KEYS_NUM_SIZE + RIGHT_CHILD_SIZE + key_len;
+        uint32_t internal_head_len = COMMON_NODE_HEADER_SIZE + KEYS_NUM_SIZE + INTERNAL_NODE_NEXT_SIBLING_SIZE + RIGHT_CHILD_SIZE + key_len;
         return (internal_node + internal_head_len + cell_len * index + INTERNAL_NODE_CELL_CHILD_SIZE);
     }
 }
@@ -109,7 +109,7 @@ void *NodeGetHighKey(Table *table, void *node) {
 
 /* Get next page in the node. */
 uint32_t NodeFindNextPage(void *node) {
-
+    return 0;
 }
 
 /* If node has spliten. */

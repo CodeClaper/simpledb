@@ -1,5 +1,5 @@
-#include "data.h"
 #include <stdint.h>
+#include "data.h"
 
 /* Get node type. */
 NodeType GetNodeType(void *node);

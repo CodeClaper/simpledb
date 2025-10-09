@@ -340,7 +340,7 @@ uint32_t get_internal_node_right_child(void *node, uint32_t default_value_len) {
     if (is_root_node(node)) {
         uint32_t column_size = get_column_size(node);
         return *(uint32_t *)(node + ROOT_NODE_META_COLUMN_SIZE_OFFSET + ROOT_NODE_META_COLUMN_SIZE_SIZE + 
-                ROOT_NODE_META_COLUMN_SIZE * column_size + default_value_len + KEYS_NUM_SIZE);
+                ROOT_NODE_META_COLUMN_SIZE * column_size + default_value_len + KEYS_NUM_SIZE + INTERNAL_NODE_NEXT_SIBLING_SIZE);
     } else {
         return *(uint32_t *)(node + RIGHT_CHILD_OFFSET);
     }
@@ -351,7 +351,7 @@ void set_internal_node_right_child(void *node, uint32_t default_value_len, uint3
     if (is_root_node(node)) {
         uint32_t column_size = get_column_size(node);
         *(uint32_t *)(node + ROOT_NODE_META_COLUMN_SIZE_OFFSET + ROOT_NODE_META_COLUMN_SIZE_SIZE + 
-                ROOT_NODE_META_COLUMN_SIZE * column_size + default_value_len + KEYS_NUM_SIZE) = right_child_page_num;
+                ROOT_NODE_META_COLUMN_SIZE * column_size + default_value_len + KEYS_NUM_SIZE + INTERNAL_NODE_NEXT_SIBLING_SIZE) = right_child_page_num;
     } else {
         *(uint32_t *)(node + RIGHT_CHILD_OFFSET) = right_child_page_num;
     }
@@ -362,9 +362,9 @@ void *get_internal_node_right_child_key(void *node, uint32_t default_value_len) 
     if (is_root_node(node)) {
         uint32_t column_size = get_column_size(node);
         return (node + ROOT_NODE_META_COLUMN_SIZE_OFFSET + ROOT_NODE_META_COLUMN_SIZE_SIZE + 
-                ROOT_NODE_META_COLUMN_SIZE * column_size + default_value_len + KEYS_NUM_SIZE + RIGHT_CHILD_SIZE);
+                ROOT_NODE_META_COLUMN_SIZE * column_size + default_value_len + KEYS_NUM_SIZE + INTERNAL_NODE_NEXT_SIBLING_SIZE + RIGHT_CHILD_SIZE);
     } else {
-        return (node + RIGHT_CHILD_OFFSET + RIGHT_CHILD_SIZE);
+        return (node + RIGHT_CHILD_OFFSET  + RIGHT_CHILD_SIZE);
     }
 }
 
@@ -374,7 +374,7 @@ void set_internal_node_right_child_key(void *node, uint32_t key_len, uint32_t de
     if (is_root_node(node)) {
         uint32_t column_size = get_column_size(node);
         memcpy(node + ROOT_NODE_META_COLUMN_SIZE_OFFSET + ROOT_NODE_META_COLUMN_SIZE_SIZE + 
-                ROOT_NODE_META_COLUMN_SIZE * column_size + default_value_len + KEYS_NUM_SIZE + RIGHT_CHILD_SIZE, key, key_len);
+                ROOT_NODE_META_COLUMN_SIZE * column_size + default_value_len + KEYS_NUM_SIZE + INTERNAL_NODE_NEXT_SIBLING_SIZE + RIGHT_CHILD_SIZE, key, key_len);
     } else {
         memcpy(node + RIGHT_CHILD_OFFSET + RIGHT_CHILD_SIZE, key, key_len);
     }
@@ -397,10 +397,10 @@ void *get_internal_node_key(void *node, uint32_t index, uint32_t key_len, uint32
     if (is_root_node(node)) {
         uint32_t column_size = get_column_size(node);
         return (node + ROOT_NODE_META_COLUMN_SIZE_OFFSET + ROOT_NODE_META_COLUMN_SIZE_SIZE + 
-                ROOT_NODE_META_COLUMN_SIZE * column_size + default_value_len + KEYS_NUM_SIZE + 
+                ROOT_NODE_META_COLUMN_SIZE * column_size + default_value_len + KEYS_NUM_SIZE + INTERNAL_NODE_NEXT_SIBLING_SIZE +
                 RIGHT_CHILD_SIZE + key_len + cell_len * index + INTERNAL_NODE_CELL_CHILD_SIZE); 
     } else {
-        uint32_t internal_head_len = COMMON_NODE_HEADER_SIZE + KEYS_NUM_SIZE + RIGHT_CHILD_SIZE + key_len;
+        uint32_t internal_head_len = COMMON_NODE_HEADER_SIZE + KEYS_NUM_SIZE + INTERNAL_NODE_NEXT_SIBLING_SIZE + RIGHT_CHILD_SIZE + key_len;
         return (node + internal_head_len + cell_len * index + INTERNAL_NODE_CELL_CHILD_SIZE);
     }
 }
@@ -411,10 +411,10 @@ void set_internal_node_key(void *node, uint32_t index, void *key, uint32_t key_l
     if (is_root_node(node)) {
         uint32_t column_size = get_column_size(node);
         memcpy(node + ROOT_NODE_META_COLUMN_SIZE_OFFSET + ROOT_NODE_META_COLUMN_SIZE_SIZE + 
-                ROOT_NODE_META_COLUMN_SIZE * column_size + default_value_len + KEYS_NUM_SIZE + RIGHT_CHILD_SIZE + key_len +
+                ROOT_NODE_META_COLUMN_SIZE * column_size + default_value_len + KEYS_NUM_SIZE + INTERNAL_NODE_NEXT_SIBLING_SIZE + RIGHT_CHILD_SIZE + key_len +
                 cell_len * index + INTERNAL_NODE_CELL_CHILD_SIZE, key, key_len);
     } else {
-        uint32_t internal_head_len = COMMON_NODE_HEADER_SIZE + KEYS_NUM_SIZE + RIGHT_CHILD_SIZE + key_len;
+        uint32_t internal_head_len = COMMON_NODE_HEADER_SIZE + KEYS_NUM_SIZE + INTERNAL_NODE_NEXT_SIBLING_SIZE + RIGHT_CHILD_SIZE + key_len;
         memcpy(node + internal_head_len + cell_len * index + INTERNAL_NODE_CELL_CHILD_SIZE, key, key_len);
     }
 }
@@ -425,10 +425,10 @@ uint32_t get_internal_node_child(void *node, uint32_t index, uint32_t key_len, u
     if (is_root_node(node)) {
         uint32_t column_size = get_column_size(node);
         return *(uint32_t *)(node + ROOT_NODE_META_COLUMN_SIZE_OFFSET + ROOT_NODE_META_COLUMN_SIZE_SIZE + 
-            ROOT_NODE_META_COLUMN_SIZE * column_size + default_value_len + KEYS_NUM_SIZE + RIGHT_CHILD_SIZE + key_len +
+            ROOT_NODE_META_COLUMN_SIZE * column_size + default_value_len + KEYS_NUM_SIZE + INTERNAL_NODE_NEXT_SIBLING_SIZE + RIGHT_CHILD_SIZE + key_len +
             cell_len * index); 
     } else {
-        uint32_t internal_head_len = COMMON_NODE_HEADER_SIZE + KEYS_NUM_SIZE + RIGHT_CHILD_SIZE + key_len;
+        uint32_t internal_head_len = COMMON_NODE_HEADER_SIZE + KEYS_NUM_SIZE + INTERNAL_NODE_NEXT_SIBLING_SIZE + RIGHT_CHILD_SIZE + key_len;
         return *(uint32_t *)(node + internal_head_len + cell_len * index);
     }
 }
@@ -439,10 +439,10 @@ void set_internal_node_child(void *node, uint32_t index, uint32_t page_num, uint
     if (is_root_node(node)) {
         uint32_t column_size = get_column_size(node);
         *(uint32_t *)(node + ROOT_NODE_META_COLUMN_SIZE_OFFSET + ROOT_NODE_META_COLUMN_SIZE_SIZE + 
-                ROOT_NODE_META_COLUMN_SIZE * column_size + default_value_len + KEYS_NUM_SIZE + RIGHT_CHILD_SIZE + key_len +
+                ROOT_NODE_META_COLUMN_SIZE * column_size + default_value_len + KEYS_NUM_SIZE + INTERNAL_NODE_NEXT_SIBLING_SIZE + RIGHT_CHILD_SIZE + key_len +
                 cell_len * index) = page_num;
     } else {
-        uint32_t internal_head_len = COMMON_NODE_HEADER_SIZE + KEYS_NUM_SIZE + RIGHT_CHILD_SIZE + key_len;
+        uint32_t internal_head_len = COMMON_NODE_HEADER_SIZE + KEYS_NUM_SIZE + INTERNAL_NODE_NEXT_SIBLING_SIZE + RIGHT_CHILD_SIZE + key_len;
         *(uint32_t *)(node + internal_head_len + cell_len * index) = page_num;
     }
 }
@@ -453,10 +453,10 @@ void *get_internal_node_cell(void *node, uint32_t index, uint32_t key_len, uint3
     if (is_root_node(node)) {
         uint32_t column_size = get_column_size(node);
         return (node + ROOT_NODE_META_COLUMN_SIZE_OFFSET + ROOT_NODE_META_COLUMN_SIZE_SIZE + 
-                ROOT_NODE_META_COLUMN_SIZE * column_size + default_value_len + KEYS_NUM_SIZE + RIGHT_CHILD_SIZE + key_len +
+                ROOT_NODE_META_COLUMN_SIZE * column_size + default_value_len + KEYS_NUM_SIZE + INTERNAL_NODE_NEXT_SIBLING_SIZE +RIGHT_CHILD_SIZE + key_len +
                 cell_len * index); 
     } else {
-        uint32_t internal_head_len = COMMON_NODE_HEADER_SIZE + KEYS_NUM_SIZE + RIGHT_CHILD_SIZE + key_len;
+        uint32_t internal_head_len = COMMON_NODE_HEADER_SIZE + KEYS_NUM_SIZE + INTERNAL_NODE_NEXT_SIBLING_SIZE + RIGHT_CHILD_SIZE + key_len;
         return (node + internal_head_len + cell_len * index);
     }
 }
@@ -680,9 +680,9 @@ static bool overflow_internal_node(void *internal_node, uint32_t keys_num,
     if (is_root_node(internal_node)) {
         uint32_t column_size = get_column_size(internal_node);
         return COMMON_NODE_HEADER_SIZE + ROOT_NODE_META_COLUMN_SIZE_SIZE + ROOT_NODE_META_COLUMN_SIZE * column_size + 
-               default_value_len + KEYS_NUM_SIZE + RIGHT_CHILD_SIZE + key_len + cell_len * (keys_num + 1) > PAGE_SIZE;
+               default_value_len + KEYS_NUM_SIZE + INTERNAL_NODE_NEXT_SIBLING_SIZE + RIGHT_CHILD_SIZE + key_len + cell_len * (keys_num + 1) > PAGE_SIZE;
     } else {
-        uint32_t internal_head_len = COMMON_NODE_HEADER_SIZE + KEYS_NUM_SIZE + RIGHT_CHILD_SIZE + key_len;
+        uint32_t internal_head_len = COMMON_NODE_HEADER_SIZE + KEYS_NUM_SIZE + INTERNAL_NODE_NEXT_SIBLING_SIZE + RIGHT_CHILD_SIZE + key_len;
         return internal_head_len + cell_len * (keys_num + 1) > PAGE_SIZE;
     }
 }
@@ -998,11 +998,11 @@ static void create_new_root_node(Table *table, uint32_t right_child_page_num,
 static void insert_internal_node_new_cell(Table *table, uint32_t page_num, uint32_t new_child_page_num, 
                                           uint32_t key_len, uint32_t value_len, uint32_t default_value_len) {
     Oid oid;
-    Buffer buffer, new_child_buffer, right_child_buffer;
+    Buffer buffer, new_child_buffer;
     void *internal_node, *new_child_node, *new_child_max_key;
     MetaColumn *primary_key_meta_column;
     uint32_t *keys_num, right_child_page_num;
-    void *right_child, *right_child_max_key;
+    void *right_child_max_key;
 
     oid = GET_TABLE_OID(table);
     buffer = ReadBuffer(oid, page_num);
@@ -1605,7 +1605,7 @@ static bool overflow_root_internal_node_new_column(void *root_node, MetaColumn *
     uint32_t keys_num = get_internal_node_keys_num(root_node, default_value_len);
     default_value_len += new_column->column_length;
     uint32_t after_len = COMMON_NODE_HEADER_SIZE + ROOT_NODE_META_COLUMN_SIZE_SIZE + ROOT_NODE_META_COLUMN_SIZE * (column_size + 1) + 
-                         default_value_len + KEYS_NUM_SIZE + RIGHT_CHILD_SIZE + cell_len * keys_num;
+                         default_value_len + KEYS_NUM_SIZE + INTERNAL_NODE_NEXT_SIBLING_SIZE + RIGHT_CHILD_SIZE + cell_len * keys_num;
     return after_len > PAGE_SIZE;
 }
 
@@ -1955,7 +1955,7 @@ static void append_root_internal_node_column(uint32_t page_num, Table *table, Me
         memmove(
             body + ROOT_NODE_META_COLUMN_SIZE + new_column->column_length,
             body,
-            KEYS_NUM_SIZE + RIGHT_CHILD_SIZE + cell_len * keys_num
+            KEYS_NUM_SIZE + INTERNAL_NODE_NEXT_SIBLING_SIZE + RIGHT_CHILD_SIZE + cell_len * keys_num
         );
 
         /* Move default value. */
@@ -2221,7 +2221,7 @@ static void drop_root_internal_node_column(uint32_t page_num, Table *table, int 
     memmove(
         body - ROOT_NODE_META_COLUMN_SIZE - meta_column->column_length,
         body,
-        KEYS_NUM_SIZE + RIGHT_CHILD_SIZE + cell_len * keys_num
+        KEYS_NUM_SIZE + INTERNAL_NODE_NEXT_SIBLING_SIZE + RIGHT_CHILD_SIZE + cell_len * keys_num
     );
 
     /* Decrease column size. */
