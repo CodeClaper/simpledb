@@ -227,7 +227,7 @@ static uint32_t get_leaf_node_next_leaf(void *node, uint32_t default_value_len) 
         return *(uint32_t *)(node + ROOT_NODE_META_COLUMN_SIZE_OFFSET + ROOT_NODE_META_COLUMN_SIZE_SIZE + 
             ROOT_NODE_META_COLUMN_SIZE * column_size + default_value_len + CELL_NUM_SIZE);
     } else {
-        return *(uint32_t *)(node + LEAF_NODE_NEXT_LEAF_OFFSET); 
+        return *(uint32_t *)(node + LEAF_NODE_NEXT_SIBLING_OFFSET); 
     }
 }
 
@@ -238,7 +238,7 @@ static void set_leaf_node_next_leaf(void *node, uint32_t default_value_len, uint
         *(uint32_t *)(node + ROOT_NODE_META_COLUMN_SIZE_OFFSET + ROOT_NODE_META_COLUMN_SIZE_SIZE + 
             ROOT_NODE_META_COLUMN_SIZE * column_size + default_value_len + CELL_NUM_SIZE) = value;
     } else {
-        *(uint32_t *)(node + LEAF_NODE_NEXT_LEAF_OFFSET) = value;
+        *(uint32_t *)(node + LEAF_NODE_NEXT_SIBLING_OFFSET) = value;
     }
 }
 
@@ -246,7 +246,7 @@ static void *get_leaf_node_body(void *node, uint32_t default_value_len) {
     if (is_root_node(node)) {
         uint32_t column_size = get_column_size(node);
         return (node + ROOT_NODE_META_COLUMN_SIZE_OFFSET + ROOT_NODE_META_COLUMN_SIZE_SIZE + 
-            ROOT_NODE_META_COLUMN_SIZE * column_size + default_value_len + CELL_NUM_SIZE + LEAF_NODE_NEXT_LEAF_SIZE); 
+            ROOT_NODE_META_COLUMN_SIZE * column_size + default_value_len + CELL_NUM_SIZE + LEAF_NODE_NEXT_SIBLING_SIZE); 
     } else {
         return (node + LEAF_NODE_HEAD_SIZE);
     }
@@ -259,7 +259,7 @@ void *get_leaf_node_cell(void *node, uint32_t key_len, uint32_t value_len, uint3
         uint32_t column_size = get_column_size(node);
         return (node + ROOT_NODE_META_COLUMN_SIZE_OFFSET + ROOT_NODE_META_COLUMN_SIZE_SIZE + 
             ROOT_NODE_META_COLUMN_SIZE * column_size + default_value_len + CELL_NUM_SIZE + 
-            LEAF_NODE_NEXT_LEAF_SIZE + cell_len * index); 
+            LEAF_NODE_NEXT_SIBLING_SIZE + cell_len * index); 
     } else {
         return (node + LEAF_NODE_HEAD_SIZE + cell_len * index);
     }
@@ -272,7 +272,7 @@ void *get_leaf_node_cell_key(void *node, uint32_t index, uint32_t key_len, uint3
         uint32_t column_size = get_column_size(node);
         return (node + ROOT_NODE_META_COLUMN_SIZE_OFFSET + ROOT_NODE_META_COLUMN_SIZE_SIZE + 
                 ROOT_NODE_META_COLUMN_SIZE * column_size + default_value_len + CELL_NUM_SIZE + 
-                LEAF_NODE_NEXT_LEAF_SIZE + cell_len * index + value_len); 
+                LEAF_NODE_NEXT_SIBLING_SIZE + cell_len * index + value_len); 
     } else {
         return (node + LEAF_NODE_HEAD_SIZE + cell_len * index + value_len);
     }
@@ -285,7 +285,7 @@ void set_leaf_node_cell_key(void *node, uint32_t index, uint32_t key_len, uint32
         uint32_t column_size = get_column_size(node);
         memcpy(node + ROOT_NODE_META_COLUMN_SIZE_OFFSET + ROOT_NODE_META_COLUMN_SIZE_SIZE + 
                 ROOT_NODE_META_COLUMN_SIZE * column_size + default_value_len + CELL_NUM_SIZE + 
-                LEAF_NODE_NEXT_LEAF_SIZE + cell_len * index + value_len, 
+                LEAF_NODE_NEXT_SIBLING_SIZE + cell_len * index + value_len, 
                 key, key_len);
     } else {
         memcpy(node + LEAF_NODE_HEAD_SIZE + cell_len * index + value_len, key, key_len);
@@ -667,7 +667,7 @@ bool overflow_leaf_node(void *leaf_node, uint32_t key_len, uint32_t value_len, u
     if (is_root_node(leaf_node)) {
         uint32_t column_size = get_column_size(leaf_node);
         return COMMON_NODE_HEADER_SIZE + ROOT_NODE_META_COLUMN_SIZE_SIZE + ROOT_NODE_META_COLUMN_SIZE * column_size + 
-               default_value_len + CELL_NUM_SIZE + LEAF_NODE_NEXT_LEAF_SIZE + cell_len * (cell_num + 1) > PAGE_SIZE;
+               default_value_len + CELL_NUM_SIZE + LEAF_NODE_NEXT_SIBLING_SIZE + cell_len * (cell_num + 1) > PAGE_SIZE;
     } else {
         return LEAF_NODE_HEAD_SIZE + cell_len *(cell_num + 1) > PAGE_SIZE;
     }
@@ -1591,7 +1591,7 @@ static bool overflow_leaf_node_new_column(void *leaf_node, MetaColumn *new_colum
         /* Column size increases one. */
         uint32_t column_size = get_column_size(leaf_node) + 1;
         after_len = ROOT_NODE_META_COLUMN_SIZE_OFFSET + ROOT_NODE_META_COLUMN_SIZE_SIZE + ROOT_NODE_META_COLUMN_SIZE * column_size + 
-                    default_value_len + CELL_NUM_SIZE + LEAF_NODE_NEXT_LEAF_SIZE + row_len * cell_num;
+                    default_value_len + CELL_NUM_SIZE + LEAF_NODE_NEXT_SIBLING_SIZE + row_len * cell_num;
     } else {
         after_len = LEAF_NODE_HEAD_SIZE + row_len * cell_num;
     }
@@ -1860,7 +1860,7 @@ static void append_root_leaf_node_column(uint32_t page_num, Table *table, MetaCo
     memmove(
         get_leaf_node_header(leaf_node, default_value_len) + ROOT_NODE_META_COLUMN_SIZE + new_column->column_length, 
         get_leaf_node_header(leaf_node, default_value_len), 
-        CELL_NUM_SIZE + LEAF_NODE_NEXT_LEAF_SIZE
+        CELL_NUM_SIZE + LEAF_NODE_NEXT_SIBLING_SIZE
     );
 
     /* Move default value. */
@@ -2140,7 +2140,7 @@ static void drop_root_leaf_node_column(uint32_t page_num, Table *table, int pos)
     memmove(
         get_leaf_node_header(root_node, default_value_len) - ROOT_NODE_META_COLUMN_SIZE - meta_column->column_length, 
         get_leaf_node_header(root_node, default_value_len), 
-        CELL_NUM_SIZE + LEAF_NODE_NEXT_LEAF_SIZE
+        CELL_NUM_SIZE + LEAF_NODE_NEXT_SIBLING_SIZE
     );
     
     /* Move leaf node body cells. */ 

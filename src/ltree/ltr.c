@@ -74,7 +74,7 @@ uint32_t LeafNodeGetNext(void *leaf_node, uint32_t default_value_len) {
         return *(uint32_t *)(leaf_node + ROOT_NODE_META_COLUMN_SIZE_OFFSET + ROOT_NODE_META_COLUMN_SIZE_SIZE + 
             ROOT_NODE_META_COLUMN_SIZE * column_size + default_value_len + CELL_NUM_SIZE);
     } else 
-        return *(uint32_t *)(leaf_node + LEAF_NODE_NEXT_LEAF_OFFSET); 
+        return *(uint32_t *)(leaf_node + LEAF_NODE_NEXT_SIBLING_OFFSET); 
 }
 
 /* Get leaf node cell key. */
@@ -84,7 +84,7 @@ void *LeafNodeGetCellKey(void *leaf_node, uint32_t index, uint32_t key_len, uint
         uint32_t column_size = RootNodeGetColumnSize(leaf_node);
         return (leaf_node + ROOT_NODE_META_COLUMN_SIZE_OFFSET + ROOT_NODE_META_COLUMN_SIZE_SIZE + 
                 ROOT_NODE_META_COLUMN_SIZE * column_size + default_value_len + CELL_NUM_SIZE + 
-                LEAF_NODE_NEXT_LEAF_SIZE + cell_len * index + value_len); 
+                LEAF_NODE_NEXT_SIBLING_SIZE + cell_len * index + value_len); 
     } else
         return (leaf_node + LEAF_NODE_HEAD_SIZE + cell_len * index + value_len);
 }
