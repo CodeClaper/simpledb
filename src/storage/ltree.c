@@ -221,7 +221,7 @@ static void decrease_leaf_node_cell_num(void *node, uint32_t default_value_len) 
 }
 
 /* Get leaf node next leaf. */
-static uint32_t get_leaf_node_next_leaf(void *node, uint32_t default_value_len) {
+static uint32_t get_leaf_node_next_sibling(void *node, uint32_t default_value_len) {
     if (is_root_node(node)) {
         uint32_t column_size = get_column_size(node);
         return *(uint32_t *)(node + ROOT_NODE_META_COLUMN_SIZE_OFFSET + ROOT_NODE_META_COLUMN_SIZE_SIZE + 
@@ -232,7 +232,7 @@ static uint32_t get_leaf_node_next_leaf(void *node, uint32_t default_value_len) 
 }
 
 /* Set leaf node next leaf */
-static void set_leaf_node_next_leaf(void *node, uint32_t default_value_len, uint32_t value) {
+static void set_leaf_node_next_sibling(void *node, uint32_t default_value_len, uint32_t value) {
     if (is_root_node(node)) {
         uint32_t column_size = get_column_size(node);
         *(uint32_t *)(node + ROOT_NODE_META_COLUMN_SIZE_OFFSET + ROOT_NODE_META_COLUMN_SIZE_SIZE + 
@@ -590,7 +590,7 @@ void initial_leaf_node(void *leaf_node, uint32_t default_value_len, bool is_root
     set_root_node(leaf_node, is_root);
     set_leaf_node_cell_num(leaf_node, default_value_len, 0);
     /* 'next leaf = 0' means no subling leaf node. */
-    set_leaf_node_next_leaf(leaf_node, default_value_len, 0); 
+    set_leaf_node_next_sibling(leaf_node, default_value_len, 0); 
 }
 
 /* Initialize internal node. */
@@ -870,7 +870,7 @@ static void copy_root_to_leaf_node(Table *table, uint32_t new_page_num,
 
     initial_leaf_node(leaf_node, default_value_len, false);
     set_leaf_node_cell_num(leaf_node, default_value_len, get_leaf_node_cell_num(root, default_value_len));
-    set_leaf_node_next_leaf(leaf_node, default_value_len, get_leaf_node_next_leaf(root, default_value_len));
+    set_leaf_node_next_sibling(leaf_node, default_value_len, get_leaf_node_next_sibling(root, default_value_len));
     cell_num = get_leaf_node_cell_num_pointer(root, default_value_len); 
 
     uint32_t i;
@@ -1436,8 +1436,8 @@ static void insert_and_split_leaf_node(Row *row, Refer *refer, uint32_t key_len,
 
     /* Both of old leaf node and new leaf node have same parent internal node. */
     set_parent_pointer(new_node, parent_page_num);
-    set_leaf_node_next_leaf(new_node, default_value_len, get_leaf_node_next_leaf(old_node, default_value_len));
-    set_leaf_node_next_leaf(old_node, default_value_len, next_unused_page_num);
+    set_leaf_node_next_sibling(new_node, default_value_len, get_leaf_node_next_sibling(old_node, default_value_len));
+    set_leaf_node_next_sibling(old_node, default_value_len, next_unused_page_num);
 
     /* All existing keys plus new key should should be divided 
      * evenly between old (left) and new (right) nodes.
@@ -1497,7 +1497,7 @@ static void insert_and_split_leaf_node(Row *row, Refer *refer, uint32_t key_len,
     /* Set cell num */
     set_leaf_node_cell_num(old_node, default_value_len, LEFT_SPLIT_COUNT);
     set_leaf_node_cell_num(new_node, default_value_len, RIGHT_SPLIT_COUNT);
-    set_leaf_node_next_leaf(old_node, default_value_len, next_unused_page_num);
+    set_leaf_node_next_sibling(old_node, default_value_len, next_unused_page_num);
 
     /* If the old node is root, need to creat new root node. */
     if (is_root_node(old_node)) 
@@ -1690,8 +1690,8 @@ static void split_root_leaf_node_append_column(uint32_t page_num, Table *table, 
 
     /* Both of old leaf node and new leaf node have same parent internal node. */
     set_parent_pointer(new_node, get_parent_pointer(leaf_node));
-    set_leaf_node_next_leaf(new_node, default_value_len, get_leaf_node_next_leaf(leaf_node, default_value_len));
-    set_leaf_node_next_leaf(leaf_node, default_value_len, next_unused_page_num);
+    set_leaf_node_next_sibling(new_node, default_value_len, get_leaf_node_next_sibling(leaf_node, default_value_len));
+    set_leaf_node_next_sibling(leaf_node, default_value_len, next_unused_page_num);
 
     /* All existing keys plus new key should should be divided 
      * evenly between old (left) and new (right) nodes.
@@ -1723,7 +1723,7 @@ static void split_root_leaf_node_append_column(uint32_t page_num, Table *table, 
     /* Set cell num */
     set_leaf_node_cell_num(leaf_node, default_value_len, LEFT_SPLIT_COUNT);
     set_leaf_node_cell_num(new_node, default_value_len, RIGHT_SPLIT_COUNT);
-    set_leaf_node_next_leaf(leaf_node, default_value_len, next_unused_page_num);
+    set_leaf_node_next_sibling(leaf_node, default_value_len, next_unused_page_num);
 
     /* Create new root node. */
     create_new_root_node(table, next_unused_page_num, key_len, value_len, default_value_len); 
@@ -2323,7 +2323,7 @@ static void make_empty_root_node(Table *table) {
 
     set_node_type(root, LEAF_NODE);
     set_leaf_node_cell_num(root, default_value_len, 0);
-    set_leaf_node_next_leaf(root, default_value_len, 0);
+    set_leaf_node_next_sibling(root, default_value_len, 0);
 
     /* Release root buffer. */
     ReleaseBuffer(buffer);
