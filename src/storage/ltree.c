@@ -335,6 +335,29 @@ void set_internal_node_keys_num(void *node, uint32_t default_value_len, uint32_t
     }
 }
 
+/* Get internal node next sibling. */
+uint32_t get_internal_node_next_sibling(void *node, uint32_t default_value_len) {
+    if (is_root_node(node)) {
+        uint32_t column_size = get_column_size(node);
+        return *(uint32_t *)(node + ROOT_NODE_META_COLUMN_SIZE_OFFSET + ROOT_NODE_META_COLUMN_SIZE_SIZE + 
+                ROOT_NODE_META_COLUMN_SIZE * column_size + default_value_len + KEYS_NUM_SIZE);
+    } else {
+        return *(uint32_t *)(node + KEYS_NUM_OFFSET + KEYS_NUM_SIZE);
+    }
+}
+
+/* Set internal node next sibling. */
+void set_internal_node_next_sibling(void *node, uint32_t default_value_len, uint32_t sibling_page) {
+    if (is_root_node(node)) {
+        uint32_t column_size = get_column_size(node);
+        *(uint32_t *)(node + ROOT_NODE_META_COLUMN_SIZE_OFFSET + ROOT_NODE_META_COLUMN_SIZE_SIZE + 
+                ROOT_NODE_META_COLUMN_SIZE * column_size + default_value_len + KEYS_NUM_SIZE) = sibling_page;
+    } else {
+        *(uint32_t *)(node + KEYS_NUM_OFFSET + KEYS_NUM_SIZE) = sibling_page;
+    }
+}
+
+
 /* Get right child of internal node  */
 uint32_t get_internal_node_right_child(void *node, uint32_t default_value_len) {
     if (is_root_node(node)) {
@@ -589,14 +612,17 @@ void initial_leaf_node(void *leaf_node, uint32_t default_value_len, bool is_root
     set_node_type(leaf_node, LEAF_NODE);
     set_root_node(leaf_node, is_root);
     set_leaf_node_cell_num(leaf_node, default_value_len, 0);
-    /* 'next leaf = 0' means no subling leaf node. */
+    /* 'sibling = 0' means no subling leaf node. */
     set_leaf_node_next_sibling(leaf_node, default_value_len, 0); 
 }
 
 /* Initialize internal node. */
-void initial_internal_node(void *internal_node, bool is_root) {
+void initial_internal_node(void *internal_node, uint32_t default_value_len, bool is_root) {
     set_node_type(internal_node, INTERNAL_NODE);
     set_root_node(internal_node, is_root);
+    set_internal_node_keys_num(internal_node, default_value_len, 0);
+    /* 'sibling = 0' means no subling internal node. */
+    set_internal_node_next_sibling(internal_node, default_value_len, 0); 
 }
 
 /* Update internal node node key. */
@@ -909,8 +935,9 @@ static void copy_root_to_leaf_node(Table *table, uint32_t new_page_num,
 static void copy_root_to_internal_node(void *root, void *internal_node, 
                                        uint32_t key_len, uint32_t default_value_len) {
     /* Copy header. */
-    initial_internal_node(internal_node, false);
+    initial_internal_node(internal_node, default_value_len, false);
     set_internal_node_keys_num(internal_node, default_value_len, get_internal_node_keys_num(root, default_value_len));
+    set_internal_node_next_sibling(internal_node, default_value_len, get_internal_node_next_sibling(root, default_value_len));
     set_internal_node_right_child(internal_node, default_value_len, get_internal_node_right_child(root, default_value_len));
     set_internal_node_right_child_key(internal_node, key_len, default_value_len, get_internal_node_right_child_key(root, default_value_len));
     uint32_t *keys_num = get_internal_node_keys_num_pointer(root, default_value_len);
@@ -1132,10 +1159,12 @@ static void insert_and_split_internal_node(Table *table, uint32_t old_internal_p
     LockBuffer(new_buffer, RW_WRITER);
     new_internal_node = GetBufferPage(new_buffer);
 
-    initial_internal_node(new_internal_node, false);
+    initial_internal_node(new_internal_node, default_value_len, false);
     set_parent_pointer(new_internal_node, get_parent_pointer(old_internal_node));
     set_internal_node_keys_num(new_internal_node, default_value_len, 0);
     set_internal_node_right_child(new_internal_node, default_value_len, 0);
+    set_internal_node_next_sibling(new_internal_node, default_value_len, get_internal_node_next_sibling(old_internal_node, default_value_len));
+    set_internal_node_next_sibling(old_internal_node, default_value_len, next_unused_page_num);
     
     /* Get the new child node. */
     Buffer new_child_buffer = ReadBuffer(oid, new_child_page_num);
@@ -1758,10 +1787,12 @@ static void split_root_internal_node_append_column(uint32_t page_num, Table *tab
     LockBuffer(new_buffer, RW_WRITER);
     void *new_internal_node = GetBufferPage(new_buffer);
 
-    initial_internal_node(new_internal_node, false);
+    initial_internal_node(new_internal_node, default_value_len, false);
     set_parent_pointer(new_internal_node, get_parent_pointer(old_internal_node));
     set_internal_node_keys_num(new_internal_node, default_value_len, 0);
     set_internal_node_right_child(new_internal_node, default_value_len, 0);
+    set_internal_node_next_sibling(new_internal_node, default_value_len, get_internal_node_next_sibling(old_internal_node, default_value_len));
+    set_internal_node_next_sibling(old_internal_node, default_value_len, next_unused_page_num);
     
     uint32_t RIGHT_SPLIT_COUNT = keys_num / 2;
     uint32_t LEFT_SPLIT_COUNT = keys_num - RIGHT_SPLIT_COUNT;
