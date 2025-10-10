@@ -1,5 +1,8 @@
+#include <stdbool.h>
 #include <stdint.h>
+#include <string.h>
 #include "ltinsert.h"
+#include "bufpool.h"
 #include "ltr.h"
 #include "table.h"
 #include "const.h"
@@ -7,15 +10,472 @@
 #include "bufmgr.h"
 #include "mmgr.h"
 #include "compare.h"
+#include "pager.h"
+#include "refer.h"
+#include "heaptable.h"
+#include "log.h"
+
+static Refer *BtreeInsertInner(Oid oid, void *key, void *search_key, void *value, uint32_t page_num);
+static void BtreeInsertForInternalNodeInsertCell(Oid oid, uint32_t page_num, void *child_node, uint32_t child_page_num, void *child_key);
 
 
-/* Insert item into the btree for internal node. */
-static void BtreeInsertForInternalNode(Oid oid, void *key, void *search_key, uint32_t page_num) {
+/* Find the internal node cell num to insert. 
+ * -----------------------------------------
+ * In this function, we will use binary search to find the target cell.
+ * */
+static uint32_t BtreeInsertForInternalNodeFindCellNum(Oid oid, void *key, void *internal_node) {
+    Table *table;
+    DataType ptype;
+    uint32_t keys_num, min_index, max_index; 
+    
+    table = open_table_inner(oid);
+    ptype = MetaTableFindPrimaryDataType(table->meta_table);
+    keys_num = InternalNodeGetKeysNum(internal_node, table->heap_value_len);
+    min_index = 0;
+    max_index = keys_num;
+
+    while (min_index != max_index) {
+        uint32_t index;
+        void *cell_key;
+
+        index = (max_index + min_index) / 2;
+        cell_key = InternalNodeGetCellKey(internal_node, table->key_len, table->heap_value_len, index);
+        /* Notice: Greate EQ opreator is really import for store data, 
+         * when keep the prince: always keep visible row lie at the forefront of same key cells. */
+        if (GE(GetComparableValue(cell_key, ptype), GetComparableValue(key, ptype), ptype)) 
+            max_index = index;
+        else 
+            min_index = index + 1;
+    }
+    
+    return min_index;
+}
+
+/* Update internal cell key. */
+static void BtreeInsertForInternalNodeUpdateCellKey(Oid oid, uint32_t page_num, void *old_key, void *new_key) {
     Table *table;
     DataType ptype;
     Buffer buffer;
     void *internal_node, *high_key;
-    uint32_t keys_num, i, next_page;
+
+    table = open_table_inner(oid);
+    ptype = MetaTableFindPrimaryDataType(table->meta_table);
+    buffer = ReadBuffer(oid, page_num);
+    LockBuffer(buffer, RW_WRITER);
+    internal_node = GetBufferPage(buffer);
+    high_key = NodeGetHighKey(table, internal_node);
+
+    /* These are three cases:
+     * (1) Old key is less than high key, which means it is in the cells of the internal node. 
+     * (2) Old key is equals to high key, which means it is the right child.
+     * (3) Old key is more than high key, which means the old internal node has spliten, and need to move to next sibling to search. */
+    if (LT(GetComparableValue(old_key, ptype), GetComparableValue(high_key, ptype), ptype)) {
+        uint32_t index;
+        void *cell_key;
+
+        index = BtreeInsertForInternalNodeFindCellNum(oid, old_key, internal_node);
+        cell_key = InternalNodeGetCellKey(internal_node, table->key_len, table->heap_value_len, index);
+        /* Theoretically EQ, just for check. Lots of tricky bugs are caught by the check. */
+        Assert(EQ(GetComparableValue(old_key, ptype), GetComparableValue(cell_key, ptype), ptype));
+        InternalNodeSetCellKey(internal_node, table->key_len, table->heap_value_len, index, new_key);
+    } else if (EQ(GetComparableValue(old_key, ptype), GetComparableValue(high_key, ptype), ptype)) {
+        InternalNodeSetRightKey(internal_node, table->key_len, table->heap_value_len, new_key);
+    } else {
+        uint32_t next_sibling = NodeGetNextSibling(table, internal_node); 
+        Assert(next_sibling != 0);
+        BtreeInsertForInternalNodeUpdateCellKey(oid, next_sibling, old_key, new_key);
+        goto DirectExit; 
+    }
+
+    MakeBufferDirty(buffer);
+    
+    /* Update current internal node parent. */
+    if (!NodeIsRoot(internal_node) &&
+        (EQ(GetComparableValue(old_key, ptype), GetComparableValue(high_key, ptype), ptype) || 
+         EQ(GetComparableValue(new_key, ptype), GetComparableValue(high_key, ptype), ptype))
+    ) {
+        uint32_t parent_num;
+        parent_num = NodeGetParentNum(internal_node);
+        BtreeInsertForInternalNodeUpdateCellKey(oid, parent_num, old_key, new_key);
+    }
+
+DirectExit:
+    /* Unlock Buffer. */
+    UnlockBuffer(buffer);
+    /* Relase Buffer. */
+    ReleaseBuffer(buffer);
+} 
+
+/* Update internal node chidren parent. 
+ * ------------------------------------
+ * Indeed, update the child node parent, should lock it and update it.
+ * But, we do not use any lock, and think it` ok. The reason as follow:
+ * There are only two operations to use parent num, insert new item to parent 
+ * and update parent cell key. Search operation does not use parent num. 
+ * In both the two operations, We use sibling link to make sure find the right target parent.
+ * */
+static void BtreeInsertForInternalNodeUpdateChildrenParent(Oid oid, void *internal_node, uint32_t parent_num) {
+    Table *table;
+    uint32_t keys_num, i;
+
+    table = open_table_inner(oid);
+    keys_num = InternalNodeGetKeysNum(internal_node, table->heap_value_len);
+
+    for (i = 0; i < keys_num; i++) {
+        uint32_t child_page;
+        Buffer child_buffer;
+        void *child_node;
+
+        child_page = InternalNodeGetCellValue(internal_node, table->key_len, table->heap_value_len, i);
+        child_buffer = ReadBuffer(oid, child_page);
+        child_node = GetBufferPage(child_buffer);
+        NodeSetParentNum(child_node, parent_num);
+        
+        MakeBufferDirty(child_buffer);
+        ReleaseBuffer(child_buffer);
+    }
+}
+
+/* Upgrade root internal node. */
+static void BtreeInsertForInternalNodeUpgradeRoot(Oid oid, void *root, void *right_node, uint32_t right_page) {
+    Table *table;
+    Buffer new_buffer;
+    void *new_internal_node;
+    uint32_t next_page_num, keys_num, i;
+    
+    table = open_table_inner(oid);
+    keys_num = InternalNodeGetKeysNum(root, table->heap_value_len);
+
+    next_page_num = GetNextUnusedPageNum(table);
+    new_buffer = ReadBuffer(oid, next_page_num);
+    new_internal_node = GetBufferPage(new_buffer);
+
+    /* Initialize new internal node. */
+    InternalNodeInitialize(new_internal_node, table->heap_value_len, false);
+    /* Set keys num, */
+    InternalNodeSetKeysNum(new_internal_node, table->heap_value_len, keys_num);
+    /* Set sibling. */
+    NodeSetNextSibling(table, new_internal_node, right_page);
+    /* Set right child*/
+    InternalNodeSetRightKey(new_internal_node, table->key_len, table->heap_value_len, 
+                            InternalNodeGetRightKey(root, table->heap_value_len));
+    InternalNodeSetRightNum(new_internal_node, table->heap_value_len,
+                            InternalNodeGetRightNum(root, table->heap_value_len));
+
+    /* Set cells. */
+    for (i = 0; i < keys_num; i++) {
+        InternalNodeSetCellKey(new_internal_node, table->key_len, table->heap_value_len, i,
+                               InternalNodeGetCellKey(root, table->key_len, table->heap_value_len, i));
+        InternalNodeSetCellValue(new_internal_node, table->key_len, table->heap_value_len, i, 
+                                 InternalNodeGetCellValue(root, table->key_len, table->heap_value_len, i));
+    }
+
+    /* Update chidren parent of the new internal node. */
+    BtreeInsertForInternalNodeUpdateChildrenParent(oid, new_internal_node, next_page_num);
+
+    /* Set keys num. */
+    InternalNodeSetKeysNum(root, table->heap_value_len, 1);
+
+    /* Register leaf node to root. */
+    InternalNodeSetCellKey(root, table->key_len, table->heap_value_len, 0, NodeGetHighKey(table, new_internal_node));
+    InternalNodeSetCellValue(root, table->key_len, table->heap_value_len, 0, next_page_num);
+    InternalNodeSetRightKey(root, table->key_len, table->heap_value_len, NodeGetHighKey(table, right_node));
+    InternalNodeSetRightNum(root, table->heap_value_len, right_page);
+
+    MakeBufferDirty(new_buffer);
+    ReleaseBuffer(new_buffer);
+}
+
+/* Check if internal node is safe when inserting new item. */
+static bool BtreeInsertForInternalNodeSafe(void *internal_node, uint32_t keys_num, uint32_t key_len, uint32_t default_value_len) {
+    uint32_t cell_len = key_len + INTERNAL_NODE_CELL_CHILD_SIZE;
+    if (NodeIsRoot(internal_node)) {
+        uint32_t column_size = RootNodeGetColumnSize(internal_node);
+        return COMMON_NODE_HEADER_SIZE + ROOT_NODE_META_COLUMN_SIZE_SIZE + ROOT_NODE_META_COLUMN_SIZE * column_size + 
+               default_value_len + KEYS_NUM_SIZE + INTERNAL_NODE_NEXT_SIBLING_SIZE + RIGHT_CHILD_SIZE + key_len + cell_len * (keys_num + 1) <= PAGE_SIZE;
+    } else {
+        uint32_t internal_head_len = COMMON_NODE_HEADER_SIZE + KEYS_NUM_SIZE + INTERNAL_NODE_NEXT_SIBLING_SIZE + RIGHT_CHILD_SIZE + key_len;
+        return internal_head_len + cell_len * (keys_num + 1) <= PAGE_SIZE;
+    }
+}
+
+/* Insert item into the internal node and split. */
+static void BtreeInsertForInternalNodeSplit(Oid oid, void *internal_node, uint32_t child_page_num, void *child_key) {
+    Table *table;
+    DataType ptype;
+    void *high_key;
+    Buffer new_buffer;
+    void *new_internal_node;
+    uint32_t keys_num, next_page_num, target_index, right_page, LEFT_SPLIT_COUNT, RIGHT_SPLIT_COUNT;
+
+    table = open_table_inner(oid);
+    ptype = MetaTableFindPrimaryDataType(table->meta_table);
+    high_key = NodeGetHighKey(table, internal_node);
+    right_page = InternalNodeGetRightNum(internal_node, table->heap_value_len);
+    keys_num = InternalNodeGetKeysNum(internal_node, table->heap_value_len);
+
+    next_page_num = GetNextUnusedPageNum(table);
+    new_buffer = ReadBuffer(oid, next_page_num);
+    new_internal_node = GetBufferPage(new_buffer);
+    target_index = BtreeInsertForInternalNodeFindCellNum(oid, child_key, internal_node);
+
+    /* Initialize new internal node. */
+    InternalNodeInitialize(internal_node, table->heap_value_len, false);
+    /* Switch sibling. */
+    NodeSetNextSibling(table, new_internal_node, NodeGetNextSibling(table, internal_node));
+    NodeSetNextSibling(table, internal_node, next_page_num);
+
+    /* We need to deal with two case:
+     * (1) The new child key is greater than high key, which means should be the right child of the internal node. 
+     * (2) Otherwise, the new child should be in cells of the internal node. */
+    if (GT(GetComparableValue(child_key, ptype), 
+           GetComparableValue(high_key, ptype), 
+           ptype)
+    ) {
+        InternalNodeSetRightKey(internal_node, table->key_len, table->heap_value_len, child_key);
+        InternalNodeSetRightNum(internal_node, table->heap_value_len, child_page_num);
+
+        /* If current internal node is not root, 
+         * should update it` parent cell key. */
+        if (!NodeIsRoot(internal_node)) {
+            uint32_t parent_num = NodeGetParentNum(internal_node);
+            BtreeInsertForInternalNodeUpdateCellKey(oid, parent_num, high_key, child_key);
+        }
+    
+        /* Use the old right child as the new child. */
+        child_page_num = right_page;
+        child_key = high_key;
+        target_index = keys_num;
+    }
+
+    RIGHT_SPLIT_COUNT = (keys_num + 1) / 2;
+    LEFT_SPLIT_COUNT = (keys_num + 1) - RIGHT_SPLIT_COUNT;
+
+    int i;
+    for (i = keys_num; i >= 0; i--) {
+        uint32_t new_index;
+        void *destination_node;
+
+        /* New position. */
+        new_index = i % LEFT_SPLIT_COUNT;
+        /* Define which node. */ 
+        destination_node = (i >= LEFT_SPLIT_COUNT)
+                    ? new_internal_node 
+                    : internal_node;
+
+        if (i == target_index) {
+            InternalNodeSetCellKey(destination_node, table->key_len, table->heap_value_len, new_index, child_key); 
+            InternalNodeSetCellValue(destination_node, table->key_len, table->heap_value_len, new_index, child_page_num);
+        } else if (i > target_index) {
+            /* Right cells make cell space. */
+            InternalNodeSetCellKey(destination_node, table->key_len, table->heap_value_len, new_index,
+                                   InternalNodeGetCellKey(internal_node, table->key_len, table->heap_value_len, i - 1));
+            InternalNodeSetCellValue(destination_node, table->key_len, table->heap_value_len, new_index, 
+                                     InternalNodeGetCellValue(internal_node, table->key_len, table->heap_value_len, i - 1));
+        } else {
+            InternalNodeSetCellKey(destination_node, table->key_len, table->heap_value_len, new_index, 
+                                   InternalNodeGetCellKey(internal_node, table->key_len, table->heap_value_len, i));
+            InternalNodeSetCellValue(destination_node, table->key_len, table->heap_value_len, new_index, 
+                                     InternalNodeGetCellValue(internal_node, table->key_len, table->heap_value_len, i));
+        }
+    }
+
+    /* Set new internal node keys num. */
+    InternalNodeSetKeysNum(new_internal_node, table->heap_value_len, RIGHT_SPLIT_COUNT);
+    /* Set new internal right child. */
+    InternalNodeSetRightKey(new_internal_node, table->key_len, table->heap_value_len,
+                            InternalNodeGetRightKey(internal_node, table->heap_value_len));
+    InternalNodeSetRightNum(new_internal_node, table->heap_value_len, 
+                            InternalNodeGetRightNum(internal_node, table->heap_value_len));
+    /* Update chidren parent of the new internal node. */
+    BtreeInsertForInternalNodeUpdateChildrenParent(oid, new_internal_node, next_page_num);
+
+    /* Set old internal node keys num. */
+    InternalNodeSetKeysNum(internal_node, table->heap_value_len, LEFT_SPLIT_COUNT - 1);
+    /* Set old internal node right child. */
+    InternalNodeSetRightKey(internal_node, table->key_len, table->heap_value_len, 
+                            InternalNodeGetCellKey(internal_node, table->key_len, table->heap_value_len, LEFT_SPLIT_COUNT - 1));
+    InternalNodeSetRightNum(internal_node, table->heap_value_len, 
+                            InternalNodeGetCellValue(internal_node, table->key_len, table->heap_value_len, LEFT_SPLIT_COUNT -1));
+
+    /* If old internal is root, need to upgrade. 
+     * Otherwise, it`s a normal internal node. 
+     * Maybe the max key change, need update max key in parent internal node. 
+     * Note that: because of new_max_key more likely less than the old_max_key,
+     * so mass of parent internal node cells may be happer.
+     * We'll resort parent internal node cells lately. 
+     * */
+    if (NodeIsRoot(internal_node)) 
+        BtreeInsertForInternalNodeUpgradeRoot(oid, internal_node, new_internal_node, next_page_num);
+    else {
+        uint32_t parent_num;
+        void *child_key;
+
+        parent_num = NodeGetParentNum(internal_node);
+        child_key = NodeGetHighKey(table, new_internal_node);
+
+        /* Update parent cell key. */
+        BtreeInsertForInternalNodeUpdateCellKey(oid, parent_num, 
+                                                InternalNodeGetRightKey(new_internal_node, table->heap_value_len), 
+                                                InternalNodeGetRightKey(internal_node, table->heap_value_len));
+        
+        /* Insert new internal node to parent. */
+        BtreeInsertForInternalNodeInsertCell(oid, parent_num, new_internal_node, next_page_num, child_key);
+    }
+
+    MakeBufferDirty(new_buffer);
+    ReleaseBuffer(new_buffer);
+}
+
+/* Insert item into the internal node no split. */
+static void BtreeInsertForInternalNodeNoSplit(Oid oid, void *internal_node, uint32_t child_page_num, void *child_key) {
+    Table *table;
+    DataType ptype;
+    void *high_key;
+    uint32_t keys_num;
+
+    table = open_table_inner(oid);
+    ptype = MetaTableFindPrimaryDataType(table->meta_table);
+    high_key = NodeGetHighKey(table, internal_node);
+    keys_num = InternalNodeGetKeysNum(internal_node, table->heap_value_len);
+
+    /* We need to deal with two case:
+     * (1) The new child key is greater than high key, which means should be the right child of the internal node. 
+     * (2) Otherwise, the new child should be in cells of the internal node. */
+    if (GT(GetComparableValue(child_key, ptype), 
+           GetComparableValue(high_key, ptype), 
+           ptype)
+    ) {
+        InternalNodeSetCellKey(internal_node, table->key_len, table->heap_value_len, keys_num, high_key);
+        InternalNodeSetCellValue(internal_node, table->key_len, table->heap_value_len, keys_num, InternalNodeGetRightNum(internal_node, table->heap_value_len));
+        InternalNodeSetRightKey(internal_node, table->key_len, table->heap_value_len, child_key);
+        InternalNodeSetRightNum(internal_node, table->heap_value_len, child_page_num); 
+
+        /* If current internal node is not root, 
+         * should update it` parent cell key. */
+        if (!NodeIsRoot(internal_node)) {
+            uint32_t parent_num = NodeGetParentNum(internal_node);
+            BtreeInsertForInternalNodeUpdateCellKey(oid, parent_num, high_key, child_key);
+        }
+    } else {
+        uint32_t target_index, i;
+
+        target_index = BtreeInsertForInternalNodeFindCellNum(oid, child_key, internal_node);
+        for (i = keys_num; i > target_index; i--) {
+            InternalNodeSetCellKey(internal_node, table->key_len, table->heap_value_len,i, 
+                                   InternalNodeGetCellKey(internal_node, table->key_len, table->heap_value_len, i - 1));
+            InternalNodeSetCellValue(internal_node, table->key_len, table->heap_value_len, i, 
+                                     InternalNodeGetCellValue(internal_node, table->key_len, table->heap_value_len, i - 1));
+        }
+
+        /* Set new child cell. */
+        InternalNodeSetCellKey(internal_node, table->key_len, table->heap_value_len, target_index, child_key);
+        InternalNodeSetCellValue(internal_node, table->key_len, table->heap_value_len, target_index, child_page_num);
+    }
+
+    /* Increase keys num. */
+    InternalNodeIncreaseKeysNum(internal_node, table->heap_value_len);
+}
+
+/* Insert item into the internal node. */
+static void BtreeInsertForInternalNodeInsertCell(Oid oid, uint32_t page_num, void *child_node, uint32_t child_page_num, void *child_key) {
+    Table *table;
+    DataType ptype;
+    Buffer buffer;
+    void *internal_node, *high_key;
+    uint32_t keys_num;
+
+    table = open_table_inner(oid);
+    ptype = MetaTableFindPrimaryDataType(table->meta_table);
+
+    buffer = ReadBuffer(oid, page_num);
+    LockBuffer(buffer, RW_WRITER);
+    internal_node = GetBufferPage(buffer);
+    high_key = NodeGetHighKey(table, internal_node);
+    keys_num = InternalNodeGetKeysNum(internal_node, table->heap_value_len);
+    
+    /* Only one condition to move to sibling:
+     * The new child key is more than high key. */
+    if (GT(GetComparableValue(child_key, ptype), GetComparableValue(high_key, ptype), ptype)) {
+        uint32_t next_sibling = NodeGetNextSibling(table, internal_node);
+        Assert(next_sibling != 0);
+        BtreeInsertForInternalNodeInsertCell(oid, next_sibling, child_node, child_page_num, child_key);
+    } else {
+        /* If current is safe, just insert new cell, not split.
+         * Otherwise, split first and then insert new cell. */
+        if (BtreeInsertForInternalNodeSafe(internal_node, keys_num, table->key_len, table->heap_value_len))
+            BtreeInsertForInternalNodeNoSplit(oid, internal_node, child_page_num, child_key);
+        else
+            BtreeInsertForInternalNodeSplit(oid, internal_node, child_page_num, child_key);
+            
+        /* Maybe parent is wrong, but it` ok. */
+        NodeSetParentNum(child_node, page_num);
+
+        /* Make buffer dirty. */
+        MakeBufferDirty(buffer);
+    }
+
+    UnlockBuffer(buffer);
+    ReleaseBuffer(buffer);
+}
+
+/* Insert item into the btree for internal node. 
+ * ---------------------------------------------
+ * In this function, we will use binary search to find the target cell.
+ * */
+static void BtreeInsertForInternalNodeExtend(Oid oid, void *key, void *value, void *internal_node) {
+    Table *table;
+    DataType ptype;
+    uint32_t keys_num, min_index, max_index, target_page;
+    void *search_key;
+    
+    table = open_table_inner(oid);
+    ptype = MetaTableFindPrimaryDataType(table->meta_table);
+    keys_num = InternalNodeGetKeysNum(internal_node, table->heap_value_len);
+    min_index = 0;
+    max_index = keys_num;
+
+    while (min_index != max_index) {
+        uint32_t index;
+        void *cell_key;
+
+        index = (max_index + min_index) / 2;
+        cell_key = InternalNodeGetCellKey(internal_node, table->key_len, table->heap_value_len, index);
+        /* Notice: Greate EQ opreator is really import for store data, 
+         * when keep the prince: always keep visible row lie at the forefront of same key cells. */
+        if (GE(GetComparableValue(cell_key, ptype), GetComparableValue(key, ptype), ptype)) 
+            max_index = index;
+        else 
+            min_index = index + 1;
+    }
+
+    if (min_index > keys_num)
+        db_log(PANIC, "Tried to access child_num %d > num_keys %d.", 
+               min_index, 
+               keys_num);
+    else if (min_index == keys_num) {
+        /* The target cell is right child. */
+        search_key = InternalNodeGetRightKey(internal_node, table->heap_value_len);
+        target_page = InternalNodeGetRightNum(internal_node, table->heap_value_len);
+        BtreeInsertInner(oid, key, search_key, value, target_page);
+    } else {
+        /* The target cell in cells. */
+        search_key = InternalNodeGetCellKey(internal_node, table->key_len, table->heap_value_len, min_index);
+        target_page = InternalNodeGetCellValue(internal_node, table->key_len, table->heap_value_len, min_index);
+        BtreeInsertInner(oid, key, search_key, value, target_page);
+    }
+}
+
+/* Insert item into the btree for internal node. 
+ * ---------------------------------------------
+ * Insert for internal node, we just lock the node using reader lock.
+ * Because, we do not change it.
+ * */
+static void BtreeInsertForInternalNode(Oid oid, void *key, void *search_key, void *value, uint32_t page_num, Refer *refer) {
+    Table *table;
+    DataType ptype;
+    Buffer buffer;
+    void *internal_node, *high_key;
 
     table = open_table_inner(oid);
 
@@ -24,64 +484,384 @@ static void BtreeInsertForInternalNode(Oid oid, void *key, void *search_key, uin
     LockBuffer(buffer, RW_WRITER);
     internal_node = GetBufferPageCopy(buffer);
     high_key = NodeGetHighKey(table, internal_node);
-    keys_num = InternalNodeGetKeysNum(internal_node, table->heap_value_len);
 
     UnlockBuffer(buffer);
     ReleaseBuffer(buffer);
     
+    /* Conditions to move to sibling:
+     * (1) The target node has spliten.
+     * (2) The key is greater the high key, 
+     *     which means the target cell not in the current node. */
     if (NodeHasSplit(search_key, high_key, ptype) &&
         GT(GetComparableValue(key, ptype), GetComparableValue(high_key, ptype), ptype)
     ) {
-        //
-    }
+        uint32_t next_sibling = NodeGetNextSibling(table, internal_node);
+        Assert(next_sibling != 0);
+        BtreeInsertForInternalNode(oid, key, search_key, value, next_sibling, refer);
+    } else
+        BtreeInsertForInternalNodeExtend(oid, key, value, internal_node);    
 
     dfree(internal_node);
 }
 
-/* Insert item into the btree for leaf node. */
-static void BtreeInsertForLeafNode(Oid oid, void *key, void *search_key, uint32_t page_num) {
+
+/* Find the leaf node cell num to insert. 
+ * -----------------------------------------
+ * In this function, we will use binary search to find the target cell.
+ * */
+static uint32_t BtreeInsertForLeafNodeFindCellNum(Oid oid, void *key, void *leaf_node) {
     Table *table;
-    MetaColumn *priamry_meta_coumn;
-    Buffer buffer;
-    void *leaf_node, *high_key;
-    uint32_t cell_num, value_len, key_len, default_value_len;
+    DataType ptype;
+    uint32_t cell_num, min_index, max_index;
+    
+    table = open_table_inner(oid);
+    ptype = MetaTableFindPrimaryDataType(table->meta_table);
+    cell_num = LeafNodeGetCellNum(leaf_node, table->heap_value_len);
+    min_index = 0;
+    max_index = cell_num;
+
+    while (min_index != max_index) {
+        uint32_t index;
+        void *cell_key;
+
+        index = (max_index + min_index) / 2;
+        cell_key = LeafNodeGetCellKey(leaf_node, table->key_len, table->index_value_len, table->heap_value_len, index);
+        /* Notice: Greate EQ opreator is really import for store data, 
+         * when keep the prince: always keep visible row lie at the forefront of same key cells. */
+        if (GE(GetComparableValue(cell_key, ptype), GetComparableValue(key, ptype), ptype)) {
+            max_index = index;
+        } else {
+            min_index = index + 1; 
+        }
+    }
+
+    return min_index;
+}
+
+/* Root Leaf node upgrade to Root Internal node. */
+static void BtreeInsertForLeafNodeUpgradeRoot(Oid oid, void *root, void *right_node, uint32_t right_page) {
+    Table *table;
+    uint32_t cell_num, column_size, next_page_num, i;
+    Buffer new_buffer;
+    void *new_leaf_node;
 
     table = open_table_inner(oid);
-    priamry_meta_coumn = MetaTableFindPrimaryKey(table->meta_table);
+    cell_num = LeafNodeGetCellNum(root, table->heap_value_len);
+    column_size = RootNodeGetColumnSize(root);
+
+    next_page_num = GetNextUnusedPageNum(table);
+    new_buffer = ReadBuffer(oid, next_page_num);
+    new_leaf_node = GetBufferPage(new_buffer);
+    
+    /* Initialize leaf node. */
+    LeafNodeInitialize(new_leaf_node, table->heap_value_len, false);
+    /* Set cell num. */
+    LeafNodeSetCellNum(new_leaf_node, table->heap_value_len, cell_num);
+    /* Set sibling. */
+    NodeSetNextSibling(table, new_leaf_node, right_page);
+
+    /* Copy each cell. */
+    for (i = 0; i < cell_num; i++) {
+        LeafNodeSetCellKey(new_leaf_node, table->key_len, table->index_value_len, table->heap_value_len, i, 
+                           LeafNodeGetCellKey(root, table->key_len, table->index_value_len, table->heap_value_len, i));
+        LeafNodeSetCellValue(new_leaf_node, table->key_len, table->index_value_len, table->heap_value_len, i, 
+                             LeafNodeGetCellValue(root, table->key_len, table->index_value_len, table->heap_value_len, i));
+        /* Update refer. */
+        update_refer(oid, table->root_page_num, i, next_page_num, i);
+        HeapTableUpdateIndexRefer(
+            table, 
+            LeafNodeGetCellValue(root, table->key_len, table->index_value_len, table->heap_value_len, i), 
+            new_refer(oid, next_page_num, i)
+        );
+    }
+
+    /* Set parent. */
+    NodeSetParentNum(new_leaf_node, ROOT_PAGE_NUM);
+    NodeSetParentNum(right_node, ROOT_PAGE_NUM);
+
+    /* Make clear outsides header. */
+    uint32_t ROOT_LEAF_NODE_HEADER_SIZE = COMMON_NODE_HEADER_SIZE + ROOT_NODE_META_COLUMN_SIZE_SIZE 
+                                        + ROOT_NODE_META_COLUMN_SIZE * column_size;
+    memset(root + ROOT_LEAF_NODE_HEADER_SIZE, 0, PAGE_SIZE - ROOT_LEAF_NODE_HEADER_SIZE);
+    
+    /* upgrade to internal node. */
+    SetNodeType(root, INTERNAL_NODE);
+
+    /* Set keys num. */
+    InternalNodeSetKeysNum(root, table->heap_value_len, 1);
+
+    /* Register leaf node to root. */
+    InternalNodeSetCellKey(root, table->key_len, table->heap_value_len, 0, NodeGetHighKey(table, new_leaf_node));
+    InternalNodeSetCellValue(root, table->key_len, table->heap_value_len, 0, next_page_num);
+    InternalNodeSetRightKey(root, table->key_len, table->heap_value_len, NodeGetHighKey(table, right_node));
+    InternalNodeSetRightNum(root, table->heap_value_len, right_page);
+
+    MakeBufferDirty(new_buffer);
+    ReleaseBuffer(new_buffer);
+}
+
+/* Check if leaf node is safe when inserting new item. */
+static bool BtreeInsertForLeafNodeSafe(void *leaf_node, uint32_t key_len, uint32_t value_len, uint32_t default_value_len, uint32_t cell_num) {
+    uint32_t cell_len = key_len + value_len;
+    if (NodeIsRoot(leaf_node)) {
+        uint32_t column_size = RootNodeGetColumnSize(leaf_node);
+        return COMMON_NODE_HEADER_SIZE + ROOT_NODE_META_COLUMN_SIZE_SIZE + ROOT_NODE_META_COLUMN_SIZE * column_size + 
+               default_value_len + CELL_NUM_SIZE + LEAF_NODE_NEXT_SIBLING_SIZE + cell_len * (cell_num + 1) <= PAGE_SIZE;
+    } else {
+        return LEAF_NODE_HEAD_SIZE + cell_len *(cell_num + 1) <= PAGE_SIZE;
+    }
+}
+
+/* Insert item into the btree and split. */
+static void BtreeInsertForLeafNodeSplit(Oid oid, void *key, void *value, void *leaf_node, Refer *refer) {
+    Table *table;
+    uint32_t target_index, cell_num, next_page_num, cell_len, RIGHT_SPLIT_COUNT, LEFT_SPLIT_COUNT;
+    Buffer new_buffer;
+    void *high_key, *new_leaf_node;
+
+    table = open_table_inner(oid);
+    cell_num = LeafNodeGetCellNum(leaf_node, table->heap_value_len);
+    cell_len = table->key_len + table->index_value_len;
+    high_key = NodeGetHighKey(table, leaf_node);
+    target_index = BtreeInsertForLeafNodeFindCellNum(oid, key, leaf_node);
+    refer->cell_num = target_index;
+
+    next_page_num = GetNextUnusedPageNum(table);
+    new_buffer = ReadBuffer(oid, next_page_num);
+    new_leaf_node = GetBufferPage(new_buffer);
+    
+    /* Initialize leaf node. */
+    LeafNodeInitialize(new_leaf_node, table->heap_value_len, false);
+    /* Switch sibling. */
+    NodeSetNextSibling(table, new_leaf_node, NodeGetNextSibling(table, leaf_node));
+    NodeSetNextSibling(table, leaf_node, next_page_num);
+
+    /* All existing keys plus new key should should be divided 
+     * evenly between old (left) and new (right) nodes.
+     * Starting from the right, move each key to correct position. */
+    RIGHT_SPLIT_COUNT = (cell_num + 1) / 2;
+    LEFT_SPLIT_COUNT = (cell_num + 1) - RIGHT_SPLIT_COUNT;
+
+    /* Notice, cant make i uint32_t when i decrease, 
+     * when i = 0 and decrease, it still satisfy i >= 0. */
+    int i; 
+    for (i = cell_num; i >= 0; i--) {
+        uint32_t destination_page, new_index;
+        void *destination_node, *destination;
+
+        /* If index GT than LEAF_SPLIT_COUNT, destination is new old, 
+         * othersize, stay in the old node. */
+        destination_page = (i >= LEFT_SPLIT_COUNT) 
+                            ? next_page_num 
+                            : refer->page_num;
+        destination_node = (i >= LEFT_SPLIT_COUNT) 
+                            ? new_leaf_node 
+                            : leaf_node;
+        /* New position. */
+        new_index = i % LEFT_SPLIT_COUNT;
+        destination = LeafNodeGetCellValue(destination_node, table->key_len, table->index_value_len, table->heap_value_len, new_index);
+
+        /* The cursor rigth cells should move one cell to the right to make space for the cursor, 
+         * include the cell having the old same num as cursor. The cursor leaf cells don`t need to make space.
+         * Because i start with cell number and decrease, right cells firstly move and make space. */
+        if (i == refer->cell_num) {
+            /* Deposit cursor. */
+            LeafNodeSetCellKey(destination_node, table->key_len, table->index_value_len, table->heap_value_len, new_index, key);
+            LeafNodeSetCellValue(destination_node, table->key_len, table->index_value_len, table->heap_value_len, new_index, value);
+        } else if (i > refer->cell_num) {
+            /* Define new position, and right cells make cell space. */
+            memcpy(destination, LeafNodeGetCellValue(leaf_node, table->key_len, table->index_value_len, table->heap_value_len, i - 1), cell_len);
+            /* Update refer. */
+            update_refer(oid, refer->page_num, i - 1, destination_page, new_index);
+            HeapTableUpdateIndexRefer(
+                table, 
+                LeafNodeGetCellValue(leaf_node, table->key_len, table->index_value_len, table->heap_value_len, i - 1), 
+                new_refer(oid, destination_page, new_index)
+            );
+        } else {
+            /* Define new position. */
+            memcpy(destination, LeafNodeGetCellValue(leaf_node, table->key_len, table->index_value_len, table->heap_value_len, i), cell_len);
+            /* Update refer. */
+            update_refer(oid, refer->page_num, i, destination_page, new_index);
+            HeapTableUpdateIndexRefer(
+                table, 
+                LeafNodeGetCellValue(leaf_node, table->key_len, table->index_value_len, table->heap_value_len, i), 
+                new_refer(oid, destination_page, new_index)
+            );
+        }
+    }
+
+    /* Reset cell num. */
+    LeafNodeSetCellNum(leaf_node, table->heap_value_len, LEFT_SPLIT_COUNT);
+    LeafNodeSetCellNum(new_leaf_node, table->heap_value_len, RIGHT_CHILD_OFFSET);
+
+    /* If current is root, it need to upgrade to internal node. 
+     * Otherwise, it is a normal leaf node, maybe the max key change, need update max key in parent internal node. 
+     * Note that: because of new_max_key more likely less than the old_max_key,
+     * so mass of parent internal node cells may be happen. We'll resort parent internal node cells lately.
+     * */
+    if (NodeIsRoot(leaf_node))
+        BtreeInsertForLeafNodeUpgradeRoot(oid, leaf_node, new_leaf_node, next_page_num);
+    else {
+        uint32_t parent_num;
+        void *new_hight_key, *child_key;
+
+        parent_num = NodeGetParentNum(leaf_node);
+        new_hight_key = NodeGetHighKey(table, leaf_node); 
+        child_key = NodeGetHighKey(table, new_leaf_node);
+        
+        /* Update parent cell key. */
+        BtreeInsertForInternalNodeUpdateCellKey(oid, parent_num, high_key, new_hight_key);
+
+        /* Insert new leaf into parent. */
+        BtreeInsertForInternalNodeInsertCell(oid, parent_num, new_leaf_node, next_page_num, child_key);
+    }
+
+    MakeBufferDirty(new_buffer);
+    ReleaseBuffer(new_buffer);
+}
+
+/* Insert item into the btree no split. */
+static void BtreeInsertForLeafNodeNoSplit(Oid oid, void *key, void *value, void *leaf_node, Refer *refer) {
+    Table *table;
+    uint32_t cell_len, cell_num, target_index;
+
+    table = open_table_inner(oid);
+    cell_len = table->key_len + table->index_value_len;
+    cell_num = LeafNodeGetCellNum(leaf_node, table->heap_value_len);
+    target_index = BtreeInsertForLeafNodeFindCellNum(oid, key, leaf_node);
+    refer->cell_num = target_index;
+
+    /* If need to move sibling cells. */
+    if (target_index < cell_num) {
+        /* Make sure move sibling cell from right to left. */
+        int i;
+        for (i = cell_num; i > target_index; i--) {
+            /* Movement. */
+            memcpy(
+                LeafNodeGetCellValue(leaf_node, table->key_len, table->index_value_len, table->heap_value_len, i), 
+                LeafNodeGetCellValue(leaf_node, table->key_len, table->index_value_len, table->heap_value_len, i - 1), 
+                cell_len
+            );
+            /* Update refer. */
+            update_refer(oid, refer->page_num, i - 1, refer->page_num, i);
+            /* Update heap table refer. */
+            HeapTableUpdateIndexRefer(
+                table, 
+                LeafNodeGetCellValue(leaf_node, table->key_len, table->index_value_len, table->heap_value_len, i - 1), 
+                new_refer(oid, refer->page_num, i)
+            );
+        }
+    }
+    
+    /* Set cell key. */
+    LeafNodeSetCellKey(leaf_node, table->key_len, table->index_value_len, table->heap_value_len, target_index, key);
+    /* Set cell value. */
+    LeafNodeSetCellValue(leaf_node, table->key_len, table->index_value_len, table->heap_value_len, target_index, value);
+    /* Increase cell num. */
+    LeafNodeIncreaseCellNum(leaf_node, table->heap_value_len);
+    
+    /* Maybe insertion cause high key change. 
+     * If it does, need to update parent key. */
+    if (!NodeIsRoot(leaf_node) && target_index == cell_num) {
+        uint32_t parent_num;
+        void *old_key;
+
+        parent_num = NodeGetParentNum(leaf_node);
+        old_key = LeafNodeGetCellKey(leaf_node, table->key_len, table->index_value_len, table->heap_value_len, cell_num - 1);
+
+        BtreeInsertForInternalNodeUpdateCellKey(oid, parent_num, old_key, key);
+    }
+}
+
+/* Insert item into the leaf node. */
+static void BtreeInsertForLeafNodeInsertCell(Oid oid, void *key, void *value, void *leaf_node, Refer *refer) {
+    Table *table;
+    uint32_t cell_num;
+
+    table = open_table_inner(oid);
+    cell_num = LeafNodeGetCellNum(leaf_node, table->heap_value_len);
+
+    /* If current is safe, just insert new cell, not split.
+     * Otherwise, split first and then insert new cell. */
+    if (BtreeInsertForLeafNodeSafe(leaf_node, table->key_len, table->index_value_len, table->heap_value_len, cell_num))
+        BtreeInsertForLeafNodeNoSplit(oid, key, value, leaf_node, refer);
+    else
+        BtreeInsertForLeafNodeSplit(oid, key, value, leaf_node, refer);
+}
+
+/* Insert item into the btree for leaf node. */
+static void BtreeInsertForLeafNode(Oid oid, void *key, void *search_key, void *value, uint32_t page_num, Refer *refer) {
+    Table *table;
+    DataType ptype;
+    Buffer buffer;
+    void *leaf_node, *high_key;
+
+    table = open_table_inner(oid);
+    ptype = MetaTableFindPrimaryDataType(table->meta_table);
     buffer = ReadBuffer(oid, page_num);
     LockBuffer(buffer, RW_WRITER);
     leaf_node = GetBufferPage(buffer);
     high_key = NodeGetHighKey(table, leaf_node);
 
+    /* Conditions to move to sibling:
+     * (1) The target node has spliten.
+     * (2) The key is greater the high key, 
+     *     which means the target cell not in the current node. */
+    if (NodeHasSplit(search_key, high_key, ptype) &&
+        GT(GetComparableValue(key, ptype), GetComparableValue(high_key, ptype), ptype)
+    ) {
+        uint32_t next_sibling = NodeGetNextSibling(table, leaf_node);
+        Assert(next_sibling != 0);
+        BtreeInsertForLeafNode(oid, key, search_key, value, next_sibling, refer);
+    } else {
+        refer->page_num = page_num;
+        BtreeInsertForLeafNodeInsertCell(oid, key, value, leaf_node, refer);    
+        MakeBufferDirty(buffer);
+    }
+
     UnlockBuffer(buffer);
     ReleaseBuffer(buffer);
 }
 
-/* Insert item into the btree. */
-void BtreeInsert(Oid oid, void *key, void *value) {
+/* Btree insert. 
+ * --------------
+ * This function just defines to go to leaf node or internal node.
+ * */
+static Refer *BtreeInsertInner(Oid oid, void *key, void *search_key, void *value, uint32_t page_num) {
     Table *table;
-    Buffer root_buffer;
-    void *root_node, *search_key;
+    Buffer buffer;
+    void *node;
     NodeType type;
+    Refer *refer;
 
     table = open_table_inner(oid);
-    root_buffer = ReadBuffer(oid, ROOT_PAGE_NUM);
-    LockBuffer(root_buffer, RW_READERS);
-    root_node = GetBufferPageCopy(root_buffer);
-    UnlockBuffer(root_buffer);
-    ReleaseBuffer(root_buffer);
+    buffer = ReadBuffer(oid, page_num);
+    refer = new_refer(oid, 0, 0);
+
+    LockBuffer(buffer, RW_READERS);
+    node = GetBufferPage(buffer);
+    UnlockBuffer(buffer);
+    ReleaseBuffer(buffer);
     
-    search_key = NodeGetHighKey(table, root_node);
-    type = GetNodeType(root_node);
+    search_key = NodeGetHighKey(table, node);
+    type = GetNodeType(node);
     switch (type) {
         case LEAF_NODE:
-            BtreeInsertForLeafNode(oid, key, search_key, ROOT_PAGE_NUM);
+            BtreeInsertForLeafNode(oid, key, search_key, value, page_num, refer);
             break;
         case INTERNAL_NODE:
-            BtreeInsertForInternalNode(oid, key, search_key, ROOT_PAGE_NUM);
+            BtreeInsertForInternalNode(oid, key, search_key, value, page_num, refer);
             break;
         default:
             UNEXPECTED_VALUE(type);
             break;
     }
+
+    return refer;
+}
+
+/* Insert item into the btree. */
+Refer *BtreeInsert(Oid oid, void *key, void *value) {
+    return BtreeInsertInner(oid, key, value, NULL, ROOT_PAGE_NUM);
 }
