@@ -165,6 +165,71 @@ Refer *HeapTableInsertRow(Row *row, Refer *refer) {
     return currentRefer;
 }
 
+
+/* Insert into heap table. */
+static void HeapTableInsertRowDirectInner(Oid oid, Refer *rootRefer, Row *row) {
+    Table *table;
+    uint32_t row_len, cell_len, cell_num;
+    Buffer buffer;
+    void *block;
+
+    table = open_table_inner(oid);
+    row_len = TableCalcRowLength(table);
+    cell_len = REFER_SIZE + row_len;
+    /* Logically, will not overflow page size. */
+    AssertFalse(OverflowPage(rootRefer, cell_len));
+    buffer = ReadBuffer(rootRefer->oid, rootRefer->page_num);
+    LockBuffer(buffer, RW_WRITER);
+    block = GetBufferBlock(buffer);
+    cell_num = GetPageCellNum(block);
+
+    void *data = serialize_row_data(row, table); 
+    void *destintion = GetPageCellData(block, cell_len, rootRefer->cell_num);
+    /* Assign index refer value. */
+    memset(destintion, 0, REFER_SIZE);
+    /* Assign row ceontent value. */
+    memcpy(destintion + REFER_SIZE, data, row_len);
+    rootRefer->cell_num++;
+    /* Increase cell num. */
+    SetPageCellNum(block, ++cell_num);
+
+    /* If overflow, move to next page. */
+    if (OverflowPage(rootRefer, cell_len)) {
+        rootRefer->page_num++;
+        rootRefer->cell_num = HEAP_TABLE_FIRST_CELL_NUM;
+    }
+
+    MakeBufferDirty(buffer);
+    UnlockBuffer(buffer);
+    ReleaseBuffer(buffer);
+}
+
+/* Direct insert heap table. */
+Refer *HeapTableInsertRowDirect(Oid oid, Row *row) {
+    Table *table;
+    Buffer rootBuffer;
+    void *root;
+    Refer *rootRefer, *currentRefer;
+
+    table = open_table_inner(oid);
+    rootBuffer = ReadBuffer(table->hoid, HEAP_TABLE_ROOT_PAGE);
+    LockBuffer(rootBuffer, RW_WRITER);
+    root = GetBufferBlock(rootBuffer);
+    
+    rootRefer = GetRootRefer(root);
+    currentRefer = instance(Refer);
+    memcpy(currentRefer, rootRefer, sizeof(Refer));
+    
+    /* Insert into heap table. */
+    HeapTableInsertRowDirectInner(oid, rootRefer, row);
+
+    MakeBufferDirty(rootBuffer);
+    UnlockBuffer(rootBuffer);
+    ReleaseBuffer(rootBuffer);
+    
+    return currentRefer;
+}
+
 /* Loop up tuple from heap table. */
 void *HeapTableLookupTuple(Table *table, Refer *refer) {
     Buffer buffer;

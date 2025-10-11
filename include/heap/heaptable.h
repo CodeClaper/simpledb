@@ -13,6 +13,9 @@ bool CreateHeapTable(char *tableName);
 /* Insert row data to heap table. */
 Refer *HeapTableInsertRow(Row *row, Refer *refer);
 
+/* Direct insert heap table. */
+Refer *HeapTableInsertRowDirect(Oid oid, Row *row);
+
 /* Loop up tuple from heap table. */
 void *HeapTableLookupTuple(Table *table, Refer *refer);
 
