@@ -290,6 +290,7 @@ static void BtreeInsertForInternalNodeSplit(Oid oid, void *internal_node, uint32
     /* Update chidren parent of the new internal node. */
     BtreeInsertForInternalNodeUpdateChildrenParent(oid, new_internal_node, next_page_num);
 
+
     /* Set old internal node keys num. */
     InternalNodeSetKeysNum(internal_node, table->heap_value_len, LEFT_SPLIT_COUNT - 1);
     /* Set old internal node right child. */
@@ -297,6 +298,7 @@ static void BtreeInsertForInternalNodeSplit(Oid oid, void *internal_node, uint32
                             InternalNodeGetCellKey(internal_node, table->key_len, table->heap_value_len, LEFT_SPLIT_COUNT - 1));
     InternalNodeSetRightNum(internal_node, table->heap_value_len, 
                             InternalNodeGetCellValue(internal_node, table->key_len, table->heap_value_len, LEFT_SPLIT_COUNT -1));
+
 
     /* If old internal is root, need to upgrade. 
      * Otherwise, it`s a normal internal node. 
@@ -347,7 +349,8 @@ static void BtreeInsertForInternalNodeNoSplit(Oid oid, void *internal_node, uint
            ptype)
     ) {
         InternalNodeSetCellKey(internal_node, table->key_len, table->heap_value_len, keys_num, high_key);
-        InternalNodeSetCellValue(internal_node, table->key_len, table->heap_value_len, keys_num, InternalNodeGetRightNum(internal_node, table->heap_value_len));
+        InternalNodeSetCellValue(internal_node, table->key_len, table->heap_value_len, keys_num, 
+                                 InternalNodeGetRightNum(internal_node, table->heap_value_len));
         InternalNodeSetRightKey(internal_node, table->key_len, table->heap_value_len, child_key);
         InternalNodeSetRightNum(internal_node, table->heap_value_len, child_page_num); 
 
@@ -693,7 +696,7 @@ static void BtreeInsertForLeafNodeSplit(Oid oid, void *key, void *value, void *l
 
     /* Reset cell num. */
     LeafNodeSetCellNum(leaf_node, table->heap_value_len, LEFT_SPLIT_COUNT);
-    LeafNodeSetCellNum(new_leaf_node, table->heap_value_len, RIGHT_CHILD_OFFSET);
+    LeafNodeSetCellNum(new_leaf_node, table->heap_value_len, RIGHT_SPLIT_COUNT);
 
     /* If current is root, it need to upgrade to internal node. 
      * Otherwise, it is a normal leaf node, maybe the max key change, need update max key in parent internal node. 
@@ -829,13 +832,11 @@ static void BtreeInsertForLeafNode(Oid oid, void *key, void *search_key, void *v
  * This function just defines to go to leaf node or internal node.
  * */
 static Refer *BtreeInsertInner(Oid oid, void *key, void *search_key, void *value, uint32_t page_num) {
-    Table *table;
     Buffer buffer;
     void *node;
     NodeType type;
     Refer *refer;
 
-    table = open_table_inner(oid);
     buffer = ReadBuffer(oid, page_num);
     refer = new_refer(oid, 0, 0);
 
@@ -844,7 +845,6 @@ static Refer *BtreeInsertInner(Oid oid, void *key, void *search_key, void *value
     UnlockBuffer(buffer);
     ReleaseBuffer(buffer);
     
-    search_key = NodeGetHighKey(table, node);
     type = GetNodeType(node);
     switch (type) {
         case LEAF_NODE:
@@ -863,5 +863,7 @@ static Refer *BtreeInsertInner(Oid oid, void *key, void *search_key, void *value
 
 /* Insert item into the btree. */
 Refer *BtreeInsert(Oid oid, void *key, void *value) {
-    return BtreeInsertInner(oid, key, value, NULL, ROOT_PAGE_NUM);
+    Assert(key != NULL);
+    Assert(value != NULL);
+    return BtreeInsertInner(oid, key, NULL, value, ROOT_PAGE_NUM);
 }

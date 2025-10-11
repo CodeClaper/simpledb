@@ -325,7 +325,7 @@ void *NodeGetHighKey(Table *table, void *node) {
             return InternalNodeGetRightKey(node, table->heap_value_len);
         case LEAF_NODE: {
             uint32_t cell_num = LeafNodeGetCellNum(node, table->heap_value_len);
-            return LeafNodeGetCellKey(node, cell_num - 1, table->key_len, table->index_value_len, table->heap_value_len);
+            return LeafNodeGetCellKey(node, table->key_len, table->index_value_len, table->heap_value_len, cell_num - 1);
         }
         default:
             UNEXPECTED_VALUE(type);
@@ -353,8 +353,10 @@ void NodeSetNextSibling(Table *table, void *node, uint32_t sibling) {
     switch (type) {
         case INTERNAL_NODE:
             InternalNodeSetNextSibling(node, table->heap_value_len, sibling);
+            break;
         case LEAF_NODE: 
             LeafNodeSetNextSibling(node, table->heap_value_len, sibling);
+            break;
         default:
             UNEXPECTED_VALUE(type);
     }
