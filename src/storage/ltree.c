@@ -2640,33 +2640,6 @@ void *get_array_value(void *destination, uint32_t i, uint32_t span) {
     return (destination + LEAF_NODE_CELL_NULL_FLAG_SIZE + LEAF_NODE_ARRAY_NUM_SIZE + span * i);
 }
 
-/* Get row value. 
- * -------------------
- * Note: Firstly, find values in user-passed row,
- * If missing, return the default values.
- * If not define default values, return null.
- * */
-static void *get_value_from_row(Row *row, MetaColumn *meta_column) {
-    char *column_name = meta_column->column_name;
-
-    ListCell *lc;
-    foreach (lc, row->data) {
-        KeyValue *key_value = lfirst(lc);
-        if (StrEq(column_name, key_value->key))
-           return key_value->value;
-    }
-
-    switch (meta_column->default_value_type) {
-        case DEFAULT_VALUE_NULL:
-        case DEFAULT_VALUE_NONE:
-            return NULL;
-        case DEFAULT_VALUE:
-            return meta_column->default_value;
-        default:
-            UNEXPECTED_VALUE(meta_column->default_value_type);
-    }
-}
-
 /* Serialize array value. 
  * ----------------------------
  * Note: for array value cell, we will reserve 
@@ -2722,7 +2695,7 @@ void *serialize_row_data(Row *row, Table *table) {
     ListCell *lc;
     foreach (lc, meta_table->meta_columns) {
         MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
-        void *value = get_value_from_row(row, meta_column);
+        void *value = RowGetValueOrDefault(row, meta_column);
         if (meta_column->not_null && IsNull(value)) {
             db_log(ERROR, "Column '%s' does`t have a default value.", meta_column->column_name);
             return NULL;
@@ -2758,7 +2731,7 @@ static void *seriable_index_value(Row *row, Refer *refer) {
     foreach (lc, meta_table->meta_columns) {
         MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
         if (meta_column->sys_reserved) {
-            void *value = get_value_from_row(row, meta_column);
+            void *value = RowGetValueOrDefault(row, meta_column);
             assign_row_value(destination + offset, value, meta_column);
             offset += meta_column->column_length;
         }
@@ -2873,7 +2846,7 @@ static void update_index_system_content(void *destination, Row *row, Table *tabl
     foreach (lc, meta_table->meta_columns) {
         MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
         if (meta_column->sys_reserved) {
-            void *value = get_value_from_row(row, meta_column);
+            void *value = RowGetValueOrDefault(row, meta_column);
             assign_row_value(destination + offset, value, meta_column);
             offset += meta_column->column_length;
         }

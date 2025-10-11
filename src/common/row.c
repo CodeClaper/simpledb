@@ -1,4 +1,5 @@
 #include "row.h"
+#include "bufpool.h"
 #include "tuple.h"
 #include "meta.h"
 #include "mmgr.h"
@@ -58,5 +59,32 @@ void *RowFindKey(Row *row, MetaTable *meta_table) {
     }
 
     return NULL;
+}
+
+/* Get row value or default. 
+ * -------------------------
+ * Note: Firstly, find values in user-passed row,
+ * If missing, return the default values.
+ * If not define default values, return null.
+ * */
+void *RowGetValueOrDefault(Row *row, MetaColumn *meta_column) {
+    char *column_name = meta_column->column_name;
+
+    ListCell *lc;
+    foreach (lc, row->data) {
+        KeyValue *key_value = lfirst(lc);
+        if (StrEq(column_name, key_value->key))
+           return key_value->value;
+    }
+
+    switch (meta_column->default_value_type) {
+        case DEFAULT_VALUE_NULL:
+        case DEFAULT_VALUE_NONE:
+            return NULL;
+        case DEFAULT_VALUE:
+            return meta_column->default_value;
+        default:
+            UNEXPECTED_VALUE(meta_column->default_value_type);
+    }
 }
 
