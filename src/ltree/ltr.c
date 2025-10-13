@@ -319,8 +319,7 @@ void LeafNodeInitialize(void *leaf_node, uint32_t default_value_len, bool is_roo
 
 /* Get high key in the node. */
 void *NodeGetHighKey(Table *table, void *node) {
-    NodeType type = GetNodeType(node);
-    switch (type) {
+    switch (GetNodeType(node)) {
         case INTERNAL_NODE:
             return InternalNodeGetRightKey(node, table->heap_value_len);
         case LEAF_NODE: {
@@ -328,7 +327,7 @@ void *NodeGetHighKey(Table *table, void *node) {
             return LeafNodeGetCellKey(node, table->key_len, table->index_value_len, table->heap_value_len, cell_num - 1);
         }
         default:
-            UNEXPECTED_VALUE(type);
+            UNEXPECTED_VALUE(GetNodeType(node));
             return NULL;
     }
 }
