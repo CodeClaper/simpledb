@@ -28,9 +28,6 @@ uint32_t NodeGetNextSibling(Table *table, void *node);
 /* Set next sibling page in the node. */
 void NodeSetNextSibling(Table *table, void *node, uint32_t sibling);
 
-/* If node has spliten. */
-bool NodeHasSplit(void *search_key, void *high_key, DataType ptype);
-
 /* Get internal node keys num. */
 uint32_t InternalNodeGetKeysNum(void *internal_node, uint32_t default_value_len);
 

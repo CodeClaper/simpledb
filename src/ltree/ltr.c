@@ -363,8 +363,3 @@ void NodeSetNextSibling(Table *table, void *node, uint32_t sibling) {
     }
 }
 
-/* If node has spliten. */
-bool NodeHasSplit(void *search_key, void *high_key, DataType ptype) {
-    return GT(GetComparableValue(search_key, ptype), GetComparableValue(high_key, ptype), ptype);
-}
-

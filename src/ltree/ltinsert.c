@@ -522,7 +522,7 @@ static void BtreeInsertForInternalNode(Oid oid, void *key, void *search_key, voi
      * (1) The target node has spliten.
      * (2) The key is greater the high key, 
      *     which means the target cell not in the current node. */
-    if (NodeHasSplit(search_key, high_key, ptype) &&
+    if (GT(GetComparableValue(search_key, ptype), GetComparableValue(high_key, ptype), ptype) &&
         GT(GetComparableValue(key, ptype), GetComparableValue(high_key, ptype), ptype)
     ) {
         uint32_t next_sibling = NodeGetNextSibling(table, internal_node);
@@ -849,7 +849,7 @@ static void BtreeInsertForLeafNode(Oid oid, void *key, void *search_key, void *v
      * (1) The target node has spliten.
      * (2) The key is greater the high key, 
      *     which means the target cell not in the current node. */
-    if (NodeHasSplit(search_key, high_key, ptype) &&
+    if (GT(GetComparableValue(search_key, ptype), GetComparableValue(high_key, ptype), ptype) &&
         GT(GetComparableValue(key, ptype), GetComparableValue(high_key, ptype), ptype)
     ) {
         uint32_t next_sibling = NodeGetNextSibling(table, leaf_node);
