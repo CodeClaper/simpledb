@@ -26,6 +26,9 @@ static inline int CompareRefer(Refer srefer, Refer trefer) {
  * Note: if page_num is -1 and cell_num is -1 which means refer null. */
 Refer *new_refer(Oid oid, int32_t page_num, int32_t cell_num);
 
+/* Check refer */
+void check_refer(Refer *refer);
+
 /* Generate new ReferUpdateEntity. */
 ReferUpdateEntity *new_refer_update_entity(Refer *old_refer, Refer *new_refer);
 

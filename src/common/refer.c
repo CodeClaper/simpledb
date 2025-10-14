@@ -52,6 +52,12 @@ void init_refer() {
     update_refer_lock_content->size = 0;
 }
 
+/* Check refer */
+void check_refer(Refer *refer) {
+    Assert(refer->page_num >= 0);
+    Assert(refer->cell_num >= 0);
+}
+
 /* Get refer oid. */
 static inline Oid get_refer_oid(ReferUpdateEntity *refer_update_entity) {
     return refer_update_entity->old_refer->oid;
