@@ -7,6 +7,7 @@
  * Besides, Update statement, delete statement also use these module for query under conditon.
  ********************************************************************************************
  */
+#include "bufpool.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -31,6 +32,7 @@
 #include "tuple.h"
 #include "func.h"
 #include "ltree.h"
+#include "ltr.h"
 #include "pager.h"
 #include "table.h"
 #include "asserts.h"
@@ -906,11 +908,13 @@ static char *SearchTableNameViaAlias(SelectPlan *select_plan, char *alias_name) 
 /* Scan from leaf node. 
  * -------------------
  * Note that: Scan-index operation only supports for one-table query. */
-static void ScanLeafNode(SelectResult *select_result, uint32_t page_num, Table *table, SelectPlan *select_plan) {
+static void ScanLeafNode(SelectResult *select_result, uint32_t page_num, 
+                         void *boundary_key, Table *table, SelectPlan *select_plan) {
     /* Get cell number, key length and value lenght. */
     uint32_t key_len, value_len, default_value_len, cell_num;
     Buffer buffer;
-    void *leaf_node;
+    DataType ptype;
+    void *leaf_node, *high_key;
     TransEntry *current_trans;
 
     /* Get leaf node buffer. */
@@ -921,6 +925,8 @@ static void ScanLeafNode(SelectResult *select_result, uint32_t page_num, Table *
     key_len = table->key_len;
     value_len = table->index_value_len;
     default_value_len = table->heap_value_len;
+    high_key = NodeGetHighKey(table, leaf_node);
+    ptype = MetaTableFindPrimaryDataType(table->meta_table);
     cell_num = get_leaf_node_cell_num(leaf_node, default_value_len);
     current_trans = FindTransaction();
     Assert(current_trans != NULL);
@@ -934,6 +940,14 @@ static void ScanLeafNode(SelectResult *select_result, uint32_t page_num, Table *
         if (IsVisibleInner(created_xid, expired_xid, current_trans))
             select_plan->rowHanler(NULL, select_result, select_plan->type, select_plan->arg);
     }
+
+    /* The only condition to move to sibling:
+     * The target node has spliten. */
+    if (GT(GetComparableValue(boundary_key, ptype), GetComparableValue(high_key, ptype), ptype)) {
+        uint32_t next_sibling = NodeGetNextSibling(table, leaf_node);
+        Assert(next_sibling != 0);
+        ScanLeafNode(select_result, next_sibling, boundary_key, table, select_plan);
+    }
     
     /* Release the buffer. */
     UnlockBuffer(buffer);
@@ -942,11 +956,12 @@ static void ScanLeafNode(SelectResult *select_result, uint32_t page_num, Table *
 
 /* Select through leaf node. */
 static void SelectLeafNode(SelectResult *select_result, uint32_t page_num, 
-                           Table *table, SelectPlan *select_plan) {
+                           void *boundary_key, Table *table, SelectPlan *select_plan) {
     /* Get cell number, key length and value lenght. */
     uint32_t key_len, value_len, default_value_len, cell_num ;
     Buffer buffer;
-    void *leaf_node;
+    DataType ptype;
+    void *leaf_node, *high_key;
     TransEntry *current_trans;
     SelectResult *head, *nested;
 
@@ -966,6 +981,8 @@ static void SelectLeafNode(SelectResult *select_result, uint32_t page_num,
     value_len = table->index_value_len;
     default_value_len = table->heap_value_len;
     cell_num = get_leaf_node_cell_num(leaf_node, default_value_len);
+    ptype = MetaTableFindPrimaryDataType(table->meta_table);
+    high_key = NodeGetHighKey(table, leaf_node);
     current_trans = FindTransaction();
     head = select_result->head;
     nested = select_result->nested;
@@ -1011,6 +1028,14 @@ static void SelectLeafNode(SelectResult *select_result, uint32_t page_num,
         if (head->nested != NULL)
             dfree(ntuple);
     }
+
+    /* The only condition to move to sibling:
+     * The target node has spliten. */
+    if (GT(GetComparableValue(boundary_key, ptype), GetComparableValue(high_key, ptype), ptype)) {
+        uint32_t next_sibling = NodeGetNextSibling(table, leaf_node);
+        Assert(next_sibling != 0);
+        SelectLeafNode(select_result, next_sibling, boundary_key, table, select_plan);
+    }
     
     /* Release the buffer. */
     ReleaseBuffer(buffer);
@@ -1018,14 +1043,15 @@ static void SelectLeafNode(SelectResult *select_result, uint32_t page_num,
 
 /* Select through internal node. */
 static void SelectInternalNode(SelectResult *select_result, uint32_t page_num, 
-                               Table *table, SelectPlan *select_plan) {
+                               void *boundary_key, Table *table, SelectPlan *select_plan) {
     /* If LimitClauseNode full, not continue. */
     if (LimitClauseIsFull(select_plan))
         return;
 
     Buffer buffer;
-    void *internal_node;
+    DataType ptype;
     MetaColumn *primary_meta_column;
+    void *internal_node, *high_key;
     uint32_t key_len, default_value_len, keys_num;
 
     buffer = ReadBuffer(GET_TABLE_OID(table), page_num);
@@ -1036,7 +1062,9 @@ static void SelectInternalNode(SelectResult *select_result, uint32_t page_num,
     key_len = table->key_len;
     default_value_len = table->heap_value_len;
     keys_num = get_internal_node_keys_num(internal_node, default_value_len);
+    ptype = MetaTableFindPrimaryDataType(table->meta_table);
     primary_meta_column = MetaTableFindPrimaryKey(table->meta_table);
+    high_key = NodeGetHighKey(table, internal_node);
 
     /* Loop each interanl node cell to check if satisfy condition. 
      * Note that: get the internal node keys number in each loop.
@@ -1047,41 +1075,47 @@ static void SelectInternalNode(SelectResult *select_result, uint32_t page_num,
         /* Check if index column, use index to avoid full text scanning. */
         {
             /* Current internal node cell key as max key, previous cell key as min key, so the the range of values is (max_key, max_key]. */
-            void *max_key = GetComparableValue(get_internal_node_key(internal_node, i, key_len, default_value_len), primary_meta_column->column_type); 
+            void *max_key = GetComparableValue(get_internal_node_key(internal_node, i, key_len, default_value_len), ptype); 
             void *min_key = (i == 0) 
                         ? NULL 
-                        : GetComparableValue(get_internal_node_key(internal_node, i - 1, key_len, default_value_len), primary_meta_column->column_type);
-            KeyValue *max_key_value = new_key_value(primary_meta_column->column_name, max_key, primary_meta_column->column_type, GET_TABLE_NAME(table));
-            KeyValue *min_key_value = new_key_value(primary_meta_column->column_name, min_key, primary_meta_column->column_type, GET_TABLE_NAME(table));
+                        : GetComparableValue(get_internal_node_key(internal_node, i - 1, key_len, default_value_len), ptype);
+            KeyValue *max_key_value = new_key_value(primary_meta_column->column_name, max_key, ptype, GET_TABLE_NAME(table));
+            KeyValue *min_key_value = new_key_value(primary_meta_column->column_name, min_key, ptype, GET_TABLE_NAME(table));
             /* Filter the internal node. */
             if (!InternalNodeForSearchCondition(select_plan, min_key_value, max_key_value, select_plan->condition))
                 continue;
         }
 
         /* Check other non-key column */
-        uint32_t child_page_num = get_internal_node_child(internal_node, i, key_len, default_value_len);
-        Assert(child_page_num != 0);
-        Buffer child_buffer = ReadBuffer(GET_TABLE_OID(table), child_page_num);
-        void *node = GetBufferPage(child_buffer);
+        uint32_t child_page_num;
+        Buffer child_buffer;
+        void *child_node;
+        void *child_high_key;
 
-        switch (get_node_type(node)) {
+        child_page_num = get_internal_node_child(internal_node, i, key_len, default_value_len);
+        Assert(child_page_num != 0);
+        child_buffer = ReadBuffer(GET_TABLE_OID(table), child_page_num);
+        child_node = GetBufferPage(child_buffer);
+        child_high_key = NodeGetHighKey(table, child_node);
+
+        switch (get_node_type(child_node)) {
             case LEAF_NODE: {
                 if (select_plan->onlyScanIndex)
                     ScanLeafNode(
                         select_result, child_page_num, 
-                        table, select_plan
+                        child_high_key, table, select_plan
                     );
                 else
                     SelectLeafNode(
                         select_result, child_page_num, 
-                        table, select_plan
+                        child_high_key, table, select_plan
                     );
                 break;
             }
             case INTERNAL_NODE:
                 SelectInternalNode(
                     select_result, child_page_num, 
-                    table, select_plan
+                    child_high_key, table, select_plan
                 );
                 break;
             default:
@@ -1095,27 +1129,33 @@ static void SelectInternalNode(SelectResult *select_result, uint32_t page_num,
 
     /* Don`t forget the right child. */
     /* Fetch right child. */
-    uint32_t right_child_page_num = get_internal_node_right_child(internal_node, default_value_len);
-    Buffer right_child_buffer = ReadBuffer(GET_TABLE_OID(table), right_child_page_num);
-    void *right_child = GetBufferPage(right_child_buffer);
-    switch (get_node_type(right_child)) {
+    uint32_t right_child_page_num;
+    Buffer right_child_buffer;
+    void *right_child_node, *right_high_key;
+
+    right_child_page_num = get_internal_node_right_child(internal_node, default_value_len);
+    right_child_buffer = ReadBuffer(GET_TABLE_OID(table), right_child_page_num);
+    right_child_node = GetBufferPage(right_child_buffer);
+    right_high_key = NodeGetHighKey(table, right_child_node);
+
+    switch (get_node_type(right_child_node)) {
         case LEAF_NODE: {
             if (select_plan->onlyScanIndex)
                 ScanLeafNode(
                     select_result, right_child_page_num, 
-                    table, select_plan
+                    right_high_key, table, select_plan
                 );
             else
                 SelectLeafNode(
                     select_result, right_child_page_num, 
-                    table, select_plan
+                    right_high_key, table, select_plan
                 );
             break;
         }
         case INTERNAL_NODE:
             SelectInternalNode(
                 select_result, right_child_page_num, 
-                table, select_plan
+                right_high_key, table, select_plan
             );
             break;
         default:
@@ -1124,6 +1164,15 @@ static void SelectInternalNode(SelectResult *select_result, uint32_t page_num,
     }
  
     free_block(internal_node); 
+
+    /* The only condition to move to sibling:
+     * The target node has spliten. */
+    if (GT(GetComparableValue(boundary_key, ptype), GetComparableValue(high_key, ptype), ptype)) {
+        uint32_t next_sibling = NodeGetNextSibling(table, internal_node);
+        Assert(next_sibling != 0);
+        SelectInternalNode(select_result, next_sibling, boundary_key, table, select_plan);
+    }
+
 
     /* Release buffers. */
     ReleaseBuffer(right_child_buffer);
@@ -1149,13 +1198,13 @@ static void SelectInternalNodeChildTask(void *taskArg) {
         case LEAF_NODE:
             SelectLeafNode(
                 select_result, child_page_num, 
-                table, select_plan
+                NULL, table, select_plan
             );
             break;
         case INTERNAL_NODE:
             SelectInternalNode(
                 select_result, child_page_num, 
-                table, select_plan
+                NULL, table, select_plan
             );
             break;
         default:
@@ -1267,7 +1316,7 @@ void QueryUnderSearchConditionInner(Oid oid, SelectResult *select_result, Select
     if (table == NULL)
         return;
 
-    buffer = ReadBuffer(GET_TABLE_OID(table), table->root_page_num); 
+    buffer = ReadBuffer(oid, ROOT_PAGE_NUM); 
     root = GetBufferPage(buffer);
 
     switch (get_node_type(root)) {
@@ -1275,12 +1324,12 @@ void QueryUnderSearchConditionInner(Oid oid, SelectResult *select_result, Select
             if (select_plan->onlyScanIndex)
                 ScanLeafNode(
                     select_result, table->root_page_num, 
-                    table, select_plan
+                    NULL, table, select_plan
                 );
             else
                 SelectLeafNode(
                     select_result,table->root_page_num, 
-                    table, select_plan
+                    NULL, table, select_plan
                 );
             break;
         }
@@ -1293,7 +1342,7 @@ void QueryUnderSearchConditionInner(Oid oid, SelectResult *select_result, Select
             else
                 SelectInternalNode(
                     select_result, table->root_page_num,
-                    table, select_plan
+                    NULL, table, select_plan
                 );
             break;
         }

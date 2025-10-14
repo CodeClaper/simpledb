@@ -16,7 +16,7 @@
 #include "copy.h"
 #include "log.h"
 
-static void BtreeInsertInner(Oid oid, void *key, void *search_key, void *value, uint32_t page_num, Refer *refer);
+static void BtreeInsertInner(Oid oid, void *key, void *boundary_key, void *value, uint32_t page_num, Refer *refer);
 static void BtreeInsertForInternalNodeInsertCell(Oid oid, uint32_t page_num, void *old_child_key, void *old_new_key, void *new_child_key, uint32_t new_child_page);
 
 
@@ -457,7 +457,7 @@ static void BtreeInsertForInternalNodeExtend(Oid oid, void *key, void *value, vo
     Table *table;
     DataType ptype;
     uint32_t keys_num, min_index, max_index, target_page;
-    void *search_key;
+    void *boundary_key;
     
     table = open_table_inner(oid);
     ptype = MetaTableFindPrimaryDataType(table->meta_table);
@@ -485,14 +485,14 @@ static void BtreeInsertForInternalNodeExtend(Oid oid, void *key, void *value, vo
                keys_num);
     else if (min_index == keys_num) {
         /* The target cell is right child. */
-        search_key = InternalNodeGetRightKey(internal_node, table->heap_value_len);
+        boundary_key = InternalNodeGetRightKey(internal_node, table->heap_value_len);
         target_page = InternalNodeGetRightNum(internal_node, table->heap_value_len);
-        BtreeInsertInner(oid, key, search_key, value, target_page, refer);
+        BtreeInsertInner(oid, key, boundary_key, value, target_page, refer);
     } else {
         /* The target cell in cells. */
-        search_key = InternalNodeGetCellKey(internal_node, table->key_len, table->heap_value_len, min_index);
+        boundary_key = InternalNodeGetCellKey(internal_node, table->key_len, table->heap_value_len, min_index);
         target_page = InternalNodeGetCellValue(internal_node, table->key_len, table->heap_value_len, min_index);
-        BtreeInsertInner(oid, key, search_key, value, target_page, refer);
+        BtreeInsertInner(oid, key, boundary_key, value, target_page, refer);
     }
 }
 
@@ -501,7 +501,7 @@ static void BtreeInsertForInternalNodeExtend(Oid oid, void *key, void *value, vo
  * Insert for internal node, we just lock the node using reader lock.
  * Because, we do not change it.
  * */
-static void BtreeInsertForInternalNode(Oid oid, void *key, void *search_key, void *value, uint32_t page_num, Refer *refer) {
+static void BtreeInsertForInternalNode(Oid oid, void *key, void *boundary_key, void *value, uint32_t page_num, Refer *refer) {
     Table *table;
     DataType ptype;
     Buffer buffer;
@@ -522,12 +522,12 @@ static void BtreeInsertForInternalNode(Oid oid, void *key, void *search_key, voi
      * (1) The target node has spliten.
      * (2) The key is greater the high key, 
      *     which means the target cell not in the current node. */
-    if (GT(GetComparableValue(search_key, ptype), GetComparableValue(high_key, ptype), ptype) &&
+    if (GT(GetComparableValue(boundary_key, ptype), GetComparableValue(high_key, ptype), ptype) &&
         GT(GetComparableValue(key, ptype), GetComparableValue(high_key, ptype), ptype)
     ) {
         uint32_t next_sibling = NodeGetNextSibling(table, internal_node);
         Assert(next_sibling != 0);
-        BtreeInsertForInternalNode(oid, key, search_key, value, next_sibling, refer);
+        BtreeInsertForInternalNode(oid, key, boundary_key, value, next_sibling, refer);
     } else
         BtreeInsertForInternalNodeExtend(oid, key, value, internal_node, refer);    
 
@@ -832,7 +832,7 @@ static void BtreeInsertForLeafNodeInsertCell(Oid oid, void *key, void *value, vo
 }
 
 /* Insert item into the btree for leaf node. */
-static void BtreeInsertForLeafNode(Oid oid, void *key, void *search_key, void *value, uint32_t page_num, Refer *refer) {
+static void BtreeInsertForLeafNode(Oid oid, void *key, void *boundary_key, void *value, uint32_t page_num, Refer *refer) {
     Table *table;
     DataType ptype;
     Buffer buffer;
@@ -849,12 +849,12 @@ static void BtreeInsertForLeafNode(Oid oid, void *key, void *search_key, void *v
      * (1) The target node has spliten.
      * (2) The key is greater the high key, 
      *     which means the target cell not in the current node. */
-    if (GT(GetComparableValue(search_key, ptype), GetComparableValue(high_key, ptype), ptype) &&
+    if (GT(GetComparableValue(boundary_key, ptype), GetComparableValue(high_key, ptype), ptype) &&
         GT(GetComparableValue(key, ptype), GetComparableValue(high_key, ptype), ptype)
     ) {
         uint32_t next_sibling = NodeGetNextSibling(table, leaf_node);
         Assert(next_sibling != 0);
-        BtreeInsertForLeafNode(oid, key, search_key, value, next_sibling, refer);
+        BtreeInsertForLeafNode(oid, key, boundary_key, value, next_sibling, refer);
     } else {
         refer->page_num = page_num;
         BtreeInsertForLeafNodeInsertCell(oid, key, value, leaf_node, refer);    
@@ -869,7 +869,7 @@ static void BtreeInsertForLeafNode(Oid oid, void *key, void *search_key, void *v
  * --------------
  * This function just defines to go to leaf node or internal node.
  * */
-static void BtreeInsertInner(Oid oid, void *key, void *search_key, void *value, uint32_t page_num, Refer *refer) {
+static void BtreeInsertInner(Oid oid, void *key, void *boundary_key, void *value, uint32_t page_num, Refer *refer) {
     Buffer buffer;
     void *node;
     NodeType type;
@@ -884,10 +884,10 @@ static void BtreeInsertInner(Oid oid, void *key, void *search_key, void *value, 
     type = GetNodeType(node);
     switch (type) {
         case LEAF_NODE:
-            BtreeInsertForLeafNode(oid, key, search_key, value, page_num, refer);
+            BtreeInsertForLeafNode(oid, key, boundary_key, value, page_num, refer);
             break;
         case INTERNAL_NODE:
-            BtreeInsertForInternalNode(oid, key, search_key, value, page_num, refer);
+            BtreeInsertForInternalNode(oid, key, boundary_key, value, page_num, refer);
             break;
         default:
             UNEXPECTED_VALUE(type);
