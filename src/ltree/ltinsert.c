@@ -511,7 +511,7 @@ static void BtreeInsertForInternalNode(Oid oid, void *key, void *boundary_key, v
 
     ptype = MetaTableFindPrimaryDataType(table->meta_table);
     buffer = ReadBuffer(oid, page_num);
-    LockBuffer(buffer, RW_WRITER);
+    LockBuffer(buffer, RW_READERS);
     internal_node = GetBufferPageCopy(buffer);
     high_key = NodeGetHighKey(table, internal_node);
 
