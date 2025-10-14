@@ -391,7 +391,6 @@ void *get_internal_node_right_child_key(void *node, uint32_t default_value_len) 
     }
 }
 
-
 /* Set right child key. */
 void set_internal_node_right_child_key(void *node, uint32_t key_len, uint32_t default_value_len, void *key) {
     if (is_root_node(node)) {
@@ -2869,7 +2868,8 @@ void update_index_refer_content(Table *table, Refer *iRefer, Refer *newRefer) {
     buffer = ReadBuffer(oid, iRefer->page_num);
     LockBuffer(buffer, RW_WRITER);
     leaf_node = GetBufferPage(buffer);
-    Assert(get_node_type(leaf_node) == LEAF_NODE);
+    if (get_node_type(leaf_node) != LEAF_NODE) 
+        Assert(get_node_type(leaf_node) == LEAF_NODE);
     destination = get_leaf_node_cell_value(leaf_node, key_len, value_len, default_value_len, iRefer->cell_num);
 
     /* Update refer content. */

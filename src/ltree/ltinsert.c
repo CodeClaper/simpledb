@@ -16,7 +16,7 @@
 #include "copy.h"
 #include "log.h"
 
-static Refer *BtreeInsertInner(Oid oid, void *key, void *search_key, void *value, uint32_t page_num);
+static void BtreeInsertInner(Oid oid, void *key, void *search_key, void *value, uint32_t page_num, Refer *refer);
 static void BtreeInsertForInternalNodeInsertCell(Oid oid, uint32_t page_num, void *old_child_key, void *old_new_key, void *new_child_key, uint32_t new_child_page);
 
 
@@ -453,7 +453,7 @@ static void BtreeInsertForInternalNodeInsertCell(Oid oid, uint32_t page_num,
  * ---------------------------------------------
  * In this function, we will use binary search to find the target cell.
  * */
-static void BtreeInsertForInternalNodeExtend(Oid oid, void *key, void *value, void *internal_node) {
+static void BtreeInsertForInternalNodeExtend(Oid oid, void *key, void *value, void *internal_node, Refer *refer) {
     Table *table;
     DataType ptype;
     uint32_t keys_num, min_index, max_index, target_page;
@@ -487,12 +487,12 @@ static void BtreeInsertForInternalNodeExtend(Oid oid, void *key, void *value, vo
         /* The target cell is right child. */
         search_key = InternalNodeGetRightKey(internal_node, table->heap_value_len);
         target_page = InternalNodeGetRightNum(internal_node, table->heap_value_len);
-        BtreeInsertInner(oid, key, search_key, value, target_page);
+        BtreeInsertInner(oid, key, search_key, value, target_page, refer);
     } else {
         /* The target cell in cells. */
         search_key = InternalNodeGetCellKey(internal_node, table->key_len, table->heap_value_len, min_index);
         target_page = InternalNodeGetCellValue(internal_node, table->key_len, table->heap_value_len, min_index);
-        BtreeInsertInner(oid, key, search_key, value, target_page);
+        BtreeInsertInner(oid, key, search_key, value, target_page, refer);
     }
 }
 
@@ -529,7 +529,7 @@ static void BtreeInsertForInternalNode(Oid oid, void *key, void *search_key, voi
         Assert(next_sibling != 0);
         BtreeInsertForInternalNode(oid, key, search_key, value, next_sibling, refer);
     } else
-        BtreeInsertForInternalNodeExtend(oid, key, value, internal_node);    
+        BtreeInsertForInternalNodeExtend(oid, key, value, internal_node, refer);    
 
     dfree(internal_node);
 }
@@ -569,7 +569,7 @@ static uint32_t BtreeInsertForLeafNodeFindCellNum(Oid oid, void *key, void *leaf
 }
 
 /* Root Leaf node upgrade to Root Internal node. */
-static void BtreeInsertForLeafNodeUpgradeRoot(Oid oid, void *root, void *right_node, uint32_t right_page) {
+static void BtreeInsertForLeafNodeUpgradeRoot(Oid oid, void *root, void *right_node, uint32_t right_page, Refer *refer) {
     Table *table;
     uint32_t cell_num, column_size, next_page_num, i;
     Buffer new_buffer;
@@ -626,6 +626,10 @@ static void BtreeInsertForLeafNodeUpgradeRoot(Oid oid, void *root, void *right_n
     InternalNodeSetRightKey(root, table->key_len, table->heap_value_len, NodeGetHighKey(table, right_node));
     InternalNodeSetRightNum(root, table->heap_value_len, right_page);
 
+    /* If refer page num is root page, it need update.*/
+    if (refer->page_num == ROOT_PAGE_NUM) 
+        refer->page_num = next_page_num;
+
     MakeBufferDirty(new_buffer);
     ReleaseBuffer(new_buffer);
 }
@@ -656,7 +660,6 @@ static void BtreeInsertForLeafNodeSplit(Oid oid, void *key, void *value, void *l
     cell_len = table->key_len + table->index_value_len;
     high_key = copy_value(NodeGetHighKey(table, leaf_node), ptype);
     target_index = BtreeInsertForLeafNodeFindCellNum(oid, key, leaf_node);
-    refer->cell_num = target_index;
 
     next_page_num = GetNextUnusedPageNum(table);
     new_buffer = ReadBuffer(oid, next_page_num);
@@ -699,10 +702,14 @@ static void BtreeInsertForLeafNodeSplit(Oid oid, void *key, void *value, void *l
         /* The cursor rigth cells should move one cell to the right to make space for the cursor, 
          * include the cell having the old same num as cursor. The cursor leaf cells don`t need to make space.
          * Because i start with cell number and decrease, right cells firstly move and make space. */
-        if (i == refer->cell_num) {
+        if (i == target_index) {
             /* Deposit cursor. */
             LeafNodeSetCellKey(destination_node, table->key_len, table->index_value_len, table->heap_value_len, new_index, key);
             LeafNodeSetCellValue(destination_node, table->key_len, table->index_value_len, table->heap_value_len, new_index, value);
+            
+            /* Redefine the refer info. */
+            refer->cell_num = target_index;
+            refer->page_num = destination_page;
         } else if (i > refer->cell_num) {
             /* Define new position, and right cells make cell space. */
             memcpy(destination, LeafNodeGetCellValue(leaf_node, table->key_len, table->index_value_len, table->heap_value_len, i - 1), cell_len);
@@ -736,7 +743,7 @@ static void BtreeInsertForLeafNodeSplit(Oid oid, void *key, void *value, void *l
      * so mass of parent internal node cells may be happen. We'll resort parent internal node cells lately.
      * */
     if (NodeIsRoot(leaf_node))
-        BtreeInsertForLeafNodeUpgradeRoot(oid, leaf_node, new_leaf_node, next_page_num);
+        BtreeInsertForLeafNodeUpgradeRoot(oid, leaf_node, new_leaf_node, next_page_num, refer);
     else {
         uint32_t parent_num;
         void *new_hight_key, *child_key;
@@ -862,14 +869,12 @@ static void BtreeInsertForLeafNode(Oid oid, void *key, void *search_key, void *v
  * --------------
  * This function just defines to go to leaf node or internal node.
  * */
-static Refer *BtreeInsertInner(Oid oid, void *key, void *search_key, void *value, uint32_t page_num) {
+static void BtreeInsertInner(Oid oid, void *key, void *search_key, void *value, uint32_t page_num, Refer *refer) {
     Buffer buffer;
     void *node;
     NodeType type;
-    Refer *refer;
 
     buffer = ReadBuffer(oid, page_num);
-    refer = new_refer(oid, 0, 0);
 
     LockBuffer(buffer, RW_READERS);
     node = GetBufferPage(buffer);
@@ -888,13 +893,13 @@ static Refer *BtreeInsertInner(Oid oid, void *key, void *search_key, void *value
             UNEXPECTED_VALUE(type);
             break;
     }
-
-    return refer;
 }
 
 /* Insert item into the btree. */
 Refer *BtreeInsert(Oid oid, void *key, void *value) {
     Assert(key != NULL);
     Assert(value != NULL);
-    return BtreeInsertInner(oid, key, NULL, value, ROOT_PAGE_NUM);
+    Refer *refer = new_refer(oid, -1, -1);
+    BtreeInsertInner(oid, key, NULL, value, ROOT_PAGE_NUM, refer);
+    return refer;
 }

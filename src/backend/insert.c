@@ -43,6 +43,8 @@
 #include "jsonwriter.h"
 #include "instance.h"
 #include "strheaptable.h"
+#include "heaptable.h"
+#include "ltinsert.h"
 
 /* Get value in insert node to assign column at index. */
 static void *GetInsertValue(List *value_item_list, uint32_t index, MetaColumn *meta_column) {
@@ -325,38 +327,81 @@ retry:
     return flag;
 }
 
+static void *SeriableIndexValue(Oid oid, Row *row, Refer *heapRefer) {
+    uint32_t value_len;
+    void *destination;
+    Table *table;
+    MetaTable *meta_table;
+
+    table = open_table_inner(oid);
+    value_len = table->index_value_len;
+    destination = dalloc(value_len);
+    meta_table = table->meta_table;
+
+    /* Assign the heap refer value. */
+    memcpy(destination, heapRefer, REFER_SIZE);
+
+    uint32_t offset = REFER_SIZE;
+    ListCell *lc;
+    foreach (lc, meta_table->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
+        if (meta_column->sys_reserved) {
+            void *value = RowGetValueOrDefault(row, meta_column);
+            assign_row_value(destination + offset, value, meta_column);
+            offset += meta_column->column_length;
+        }
+    }
+
+    return destination;
+}
+
 /* Insert one row. 
  * ---------------
  * Return the row refer, 
  * Throw error by log if fail. */
 Refer *insert_one_row(Table *table, Row *row) {
-    MetaColumn *primary_key_meta_column = MetaTableFindPrimaryKey(table->meta_table);
-    Assert(primary_key_meta_column);
+    Oid oid;
+    DataType ptype;
+    void *key, *index_value;
+    Refer *preRefer, *heapRefer, *iRefer;
+
+    oid = GET_TABLE_OID(table);
+    ptype = MetaTableFindPrimaryDataType(table->meta_table);
     
-    void *key = RowFindKey(row, table->meta_table);
+    key = RowFindKey(row, table->meta_table);
     Assert(key != NULL);
-    Refer *refer = define_refer(table, key);
+    preRefer = define_refer(table, key);
     
     /* Check if duplicate key. */
     if (UserPrimaryKeyExists(table->meta_table) && 
-        check_duplicate_key(key, refer) && 
-        WaitForDuplicateKey(refer)
+        check_duplicate_key(key, preRefer) && 
+        WaitForDuplicateKey(preRefer)
     ) {
-        char *keyStr = primary_key_meta_column->column_type == T_STRING
+        char *keyStr = ptype == T_STRING
                 ? QueryStringValue(key)
-                : get_key_str(key, primary_key_meta_column->column_type);
+                : get_key_str(key, ptype);
         db_log(ERROR, "key '%s' in table '%s' already exists, not allow duplicate key.", 
                keyStr, GET_TABLE_NAME(table));
         return NULL;
     }
 
     /* Insert into leaf node. */
-    insert_row_data(row, refer);
+    /*insert_row_data(row, refer);*/
+
+    /* Insert into heap table. */
+    heapRefer = HeapTableInsertRowDirect(oid, row);
+
+    index_value = SeriableIndexValue(oid, row, heapRefer);
+
+    iRefer = BtreeInsert(oid, key, index_value);
+
+    HeapTableUpdateIndexRefer(table, heapRefer, iRefer);
 
     /* Record xlog for insert operation. */
-    RecordXlog(refer, HEAP_INSERT);
+    RecordXlog(iRefer, HEAP_INSERT);
 
-    return refer;    
+    dfree(index_value);
+    return iRefer;    
 }
 
 /* Insert for values case. 

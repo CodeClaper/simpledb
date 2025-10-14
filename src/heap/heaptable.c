@@ -285,6 +285,7 @@ void HeapTableUpdateIndexRefer(Table *table, Refer *refer, Refer *newIRefer) {
     void *block;
     uint32_t row_len, cell_len;
 
+    check_refer(newIRefer);
     row_len = TableCalcRowLength(table);
     cell_len = row_len + REFER_SIZE;
     buffer = ReadBuffer(refer->oid, refer->page_num);
