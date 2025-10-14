@@ -324,7 +324,9 @@ void *NodeGetHighKey(Table *table, void *node) {
             return InternalNodeGetRightKey(node, table->heap_value_len);
         case LEAF_NODE: {
             uint32_t cell_num = LeafNodeGetCellNum(node, table->heap_value_len);
-            return LeafNodeGetCellKey(node, table->key_len, table->index_value_len, table->heap_value_len, cell_num - 1);
+            return cell_num == 0 
+                ? NULL 
+                : LeafNodeGetCellKey(node, table->key_len, table->index_value_len, table->heap_value_len, cell_num - 1);
         }
         default:
             UNEXPECTED_VALUE(GetNodeType(node));

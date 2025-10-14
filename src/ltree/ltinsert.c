@@ -597,7 +597,7 @@ static void BtreeInsertForLeafNodeUpgradeRoot(Oid oid, void *root, void *right_n
         LeafNodeSetCellValue(new_leaf_node, table->key_len, table->index_value_len, table->heap_value_len, i, 
                              LeafNodeGetCellValue(root, table->key_len, table->index_value_len, table->heap_value_len, i));
         /* Update refer. */
-        update_refer(oid, table->root_page_num, i, next_page_num, i);
+        update_refer(oid, ROOT_PAGE_NUM, i, next_page_num, i);
         HeapTableUpdateIndexRefer(
             table, 
             LeafNodeGetCellValue(root, table->key_len, table->index_value_len, table->heap_value_len, i), 
