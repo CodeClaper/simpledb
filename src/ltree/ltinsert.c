@@ -20,38 +20,6 @@ static void BtreeInsertInner(Oid oid, void *key, void *boundary_key, void *value
 static void BtreeInsertForInternalNodeInsertCell(Oid oid, uint32_t page_num, void *old_child_key, void *old_new_key, void *new_child_key, uint32_t new_child_page);
 
 
-/* Find the internal node cell num to insert. 
- * -----------------------------------------
- * In this function, we will use binary search to find the target cell.
- * */
-static uint32_t BtreeInsertForInternalNodeFindCellNum(Oid oid, void *key, void *internal_node) {
-    Table *table;
-    DataType ptype;
-    uint32_t keys_num, min_index, max_index; 
-    
-    table = open_table_inner(oid);
-    ptype = MetaTableFindPrimaryDataType(table->meta_table);
-    keys_num = InternalNodeGetKeysNum(internal_node, table->heap_value_len);
-    min_index = 0;
-    max_index = keys_num;
-
-    while (min_index != max_index) {
-        uint32_t index;
-        void *cell_key;
-
-        index = (max_index + min_index) / 2;
-        cell_key = InternalNodeGetCellKey(internal_node, table->key_len, table->heap_value_len, index);
-        /* Notice: Greate EQ opreator is really import for store data, 
-         * when keep the prince: always keep visible row lie at the forefront of same key cells. */
-        if (GE(GetComparableValue(cell_key, ptype), GetComparableValue(key, ptype), ptype)) 
-            max_index = index;
-        else 
-            min_index = index + 1;
-    }
-    
-    return min_index;
-}
-
 /* Update internal cell key. */
 static void BtreeInsertForInternalNodeUpdateCellKey(Oid oid, uint32_t page_num, void *old_key, void *new_key) {
     Table *table;
@@ -74,7 +42,7 @@ static void BtreeInsertForInternalNodeUpdateCellKey(Oid oid, uint32_t page_num, 
         uint32_t index;
         void *cell_key;
 
-        index = BtreeInsertForInternalNodeFindCellNum(oid, old_key, internal_node);
+        index = InternalNodeFindCellNum(oid, old_key, internal_node);
         cell_key = InternalNodeGetCellKey(internal_node, table->key_len, table->heap_value_len, index);
         /* Theoretically EQ, just for check. Lots of tricky bugs are caught by the check. */
         Assert(EQ(GetComparableValue(old_key, ptype), GetComparableValue(cell_key, ptype), ptype));
@@ -254,12 +222,12 @@ static void BtreeInsertForInternalNodeSplit(Oid oid, void *internal_node,
     } else {
         uint32_t old_target_index;
 
-        old_target_index = BtreeInsertForInternalNodeFindCellNum(oid, old_child_key, internal_node);
+        old_target_index = InternalNodeFindCellNum(oid, old_child_key, internal_node);
         Assert(EQ(GetComparableValue(old_child_key, ptype), 
                   GetComparableValue(InternalNodeGetCellKey(internal_node, table->key_len, table->heap_value_len, old_target_index), ptype), 
                   ptype));
         InternalNodeSetCellKey(internal_node, table->key_len, table->heap_value_len, old_target_index, old_new_key);
-        target_index = BtreeInsertForInternalNodeFindCellNum(oid, new_child_key, internal_node);
+        target_index = InternalNodeFindCellNum(oid, new_child_key, internal_node);
     }
 
     /* Get target index. */
@@ -382,7 +350,7 @@ static void BtreeInsertForInternalNodeNoSplit(Oid oid, void *internal_node,
         void *temp;
         
         /* Change the old key. */
-        old_target_index = BtreeInsertForInternalNodeFindCellNum(oid, old_child_key, internal_node);
+        old_target_index = InternalNodeFindCellNum(oid, old_child_key, internal_node);
         temp = InternalNodeGetCellKey(internal_node, table->key_len, table->heap_value_len, old_target_index);
         if (NE(GetComparableValue(old_child_key, ptype), GetComparableValue(temp, ptype), ptype))
             Assert(EQ(GetComparableValue(old_child_key, ptype), 
@@ -391,7 +359,7 @@ static void BtreeInsertForInternalNodeNoSplit(Oid oid, void *internal_node,
         InternalNodeSetCellKey(internal_node, table->key_len, table->heap_value_len, old_target_index, old_new_key);
 
         /* Append new child. */
-        new_target_index = BtreeInsertForInternalNodeFindCellNum(oid, new_child_key, internal_node);
+        new_target_index = InternalNodeFindCellNum(oid, new_child_key, internal_node);
         for (i = keys_num; i > new_target_index; i--) {
             InternalNodeSetCellKey(internal_node, table->key_len, table->heap_value_len,i, 
                                    InternalNodeGetCellKey(internal_node, table->key_len, table->heap_value_len, i - 1));
@@ -535,39 +503,6 @@ static void BtreeInsertForInternalNode(Oid oid, void *key, void *boundary_key, v
 }
 
 
-/* Find the leaf node cell num to insert. 
- * -----------------------------------------
- * In this function, we will use binary search to find the target cell.
- * */
-static uint32_t BtreeInsertForLeafNodeFindCellNum(Oid oid, void *key, void *leaf_node) {
-    Table *table;
-    DataType ptype;
-    uint32_t cell_num, min_index, max_index;
-    
-    table = open_table_inner(oid);
-    ptype = MetaTableFindPrimaryDataType(table->meta_table);
-    cell_num = LeafNodeGetCellNum(leaf_node, table->heap_value_len);
-    min_index = 0;
-    max_index = cell_num;
-
-    while (min_index != max_index) {
-        uint32_t index;
-        void *cell_key;
-
-        index = (max_index + min_index) / 2;
-        cell_key = LeafNodeGetCellKey(leaf_node, table->key_len, table->index_value_len, table->heap_value_len, index);
-        /* Notice: Greate EQ opreator is really import for store data, 
-         * when keep the prince: always keep visible row lie at the forefront of same key cells. */
-        if (GE(GetComparableValue(cell_key, ptype), GetComparableValue(key, ptype), ptype)) {
-            max_index = index;
-        } else {
-            min_index = index + 1; 
-        }
-    }
-
-    return min_index;
-}
-
 /* Root Leaf node upgrade to Root Internal node. */
 static void BtreeInsertForLeafNodeUpgradeRoot(Oid oid, void *root, void *right_node, uint32_t right_page, Refer *refer) {
     Table *table;
@@ -659,7 +594,7 @@ static void BtreeInsertForLeafNodeSplit(Oid oid, void *key, void *value, void *l
     cell_num = LeafNodeGetCellNum(leaf_node, table->heap_value_len);
     cell_len = table->key_len + table->index_value_len;
     high_key = copy_value(NodeGetHighKey(table, leaf_node), ptype);
-    target_index = BtreeInsertForLeafNodeFindCellNum(oid, key, leaf_node);
+    target_index = LeafNodeFindCellNum(oid, key, leaf_node);
 
     next_page_num = GetNextUnusedPageNum(table);
     new_buffer = ReadBuffer(oid, next_page_num);
@@ -770,7 +705,7 @@ static void BtreeInsertForLeafNodeNoSplit(Oid oid, void *key, void *value, void 
     table = open_table_inner(oid);
     cell_len = table->key_len + table->index_value_len;
     cell_num = LeafNodeGetCellNum(leaf_node, table->heap_value_len);
-    target_index = BtreeInsertForLeafNodeFindCellNum(oid, key, leaf_node);
+    target_index = LeafNodeFindCellNum(oid, key, leaf_node);
     refer->cell_num = target_index;
 
     /* If need to move sibling cells. */

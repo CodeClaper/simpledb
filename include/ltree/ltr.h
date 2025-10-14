@@ -64,6 +64,9 @@ void InternalNodeSetCellValue(void *internal_node, uint32_t key_len, uint32_t de
 /* Initialize leaf node. */
 void InternalNodeInitialize(void *internal_node, uint32_t default_value_len, bool is_root);
 
+/* Find the internal node cell num postion. */
+uint32_t InternalNodeFindCellNum(Oid oid, void *key, void *internal_node);
+
 /* Get leaf node cell num. */
 uint32_t LeafNodeGetCellNum(void *leaf_node, uint32_t default_value_len);
 
@@ -87,3 +90,6 @@ void LeafNodeSetCellValue(void *leaf_node, uint32_t key_len, uint32_t value_len,
 
 /* Initialize leaf node. */
 void LeafNodeInitialize(void *leaf_node, uint32_t default_value_len, bool is_root);
+
+/* Find the leaf node cell num postion. */
+ uint32_t LeafNodeFindCellNum(Oid oid, void *key, void *leaf_node);

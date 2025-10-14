@@ -5,6 +5,7 @@
 #include "const.h"
 #include "compare.h"
 #include "meta.h"
+#include "table.h"
 
 /* Get node type. */
 NodeType GetNodeType(void *node) {
@@ -204,6 +205,38 @@ void InternalNodeInitialize(void *internal_node, uint32_t default_value_len, boo
     InternalNodeSetNextSibling(internal_node, default_value_len, 0); 
 }
 
+/* Find the internal node cell num postion. 
+ * -----------------------------------------
+ * In this function, we will use binary search to find the target cell.
+ * */
+uint32_t InternalNodeFindCellNum(Oid oid, void *key, void *internal_node) {
+    Table *table;
+    DataType ptype;
+    uint32_t keys_num, min_index, max_index; 
+    
+    table = open_table_inner(oid);
+    ptype = MetaTableFindPrimaryDataType(table->meta_table);
+    keys_num = InternalNodeGetKeysNum(internal_node, table->heap_value_len);
+    min_index = 0;
+    max_index = keys_num;
+
+    while (min_index != max_index) {
+        uint32_t index;
+        void *cell_key;
+
+        index = (max_index + min_index) / 2;
+        cell_key = InternalNodeGetCellKey(internal_node, table->key_len, table->heap_value_len, index);
+        /* Notice: Greate EQ opreator is really import for store data, 
+         * when keep the prince: always keep visible row lie at the forefront of same key cells. */
+        if (GE(GetComparableValue(cell_key, ptype), GetComparableValue(key, ptype), ptype)) 
+            max_index = index;
+        else 
+            min_index = index + 1;
+    }
+    
+    return min_index;
+}
+
 /* Get leaf node cell num. */
 uint32_t LeafNodeGetCellNum(void *leaf_node, uint32_t default_value_len) {
     if (NodeIsRoot(leaf_node)) {
@@ -314,6 +347,40 @@ void LeafNodeInitialize(void *leaf_node, uint32_t default_value_len, bool is_roo
     NodeSetRoot(leaf_node, is_root);
     LeafNodeSetCellNum(leaf_node, default_value_len, 0);
     LeafNodeSetNextSibling(leaf_node, default_value_len, 0); 
+}
+
+
+/* Find the leaf node cell num postion. 
+ * -----------------------------------------
+ * In this function, we will use binary search to find the target cell.
+ * */
+ uint32_t LeafNodeFindCellNum(Oid oid, void *key, void *leaf_node) {
+    Table *table;
+    DataType ptype;
+    uint32_t cell_num, min_index, max_index;
+    
+    table = open_table_inner(oid);
+    ptype = MetaTableFindPrimaryDataType(table->meta_table);
+    cell_num = LeafNodeGetCellNum(leaf_node, table->heap_value_len);
+    min_index = 0;
+    max_index = cell_num;
+
+    while (min_index != max_index) {
+        uint32_t index;
+        void *cell_key;
+
+        index = (max_index + min_index) / 2;
+        cell_key = LeafNodeGetCellKey(leaf_node, table->key_len, table->index_value_len, table->heap_value_len, index);
+        /* Notice: Greate EQ opreator is really import for store data, 
+         * when keep the prince: always keep visible row lie at the forefront of same key cells. */
+        if (GE(GetComparableValue(cell_key, ptype), GetComparableValue(key, ptype), ptype)) {
+            max_index = index;
+        } else {
+            min_index = index + 1; 
+        }
+    }
+
+    return min_index;
 }
 
 

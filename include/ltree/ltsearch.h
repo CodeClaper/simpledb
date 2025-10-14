@@ -1,4 +1,4 @@
-#include "table.h"
+#include "data.h"
 
-/* Search item into the btree. */
-void BtreeSearch(Table *table, void *key);
+/* Btree search the key refer. */
+Refer *BtreeSearchRefer(Oid oid, void *key);

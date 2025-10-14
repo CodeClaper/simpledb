@@ -23,6 +23,7 @@
 #include "table.h"
 #include "meta.h"
 #include "ltree.h"
+#include "ltsearch.h"
 #include "pager.h"
 #include "index.h"
 #include "asserts.h"
@@ -370,7 +371,7 @@ Refer *insert_one_row(Table *table, Row *row) {
     
     key = RowFindKey(row, table->meta_table);
     Assert(key != NULL);
-    preRefer = define_refer(table, key);
+    preRefer = BtreeSearchRefer(oid, key);
     
     /* Check if duplicate key. */
     if (UserPrimaryKeyExists(table->meta_table) && 
