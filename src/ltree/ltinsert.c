@@ -31,15 +31,19 @@ static void BtreeInsertForInternalNodeInsertCell(Oid oid, uint32_t page_num, voi
  * (2) 0: An un-commited duplicate key which need to wait for commit.
  * (3) -1: A commited duplicate key which case duplicate key issue. 
  * */
-static int BtreeInsertDuplicateKeyPredicate(Xid created_xid, Xid expired_xid) {
+static int BtreeInsertDuplicateKeyPredicate(Xid current_xid, Xid created_xid, Xid expired_xid) {
     Assert(created_xid != 0);
     if (expired_xid == 0) {
-        if (IsActive(created_xid))
+        if (created_xid == current_xid)
+            return ERRO;
+        else if (IsActive(created_xid))
             return WAIT;
         else
             return ERRO;
     } else {
-        if (IsActive(expired_xid))
+        if (expired_xid == current_xid)
+            return OK;
+        else if (IsActive(expired_xid))
             return WAIT;
         else 
             return OK;
@@ -260,6 +264,7 @@ static void BtreeInsertForInternalNodeSplit(Oid oid, void *internal_node,
         /* Use the old right child as the new child. */
         new_child_page = right_page;
         new_child_key = old_new_key;
+        /* Get target index. */
         target_index = keys_num;
     } else {
         uint32_t old_target_index;
@@ -269,10 +274,9 @@ static void BtreeInsertForInternalNodeSplit(Oid oid, void *internal_node,
                   GetComparableValue(InternalNodeGetCellKey(internal_node, table->key_len, table->heap_value_len, old_target_index), ptype), 
                   ptype));
         InternalNodeSetCellKey(internal_node, table->key_len, table->heap_value_len, old_target_index, old_new_key);
+        /* Get target index. */
         target_index = InternalNodeFindCellNum(oid, new_child_key, internal_node);
     }
-
-    /* Get target index. */
 
     RIGHT_SPLIT_COUNT = (keys_num + 1) / 2;
     LEFT_SPLIT_COUNT = (keys_num + 1) - RIGHT_SPLIT_COUNT;
@@ -643,11 +647,12 @@ static void BtreeInsertForLeafNodeSplit(Oid oid, void *key, void *value, Buffer 
     /* Avoid duplicate key. */
     if (EQ(GetComparableValue(key, ptype), GetComparableValue(cell_key, ptype), ptype)) {
         uint32_t predicate;
-        Xid created_xid, expired_xid;
+        Xid current_xid, created_xid, expired_xid;
 
+        current_xid = GetCurrentXid();
         created_xid = LeafNodeGetCellCreatedXid(leaf_node, table->key_len, table->index_value_len, table->heap_value_len, target_index);
         expired_xid = LeafNodeGetCellExpiredXid(leaf_node, table->key_len, table->index_value_len, table->heap_value_len, target_index);
-        predicate = BtreeInsertDuplicateKeyPredicate(created_xid, expired_xid);
+        predicate = BtreeInsertDuplicateKeyPredicate(current_xid, created_xid, expired_xid);
 
         switch (predicate) {
             case OK:
@@ -792,11 +797,12 @@ static void BtreeInsertForLeafNodeNoSplit(Oid oid, void *key, void *value, Buffe
     /* Avoid duplicate key. */
     if (EQ(GetComparableValue(key, ptype), GetComparableValue(cell_key, ptype), ptype)) {
         uint32_t predicate;
-        Xid created_xid, expired_xid;
-
+        Xid current_xid, created_xid, expired_xid;
+    
+        current_xid = GetCurrentXid();
         created_xid = LeafNodeGetCellCreatedXid(leaf_node, table->key_len, table->index_value_len, table->heap_value_len, target_index);
         expired_xid = LeafNodeGetCellExpiredXid(leaf_node, table->key_len, table->index_value_len, table->heap_value_len, target_index);
-        predicate = BtreeInsertDuplicateKeyPredicate(created_xid, expired_xid);
+        predicate = BtreeInsertDuplicateKeyPredicate(current_xid, created_xid, expired_xid);
 
         switch (predicate) {
             case OK:
@@ -814,7 +820,6 @@ static void BtreeInsertForLeafNodeNoSplit(Oid oid, void *key, void *value, Buffe
                 break;
             }
         }
-
     }
 
     /* If need to move sibling cells. */
