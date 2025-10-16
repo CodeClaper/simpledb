@@ -31,6 +31,9 @@ void *ValueItemNodeFindValue(ValueItemNode *value_item_node);
 /* Get Comparable value. */
 void *GetComparableValue(void *value, DataType type);
 
+/* Get key string value.*/
+char *KeyGetStrValue(void *key, DataType ptype);
+
 /* Calculate the length of table row. */
 uint32_t TableCalcRowLength(Table *table);
 
