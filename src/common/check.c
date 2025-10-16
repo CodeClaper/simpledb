@@ -822,7 +822,7 @@ static bool CheckUpdateForUniqueColumn(Table *table, MetaColumn *meta_column, vo
                    primary_column->column_type)
             ) {
                 db_log(ERROR, "Key '%s' already exists, not allowd duplicate key. ",
-                       KeyGetStrValue(value, meta_column->column_type));
+                       KeyGetUserStrValue(value, meta_column->column_type));
                 return false;
             } 
         }

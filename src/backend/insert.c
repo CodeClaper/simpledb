@@ -379,7 +379,7 @@ Refer *insert_one_row(Table *table, Row *row) {
         WaitForDuplicateKey(preRefer)
     ) {
         db_log(ERROR, "key '%s' in table '%s' already exists, not allow duplicate key.", 
-               KeyGetStrValue(key, ptype), GET_TABLE_NAME(table));
+               KeyGetSysStrValue(key, ptype), GET_TABLE_NAME(table));
         return NULL;
     }
 
