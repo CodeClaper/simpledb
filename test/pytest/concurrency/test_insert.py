@@ -19,7 +19,7 @@ for _ in range(0, 30):
 def thread_insert(cli):
     try:
         names = ["zhangsan", "lisi", "Sun", "July", "Kaili", "James", "Max"]
-        for i in range(1, 10000):
+        for i in range(0, 10000):
             sql = f"insert into Student values ('{i}', '{names[i % 7]}', { random.randint(6, 15) });"
             cli.execute(sql)
     except Exception as e:
@@ -65,6 +65,7 @@ def test_select():
             seen.add(item)
     print(duplicates)
     assert len(duplicates) == 0
+    assert ret["rows"] == 10000
 
 # drop mock table
 def test_drop_mock_table():

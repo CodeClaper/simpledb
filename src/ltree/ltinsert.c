@@ -15,10 +15,52 @@
 #include "heaptable.h"
 #include "copy.h"
 #include "log.h"
+#include "trans.h"
+
+#define OK   1
+#define WAIT 0
+#define ERRO -1
 
 static void BtreeInsertInner(Oid oid, void *key, void *boundary_key, void *value, uint32_t page_num, Refer *refer);
 static void BtreeInsertForInternalNodeInsertCell(Oid oid, uint32_t page_num, void *old_child_key, void *old_new_key, void *new_child_key, uint32_t new_child_page);
 
+
+/* Predicate duplicate key.
+ * These are three duplicate key type.
+ * (1) 1: A deleted duplicate key which does not need to care about.
+ * (2) 0: An un-commited duplicate key which need to wait for commit.
+ * (3) -1: A commited duplicate key which case duplicate key issue. 
+ * */
+static int BtreeInsertDuplicateKeyPredicate(Xid created_xid, Xid expired_xid) {
+    Assert(created_xid != 0);
+    if (expired_xid == 0) {
+        if (IsActive(created_xid))
+            return WAIT;
+        else
+            return ERRO;
+    } else {
+        if (IsActive(expired_xid))
+            return WAIT;
+        else 
+            return OK;
+    }
+}
+
+static void BtreeInsertWaitForRetry(Oid oid, void *key, void *value, Xid created_xid, Xid expired_xid) {
+    Assert(created_xid != 0);
+    /* Wait for transaction commit. */
+    if (expired_xid == 0) {
+        while (IsActive(created_xid)) {
+            lock_sleep(DEFAULT_SPIN_INTERVAL);
+        }
+    } else {
+        while (IsActive(expired_xid)) {
+            lock_sleep(DEFAULT_SPIN_INTERVAL);
+        }
+    }
+    /* Retry to insert. */
+    BtreeInsert(oid, key, value);
+}
 
 /* Update internal cell key. */
 static void BtreeInsertForInternalNodeUpdateCellKey(Oid oid, uint32_t page_num, void *old_key, void *new_key) {
@@ -582,19 +624,49 @@ static bool BtreeInsertForLeafNodeSafe(void *leaf_node, uint32_t key_len, uint32
 }
 
 /* Insert item into the btree and split. */
-static void BtreeInsertForLeafNodeSplit(Oid oid, void *key, void *value, void *leaf_node, Refer *refer) {
+static void BtreeInsertForLeafNodeSplit(Oid oid, void *key, void *value, Buffer buffer, Refer *refer) {
     Table *table;
     DataType ptype;
     uint32_t target_index, cell_num, next_page_num, cell_len, RIGHT_SPLIT_COUNT, LEFT_SPLIT_COUNT;
     Buffer new_buffer;
-    void *high_key, *new_leaf_node;
+    void *leaf_node, *cell_key, *high_key, *new_leaf_node;
 
     table = open_table_inner(oid);
     ptype = MetaTableFindPrimaryDataType(table->meta_table);
+    leaf_node = GetBufferPage(buffer);
     cell_num = LeafNodeGetCellNum(leaf_node, table->heap_value_len);
     cell_len = table->key_len + table->index_value_len;
     high_key = copy_value(NodeGetHighKey(table, leaf_node), ptype);
     target_index = LeafNodeFindCellNum(oid, key, leaf_node);
+    cell_key = LeafNodeGetCellKey(leaf_node, table->key_len, table->index_value_len, table->heap_value_len, target_index);
+
+    /* Avoid duplicate key. */
+    if (EQ(GetComparableValue(key, ptype), GetComparableValue(cell_key, ptype), ptype)) {
+        uint32_t predicate;
+        Xid created_xid, expired_xid;
+
+        created_xid = LeafNodeGetCellCreatedXid(leaf_node, table->key_len, table->index_value_len, table->heap_value_len, target_index);
+        expired_xid = LeafNodeGetCellExpiredXid(leaf_node, table->key_len, table->index_value_len, table->heap_value_len, target_index);
+        predicate = BtreeInsertDuplicateKeyPredicate(created_xid, expired_xid);
+
+        switch (predicate) {
+            case OK:
+                break;
+            case WAIT: {
+                UnlockBuffer(buffer);
+                ReleaseBuffer(buffer);
+                return BtreeInsertWaitForRetry(oid, key, value, created_xid, expired_xid);
+            }
+            case ERRO: {
+                UnlockBuffer(buffer);
+                ReleaseBuffer(buffer);
+                db_log(ERROR, "key '%s' in table '%s' already exists, not allow duplicate key.", 
+                       KeyGetSysStrValue(key, ptype), GET_TABLE_NAME(table));
+                break;
+            }
+        }
+
+    }
 
     next_page_num = GetNextUnusedPageNum(table);
     new_buffer = ReadBuffer(oid, next_page_num);
@@ -695,18 +767,55 @@ static void BtreeInsertForLeafNodeSplit(Oid oid, void *key, void *value, void *l
 
     MakeBufferDirty(new_buffer);
     ReleaseBuffer(new_buffer);
+
+    MakeBufferDirty(buffer);
+    UnlockBuffer(buffer);
+    ReleaseBuffer(buffer);
 }
 
 /* Insert item into the btree no split. */
-static void BtreeInsertForLeafNodeNoSplit(Oid oid, void *key, void *value, void *leaf_node, Refer *refer) {
+static void BtreeInsertForLeafNodeNoSplit(Oid oid, void *key, void *value, Buffer buffer, Refer *refer) {
     Table *table;
+    DataType ptype;
     uint32_t cell_len, cell_num, target_index;
+    void *leaf_node, *cell_key;
 
     table = open_table_inner(oid);
+    ptype = MetaTableFindPrimaryDataType(table->meta_table);
     cell_len = table->key_len + table->index_value_len;
+    leaf_node = GetBufferPage(buffer);
     cell_num = LeafNodeGetCellNum(leaf_node, table->heap_value_len);
     target_index = LeafNodeFindCellNum(oid, key, leaf_node);
     refer->cell_num = target_index;
+    cell_key = LeafNodeGetCellKey(leaf_node, table->key_len, table->index_value_len, table->heap_value_len, target_index);
+
+    /* Avoid duplicate key. */
+    if (EQ(GetComparableValue(key, ptype), GetComparableValue(cell_key, ptype), ptype)) {
+        uint32_t predicate;
+        Xid created_xid, expired_xid;
+
+        created_xid = LeafNodeGetCellCreatedXid(leaf_node, table->key_len, table->index_value_len, table->heap_value_len, target_index);
+        expired_xid = LeafNodeGetCellExpiredXid(leaf_node, table->key_len, table->index_value_len, table->heap_value_len, target_index);
+        predicate = BtreeInsertDuplicateKeyPredicate(created_xid, expired_xid);
+
+        switch (predicate) {
+            case OK:
+                break;
+            case WAIT: {
+                UnlockBuffer(buffer);
+                ReleaseBuffer(buffer);
+                return BtreeInsertWaitForRetry(oid, key, value, created_xid, expired_xid);
+            }
+            case ERRO: {
+                UnlockBuffer(buffer);
+                ReleaseBuffer(buffer);
+                db_log(ERROR, "key '%s' in table '%s' already exists, not allow duplicate key.", 
+                       KeyGetSysStrValue(key, ptype), GET_TABLE_NAME(table));
+                break;
+            }
+        }
+
+    }
 
     /* If need to move sibling cells. */
     if (target_index < cell_num) {
@@ -748,22 +857,28 @@ static void BtreeInsertForLeafNodeNoSplit(Oid oid, void *key, void *value, void 
 
         BtreeInsertForInternalNodeUpdateCellKey(oid, parent_num, old_key, key);
     }
+
+    MakeBufferDirty(buffer);
+    UnlockBuffer(buffer);
+    ReleaseBuffer(buffer);
 }
 
 /* Insert item into the leaf node. */
-static void BtreeInsertForLeafNodeInsertCell(Oid oid, void *key, void *value, void *leaf_node, Refer *refer) {
+static void BtreeInsertForLeafNodeInsertCell(Oid oid, void *key, void *value, Buffer buffer, Refer *refer) {
     Table *table;
+    void *leaf_node;
     uint32_t cell_num;
 
     table = open_table_inner(oid);
+    leaf_node = GetBufferPage(buffer);
     cell_num = LeafNodeGetCellNum(leaf_node, table->heap_value_len);
 
     /* If current is safe, just insert new cell, not split.
      * Otherwise, split first and then insert new cell. */
     if (BtreeInsertForLeafNodeSafe(leaf_node, table->key_len, table->index_value_len, table->heap_value_len, cell_num))
-        BtreeInsertForLeafNodeNoSplit(oid, key, value, leaf_node, refer);
+        BtreeInsertForLeafNodeNoSplit(oid, key, value, buffer, refer);
     else
-        BtreeInsertForLeafNodeSplit(oid, key, value, leaf_node, refer);
+        BtreeInsertForLeafNodeSplit(oid, key, value, buffer, refer);
 }
 
 /* Insert item into the btree for leaf node. */
@@ -792,12 +907,9 @@ static void BtreeInsertForLeafNode(Oid oid, void *key, void *boundary_key, void 
         BtreeInsertForLeafNode(oid, key, boundary_key, value, next_sibling, refer);
     } else {
         refer->page_num = page_num;
-        BtreeInsertForLeafNodeInsertCell(oid, key, value, leaf_node, refer);    
-        MakeBufferDirty(buffer);
+        BtreeInsertForLeafNodeInsertCell(oid, key, value, buffer, refer);    
     }
 
-    UnlockBuffer(buffer);
-    ReleaseBuffer(buffer);
 }
 
 /* Btree insert. 
