@@ -378,11 +378,8 @@ Refer *insert_one_row(Table *table, Row *row) {
         check_duplicate_key(key, preRefer) && 
         WaitForDuplicateKey(preRefer)
     ) {
-        char *keyStr = ptype == T_STRING
-                ? QueryStringValue(key)
-                : get_key_str(key, ptype);
         db_log(ERROR, "key '%s' in table '%s' already exists, not allow duplicate key.", 
-               keyStr, GET_TABLE_NAME(table));
+               KeyGetStrValue(key, ptype), GET_TABLE_NAME(table));
         return NULL;
     }
 
