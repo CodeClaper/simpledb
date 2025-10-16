@@ -6,6 +6,7 @@
 #include "compare.h"
 #include "meta.h"
 #include "table.h"
+#include "refer.h"
 
 /* Get node type. */
 NodeType GetNodeType(void *node) {
@@ -341,6 +342,18 @@ void LeafNodeSetCellValue(void *leaf_node, uint32_t key_len, uint32_t value_len,
     }
 }
 
+/* Get created xid. */
+Xid LeafNodeGetCellCreatedXid(void *leaf_node, uint32_t key_len, uint32_t value_len, uint32_t default_value_len, uint32_t index) {
+    void *cell_value = LeafNodeGetCellValue(leaf_node, key_len, value_len, default_value_len, index);
+    return *(Xid *) (cell_value + REFER_SIZE + LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE);
+}
+
+/* Get created xid. */
+Xid LeafNodeGetCellExpiredXid(void *leaf_node, uint32_t key_len, uint32_t value_len, uint32_t default_value_len, uint32_t index) {
+    void *cell_value = LeafNodeGetCellValue(leaf_node, key_len, value_len, default_value_len, index);
+    return *(Xid *) (cell_value + REFER_SIZE + LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE);
+}
+
 /* Initialize leaf node. */
 void LeafNodeInitialize(void *leaf_node, uint32_t default_value_len, bool is_root) {
     SetNodeType(leaf_node, LEAF_NODE);
@@ -371,8 +384,8 @@ void LeafNodeInitialize(void *leaf_node, uint32_t default_value_len, bool is_roo
 
         index = (max_index + min_index) / 2;
         cell_key = LeafNodeGetCellKey(leaf_node, table->key_len, table->index_value_len, table->heap_value_len, index);
-        /* Notice: Greate EQ opreator is really import for store data, 
-         * when keep the prince: always keep visible row lie at the forefront of same key cells. */
+        /* Notice: Not only greater but aslo equal opreator is really import for store data, 
+         * when keep the prince: always keep visible row lying at the forefront of same key cells. */
         if (GE(GetComparableValue(cell_key, ptype), GetComparableValue(key, ptype), ptype)) {
             max_index = index;
         } else {

@@ -88,6 +88,12 @@ void *LeafNodeGetCellValue(void *leaf_node, uint32_t key_len, uint32_t value_len
 /* Set leaf node cell value. */
 void LeafNodeSetCellValue(void *leaf_node, uint32_t key_len, uint32_t value_len, uint32_t default_value_len, uint32_t index, void *cell_value);
 
+/* Get created xid. */
+Xid LeafNodeGetCellCreatedXid(void *leaf_node, uint32_t key_len, uint32_t value_len, uint32_t default_value_len, uint32_t index);
+
+/* Get created xid. */
+Xid LeafNodeGetCellExpiredXid(void *leaf_node, uint32_t key_len, uint32_t value_len, uint32_t default_value_len, uint32_t index);
+
 /* Initialize leaf node. */
 void LeafNodeInitialize(void *leaf_node, uint32_t default_value_len, bool is_root);
 
