@@ -912,11 +912,6 @@ static void copy_root_to_leaf_node(Table *table, uint32_t new_page_num,
         );
         /* Update refer. */
         update_refer(oid, table->root_page_num, i, new_page_num, i);
-        HeapTableUpdateIndexRefer(
-            table, 
-            get_leaf_node_index_refer_value(root, key_len, value_len, default_value_len, i), 
-            new_refer(oid, new_page_num, i)
-        );
     }
 
     /* Make clear outsides header. */
@@ -1369,11 +1364,6 @@ static void insert_leaf_node_new_cell(Row *row, Refer *refer, uint32_t key_len,
             );
             /* Update refer. */
             update_refer(refer->oid, refer->page_num, i - 1, refer->page_num, i);
-            HeapTableUpdateIndexRefer(
-                table, 
-                get_leaf_node_index_refer_value(node, key_len, value_len, default_value_len, i - 1), 
-                new_refer(refer->oid, refer->page_num, i)
-            );
         }
     }
     
@@ -1504,21 +1494,11 @@ static void insert_and_split_leaf_node(Row *row, Refer *refer, uint32_t key_len,
             memcpy(destination, get_leaf_node_cell(old_node, key_len, value_len, default_value_len, i - 1), cell_length);
             /* Update refer. */
             update_refer(oid, refer->page_num, i - 1, destination_page, index_at_node);
-            HeapTableUpdateIndexRefer(
-                table, 
-                get_leaf_node_index_refer_value(old_node, key_len, value_len, default_value_len, i - 1), 
-                new_refer(oid, destination_page, index_at_node)
-            );
         } else {
             /* Define new position. */
             memcpy(destination, get_leaf_node_cell(old_node, key_len, value_len, default_value_len, i), cell_length);
             /* Update refer. */
             update_refer(oid, refer->page_num, i, destination_page, index_at_node);
-            HeapTableUpdateIndexRefer(
-                table, 
-                get_leaf_node_index_refer_value(old_node, key_len, value_len, default_value_len, i), 
-                new_refer(oid, destination_page, index_at_node)
-            );
         }
     }
 
@@ -1741,11 +1721,6 @@ static void split_root_leaf_node_append_column(uint32_t page_num, Table *table, 
         memcpy(destination, get_leaf_node_cell(leaf_node, key_len, value_len, default_value_len, i), cell_len);
         /* Update refer. */
         update_refer(oid, page_num, i, destination_page, index_at_node);
-        HeapTableUpdateIndexRefer(
-            table, 
-            get_leaf_node_index_refer_value(leaf_node, key_len, value_len, default_value_len, i), 
-            new_refer(oid, destination_page, index_at_node)
-        );
     }
 
     /* Set cell num */
@@ -2535,11 +2510,6 @@ void delete_row_data(void *key, Refer *refer) {
 
         /* Update refer null. */
         update_refer(oid, refer->page_num, cell_num - 1, -1, -1);
-        HeapTableUpdateIndexRefer(
-            table, 
-            get_leaf_node_index_refer_value(leaf_node, key_len, value_len, default_value_len, cell_num - 1), 
-            new_refer(oid, -1, -1)
-        );
     } else {
         /* Move right cell forward to cover the obsolute cell sapce. */
         for (uint32_t i = refer->cell_num; i < cell_num; i++) {
@@ -2551,20 +2521,10 @@ void delete_row_data(void *key, Refer *refer) {
                        cell_length);
                 /* Update postion-changed row refer. */
                 update_refer(oid, refer->page_num, i + 1, refer->page_num, i);
-                HeapTableUpdateIndexRefer(
-                    table, 
-                    get_leaf_node_index_refer_value(leaf_node, key_len, value_len, default_value_len, i + 1), 
-                    new_refer(oid, refer->page_num, i)
-                );
             }
         }
         /* Update deleted row refer. */
         update_refer(oid, refer->page_num, refer->cell_num, -1, -1);
-        HeapTableUpdateIndexRefer(
-            table, 
-            get_leaf_node_index_refer_value(leaf_node, key_len, value_len, default_value_len, refer->cell_num), 
-            new_refer(oid, -1, -1)
-        );
     }
 
     /* Decrease cell number. */
@@ -2720,7 +2680,7 @@ static void *seriable_index_value(Row *row, Refer *refer) {
     meta_table = table->meta_table;
 
     /* Insert into heap table. */
-    heap_refer = HeapTableInsertRow(row, refer);
+    heap_refer = HeapTableInsertRow(refer->oid, row);
     
     /* Assign the heap refer value. */
     memcpy(destination, heap_refer, REFER_SIZE);

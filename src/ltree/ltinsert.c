@@ -579,11 +579,6 @@ static void BtreeInsertForLeafNodeUpgradeRoot(Oid oid, void *root, void *right_n
                              LeafNodeGetCellValue(root, table->key_len, table->index_value_len, table->heap_value_len, i));
         /* Update refer. */
         update_refer(oid, ROOT_PAGE_NUM, i, next_page_num, i);
-        HeapTableUpdateIndexRefer(
-            table, 
-            LeafNodeGetCellValue(root, table->key_len, table->index_value_len, table->heap_value_len, i), 
-            new_refer(oid, next_page_num, i)
-        );
     }
 
     /* Set parent. */
@@ -727,21 +722,11 @@ static void BtreeInsertForLeafNodeSplit(Oid oid, void *key, void *value, Buffer 
             memcpy(destination, LeafNodeGetCellValue(leaf_node, table->key_len, table->index_value_len, table->heap_value_len, i - 1), cell_len);
             /* Update refer. */
             update_refer(oid, refer->page_num, i - 1, destination_page, new_index);
-            HeapTableUpdateIndexRefer(
-                table, 
-                LeafNodeGetCellValue(leaf_node, table->key_len, table->index_value_len, table->heap_value_len, i - 1), 
-                new_refer(oid, destination_page, new_index)
-            );
         } else {
             /* Define new position. */
             memcpy(destination, LeafNodeGetCellValue(leaf_node, table->key_len, table->index_value_len, table->heap_value_len, i), cell_len);
             /* Update refer. */
             update_refer(oid, refer->page_num, i, destination_page, new_index);
-            HeapTableUpdateIndexRefer(
-                table, 
-                LeafNodeGetCellValue(leaf_node, table->key_len, table->index_value_len, table->heap_value_len, i), 
-                new_refer(oid, destination_page, new_index)
-            );
         }
     }
 
@@ -835,12 +820,6 @@ static void BtreeInsertForLeafNodeNoSplit(Oid oid, void *key, void *value, Buffe
             );
             /* Update refer. */
             update_refer(oid, refer->page_num, i - 1, refer->page_num, i);
-            /* Update heap table refer. */
-            HeapTableUpdateIndexRefer(
-                table, 
-                LeafNodeGetCellValue(leaf_node, table->key_len, table->index_value_len, table->heap_value_len, i - 1), 
-                new_refer(oid, refer->page_num, i)
-            );
         }
     }
     

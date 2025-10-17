@@ -10,11 +10,8 @@ bool CreateHeapTableInner(Oid oid);
 /* Create the heap table. */
 bool CreateHeapTable(char *tableName);
 
-/* Insert row data to heap table. */
-Refer *HeapTableInsertRow(Row *row, Refer *refer);
-
 /* Direct insert heap table. */
-Refer *HeapTableInsertRowDirect(Oid oid, Row *row);
+Refer *HeapTableInsertRow(Oid oid, Row *row);
 
 /* Loop up tuple from heap table. */
 void *HeapTableLookupTuple(Table *table, Refer *refer);
@@ -24,9 +21,6 @@ Row *HeapTableLookupRow(Table *table, Refer *refer);
 
 /* Update the row in heap table. */
 void HeapTableUpdateRow(Table *table, Refer *refer, Row *row);
-
-/* Update the index refer in row. */
-void HeapTableUpdateIndexRefer(Table *table, Refer *refer, Refer *newIRefer);
 
 /* Update the heap table row createdXid. */
 void HeapTableUpdateRowCreatedXid(Table *table, Refer *refer, Xid createdXid);

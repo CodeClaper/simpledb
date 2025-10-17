@@ -383,22 +383,19 @@ Refer *insert_one_row(Table *table, Row *row) {
         return NULL;
     }
 
-    /* Insert into leaf node. */
-    /*insert_row_data(row, refer);*/
-
     /* Insert into heap table. */
-    heapRefer = HeapTableInsertRowDirect(oid, row);
+    heapRefer = HeapTableInsertRow(oid, row);
 
     index_value = SeriableIndexValue(oid, row, heapRefer);
 
+    /* Insert into btree. */
     iRefer = BtreeInsert(oid, key, index_value);
-
-    HeapTableUpdateIndexRefer(table, heapRefer, iRefer);
 
     /* Record xlog for insert operation. */
     RecordXlog(iRefer, HEAP_INSERT);
 
     dfree(index_value);
+
     return iRefer;    
 }
 
