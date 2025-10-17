@@ -130,6 +130,77 @@ bool create_table(Oid oid, MetaTable *meta_table) {
     return true;
 }
 
+/* Create a new table. */
+bool shrink_table(Oid oid, MetaTable *meta_table) {
+    char *file_path;
+    int descr;
+    void *root_node;
+    uint32_t default_value_len;
+
+    AssertFalse(ZERO_OID(oid));
+    Assert(meta_table);
+
+    file_path = table_file_path(oid);
+    if (!table_file_exist(file_path)) {
+        db_log(ERROR, "Table '%s' not exists.", meta_table->table_name);
+        dfree(file_path);
+        return false;
+    }
+
+    descr = open(file_path, O_WRONLY, S_IWUSR | S_IRUSR);
+    if (descr == -1) {
+        db_log(ERROR, "Open database file '%s' fail.", file_path);
+        dfree(file_path);
+        return false;
+    }
+
+    root_node = dalloc(PAGE_SIZE);
+
+    default_value_len = MetaTableCalcRowLenght(meta_table);
+
+    /* Initialize root node */
+    initial_leaf_node(root_node, default_value_len, true);
+
+    /* Set meta column */
+    set_column_size(root_node, meta_table->all_column_size);
+    
+    /* Get default value cell. */
+    void *default_value_dest = get_default_value_cell(root_node);
+
+    /* Serialize */
+    uint32_t offset = 0;
+    ListCell *lc;
+    foreach (lc, meta_table->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
+        void *destination = serialize_meta_column(meta_column);
+        set_meta_column(root_node, destination, __i);
+        if (meta_column->default_value_type == DEFAULT_VALUE)
+            memcpy(default_value_dest + offset, meta_column->default_value, meta_column->column_length);
+        else
+            memset(default_value_dest + offset, 0, meta_column->column_length);
+        offset += meta_column->column_length;
+    }
+
+    /* Flush to disk. */
+    lseek(descr, 0, SEEK_SET);
+    ssize_t w_size = write(descr, root_node, PAGE_SIZE);
+    if (w_size == -1) {
+        db_log(ERROR, "Write table meta info error and error message: %s.", strerror(errno));
+        dfree(file_path);
+        dfree(root_node);
+        return false;
+    }
+
+    /* Close desription. */
+    close(descr);
+
+    /* Free memory. */
+    dfree(file_path);
+    dfree(root_node);
+
+    return true;
+}
+
 /* Get Column Position. */
 static int get_column_position(MetaTable *meta_table, ColumnPositionDef *pos_def) {
     /* If not ColumnPositionDef, append column at last. */
@@ -159,11 +230,11 @@ static int get_column_position(MetaTable *meta_table, ColumnPositionDef *pos_def
 /* Add new MetaColumn to table.
  * ---------------------------
  * This function is actually bottom-level routine for alter-table-add-column action. */
-bool add_new_meta_column(char *table_name, MetaColumn *new_meta_column, ColumnPositionDef *post_def) {
+bool add_new_meta_column(Oid oid, MetaColumn *new_meta_column, ColumnPositionDef *post_def) {
     Table *table;
     int pos;
 
-    table = open_table(table_name);
+    table = open_table_inner(oid);
     pos = get_column_position(table->meta_table, post_def);
 
     /* Append index table new column. */

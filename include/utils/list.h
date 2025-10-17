@@ -142,6 +142,9 @@ void append_list_int(List *list, int item);
 /* Append item to list. */
 void append_list(List *list, void *item);
 
+/* Append item to list at index. */
+void append_list_at(List *list, void *item, uint32_t index);
+
 /* Check if the int item is the member of list. */
 bool list_member_int(List *list, int item);
 

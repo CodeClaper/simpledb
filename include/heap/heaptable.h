@@ -16,6 +16,9 @@ Refer *HeapTableInsertRow(Oid oid, Row *row);
 /* Loop up tuple from heap table. */
 void *HeapTableLookupTuple(Table *table, Refer *refer);
 
+/* Look up tuple from heap table. */
+void *HeapTableLookupTupleLoop(Table *table, Refer *refer);
+
 /* Loop up row from heap table. */
 Row *HeapTableLookupRow(Table *table, Refer *refer);
 

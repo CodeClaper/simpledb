@@ -101,7 +101,7 @@ bool CreateHeapTable(char *tableName) {
     return true;
 }
 
-/* Insert into heap table. */
+/* Insert intadd_new_meta_columno heap table. */
 static void HeapTableInsertRowInner(Oid oid, Refer *rootRefer, Row *row) {
     Table *table;
     uint32_t cell_num;
@@ -162,7 +162,7 @@ Refer *HeapTableInsertRow(Oid oid, Row *row) {
     return currentRefer;
 }
 
-/* Loop up tuple from heap table. */
+/* Look up tuple from heap table. */
 void *HeapTableLookupTuple(Table *table, Refer *refer) {
     Buffer buffer;
     void *block;
@@ -176,6 +176,46 @@ void *HeapTableLookupTuple(Table *table, Refer *refer) {
 
     UnlockBuffer(buffer);
     ReleaseBuffer(buffer);
+
+    return destintion;
+}
+
+/* Look up tuple from heap table. */
+void *HeapTableLookupTupleLoop(Table *table, Refer *refer) {
+    Buffer buffer, rootBuffer;
+    void *block, *root;
+    uint32_t cell_num;
+    Refer *rootRefer;
+
+    rootBuffer = ReadBuffer(refer->oid, HEAP_TABLE_ROOT_PAGE);
+    LockBuffer(rootBuffer, RW_READERS);
+    root = GetBufferBlock(rootBuffer);
+    rootRefer = GetRootRefer(root);
+
+    Assert(rootRefer->oid == refer->oid);
+    if (refer->page_num > rootRefer->page_num || 
+        (refer->page_num == rootRefer->page_num && refer->cell_num >= rootRefer->cell_num)
+    )
+        return NULL;
+    
+    buffer = ReadBuffer(refer->oid, refer->page_num);
+    LockBuffer(buffer, RW_READERS);
+    block = GetBufferBlock(buffer);
+    cell_num = GetPageCellNum(block);
+
+    /* Deserialize row. */
+    void *destintion = GetPageCellData(block, table->heap_value_len, refer->cell_num);
+    
+    /* Loop to next refer. */
+    refer->cell_num++;
+    if (refer->cell_num >= cell_num)
+        refer->page_num++;
+
+    UnlockBuffer(buffer);
+    ReleaseBuffer(buffer);
+
+    UnlockBuffer(rootBuffer);
+    ReleaseBuffer(rootBuffer);
 
     return destintion;
 }

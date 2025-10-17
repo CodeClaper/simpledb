@@ -109,6 +109,82 @@ void append_list(List *list, void *item) {
     }
 }
 
+static void append_list_int_at(List *list, bool item, uint32_t index) {
+    if (list->size >= list->capacity)
+        enlarge_list(list);
+
+    for (int i = list->size; i > index; i--) {
+        memcpy(list->elements + i, list->elements + i - 1, sizeof(ListCell));
+    }
+    lfirst_int(list->elements + index) = item;
+    list->size++;
+}
+
+static void append_list_bool_at(List *list, bool item, uint32_t index) {
+    if (list->size >= list->capacity)
+        enlarge_list(list);
+
+    for (int i = list->size; i > index; i--) {
+        memcpy(list->elements + i, list->elements + i - 1, sizeof(ListCell));
+    }
+    lfirst_bool(list->elements + index) = item;
+    list->size++;
+}
+
+static void append_list_float_at(List *list, float item, uint32_t index) {
+    if (list->size >= list->capacity)
+        enlarge_list(list);
+
+    for (int i = list->size; i > index; i--) {
+        memcpy(list->elements + i, list->elements + i - 1, sizeof(ListCell));
+    }
+    lfirst_float(list->elements + index) = item;
+    list->size++;
+}
+
+static void append_list_double_at(List *list,  double item, uint32_t index) {
+    if (list->size >= list->capacity)
+        enlarge_list(list);
+
+    for (int i = list->size; i > index; i--) {
+        memcpy(list->elements + i, list->elements + i - 1, sizeof(ListCell));
+    }
+    lfirst_double(list->elements + index) = item;
+    list->size++;
+}
+
+static void append_list_ptr_at(List *list, void *item, uint32_t index) {
+    if (list->size >= list->capacity)
+        enlarge_list(list);
+
+    for (int i = list->size; i > index; i--) {
+        memcpy(list->elements + i, list->elements + i - 1, sizeof(ListCell));
+    }
+    lfirst(list->elements + index) = item;
+    list->size++;
+}
+
+/* Append item to list at index. */
+void append_list_at(List *list, void *item, uint32_t index) {
+    switch (list->type) {
+        case NODE_INT:
+            append_list_int_at(list, *(int *)item, index);
+            break;
+        case NODE_BOOL:
+            append_list_bool_at(list, *(bool *)item, index);
+            break;
+        case NODE_FLOAT:
+            append_list_float_at(list, *(float *)item, index);
+            break;
+        case NODE_DOUBLE:
+            append_list_double_at(list, *(double *)item, index);
+            break;
+        default:
+            append_list_ptr_at(list, item, index);
+            break;
+    }
+}
+
 /* Check if the int item is the member of list. */
 bool list_member_int(List *list, int item) {
     ListCell *lc;
