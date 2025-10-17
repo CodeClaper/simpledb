@@ -1,6 +1,6 @@
 #include <stdint.h>
 #include "ltsearch.h"
-#include "ltr.h"
+#include "ltbase.h"
 #include "refer.h"
 #include "bufmgr.h"
 #include "table.h"

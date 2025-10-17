@@ -3,7 +3,7 @@
 #include <string.h>
 #include "ltinsert.h"
 #include "bufpool.h"
-#include "ltr.h"
+#include "ltbase.h"
 #include "table.h"
 #include "const.h"
 #include "meta.h"

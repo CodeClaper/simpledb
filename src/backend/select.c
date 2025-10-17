@@ -32,7 +32,7 @@
 #include "tuple.h"
 #include "func.h"
 #include "ltree.h"
-#include "ltr.h"
+#include "ltbase.h"
 #include "pager.h"
 #include "table.h"
 #include "asserts.h"
