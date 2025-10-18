@@ -35,7 +35,7 @@
 /* Try to catpture table.
  * If these other session on the table, wait and test. 
  * */
-static void TryCaptureTable(Oid oid) {
+static void AlterCaptureTable(Oid oid) {
     try_acquire_table(oid);
     /* Wait until capture the table exclusively. */
     while (if_shared_table(oid)) {
@@ -44,7 +44,7 @@ static void TryCaptureTable(Oid oid) {
 }
 
 /* Release Table. */
-static void ReleaseTable(Oid oid) {
+static void AlterReleaseTable(Oid oid) {
     RemoveTableCache(oid);
     try_release_table(oid);
 }
@@ -106,7 +106,8 @@ static inline void MetaTableAppendColumn(MetaTable *meta_table, MetaColumn *new_
     append_list_at(meta_table->meta_columns, new_meta_column, pos);
 }
 
-static void ReinsertBtreeLoopHeapTable(Table *table) {
+/* Loop heap table and reinsert into btree. */
+static void LoopHeapTableAndReinsert(Table *table) {
     Oid oid, hoid;
     Refer *refer;
     MetaColumn *primary_meta_column;
@@ -124,6 +125,7 @@ static void ReinsertBtreeLoopHeapTable(Table *table) {
     }
 }
 
+/* Add new column inner. */
 static bool AlterAddNewColumnInner(Oid oid, MetaColumn *new_meta_column, ColumnPositionDef *position_def) {
     Table *table = open_table_inner(oid);
     int pos = ColumnPositionDefFindPos(table->meta_table, position_def);
@@ -137,8 +139,8 @@ static bool AlterAddNewColumnInner(Oid oid, MetaColumn *new_meta_column, ColumnP
     /* Append to heap able. */
     HeapTableAppendColumn(table, new_meta_column, pos);
     
-    /* Reinsert */
-    ReinsertBtreeLoopHeapTable(table);
+    /* Loop heap table and reinsert. */
+    LoopHeapTableAndReinsert(table);
 
     return true;
 }
@@ -156,7 +158,7 @@ static void AlterAddNewColumn(AddColumnDef *add_column_def, char *table_name, DB
         db_log(ERROR, "Not support add primary-key column through alter table.");
 
     /* Capture table exclusively. */
-    TryCaptureTable(oid);
+    AlterCaptureTable(oid);
 
     /* Try to add new column. */
     if (AlterAddNewColumnInner(oid, new_meta_column, add_column_def->position_def)) {
@@ -168,10 +170,11 @@ static void AlterAddNewColumn(AddColumnDef *add_column_def, char *table_name, DB
                table_name);
     }
 
+    /* Free memory. */
     free_meta_column(new_meta_column);
 
     /* Release table. */
-    ReleaseTable(oid);
+    AlterReleaseTable(oid);
 }
 
 /* Drop old column. */
@@ -179,7 +182,7 @@ static void AlterDropOldColumn(DropColumnDef *drop_column_def, char *table_name,
     Oid oid = TableNameFindOid(table_name);
 
     /* Capture table exclusively. */
-    TryCaptureTable(oid);
+    AlterCaptureTable(oid);
 
     /* Drop column.*/
     if (drop_meta_column(table_name, drop_column_def->column_name)) {
@@ -193,7 +196,7 @@ static void AlterDropOldColumn(DropColumnDef *drop_column_def, char *table_name,
     }
 
     /* Release table. */
-    ReleaseTable(oid);
+    AlterReleaseTable(oid);
 }
 
 /* Execute alter table statement. */
