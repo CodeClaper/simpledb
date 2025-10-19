@@ -50,15 +50,13 @@ static void ReleaseTable(Oid oid) {
 }
 
 
-static void *SeriableIndexValue(Table *table, void *tupele, Refer *heapRefer) {
+static void *SeriableIndexValue(Table *table, void *tuple, Refer *heapRefer) {
     uint32_t value_len;
     void *destination;
-    Row *row;
     MetaTable *meta_table;
 
     value_len = table->index_value_len;
     destination = dalloc(value_len);
-    row = GenerateRow(tupele, table->meta_table);
     meta_table = table->meta_table;
 
     /* Assign the heap refer value. */
@@ -69,7 +67,7 @@ static void *SeriableIndexValue(Table *table, void *tupele, Refer *heapRefer) {
     foreach (lc, meta_table->meta_columns) {
         MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
         if (meta_column->sys_reserved) {
-            void *value = RowGetValueOrDefault(row, meta_column);
+            void *value = TupeFindValue(tuple, meta_column);
             assign_row_value(destination + offset, value, meta_column);
             offset += meta_column->column_length;
         }
@@ -124,7 +122,6 @@ static void ReinsertBtreeLoopHeapTable(Table *table) {
         value = SeriableIndexValue(table, tuple, refer);
         BtreeInsert(oid, key, value);
     }
-    
 }
 
 static bool AlterAddNewColumnInner(Oid oid, MetaColumn *new_meta_column, ColumnPositionDef *position_def) {

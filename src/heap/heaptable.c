@@ -183,20 +183,20 @@ void *HeapTableLookupTuple(Table *table, Refer *refer) {
 /* Look up tuple from heap table. */
 void *HeapTableLookupTupleLoop(Table *table, Refer *refer) {
     Buffer buffer, rootBuffer;
-    void *block, *root;
     uint32_t cell_num;
     Refer *rootRefer;
+    void *block, *root, *tuple;
 
     rootBuffer = ReadBuffer(refer->oid, HEAP_TABLE_ROOT_PAGE);
     LockBuffer(rootBuffer, RW_READERS);
     root = GetBufferBlock(rootBuffer);
     rootRefer = GetRootRefer(root);
-
     Assert(rootRefer->oid == refer->oid);
+
+    /* Loop end here. */
     if (refer->page_num > rootRefer->page_num || 
         (refer->page_num == rootRefer->page_num && refer->cell_num >= rootRefer->cell_num)
-    )
-        return NULL;
+    ) return NULL;
     
     buffer = ReadBuffer(refer->oid, refer->page_num);
     LockBuffer(buffer, RW_READERS);
@@ -204,20 +204,20 @@ void *HeapTableLookupTupleLoop(Table *table, Refer *refer) {
     cell_num = GetPageCellNum(block);
 
     /* Deserialize row. */
-    void *destintion = GetPageCellData(block, table->heap_value_len, refer->cell_num);
+    tuple = GetPageCellData(block, table->heap_value_len, refer->cell_num);
     
     /* Loop to next refer. */
     refer->cell_num++;
-    if (refer->cell_num >= cell_num)
-        refer->page_num++;
+    if (refer->cell_num >= cell_num) refer->page_num++;
 
+    /* Unlock and release buffer. */
     UnlockBuffer(buffer);
     ReleaseBuffer(buffer);
 
     UnlockBuffer(rootBuffer);
     ReleaseBuffer(rootBuffer);
 
-    return destintion;
+    return tuple;
 }
 
 /* Loop up row from heap table. */
