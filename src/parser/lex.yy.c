@@ -1,5 +1,5 @@
 
-#line 3 "lex.yy.c"
+#line 2 "lex.yy.c"
 
 #define  YY_INT_ALIGNED short int
 
@@ -688,8 +688,8 @@ int yyerror(List *states, const char *s);
 
 /* macro to save the text and return a token */
 #define TOK(name) { return name; }
+#line 691 "lex.yy.c"
 #line 692 "lex.yy.c"
-#line 693 "lex.yy.c"
 
 #define INITIAL 0
 
@@ -908,7 +908,7 @@ YY_DECL
 	{
 #line 25 "sql.l"
 
-#line 912 "lex.yy.c"
+#line 911 "lex.yy.c"
 
 	while ( /*CONSTCOND*/1 )		/* loops until end-of-file is reached */
 		{
@@ -1408,7 +1408,7 @@ YY_RULE_SETUP
 #line 136 "sql.l"
 ECHO;
 	YY_BREAK
-#line 1412 "lex.yy.c"
+#line 1411 "lex.yy.c"
 case YY_STATE_EOF(INITIAL):
 	yyterminate();
 

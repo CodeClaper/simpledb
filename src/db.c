@@ -55,7 +55,7 @@ jmp_buf errEnv;
 const char *program_name;  
 
 /* Child process signal.*/
-static inline void sigchild() {
+static inline void sigchild(int signal) {
     while (waitpid(-1, NULL, WNOHANG) > 0);
 }
 

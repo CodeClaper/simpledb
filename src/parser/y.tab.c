@@ -83,7 +83,7 @@
 int yywrap() {
     return 1;
 }
-int yylex();
+int yylex(List *states);
 int yyerror(List *states, const char *s);
 extern char *current_token;
 
