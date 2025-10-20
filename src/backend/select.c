@@ -169,7 +169,7 @@ static KeyValue *QueryTupleColumnValueForSubColumn(SelectPlan *select_plan, Meta
 /* Query tuple column value. */
 static KeyValue *QueryTupleColumnValue(SelectPlan *select_plan, List *meta_columns, ColumnNode *column, void *tuple) {
     MetaColumn *target_meta_column = ColumnNodeFindMetaColumn(select_plan, meta_columns, column);
-    void *value = GetComparableValue(TupeFindValue(tuple, target_meta_column), target_meta_column->column_type);
+    void *value = GetComparableValue(TupleFindValue(tuple, target_meta_column), target_meta_column->column_type);
     return column->has_sub_column 
         ? QueryTupleColumnValueForSubColumn(select_plan, target_meta_column, column, value)
         : new_key_value(target_meta_column->column_name, value, target_meta_column->column_type, target_meta_column->own_table_name);
@@ -305,11 +305,11 @@ static bool ColumnAndReferValueCompparison(SelectPlan *select_plan, List *meta_c
     if (ScalarExpIsReferValue(right)) {
         target_meta_column = ColumnNodeFindMetaColumn(select_plan, meta_columns, left->column);
         target = ScalarExpFindRefer(right, target_meta_column);
-        source = TupeFindValue(tuple, target_meta_column);
+        source = TupleFindValue(tuple, target_meta_column);
     } else {
         target_meta_column = ColumnNodeFindMetaColumn(select_plan, meta_columns, right->column);
         source = ScalarExpFindRefer(left, target_meta_column);
-        target = TupeFindValue(tuple, target_meta_column);
+        target = TupleFindValue(tuple, target_meta_column);
     }
 
     return eval(compare_type, source, target, T_REFERENCE);
@@ -355,7 +355,7 @@ static bool LeafNodeForInPredicate(SelectPlan *select_plan, List *meta_columns, 
 static bool LeafNodeForLikePredicate(SelectPlan *select_plan, List *meta_columns, void *tuple, LikeNode *like_node) {
     MetaColumn *meta_column = ColumnNodeFindMetaColumn(select_plan, meta_columns, like_node->column);
     void *target_value = ValueItemNodeFindValue(like_node->value);
-    void *value = TupeFindValue(tuple, meta_column);
+    void *value = TupleFindValue(tuple, meta_column);
     return ValueLikeStringValue(GetComparableValue(value, meta_column->column_type), target_value);
 }
 

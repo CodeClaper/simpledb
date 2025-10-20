@@ -67,7 +67,7 @@ static void *SeriableIndexValue(Table *table, void *tuple, Refer *heapRefer) {
     foreach (lc, meta_table->meta_columns) {
         MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
         if (meta_column->sys_reserved) {
-            void *value = TupeFindValue(tuple, meta_column);
+            void *value = TupleFindValue(tuple, meta_column);
             assign_row_value(destination + offset, value, meta_column);
             offset += meta_column->column_length;
         }
@@ -119,7 +119,7 @@ static void LoopHeapTableAndReinsert(Table *table) {
     primary_meta_column = MetaTableFindPrimaryKey(table->meta_table);
 
     while ((tuple = HeapTableLookupTupleLoop(table, refer)) != NULL) {
-        key = TupeFindValue(table, primary_meta_column);
+        key = TupleFindValue(table, primary_meta_column);
         value = SeriableIndexValue(table, tuple, refer);
         BtreeInsert(oid, key, value);
     }

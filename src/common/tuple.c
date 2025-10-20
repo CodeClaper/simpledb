@@ -32,7 +32,7 @@ static void *GetTupleValue(void *destination, MetaColumn *meta_column) {
 }
 
 /* Get value in tuple. */
-void *TupeFindValue(void *tuple, MetaColumn *meta_column) {
+void *TupleFindValue(void *tuple, MetaColumn *meta_column) {
     bool nflag =  *(bool *)(tuple + meta_column->offset);
     return nflag ? NULL : GetTupleValue((tuple + meta_column->offset), meta_column);
 }

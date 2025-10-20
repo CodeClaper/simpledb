@@ -429,9 +429,9 @@ static void *ObjectConvertKeyValue(Object entity, int i) {
 static Object TupleConvertObject(void *tuple) {
     Object entity;
 
-    Oid *oid = (Oid *) TupeFindValue(tuple, SYS_TABLE_COLUMNS + 0);
-    char *relname = (char *) TupeFindValue(tuple, SYS_TABLE_COLUMNS + 1);
-    ObjectType *type = (ObjectType *) TupeFindValue(tuple, SYS_TABLE_COLUMNS + 2);
+    Oid *oid = (Oid *) TupleFindValue(tuple, SYS_TABLE_COLUMNS + 0);
+    char *relname = (char *) TupleFindValue(tuple, SYS_TABLE_COLUMNS + 1);
+    ObjectType *type = (ObjectType *) TupleFindValue(tuple, SYS_TABLE_COLUMNS + 2);
 
     entity.oid = *oid;
     memset(entity.relname, 0, MAX_RELNAME_LEN);

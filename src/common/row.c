@@ -21,7 +21,7 @@ Row *GenerateRowInner(void *tuple, List *meta_columns) {
         MetaColumn *meta_column = (MetaColumn *) lfirst(lc);
         /* Generate a key value pair. */
         KeyValue *key_value = new_key_value(meta_column->column_name, 
-                                            TupeFindValue(tuple, meta_column), 
+                                            TupleFindValue(tuple, meta_column), 
                                             meta_column->column_type, 
                                             meta_column->own_table_name);
         key_value->is_array = meta_column->array_dim > 0;
