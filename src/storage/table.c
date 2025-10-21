@@ -164,7 +164,7 @@ bool shrink_table(Oid oid, MetaTable *meta_table) {
     uint32_t offset = 0;
     ListCell *lc;
     foreach (lc, meta_table->meta_columns) {
-        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
+        MetaColumn *meta_column = (MetaColumn *) lfirst(lc);
         void *destination = serialize_meta_column(meta_column);
         set_meta_column(root_node, destination, __i);
         if (meta_column->default_value_type == DEFAULT_VALUE)

@@ -187,9 +187,8 @@ static void LoopHeapTableAndReinsert(Table *table) {
         count++;
         dfree(value);
         HeapTableIterator(table, refer);
+        db_log(DEBUGER, "Has reinsert rows: %d.", count);
     }
-
-    db_log(DEBUGER, "Has reinsert rows: %d.", count);
 
     dfree(refer);
 }
@@ -263,8 +262,7 @@ static void AlterAddNewColumn(AddColumnDef *add_column_def, char *table_name, DB
         result->message = FormatStr("Add column '%s' for table '%s' successfully.", 
                                     new_meta_column->column_name, table_name);
         db_log(SUCCESS, "Add column '%s' for table '%s' successfully.", 
-               new_meta_column->column_name, 
-               table_name);
+               new_meta_column->column_name, table_name);
     }
 
     /* Free memory. */
@@ -285,11 +283,9 @@ static void AlterDropOldColumn(DropColumnDef *drop_column_def, char *table_name,
     if (AlterDropColumnInnder(oid, drop_column_def)) {
         result->success = true;
         result->message = FormatStr("Drop column '%s' for table '%s' successfully.", 
-                                 drop_column_def->column_name, 
-                                 table_name);
+                                    drop_column_def->column_name, table_name);
         db_log(SUCCESS, "Drop column '%s' for table '%s' successfully.", 
-               drop_column_def->column_name, 
-               table_name);
+               drop_column_def->column_name, table_name);
     }
 
     /* Release table. */

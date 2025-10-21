@@ -587,7 +587,7 @@ static void BtreeInsertForLeafNodeUpgradeRoot(Oid oid, void *root, void *right_n
 
     /* Make clear outsides header. */
     uint32_t ROOT_LEAF_NODE_HEADER_SIZE = COMMON_NODE_HEADER_SIZE + ROOT_NODE_META_COLUMN_SIZE_SIZE 
-                                        + ROOT_NODE_META_COLUMN_SIZE * column_size;
+                                        + ROOT_NODE_META_COLUMN_SIZE * column_size + table->heap_value_len;
     memset(root + ROOT_LEAF_NODE_HEADER_SIZE, 0, PAGE_SIZE - ROOT_LEAF_NODE_HEADER_SIZE);
     
     /* upgrade to internal node. */
