@@ -78,6 +78,7 @@ static void *SeriableIndexValue(Table *table, void *tuple, Refer *heapRefer) {
     return destination;
 }
 
+/* Find the postion via ColumnPositionDef. */
 static int ColumnPositionDefFindPos(MetaTable *meta_table, ColumnPositionDef *position_def) {
     /* If not ColumnPositionDef, append column at last. */
     if (IsNull(position_def))
@@ -103,7 +104,7 @@ static int ColumnPositionDefFindPos(MetaTable *meta_table, ColumnPositionDef *po
     return -1;
 }
 
-/* Table for append meta column. */
+/* Modify Table for append meta column. */
 static void TableModifyForAppendColumn(Table *table, MetaColumn *new_meta_column, int pos) {
     int i, offset = 0;
     MetaTable *meta_table;
@@ -133,7 +134,7 @@ static void TableModifyForAppendColumn(Table *table, MetaColumn *new_meta_column
     switch_local();
 }
 
-/* Table expand for append meta column. */
+/* Modify table for drop meta column. */
 static void TableModifyForDropColumn(Table *table, MetaColumn *meta_column, int pos) {
     int i, offset = 0;
     MetaTable *meta_table;
