@@ -385,7 +385,8 @@ Refer *insert_one_row(Table *table, Row *row) {
 
     /* Insert into heap table. */
     heapRefer = HeapTableInsertRow(oid, row);
-
+    
+    /* Seriable index value. */
     index_value = SeriableIndexValue(oid, row, heapRefer);
 
     /* Insert into btree. */

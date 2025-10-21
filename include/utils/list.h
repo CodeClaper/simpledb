@@ -193,6 +193,10 @@ void list_delete_double(List *list, double item);
 void list_delete(List *list, void *item);
 
 
+/* Delete item in list at index. */
+void list_delete_at(List *list, int index);
+
+
 /* Delete first target int item in List. 
  * Skip if not found in list.
  * */

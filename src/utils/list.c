@@ -302,7 +302,6 @@ void list_delete_bool(List *list, bool item) {
  * Skip if not found in list.
  * */
 void list_delete_float(List *list, float item) {
-
     ListCell *lc;
     foreach (lc, list) {
         if (lfirst_float(lc) == item) {
@@ -329,7 +328,6 @@ void list_delete_double(List *list, double item) {
  * Skip if not found in list.
  * */
 void list_delete_ptr(List *list, void *item) {
-
     ListCell *lc;
     foreach (lc, list) {
         if (lfirst(lc) == item) {
@@ -361,6 +359,11 @@ void list_delete(List *list, void *item) {
             list_delete_ptr(list, item);
             break;
     }
+}
+
+/* Delete item in list at index. */
+void list_delete_at(List *list, int index) {
+    list_delete_nth_cell(list, index);
 }
 
 

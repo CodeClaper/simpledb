@@ -10,6 +10,7 @@
  * (4) alter table rename column
  ********************************************************************************************/
 #include <stdbool.h>
+#include <stdint.h>
 #include <string.h>
 #include <unistd.h>
 #include "data.h"
@@ -21,6 +22,7 @@
 #include "create.h"
 #include "tablelock.h"
 #include "utils.h"
+#include "copy.h"
 #include "free.h"
 #include "meta.h"
 #include "tuple.h"
@@ -49,7 +51,7 @@ static void AlterReleaseTable(Oid oid) {
     try_release_table(oid);
 }
 
-
+/* Seriable index vlaue. */
 static void *SeriableIndexValue(Table *table, void *tuple, Refer *heapRefer) {
     uint32_t value_len;
     void *destination;
@@ -101,9 +103,64 @@ static int ColumnPositionDefFindPos(MetaTable *meta_table, ColumnPositionDef *po
     return -1;
 }
 
-/* Append meta column. */
-static inline void MetaTableAppendColumn(MetaTable *meta_table, MetaColumn *new_meta_column, int pos) {
-    append_list_at(meta_table->meta_columns, new_meta_column, pos);
+/* Table for append meta column. */
+static void TableModifyForAppendColumn(Table *table, MetaColumn *new_meta_column, int pos) {
+    int i, offset = 0;
+    MetaTable *meta_table;
+
+    switch_shared();
+
+    meta_table = table->meta_table;
+    Assert(meta_table != NULL);
+
+    /* Append new column. */
+    append_list_at(meta_table->meta_columns, copy_meta_column(new_meta_column), pos);
+
+    /* Increase column number. */
+    meta_table->column_size++;
+    meta_table->all_column_size++;
+
+    /* Set offset. */
+    for (i = 0; i < table->meta_table->all_column_size; i++) {
+        MetaColumn *current = lfirst(list_nth_cell(meta_table->meta_columns, i));
+        current->offset = offset;
+        offset += current->column_length;
+    }
+
+    /* Expnad the heap_value_len. */
+    table->heap_value_len += new_meta_column->column_length;
+
+    switch_local();
+}
+
+/* Table expand for append meta column. */
+static void TableModifyForDropColumn(Table *table, MetaColumn *meta_column, int pos) {
+    int i, offset = 0;
+    MetaTable *meta_table;
+
+    switch_shared();
+
+    meta_table = table->meta_table;
+    Assert(meta_table != NULL);
+
+    /* Delete the column. */
+    list_delete_at(meta_table->meta_columns, pos);
+
+    /* Decrease column number. */
+    meta_table->column_size--;
+    meta_table->all_column_size--;
+
+    /* Set offset. */
+    for (i = 0; i < table->meta_table->all_column_size; i++) {
+        MetaColumn *current = lfirst(list_nth_cell(meta_table->meta_columns, i));
+        current->offset = offset;
+        offset += current->column_length;
+    }
+
+    /* Delete the heap_value_len. */
+    table->heap_value_len -= meta_column->column_length;
+
+    switch_local();
 }
 
 /* Loop heap table and reinsert into btree. */
@@ -118,27 +175,60 @@ static void LoopHeapTableAndReinsert(Table *table) {
     refer = new_refer(hoid, 0, 0);
     primary_meta_column = MetaTableFindPrimaryKey(table->meta_table);
 
-    while ((tuple = HeapTableLookupTupleLoop(table, refer)) != NULL) {
-        key = TupleFindValue(table, primary_meta_column);
+    /* Keep loop and reinsert until there is no tuple. */
+    while ((tuple = HeapTableLookupTuple(table, refer)) != NULL) {
+        key = TupleFindValue(tuple, primary_meta_column);
         value = SeriableIndexValue(table, tuple, refer);
         BtreeInsert(oid, key, value);
+        dfree(value);
+        HeapTableIterator(table, refer);
     }
+
+    dfree(refer);
 }
 
 /* Add new column inner. */
 static bool AlterAddNewColumnInner(Oid oid, MetaColumn *new_meta_column, ColumnPositionDef *position_def) {
-    Table *table = open_table_inner(oid);
-    int pos = ColumnPositionDefFindPos(table->meta_table, position_def);
-    
-    /* Append meta column to meta table. */
-    MetaTableAppendColumn(table->meta_table, new_meta_column, pos);
+    int pos;
+    Table *table;
 
-    /* Reset the table. */
-    shrink_table(oid, table->meta_table);
+    table = open_table_inner(oid);
+    pos = ColumnPositionDefFindPos(table->meta_table, position_def);
 
     /* Append to heap able. */
-    HeapTableAppendColumn(table, new_meta_column, pos);
+    HeapTableAppendColumn(oid, new_meta_column, pos);
     
+    /* Append meta column to meta table. */
+    TableModifyForAppendColumn(table, new_meta_column, pos);
+
+    /* Shrink the table. */
+    shrink_table(oid, table->meta_table);
+
+    /* Loop heap table and reinsert. */
+    LoopHeapTableAndReinsert(table);
+
+    return true;
+}
+
+/* Drop column inner. */
+static bool AlterDropColumnInnder(Oid oid, DropColumnDef *drop_column_def) {
+    Table *table;
+    uint32_t pos;
+    MetaColumn *meta_column;
+
+    table = open_table_inner(oid);
+    pos = NameFindMetaColumnPostion(table->meta_table, drop_column_def->column_name);
+    meta_column = NameFindMetaColumn(table->meta_table, drop_column_def->column_name);
+
+    /* Drop heaop table column. */
+    HeapTableDropColumn(oid, meta_column, pos);
+    
+    /* Append meta column to meta table. */
+    TableModifyForDropColumn(table, meta_column, pos);
+
+    /* Shrink the table. */
+    shrink_table(oid, table->meta_table);
+
     /* Loop heap table and reinsert. */
     LoopHeapTableAndReinsert(table);
 
@@ -185,7 +275,7 @@ static void AlterDropOldColumn(DropColumnDef *drop_column_def, char *table_name,
     AlterCaptureTable(oid);
 
     /* Drop column.*/
-    if (drop_meta_column(table_name, drop_column_def->column_name)) {
+    if (AlterDropColumnInnder(oid, drop_column_def)) {
         result->success = true;
         result->message = FormatStr("Drop column '%s' for table '%s' successfully.", 
                                  drop_column_def->column_name, 

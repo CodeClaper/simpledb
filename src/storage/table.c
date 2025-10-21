@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include "table.h"
+#include "bufpool.h"
 #include "sys.h"
 #include "systable.h"
 #include "mmgr.h"
@@ -132,29 +133,17 @@ bool create_table(Oid oid, MetaTable *meta_table) {
 
 /* Create a new table. */
 bool shrink_table(Oid oid, MetaTable *meta_table) {
-    char *file_path;
-    int descr;
-    void *root_node;
+    Buffer root_buffer;
+    void *root_node, *default_value_dest;
     uint32_t default_value_len;
 
     AssertFalse(ZERO_OID(oid));
     Assert(meta_table);
-
-    file_path = table_file_path(oid);
-    if (!table_file_exist(file_path)) {
-        db_log(ERROR, "Table '%s' not exists.", meta_table->table_name);
-        dfree(file_path);
-        return false;
-    }
-
-    descr = open(file_path, O_WRONLY, S_IWUSR | S_IRUSR);
-    if (descr == -1) {
-        db_log(ERROR, "Open database file '%s' fail.", file_path);
-        dfree(file_path);
-        return false;
-    }
-
-    root_node = dalloc(PAGE_SIZE);
+    
+    /* Read buffer. */
+    root_buffer = ReadBuffer(oid, ROOT_PAGE_NUM);
+    LockBuffer(root_buffer, RW_WRITER);
+    root_node = GetBufferPage(root_buffer);
 
     default_value_len = MetaTableCalcRowLenght(meta_table);
 
@@ -165,7 +154,7 @@ bool shrink_table(Oid oid, MetaTable *meta_table) {
     set_column_size(root_node, meta_table->all_column_size);
     
     /* Get default value cell. */
-    void *default_value_dest = get_default_value_cell(root_node);
+    default_value_dest = get_default_value_cell(root_node);
 
     /* Serialize */
     uint32_t offset = 0;
@@ -180,23 +169,11 @@ bool shrink_table(Oid oid, MetaTable *meta_table) {
             memset(default_value_dest + offset, 0, meta_column->column_length);
         offset += meta_column->column_length;
     }
-
-    /* Flush to disk. */
-    lseek(descr, 0, SEEK_SET);
-    ssize_t w_size = write(descr, root_node, PAGE_SIZE);
-    if (w_size == -1) {
-        db_log(ERROR, "Write table meta info error and error message: %s.", strerror(errno));
-        dfree(file_path);
-        dfree(root_node);
-        return false;
-    }
-
-    /* Close desription. */
-    close(descr);
-
-    /* Free memory. */
-    dfree(file_path);
-    dfree(root_node);
+    
+    /* Unlock and release buffer. */
+    MakeBufferDirty(root_buffer);
+    UnlockBuffer(root_buffer);
+    ReleaseBuffer(root_buffer);
 
     return true;
 }
@@ -226,39 +203,6 @@ static int get_column_position(MetaTable *meta_table, ColumnPositionDef *pos_def
 
     return -1;
 }
-
-/* Add new MetaColumn to table.
- * ---------------------------
- * This function is actually bottom-level routine for alter-table-add-column action. */
-bool add_new_meta_column(Oid oid, MetaColumn *new_meta_column, ColumnPositionDef *post_def) {
-    Table *table;
-    int pos;
-
-    table = open_table_inner(oid);
-    pos = get_column_position(table->meta_table, post_def);
-
-    /* Append index table new column. */
-    append_new_column(table->root_page_num, table, new_meta_column, pos);
-
-    /* Append heap table new column. */
-    HeapTableAppendColumn(table, new_meta_column, pos);
-
-    return true;
-}
-
-/* Drop table`s meta_column. */
-bool drop_meta_column(char *table_name, char *column_name) {
-    Table *table = open_table(table_name);
-    int pos = NameFindMetaColumnPostion(table->meta_table, column_name);
-    MetaColumn *oldColumn = NameFindMetaColumn(table->meta_table, column_name);
-    Assert(pos >= 0);
-    /* Drop index table column. */
-    drop_column(table->root_page_num, table, pos);
-    /* Drop heap table column. */
-    HeapTableDropColumn(table, oldColumn, pos);
-    return true;
-}
-
 
 /* Load Table from disk. */
 Table *load_table(Oid oid) {

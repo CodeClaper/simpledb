@@ -122,11 +122,15 @@ static List *MetaTableGenerateDescribeResult(MetaTable *meta_table) {
 
 /* Execute describe statment. */
 List *exec_describe_statement(DescribeNode *describe_node) {
-    char *table_name = DescribeNodeFindTableName(describe_node); 
-    Table *table = open_table(table_name);
+    char *table_name;
+    Table *table;
+
+    table_name = DescribeNodeFindTableName(describe_node); 
+    table = open_table(table_name);
     if (table == NULL) {
         db_log(ERROR, "Table '%s' not exists.", table_name);
         return NULL;
     }
+
     return MetaTableGenerateDescribeResult(table->meta_table);
 }

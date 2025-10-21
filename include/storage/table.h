@@ -39,16 +39,6 @@ bool create_table(Oid oid, MetaTable *meta_table);
 /* Create a new table. */
 bool shrink_table(Oid oid, MetaTable *meta_table);
 
-/* Add new MetaColumn to table.
- * This function is actually bottom-level routine for alter-table-add-column action. */
-bool add_new_meta_column(Oid oid, MetaColumn *new_meta_column, ColumnPositionDef *pos);
-
-/* Drop table`s meta_column. */
-bool drop_meta_column(char *tbale_name, char *column_name);
-
-/* Change table`s meta_table. */
-bool change_meta_column(char *table_name, char *column_name, MetaColumn *new_meta_column);
-
 /*Delete an existed table. */
 bool drop_table(char *table_name);
 

@@ -16,8 +16,8 @@ Refer *HeapTableInsertRow(Oid oid, Row *row);
 /* Loop up tuple from heap table. */
 void *HeapTableLookupTuple(Table *table, Refer *refer);
 
-/* Look up tuple from heap table. */
-void *HeapTableLookupTupleLoop(Table *table, Refer *refer);
+/* Heap table iterator. */
+void HeapTableIterator(Table *table, Refer *refer);
 
 /* Loop up row from heap table. */
 Row *HeapTableLookupRow(Table *table, Refer *refer);
@@ -35,7 +35,7 @@ void HeapTableUpdateRowExpiredXid(Table *table, Refer *refer, Xid expiredXid);
 bool DropHeapTable(char *tableName);
 
 /* Heap table append new column. */
-void HeapTableAppendColumn(Table *table, MetaColumn *newColumn, int pos);
+void HeapTableAppendColumn(Oid oid, MetaColumn *newColumn, int pos);
 
 /* Heap table drop column. */
-void HeapTableDropColumn(Table *table, MetaColumn *oldColumn, int pos);
+void HeapTableDropColumn(Oid oid, MetaColumn *oldColumn, int pos);
