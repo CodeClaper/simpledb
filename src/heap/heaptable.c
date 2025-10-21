@@ -462,7 +462,7 @@ static void HeapTableSplitAppendColumn(Refer *rootRefer, Table *table, MetaColum
 
 /* Heap table append column looping each page. */
 static void HeapTableAppendColumnForeachPage(Refer *rootRefer, Table *table, MetaColumn *newColumn, 
-                                            int pos, Oid oid, int pageNum) {
+                                             int pos, Oid oid, int pageNum) {
     void *block;
     Buffer buffer;
     uint32_t cell_num;

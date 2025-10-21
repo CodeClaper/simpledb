@@ -22,6 +22,7 @@
 #include "asserts.h"
 #include "utils.h"
 #include "meta.h"
+#include "ltbase.h"
 #include "ltree.h"
 #include "pager.h"
 #include "log.h"
@@ -148,11 +149,14 @@ bool shrink_table(Oid oid, MetaTable *meta_table) {
     default_value_len = MetaTableCalcRowLenght(meta_table);
 
     /* Initialize root node */
-    initial_leaf_node(root_node, default_value_len, true);
+    LeafNodeInitialize(root_node, default_value_len, true);
 
     /* Set meta column */
     set_column_size(root_node, meta_table->all_column_size);
-    
+
+    /* Reset zero cells. */
+    LeafNodeSetCellNum(root_node, default_value_len, 0);
+
     /* Get default value cell. */
     default_value_dest = get_default_value_cell(root_node);
 
@@ -176,32 +180,6 @@ bool shrink_table(Oid oid, MetaTable *meta_table) {
     ReleaseBuffer(root_buffer);
 
     return true;
-}
-
-/* Get Column Position. */
-static int get_column_position(MetaTable *meta_table, ColumnPositionDef *pos_def) {
-    /* If not ColumnPositionDef, append column at last. */
-    if (IsNull(pos_def))
-        return meta_table->column_size;
-
-    ListCell *lc;
-    foreach (lc, meta_table->meta_columns) {
-        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
-        if (StrEq(meta_column->column_name, pos_def->column)) {
-            switch (pos_def->type) {
-                case POS_BEFORE:
-                    return __i;
-                case POS_AFTER:
-                    return __i + 1;
-            }
-        }
-    }
-
-    db_log(ERROR, "Column '%s' not exists in table '%s'.", 
-           pos_def->column, 
-           meta_table->table_name);
-
-    return -1;
 }
 
 /* Load Table from disk. */

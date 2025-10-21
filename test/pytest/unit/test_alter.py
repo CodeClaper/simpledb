@@ -93,9 +93,17 @@ def test_add_int_type_column():
 
 ## add float typ new column.
 def test_add_int_float_column():
-    sql = "alter table `Student` add column `score` float after `grade`;"
+    sql = "alter table `Student` add column `score` float default 0.01 after `grade`;"
     ret = client.execute(sql)
     assert ret['success'] == True
+
+## test select float column. 
+def test_select_float_column():
+    sql = "select score from Student where id = 'S0001';"
+    ret = client.execute(sql)
+    assert ret['success'] == True
+    assert ret['data'] == [{ 'score': 0.01 }]
+
 
 ## add date typ new column.
 def test_add_date_type_column():
@@ -103,6 +111,12 @@ def test_add_date_type_column():
     ret = client.execute(sql)
     assert ret['success'] == True
 
+## select date typ new column.
+def test_select_date_type_column():
+    sql = "select birth from Student where id = 'S0001';"
+    ret = client.execute(sql)
+    assert ret['success'] == True
+    assert ret['data'] == [{ 'birth': '2000-01-02'}]
 
 # add refer type new column.
 def test_add_refer_type_column():
@@ -135,7 +149,7 @@ def test_query_data_after_add_column3():
     assert ret['rows'] == 3
     for row in ret["data"]:
         assert row["grade"] == None
-        assert row["score"] == None
+        assert row["score"] == 0.01
         assert row["birth"] == '2000-01-02'
         assert row["teacher"] == { "id": "T001", "name": "sunqing", "class": "C01" }
 

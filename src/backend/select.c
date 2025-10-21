@@ -957,13 +957,12 @@ static void ScanLeafNode(SelectResult *select_result, uint32_t page_num,
 /* Select through leaf node. */
 static void SelectLeafNode(SelectResult *select_result, uint32_t page_num, 
                            void *boundary_key, Table *table, SelectPlan *select_plan) {
-    /* Get cell number, key length and value lenght. */
-    uint32_t key_len, value_len, default_value_len, cell_num ;
     Buffer buffer;
     DataType ptype;
     void *leaf_node, *high_key;
     TransEntry *current_trans;
     SelectResult *head, *nested;
+    uint32_t key_len, value_len, default_value_len, cell_num ;
 
     /* If LimitClauseNode full, not continue. */
     if (LimitClauseIsFull(select_plan))
@@ -980,6 +979,7 @@ static void SelectLeafNode(SelectResult *select_result, uint32_t page_num,
     key_len = table->key_len;
     value_len = table->index_value_len;
     default_value_len = table->heap_value_len;
+
     cell_num = get_leaf_node_cell_num(leaf_node, default_value_len);
     ptype = MetaTableFindPrimaryDataType(table->meta_table);
     high_key = NodeGetHighKey(table, leaf_node);
@@ -993,6 +993,10 @@ static void SelectLeafNode(SelectResult *select_result, uint32_t page_num,
         void *destinct = get_leaf_node_cell_value(leaf_node, key_len, value_len, default_value_len, i);
         Xid created_xid = get_index_created_xid(destinct);
         Xid expired_xid = get_index_expired_xid(destinct);
+        if (created_xid == 0)
+           Assert(created_xid != 0);
+
+        /* If not visible, skip it. */
         if (!IsVisibleInner(created_xid, expired_xid, current_trans))
             continue;
 

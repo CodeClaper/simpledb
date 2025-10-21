@@ -13,7 +13,8 @@
 #include <stdint.h>
 #include <string.h>
 #include <unistd.h>
-#include "data.h"
+#include <sys/time.h>
+#include "timer.h"
 #include "alter.h"
 #include "mmgr.h"
 #include "check.h"
@@ -115,7 +116,8 @@ static void TableModifyForAppendColumn(Table *table, MetaColumn *new_meta_column
     Assert(meta_table != NULL);
 
     /* Append new column. */
-    append_list_at(meta_table->meta_columns, copy_meta_column(new_meta_column), pos);
+    MetaColumn *duplica = copy_meta_column(new_meta_column);
+    append_list_at(meta_table->meta_columns, duplica, pos);
 
     /* Increase column number. */
     meta_table->column_size++;
@@ -129,7 +131,7 @@ static void TableModifyForAppendColumn(Table *table, MetaColumn *new_meta_column
     }
 
     /* Expnad the heap_value_len. */
-    table->heap_value_len += new_meta_column->column_length;
+    table->heap_value_len += duplica->column_length;
 
     switch_local();
 }
@@ -177,13 +179,17 @@ static void LoopHeapTableAndReinsert(Table *table) {
     primary_meta_column = MetaTableFindPrimaryKey(table->meta_table);
 
     /* Keep loop and reinsert until there is no tuple. */
+    uint32_t count = 0;
     while ((tuple = HeapTableLookupTuple(table, refer)) != NULL) {
         key = TupleFindValue(tuple, primary_meta_column);
         value = SeriableIndexValue(table, tuple, refer);
         BtreeInsert(oid, key, value);
+        count++;
         dfree(value);
         HeapTableIterator(table, refer);
     }
+
+    db_log(DEBUGER, "Has reinsert rows: %d.", count);
 
     dfree(refer);
 }
