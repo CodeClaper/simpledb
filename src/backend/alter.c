@@ -13,8 +13,6 @@
 #include <stdint.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/time.h>
-#include "timer.h"
 #include "alter.h"
 #include "mmgr.h"
 #include "check.h"
@@ -179,15 +177,12 @@ static void LoopHeapTableAndReinsert(Table *table) {
     primary_meta_column = MetaTableFindPrimaryKey(table->meta_table);
 
     /* Keep loop and reinsert until there is no tuple. */
-    uint32_t count = 0;
-    while ((tuple = HeapTableLookupTuple(table, refer)) != NULL) {
+    while ((tuple = HeapTableLookupTuple(oid, refer)) != NULL) {
         key = TupleFindValue(tuple, primary_meta_column);
         value = SeriableIndexValue(table, tuple, refer);
         BtreeInsert(oid, key, value);
-        count++;
         dfree(value);
-        HeapTableIterator(table, refer);
-        db_log(DEBUGER, "Has reinsert rows: %d.", count);
+        HeapTableIteratorForRefer(refer);
     }
 
     dfree(refer);

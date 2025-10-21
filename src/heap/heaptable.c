@@ -49,7 +49,7 @@ static inline bool HeapTableOverflowForInsert(Refer *refer, uint32_t row_len) {
 }
 
 /* Create table inner. */
-bool CreateHeapTableInner(Oid oid) {
+bool CreateHeapTableInner(Oid hoid) {
     int descr;
     void *rblock;
     Refer *rRefer;
@@ -57,7 +57,7 @@ bool CreateHeapTableInner(Oid oid) {
     Size w_size;
 
     memset(heap_table_file, 0, MAX_TABLE_NAME_LEN + 100);
-    sprintf(heap_table_file, "%s%ld", conf->data_dir, oid);
+    sprintf(heap_table_file, "%s%ld", conf->data_dir, hoid);
 
     /* Avoid repeatly create. */
     if (table_file_exist(heap_table_file))
@@ -70,7 +70,7 @@ bool CreateHeapTableInner(Oid oid) {
     }
     
     rblock = dalloc(PAGE_SIZE);
-    rRefer = new_refer(oid, HEAP_TABLE_ROOT_PAGE, HEAP_TABLE_FIRST_CELL_NUM);
+    rRefer = new_refer(hoid, HEAP_TABLE_ROOT_PAGE, HEAP_TABLE_FIRST_CELL_NUM);
     memcpy(HeapTableGetRootRefer(rblock), rRefer, sizeof(Refer));
     
     /* Flush to disk. */
@@ -164,16 +164,20 @@ Refer *HeapTableInsertRow(Oid oid, Row *row) {
 }
 
 /* Look up tuple from heap table. */
-void *HeapTableLookupTuple(Table *table, Refer *refer) {
+void *HeapTableLookupTuple(Oid oid, Refer *refer) {
+    Oid hoid;
+    Table *table;
     Buffer buffer, rootBuffer;
     Refer *rootRefer;
     void *block, *root, *tuple = NULL;
 
-    rootBuffer = ReadBuffer(refer->oid, HEAP_TABLE_ROOT_PAGE);
+    table = open_table_inner(oid);
+    hoid = table->hoid;
+    rootBuffer = ReadBuffer(hoid, HEAP_TABLE_ROOT_PAGE);
     LockBuffer(rootBuffer, RW_READERS);
     root = GetBufferBlock(rootBuffer);
     rootRefer = HeapTableGetRootRefer(root);
-    Assert(rootRefer->oid == refer->oid);
+    Assert(rootRefer->oid == hoid);
 
     /* Loop end here. */
     if (refer->page_num > rootRefer->page_num || 
@@ -199,7 +203,7 @@ direct_exist:
 }
 
 /* Heap table iterator. */
-void HeapTableIterator(Table *table, Refer *refer) {
+void HeapTableIteratorForRefer(Refer *refer) {
     Buffer buffer;
     void *block;
     uint32_t cell_num;
@@ -220,8 +224,9 @@ void HeapTableIterator(Table *table, Refer *refer) {
 }
 
 /* Loop up row from heap table. */
-Row *HeapTableLookupRow(Table *table, Refer *refer) {
-    void *tuple = HeapTableLookupTuple(table, refer);
+Row *HeapTableLookupRow(Oid oid, Refer *refer) {
+    Table *table = open_table_inner(oid);
+    void *tuple = HeapTableLookupTuple(oid, refer);
     return GenerateRow(tuple, table->meta_table);
 }
 
@@ -461,13 +466,15 @@ static void HeapTableSplitAppendColumn(Refer *rootRefer, Table *table, MetaColum
 }
 
 /* Heap table append column looping each page. */
-static void HeapTableAppendColumnForeachPage(Refer *rootRefer, Table *table, MetaColumn *newColumn, 
-                                             int pos, Oid oid, int pageNum) {
+static void HeapTableAppendColumnForeachPage(Refer *rootRefer, Oid oid, Oid hoid,
+                                             int pageNum, int pos, MetaColumn *newColumn) {
+    Table *table;
     void *block;
     Buffer buffer;
     uint32_t cell_num;
 
-    buffer = ReadBuffer(oid, pageNum);
+    table = open_table_inner(oid);
+    buffer = ReadBuffer(hoid, pageNum);
     LockBuffer(buffer, RW_WRITER);
     block = GetBufferBlock(buffer);
     cell_num = HeapTableGetPageCellNum(block);
@@ -499,9 +506,7 @@ void HeapTableAppendColumn(Oid oid, MetaColumn *newColumn, int pos) {
     
     /* Handle each page. */
     for (int i = 0; i <= rootRefer->page_num; i++) 
-        HeapTableAppendColumnForeachPage(rootRefer, table, 
-                                         newColumn, pos, 
-                                         hoid, i);
+        HeapTableAppendColumnForeachPage(rootRefer, oid, hoid, i, pos,newColumn);
 
     /* Maybe root refer has changed. */
     MakeBufferDirty(rootBuffer);
@@ -511,13 +516,14 @@ void HeapTableAppendColumn(Oid oid, MetaColumn *newColumn, int pos) {
 }
 
 /* Heap table drop column looping each page. */
-static void HeapTableDropColumnLoop(Table *table, MetaColumn *oldColumn, 
-                                    int pos, Oid oid, int pageNum) {
+static void HeapTableDropColumnForeachPage(Oid oid, Oid hoid, int pageNum, int pos, MetaColumn *oldColumn) {
+    Table *table;
     void *block;
     Buffer buffer;
     uint32_t cell_num;
 
-    buffer = ReadBuffer(oid, pageNum);
+    table = open_table_inner(oid);
+    buffer = ReadBuffer(hoid, pageNum);
     LockBuffer(buffer, RW_WRITER);
     block = GetBufferBlock(buffer);
     cell_num = HeapTableGetPageCellNum(block);
@@ -528,8 +534,8 @@ static void HeapTableDropColumnLoop(Table *table, MetaColumn *oldColumn,
                NewCellAfterDropColumn(destintion, table, oldColumn, pos, table->heap_value_len), 
                table->heap_value_len - oldColumn->column_length);
     }
-    MakeBufferDirty(buffer);
 
+    MakeBufferDirty(buffer);
     UnlockBuffer(buffer);
     ReleaseBuffer(buffer);
 }
@@ -550,9 +556,8 @@ void HeapTableDropColumn(Oid oid, MetaColumn *oldColumn, int pos) {
     rootRefer = HeapTableGetRootRefer(root);
     
     /* Handle each page. */
-    for (int i = 0; i <= rootRefer->page_num; i++) {
-        HeapTableDropColumnLoop(table, oldColumn, pos, hoid, i);
-    }
+    for (int i = 0; i <= rootRefer->page_num; i++) 
+        HeapTableDropColumnForeachPage(oid, hoid, i, pos, oldColumn);
 
     UnlockBuffer(rootBuffer);
     ReleaseBuffer(rootBuffer);

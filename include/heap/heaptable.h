@@ -5,7 +5,7 @@
 #define HEAP_TABLE_FIRST_CELL_NUM 0
 
 /* Create table inner. */
-bool CreateHeapTableInner(Oid oid);
+bool CreateHeapTableInner(Oid hoid);
 
 /* Create the heap table. */
 bool CreateHeapTable(char *tableName);
@@ -14,13 +14,13 @@ bool CreateHeapTable(char *tableName);
 Refer *HeapTableInsertRow(Oid oid, Row *row);
 
 /* Loop up tuple from heap table. */
-void *HeapTableLookupTuple(Table *table, Refer *refer);
+void *HeapTableLookupTuple(Oid oid, Refer *refer);
 
 /* Heap table iterator. */
-void HeapTableIterator(Table *table, Refer *refer);
+void HeapTableIteratorForRefer(Refer *refer);
 
 /* Loop up row from heap table. */
-Row *HeapTableLookupRow(Table *table, Refer *refer);
+Row *HeapTableLookupRow(Oid oid, Refer *refer);
 
 /* Update the row in heap table. */
 void HeapTableUpdateRow(Table *table, Refer *refer, Row *row);

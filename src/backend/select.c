@@ -721,7 +721,7 @@ void *DefineTuple(Refer *refer) {
     void *leaf_node = GetBufferPage(buffer);
 
     void *cell_value = get_leaf_node_cell_value(leaf_node, key_len, value_len, default_value_len, refer->cell_num);
-    void *tuple = HeapTableLookupTuple(table, (Refer *) cell_value);
+    void *tuple = HeapTableLookupTuple(refer->oid, (Refer *) cell_value);
     
     UnlockBuffer(buffer);
     ReleaseBuffer(buffer);
@@ -756,7 +756,7 @@ Row *DefineRow(Refer *refer) {
     void *leaf_node = GetBufferPage(buffer);
 
     void *destinct = get_leaf_node_cell_value(leaf_node, key_len, value_len, default_value_len, refer->cell_num);
-    Row *row = HeapTableLookupRow(table, (Refer *) destinct);
+    Row *row = HeapTableLookupRow(refer->oid, (Refer *) destinct);
     
     UnlockBuffer(buffer);
     ReleaseBuffer(buffer);
@@ -957,6 +957,7 @@ static void ScanLeafNode(SelectResult *select_result, uint32_t page_num,
 /* Select through leaf node. */
 static void SelectLeafNode(SelectResult *select_result, uint32_t page_num, 
                            void *boundary_key, Table *table, SelectPlan *select_plan) {
+    Oid oid;
     Buffer buffer;
     DataType ptype;
     void *leaf_node, *high_key;
@@ -969,7 +970,8 @@ static void SelectLeafNode(SelectResult *select_result, uint32_t page_num,
         return;
 
     /* Get leaf node buffer. */
-    buffer = ReadBuffer(GET_TABLE_OID(table), page_num);
+    oid = GET_TABLE_OID(table);
+    buffer = ReadBuffer(oid, page_num);
     LockBuffer(buffer, RW_READERS);
     leaf_node = select_plan->onlyCount 
             ? GetBufferPage(buffer) 
@@ -1001,7 +1003,7 @@ static void SelectLeafNode(SelectResult *select_result, uint32_t page_num,
             continue;
 
         /* If satisfied, exeucte row handler function. */
-        void *tuple = HeapTableLookupTuple(table, (Refer *) destinct);
+        void *tuple = HeapTableLookupTuple(oid, (Refer *) destinct);
         select_result->current_tuple = tuple;
 
         /* If has nested, deep seek nested. */
