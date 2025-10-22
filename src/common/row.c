@@ -1,5 +1,7 @@
+#include <string.h>
 #include "row.h"
 #include "tuple.h"
+#include "const.h"
 #include "meta.h"
 #include "mmgr.h"
 #include "instance.h"
@@ -86,4 +88,5 @@ void *RowGetValueOrDefault(Row *row, MetaColumn *meta_column) {
             UNEXPECTED_VALUE(meta_column->default_value_type);
     }
 }
+
 

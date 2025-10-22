@@ -89,3 +89,5 @@ void *MetaColumnSeriable(MetaColumn *meta_column);
 /* Deseriable meta column. */
 MetaColumn *MetaColumnDeseriable(void *destination);
 
+/* Assign value to destination. */
+void MetaColumnAssignValueToDestination(void *destination, void *value, MetaColumn *meta_column);

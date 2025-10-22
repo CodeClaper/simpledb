@@ -22,7 +22,7 @@
 #include "common.h"
 #include "table.h"
 #include "meta.h"
-#include "ltree.h"
+#include "ltbase.h"
 #include "ltsearch.h"
 #include "pager.h"
 #include "index.h"
@@ -282,7 +282,7 @@ static bool WaitForDuplicateKey(Refer *refer) {
     bool flag = false;
     Buffer buffer;
     Table *table;
-    void *leaf_node, *destination;
+    void *leaf_node;
     uint32_t key_len, value_len, default_value_len;
     Xid current_xid, created_xid, expired_xid;
 
@@ -297,12 +297,11 @@ retry:
     buffer = ReadBuffer(refer->oid, refer->page_num);
     LockBuffer(buffer, RW_READERS);
     leaf_node = GetBufferPageCopy(buffer);
-    destination = get_leaf_node_cell_value(leaf_node, key_len, value_len, default_value_len, refer->cell_num);
     UnlockBuffer(buffer);
     ReleaseBuffer(buffer);
 
-    created_xid = get_index_created_xid(destination);
-    expired_xid = get_index_expired_xid(destination);
+    created_xid = LeafNodeGetCellCreatedXid(leaf_node, key_len, value_len, default_value_len, refer->cell_num);
+    expired_xid = LeafNodeGetCellExpiredXid(leaf_node, key_len, value_len, default_value_len, refer->cell_num);
     Assert(created_xid != 0);
     
     if (expired_xid == 0) {
@@ -348,7 +347,7 @@ static void *SeriableIndexValue(Oid oid, Row *row, Refer *heapRefer) {
         MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
         if (meta_column->sys_reserved) {
             void *value = RowGetValueOrDefault(row, meta_column);
-            assign_row_value(destination + offset, value, meta_column);
+            MetaColumnAssignValueToDestination(destination + offset, value, meta_column);
             offset += meta_column->column_length;
         }
     }

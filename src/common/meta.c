@@ -636,3 +636,49 @@ MetaColumn *MetaColumnDeseriable(void *destination) {
     return meta_column;
 }
 
+static void MetaColumnAssginArrayNumToDestination(void *destination, uint32_t array_num) {
+    memcpy(destination + LEAF_NODE_CELL_NULL_FLAG_SIZE, &array_num, LEAF_NODE_ARRAY_NUM_SIZE);
+}
+
+/* Assign array value to destination. */
+static void MetaColumnAssginArrayValueToDestination(void *destination, ArrayValue *array_value, MetaColumn *meta_column) {
+    uint32_t len, span;
+
+    len =len_list(array_value->list);
+    /* User insert arrary values number integer multiple of array dim. */
+    Assert(len % meta_column->array_dim == 0);
+
+    /* Assign array number. */
+    MetaColumnAssginArrayNumToDestination(destination, len);
+    /* span: every value in array data lenght. */
+    span = (meta_column->column_length - LEAF_NODE_ARRAY_NUM_SIZE - LEAF_NODE_CELL_NULL_FLAG_SIZE) / meta_column->array_cap;
+
+    uint32_t i = 0;
+    ListCell *lc;
+    foreach (lc, array_value->list) {
+        void *value = lfirst(lc);
+        memcpy((destination + LEAF_NODE_CELL_NULL_FLAG_SIZE + LEAF_NODE_ARRAY_NUM_SIZE + span * i), value, span);        
+        i++;
+    }
+}
+
+/* Assign value to destination. */
+void MetaColumnAssignValueToDestination(void *destination, void *value, MetaColumn *meta_column) {
+    /* If not array value, assign value to destination, 
+     * if array value, assign values one by one. */
+    if (meta_column->array_dim == 0) {
+        bool nflag = value == NULL ? true : false;
+        memcpy(destination, &nflag, LEAF_NODE_CELL_NULL_FLAG_SIZE);
+        if (!nflag)
+            memcpy(destination + LEAF_NODE_CELL_NULL_FLAG_SIZE, value, meta_column->column_length - LEAF_NODE_CELL_NULL_FLAG_SIZE);
+        else
+            memset(destination + LEAF_NODE_CELL_NULL_FLAG_SIZE, 0, meta_column->column_length - LEAF_NODE_CELL_NULL_FLAG_SIZE);
+    } else {
+        bool nflag = value == NULL ? true : false;
+        memcpy(destination, &nflag, LEAF_NODE_CELL_NULL_FLAG_SIZE);
+        if (!nflag)
+            MetaColumnAssginArrayValueToDestination(destination, value, meta_column);
+        else
+            memset(destination + LEAF_NODE_CELL_NULL_FLAG_SIZE, 0, meta_column->column_length - LEAF_NODE_CELL_NULL_FLAG_SIZE);
+    } 
+}
