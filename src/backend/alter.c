@@ -182,7 +182,7 @@ static void LoopHeapTableAndReinsert(Table *table) {
         value = SeriableIndexValue(table, tuple, refer);
         BtreeInsert(oid, key, value);
         dfree(value);
-        HeapTableIteratorForRefer(refer);
+        HeapTableIteratorRefer(refer);
     }
 
     dfree(refer);

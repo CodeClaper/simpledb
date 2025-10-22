@@ -17,13 +17,13 @@ Refer *HeapTableInsertTuple(Oid oid, void *tuple);
 void *HeapTableLookupTuple(Oid oid, Refer *refer);
 
 /* Heap table iterator. */
-void HeapTableIteratorForRefer(Refer *refer);
+void HeapTableIteratorRefer(Refer *refer);
 
 /* Loop up row from heap table. */
 Row *HeapTableLookupRow(Oid oid, Refer *refer);
 
 /* Update the row in heap table. */
-void HeapTableUpdateRow(Table *table, Refer *refer, Row *row);
+void HeapTableUpdateTuple(Oid oid, Refer *refer, void *tuple);
 
 /* Update the heap table row createdXid. */
 void HeapTableUpdateRowCreatedXid(Table *table, Refer *refer, Xid createdXid);

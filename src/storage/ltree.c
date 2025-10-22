@@ -2701,12 +2701,14 @@ static void *seriable_index_value(Row *row, Refer *refer) {
 
 /* Update row system reserved columns. */
 void update_row_data(Row *row, Refer *refer) {
+    Oid oid;
     Table *table;
     Buffer buffer;
     void *leaf_node, *destination;
     uint32_t key_len, value_len, default_value_len;
 
-    table = open_table_inner(refer->oid);
+    oid = refer->oid;
+    table = open_table_inner(oid);
     key_len = table->key_len; 
     value_len = table->index_value_len; 
     default_value_len = table->heap_value_len;
@@ -2718,7 +2720,7 @@ void update_row_data(Row *row, Refer *refer) {
     destination = get_leaf_node_cell_value(leaf_node, key_len, value_len, default_value_len, refer->cell_num);
 
     /* Update heap table row. */
-    HeapTableUpdateRow(table, (Refer *) destination, row);
+    HeapTableUpdateTuple(oid, (Refer *) destination, RowSeriableTuple(row, table));
 
     /* Update index contents. */
     update_index_system_content(destination, row, table);

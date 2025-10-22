@@ -203,7 +203,7 @@ direct_exist:
 }
 
 /* Heap table iterator. */
-void HeapTableIteratorForRefer(Refer *refer) {
+void HeapTableIteratorRefer(Refer *refer) {
     Buffer buffer;
     void *block;
     uint32_t cell_num;
@@ -231,18 +231,20 @@ Row *HeapTableLookupRow(Oid oid, Refer *refer) {
 }
 
 /* Update the row in heap table. */
-void HeapTableUpdateRow(Table *table, Refer *refer, Row *row) {
+void HeapTableUpdateTuple(Oid oid, Refer *refer, void *tuple) {
+    Table *table;
     Buffer buffer;
-    void *block;
+    void *block, *destintion;
 
+    table = open_table_inner(oid);
+    Assert(table->hoid == refer->oid);
     buffer = ReadBuffer(refer->oid, refer->page_num);
     LockBuffer(buffer, RW_WRITER);
     block = GetBufferBlock(buffer);
     
     /* Update heap table row centent. */
-    void *data = serialize_row_data(row, table);
-    void *destintion = HeapTableGetPageCellData(block, table->heap_value_len, refer->cell_num);
-    memcpy(destintion, data, table->heap_value_len);
+    destintion = HeapTableGetPageCellData(block, table->heap_value_len, refer->cell_num);
+    memcpy(destintion, tuple, table->heap_value_len);
     MakeBufferDirty(buffer);
 
     UnlockBuffer(buffer);
