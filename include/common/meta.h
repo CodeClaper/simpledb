@@ -82,3 +82,10 @@ uint32_t CalcUserMetaColumnLen(MetaColumn *meta_column);
 
 /* Check if user has defined primary key.*/
 bool UserPrimaryKeyExists(MetaTable *meta_table);
+
+/* Seriable meta column. */
+void *MetaColumnSeriable(MetaColumn *meta_column);
+
+/* Deseriable meta column. */
+MetaColumn *MetaColumnDeseriable(void *destination);
+

@@ -44,7 +44,44 @@ void NodeSetParentNum(void *node, uint32_t parent_num) {
 
 /* Get root node column size. */
 uint32_t RootNodeGetColumnSize(void *root_node) {
+    Assert(NodeIsRoot(root_node));
     return *(uint32_t *) (root_node + ROOT_NODE_META_COLUMN_SIZE_OFFSET);
+}
+
+/* Set root node column size. */
+void RootNodeSetColumnSize(void *root_node, uint32_t column_size) {
+    Assert(NodeIsRoot(root_node));
+    *(uint32_t *) (root_node + ROOT_NODE_META_COLUMN_SIZE_OFFSET) = column_size;
+}
+
+/* Get root node meta column. */
+void *RootNodeGetMetaColumn(void *root_node, uint32_t index) {
+    Assert(NodeIsRoot(root_node));
+    return root_node + ROOT_NODE_META_COLUMN_OFFSET + ROOT_NODE_META_COLUMN_SIZE * index;
+}
+
+/* Set root node meta column. */
+void RootNodeSetMetaColumn(void *root_node, uint32_t index, void *destination) {
+    Assert(NodeIsRoot(root_node));
+    memcpy(root_node + ROOT_NODE_META_COLUMN_OFFSET + ROOT_NODE_META_COLUMN_SIZE * index, 
+           destination, ROOT_NODE_META_COLUMN_SIZE);
+}
+
+/* Get root node default value. */
+void *RootNodeGetDefaultValue(void *root_node) {
+    Assert(NodeIsRoot(root_node));
+    uint32_t column_size = RootNodeGetColumnSize(root_node);
+    return (root_node + ROOT_NODE_META_COLUMN_SIZE_OFFSET + ROOT_NODE_META_COLUMN_SIZE_SIZE + 
+            ROOT_NODE_META_COLUMN_SIZE * column_size);
+}
+
+/* Set root node default value. */
+void RootNodeSetDefaultValue(void *root_node, uint32_t default_value_len, void *default_value) {
+    Assert(NodeIsRoot(root_node));
+    uint32_t column_size = RootNodeGetColumnSize(root_node);
+    memcpy(root_node + ROOT_NODE_META_COLUMN_SIZE_OFFSET + ROOT_NODE_META_COLUMN_SIZE_SIZE + 
+           ROOT_NODE_META_COLUMN_SIZE * column_size, 
+           default_value, default_value_len);
 }
 
 /* Get internal node keys num. */

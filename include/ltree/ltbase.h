@@ -19,6 +19,21 @@ void NodeSetParentNum(void *node, uint32_t parent_num);
 /* Get root node column size. */
 uint32_t RootNodeGetColumnSize(void *root_node);
 
+/* Set root node column size. */
+void RootNodeSetColumnSize(void *root_node, uint32_t column_size);
+
+/* Get root node meta column. */
+void *RootNodeGetMetaColumn(void *root_node, uint32_t index);
+
+/* Set root node meta column. */
+void RootNodeSetMetaColumn(void *root_node, uint32_t index, void *destination);
+
+/* Get root node default value. */
+void *RootNodeGetDefaultValue(void *root_node);
+
+/* Set root node default value. */
+void RootNodeSetDefaultValue(void *root_node, uint32_t default_value_len, void *default_value);
+
 /* Get high key in the node. */
 void *NodeGetHighKey(Table *table, void *node);
 

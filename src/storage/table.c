@@ -23,7 +23,6 @@
 #include "utils.h"
 #include "meta.h"
 #include "ltbase.h"
-#include "ltree.h"
 #include "pager.h"
 #include "log.h"
 #include "tablelock.h"
@@ -90,21 +89,21 @@ bool create_table(Oid oid, MetaTable *meta_table) {
     default_value_len = MetaTableCalcRowLenght(meta_table);
 
     /* Initialize root node */
-    initial_leaf_node(root_node, default_value_len, true);
+    LeafNodeInitialize(root_node, default_value_len, true);
 
     /* Set meta column */
-    set_column_size(root_node, meta_table->all_column_size);
+    RootNodeSetColumnSize(root_node, meta_table->all_column_size);
     
     /* Get default value cell. */
-    void *default_value_dest = get_default_value_cell(root_node);
+    void *default_value_dest = RootNodeGetDefaultValue(root_node);
 
     /* Serialize */
     uint32_t offset = 0;
     ListCell *lc;
     foreach (lc, meta_table->meta_columns) {
         MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
-        void *destination = serialize_meta_column(meta_column);
-        set_meta_column(root_node, destination, __i);
+        void *destination = MetaColumnSeriable(meta_column);
+        RootNodeSetMetaColumn(root_node, __i, destination);
         if (meta_column->default_value_type == DEFAULT_VALUE)
             memcpy(default_value_dest + offset, meta_column->default_value, meta_column->column_length);
         else
@@ -152,21 +151,21 @@ bool shrink_table(Oid oid, MetaTable *meta_table) {
     LeafNodeInitialize(root_node, default_value_len, true);
 
     /* Set meta column */
-    set_column_size(root_node, meta_table->all_column_size);
+    RootNodeSetColumnSize(root_node, meta_table->all_column_size);
 
     /* Reset zero cells. */
     LeafNodeSetCellNum(root_node, default_value_len, 0);
 
     /* Get default value cell. */
-    default_value_dest = get_default_value_cell(root_node);
+    default_value_dest = RootNodeGetDefaultValue(root_node);
 
     /* Serialize */
     uint32_t offset = 0;
     ListCell *lc;
     foreach (lc, meta_table->meta_columns) {
         MetaColumn *meta_column = (MetaColumn *) lfirst(lc);
-        void *destination = serialize_meta_column(meta_column);
-        set_meta_column(root_node, destination, __i);
+        void *destination = MetaColumnSeriable(meta_column);
+        RootNodeSetMetaColumn(root_node, __i, destination);
         if (meta_column->default_value_type == DEFAULT_VALUE)
             memcpy(default_value_dest + offset, meta_column->default_value, meta_column->column_length);
         else
