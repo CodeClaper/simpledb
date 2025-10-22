@@ -889,6 +889,9 @@ static void BtreeInsertForLeafNode(Oid oid, void *key, void *boundary_key, void 
         uint32_t next_sibling = NodeGetNextSibling(table, leaf_node);
         Assert(next_sibling != 0);
         BtreeInsertForLeafNode(oid, key, boundary_key, value, next_sibling, refer);
+
+        UnlockBuffer(buffer);
+        ReleaseBuffer(buffer);
     } else {
         refer->page_num = page_num;
         BtreeInsertForLeafNodeInsertCell(oid, key, value, buffer, refer);    
