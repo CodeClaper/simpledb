@@ -41,5 +41,20 @@ void *TupleFindValue(void *tuple, MetaColumn *meta_column) {
 /* Get primary key value in tuple. */
 void *TupleFindKey(void *tuple, MetaTable *meta_table) {
     MetaColumn *primary_meta_column = MetaTableFindPrimaryKey(meta_table);
+    Assert(primary_meta_column != NULL);
     return TupleFindValue(tuple, primary_meta_column);
+}
+
+/* Get created xid in tuple. */
+Xid TupleFindCreatedXid(void *tuple, MetaTable *meta_table) {
+    MetaColumn *created_xid_meta_column = NameFindAllMetaColumn(meta_table, CREATED_XID_COLUMN_NAME);
+    Assert(created_xid_meta_column != NULL);
+    return *(Xid *)TupleFindValue(tuple, created_xid_meta_column);
+}
+
+/* Get created xid in tuple. */
+Xid TupleFindExpiredXid(void *tuple, MetaTable *meta_table) {
+    MetaColumn *expired_xid_meta_column = NameFindAllMetaColumn(meta_table, EXPIRED_XID_COLUMN_NAME);
+    Assert(expired_xid_meta_column != NULL);
+    return *(Xid *)TupleFindValue(tuple, expired_xid_meta_column);
 }

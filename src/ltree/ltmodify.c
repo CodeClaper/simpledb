@@ -122,7 +122,6 @@ static void BtreeModifyForInternalNode(Oid oid, void *key, void *boundary_key, v
     void *internal_node, *high_key;
 
     table = open_table_inner(oid);
-
     ptype = MetaTableFindPrimaryDataType(table->meta_table);
     buffer = ReadBuffer(oid, page_num);
     LockBuffer(buffer, RW_READERS);
