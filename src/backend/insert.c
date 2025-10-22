@@ -367,7 +367,7 @@ static void *SeriableIndexValue(Oid oid, Row *row, Refer *heapRefer) {
 Refer *insert_one_row(Table *table, Row *row) {
     Oid oid;
     DataType ptype;
-    void *key, *index_value;
+    void *key, *tuple, *index_value;
     Refer *preRefer, *heapRefer, *iRefer;
 
     oid = GET_TABLE_OID(table);
@@ -388,7 +388,8 @@ Refer *insert_one_row(Table *table, Row *row) {
     }
 
     /* Insert into heap table. */
-    heapRefer = HeapTableInsertRow(oid, row);
+    tuple = RowSeriableTuple(row, table);
+    heapRefer = HeapTableInsertTuple(oid, tuple);
     
     /* Seriable index value. */
     index_value = SeriableIndexValue(oid, row, heapRefer);
@@ -400,6 +401,7 @@ Refer *insert_one_row(Table *table, Row *row) {
     RecordXlog(iRefer, HEAP_INSERT);
 
     dfree(index_value);
+    dfree(tuple);
 
     return iRefer;    
 }

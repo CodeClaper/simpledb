@@ -2680,7 +2680,7 @@ static void *seriable_index_value(Row *row, Refer *refer) {
     meta_table = table->meta_table;
 
     /* Insert into heap table. */
-    heap_refer = HeapTableInsertRow(refer->oid, row);
+    heap_refer = HeapTableInsertTuple(refer->oid, serialize_row_data(row, table));
     
     /* Assign the heap refer value. */
     memcpy(destination, heap_refer, REFER_SIZE);

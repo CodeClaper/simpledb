@@ -84,9 +84,8 @@ static void InsertRowForUpdate(Row *row, Table *table) {
 /* Update row 
  * ----------
  * Update operation is divided into delete and re-insert operation. 
- * It makes transaction roll back simpler. */
-static void UpdateTuple(void *tuple, SelectResult *select_result, 
-                       ROW_HANDLER_ARG_TYPE type, void *arg) {
+ * It makes transaction rollback operation simpler. */
+static void UpdateTuple(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg) {
     Table *table;
     Refer *oldRefer, *newRefer;
     Row *rawRow, *currentRow, *new_row;

@@ -102,11 +102,11 @@ bool CreateHeapTable(char *tableName) {
 }
 
 /* Insert intadd_new_meta_columno heap table. */
-static void HeapTableInsertRowInner(Oid oid, Refer *rootRefer, Row *row) {
+static void HeapTableInsertTupleInner(Oid oid, Refer *rootRefer, void *tuple) {
     Table *table;
     uint32_t cell_num;
     Buffer buffer;
-    void *block, *data, *destintion;
+    void *block, *destintion;
 
     table = open_table_inner(oid);
 
@@ -118,9 +118,8 @@ static void HeapTableInsertRowInner(Oid oid, Refer *rootRefer, Row *row) {
     cell_num = HeapTableGetPageCellNum(block);
 
     /* Seriable data and set. */
-    data = serialize_row_data(row, table); 
     destintion = HeapTableGetPageCellData(block, table->heap_value_len, rootRefer->cell_num);
-    memcpy(destintion, data, table->heap_value_len);
+    memcpy(destintion, tuple, table->heap_value_len);
     rootRefer->cell_num++;
 
     /* Increase cell num. */
@@ -138,7 +137,7 @@ static void HeapTableInsertRowInner(Oid oid, Refer *rootRefer, Row *row) {
 }
 
 /* Insert heap table. */
-Refer *HeapTableInsertRow(Oid oid, Row *row) {
+Refer *HeapTableInsertTuple(Oid oid, void *tuple) {
     Table *table;
     Buffer rootBuffer;
     void *root;
@@ -150,11 +149,12 @@ Refer *HeapTableInsertRow(Oid oid, Row *row) {
     root = GetBufferBlock(rootBuffer);
     
     rootRefer = HeapTableGetRootRefer(root);
+    Assert(rootRefer->oid == table->hoid);
     currentRefer = instance(Refer);
     memcpy(currentRefer, rootRefer, sizeof(Refer));
     
     /* Insert into heap table. */
-    HeapTableInsertRowInner(oid, rootRefer, row);
+    HeapTableInsertTupleInner(oid, rootRefer, tuple);
 
     MakeBufferDirty(rootBuffer);
     UnlockBuffer(rootBuffer);

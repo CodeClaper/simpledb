@@ -5,6 +5,7 @@
 #include "meta.h"
 #include "mmgr.h"
 #include "instance.h"
+#include "log.h"
 
 /* New a row. */
 Row *NewRow() {
@@ -38,6 +39,35 @@ Row *GenerateRowInner(void *tuple, List *meta_columns) {
 /* Generate row by tuple. */
 Row *GenerateRow(void *tuple, MetaTable *meta_table) {
     return GenerateRowInner(tuple, meta_table->meta_columns);
+}
+
+/* Seriable row to tuple. */
+void *RowSeriableTuple(Row *row, Table *table) {
+    uint32_t offset = 0;
+    void *tuple;
+
+    tuple = dalloc(table->heap_value_len);
+
+    ListCell *lc;
+    foreach (lc, table->meta_table->meta_columns) {
+        MetaColumn *meta_column;
+        void *value;
+
+        meta_column = (MetaColumn *)lfirst(lc);
+        value = RowGetValueOrDefault(row, meta_column);
+
+        if (meta_column->not_null && IsNull(value)) {
+            db_log(ERROR, "Column '%s' does`t have a default value.", 
+                   meta_column->column_name);
+            return NULL;
+        }
+
+        /* Assign row value to destination. */
+        MetaColumnAssignValueToDestination(tuple + offset, value, meta_column);
+        offset += meta_column->column_length;
+    }
+
+    return tuple;
 }
 
 /* Find the key in a row. 
