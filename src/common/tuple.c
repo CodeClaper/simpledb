@@ -1,4 +1,5 @@
 #include "data.h"
+#include "meta.h"
 #include "const.h"
 #include "ltree.h"
 #include "copy.h"
@@ -35,4 +36,10 @@ static void *GetTupleValue(void *destination, MetaColumn *meta_column) {
 void *TupleFindValue(void *tuple, MetaColumn *meta_column) {
     bool nflag =  *(bool *)(tuple + meta_column->offset);
     return nflag ? NULL : GetTupleValue((tuple + meta_column->offset), meta_column);
+}
+
+/* Get primary key value in tuple. */
+void *TupleFindKey(void *tuple, MetaTable *meta_table) {
+    MetaColumn *primary_meta_column = MetaTableFindPrimaryKey(meta_table);
+    return TupleFindValue(tuple, primary_meta_column);
 }
