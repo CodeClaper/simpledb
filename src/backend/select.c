@@ -31,7 +31,6 @@
 #include "row.h"
 #include "tuple.h"
 #include "func.h"
-#include "ltree.h"
 #include "ltbase.h"
 #include "pager.h"
 #include "table.h"
@@ -720,7 +719,7 @@ void *DefineTuple(Refer *refer) {
     LockBuffer(buffer, RW_READERS);
     void *leaf_node = GetBufferPage(buffer);
 
-    void *cell_value = get_leaf_node_cell_value(leaf_node, key_len, value_len, default_value_len, refer->cell_num);
+    void *cell_value = LeafNodeGetCellValue(leaf_node, key_len, value_len, default_value_len, refer->cell_num);
     void *tuple = HeapTableLookupTuple(refer->oid, (Refer *) cell_value);
     
     UnlockBuffer(buffer);
@@ -755,8 +754,8 @@ Row *DefineRow(Refer *refer) {
     LockBuffer(buffer, RW_READERS);
     void *leaf_node = GetBufferPage(buffer);
 
-    void *destinct = get_leaf_node_cell_value(leaf_node, key_len, value_len, default_value_len, refer->cell_num);
-    Row *row = HeapTableLookupRow(refer->oid, (Refer *) destinct);
+    void *cell_value = LeafNodeGetCellValue(leaf_node, key_len, value_len, default_value_len, refer->cell_num);
+    Row *row = HeapTableLookupRow(refer->oid, (Refer *) cell_value);
     
     UnlockBuffer(buffer);
     ReleaseBuffer(buffer);
@@ -927,16 +926,15 @@ static void ScanLeafNode(SelectResult *select_result, uint32_t page_num,
     default_value_len = table->heap_value_len;
     high_key = NodeGetHighKey(table, leaf_node);
     ptype = MetaTableFindPrimaryDataType(table->meta_table);
-    cell_num = get_leaf_node_cell_num(leaf_node, default_value_len);
+    cell_num = LeafNodeGetCellNum(leaf_node, default_value_len);
     current_trans = FindTransaction();
     Assert(current_trans != NULL);
 
     uint32_t i;
     for (i = 0; i < cell_num; i++) {
         /* Get leaf node cell value. */
-        void *destinct = get_leaf_node_cell_value(leaf_node, key_len, value_len, default_value_len, i);
-        Xid created_xid = get_index_created_xid(destinct);
-        Xid expired_xid = get_index_expired_xid(destinct);
+        Xid created_xid = LeafNodeGetCellCreatedXid(leaf_node, key_len, value_len, default_value_len, i);
+        Xid expired_xid = LeafNodeGetCellExpiredXid(leaf_node, key_len, value_len, default_value_len, i);
         if (IsVisibleInner(created_xid, expired_xid, current_trans))
             select_plan->rowHanler(NULL, select_result, select_plan->type, select_plan->arg);
     }
@@ -982,7 +980,7 @@ static void SelectLeafNode(SelectResult *select_result, uint32_t page_num,
     value_len = table->index_value_len;
     default_value_len = table->heap_value_len;
 
-    cell_num = get_leaf_node_cell_num(leaf_node, default_value_len);
+    cell_num = LeafNodeGetCellNum(leaf_node, default_value_len);
     ptype = MetaTableFindPrimaryDataType(table->meta_table);
     high_key = NodeGetHighKey(table, leaf_node);
     current_trans = FindTransaction();
@@ -992,9 +990,9 @@ static void SelectLeafNode(SelectResult *select_result, uint32_t page_num,
     uint32_t i;
     for (i = 0; i < cell_num; i++) {
         /* Get leaf node cell value. */
-        void *destinct = get_leaf_node_cell_value(leaf_node, key_len, value_len, default_value_len, i);
-        Xid created_xid = get_index_created_xid(destinct);
-        Xid expired_xid = get_index_expired_xid(destinct);
+        void *cell_value = LeafNodeGetCellValue(leaf_node, key_len, value_len, default_value_len, i);
+        Xid created_xid = LeafNodeGetCellCreatedXid(leaf_node, key_len, value_len, default_value_len, i);
+        Xid expired_xid = LeafNodeGetCellExpiredXid(leaf_node, key_len, value_len, default_value_len, i);
         if (created_xid == 0)
            Assert(created_xid != 0);
 
@@ -1003,7 +1001,7 @@ static void SelectLeafNode(SelectResult *select_result, uint32_t page_num,
             continue;
 
         /* If satisfied, exeucte row handler function. */
-        void *tuple = HeapTableLookupTuple(oid, (Refer *) destinct);
+        void *tuple = HeapTableLookupTuple(oid, (Refer *) cell_value);
         select_result->current_tuple = tuple;
 
         /* If has nested, deep seek nested. */
@@ -1067,7 +1065,7 @@ static void SelectInternalNode(SelectResult *select_result, uint32_t page_num,
 
     key_len = table->key_len;
     default_value_len = table->heap_value_len;
-    keys_num = get_internal_node_keys_num(internal_node, default_value_len);
+    keys_num = InternalNodeGetKeysNum(internal_node, default_value_len);
     ptype = MetaTableFindPrimaryDataType(table->meta_table);
     primary_meta_column = MetaTableFindPrimaryKey(table->meta_table);
     high_key = NodeGetHighKey(table, internal_node);
@@ -1081,10 +1079,10 @@ static void SelectInternalNode(SelectResult *select_result, uint32_t page_num,
         /* Check if index column, use index to avoid full text scanning. */
         {
             /* Current internal node cell key as max key, previous cell key as min key, so the the range of values is (max_key, max_key]. */
-            void *max_key = GetComparableValue(get_internal_node_key(internal_node, i, key_len, default_value_len), ptype); 
+            void *max_key = GetComparableValue(InternalNodeGetCellKey(internal_node, key_len, default_value_len, i), ptype); 
             void *min_key = (i == 0) 
                         ? NULL 
-                        : GetComparableValue(get_internal_node_key(internal_node, i - 1, key_len, default_value_len), ptype);
+                        : GetComparableValue(InternalNodeGetCellKey(internal_node, key_len, default_value_len, i - 1), ptype);
             KeyValue *max_key_value = new_key_value(primary_meta_column->column_name, max_key, ptype, GET_TABLE_NAME(table));
             KeyValue *min_key_value = new_key_value(primary_meta_column->column_name, min_key, ptype, GET_TABLE_NAME(table));
             /* Filter the internal node. */
@@ -1098,13 +1096,13 @@ static void SelectInternalNode(SelectResult *select_result, uint32_t page_num,
         void *child_node;
         void *child_high_key;
 
-        child_page_num = get_internal_node_child(internal_node, i, key_len, default_value_len);
+        child_page_num = InternalNodeGetCellValue(internal_node, key_len, default_value_len, i);
         Assert(child_page_num != 0);
         child_buffer = ReadBuffer(GET_TABLE_OID(table), child_page_num);
         child_node = GetBufferPage(child_buffer);
         child_high_key = NodeGetHighKey(table, child_node);
 
-        switch (get_node_type(child_node)) {
+        switch (GetNodeType(child_node)) {
             case LEAF_NODE: {
                 if (select_plan->onlyScanIndex)
                     ScanLeafNode(
@@ -1139,12 +1137,12 @@ static void SelectInternalNode(SelectResult *select_result, uint32_t page_num,
     Buffer right_child_buffer;
     void *right_child_node, *right_high_key;
 
-    right_child_page_num = get_internal_node_right_child(internal_node, default_value_len);
+    right_child_page_num = InternalNodeGetRightNum(internal_node, default_value_len);
     right_child_buffer = ReadBuffer(GET_TABLE_OID(table), right_child_page_num);
     right_child_node = GetBufferPage(right_child_buffer);
     right_high_key = NodeGetHighKey(table, right_child_node);
 
-    switch (get_node_type(right_child_node)) {
+    switch (GetNodeType(right_child_node)) {
         case LEAF_NODE: {
             if (select_plan->onlyScanIndex)
                 ScanLeafNode(
@@ -1200,7 +1198,7 @@ static void SelectInternalNodeChildTask(void *taskArg) {
     child_buffer = ReadBuffer(GET_TABLE_OID(table), child_page_num);
     child_node = GetBufferPage(child_buffer);
 
-    switch (get_node_type(child_node)) {
+    switch (GetNodeType(child_node)) {
         case LEAF_NODE:
             SelectLeafNode(
                 select_result, child_page_num, 
@@ -1240,7 +1238,7 @@ static void SelectInternalNodeAsync(SelectResult *select_result, uint32_t page_n
     /* Get variables. */
     key_len = table->key_len;
     value_len = table->index_value_len;
-    keys_num = get_internal_node_keys_num(internal_node, value_len);
+    keys_num = InternalNodeGetKeysNum(internal_node, value_len);
     primary_meta_column = MetaTableFindPrimaryKey(table->meta_table);
 
     /* Prepare the parallel computing task args. */
@@ -1250,16 +1248,16 @@ static void SelectInternalNodeAsync(SelectResult *select_result, uint32_t page_n
 
     uint32_t i;
     for (i = 0; i < keys_num; i++) {
-        void *max_key = GetComparableValue(get_internal_node_key(internal_node, i, key_len, value_len), primary_meta_column->column_type); 
+        void *max_key = GetComparableValue(InternalNodeGetCellKey(internal_node, key_len, value_len, i), primary_meta_column->column_type); 
         void *min_key = (i == 0) 
                     ? NULL 
-                    : GetComparableValue(get_internal_node_key(internal_node, i - 1, key_len, value_len), primary_meta_column->column_type);
+                    : GetComparableValue(InternalNodeGetCellKey(internal_node, key_len, value_len, i - 1), primary_meta_column->column_type);
         KeyValue *max_key_value = new_key_value(primary_meta_column->column_name, max_key, primary_meta_column->column_type, GET_TABLE_NAME(table));
         KeyValue *min_key_value = new_key_value(primary_meta_column->column_name, min_key, primary_meta_column->column_type, GET_TABLE_NAME(table));
         if (!InternalNodeForSearchCondition(select_plan, min_key_value, max_key_value, select_plan->condition))
             continue;
         
-        uint32_t child_page_num = get_internal_node_child(internal_node, i, key_len, value_len);
+        uint32_t child_page_num = InternalNodeGetCellValue(internal_node, key_len, value_len, i);
         selectResults[taskNum] = new_select_result(SELECT_STMT, table->meta_table->table_name, true);
         taskArgs[taskNum] = instance(SelectFromInternalChildTaskArgs);
         taskArgs[taskNum]->select_result = selectResults[taskNum];
@@ -1271,7 +1269,7 @@ static void SelectInternalNodeAsync(SelectResult *select_result, uint32_t page_n
     }
    
     /* Don`t forget the right child. */
-    uint32_t right_child_page_num = get_internal_node_right_child(internal_node, value_len);
+    uint32_t right_child_page_num = InternalNodeGetRightNum(internal_node, value_len);
     selectResults[taskNum] = new_select_result(SELECT_STMT, table->meta_table->table_name, true);
     taskArgs[taskNum] = instance(SelectFromInternalChildTaskArgs);
     taskArgs[taskNum]->select_result = selectResults[taskNum];
@@ -1325,7 +1323,7 @@ void QueryUnderSearchConditionInner(Oid oid, SelectResult *select_result, Select
     buffer = ReadBuffer(oid, ROOT_PAGE_NUM); 
     root = GetBufferPage(buffer);
 
-    switch (get_node_type(root)) {
+    switch (GetNodeType(root)) {
         case LEAF_NODE: {
             if (select_plan->onlyScanIndex)
                 ScanLeafNode(

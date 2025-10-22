@@ -278,7 +278,12 @@ static Row *SelectRowToInsertRow(Row *select_row, Table *table) {
     return insert_row;
 }
 
-static bool WaitForDuplicateKey(Refer *refer) {
+/* Wait for duplicate key to release.
+ * ---------------------------------
+ * If there is duplicate key, the current transaction will
+ * wait for the other transaction who hold the duplicate key to release. 
+ * */
+static bool WaitForDuplicateKeyRelease(Refer *refer) {
     bool flag = false;
     Buffer buffer;
     Table *table;
@@ -375,7 +380,7 @@ Refer *insert_one_row(Table *table, Row *row) {
     /* Check if duplicate key. */
     if (UserPrimaryKeyExists(table->meta_table) && 
         check_duplicate_key(key, preRefer) && 
-        WaitForDuplicateKey(preRefer)
+        WaitForDuplicateKeyRelease(preRefer)
     ) {
         db_log(ERROR, "key '%s' in table '%s' already exists, not allow duplicate key.", 
                KeyGetSysStrValue(key, ptype), GET_TABLE_NAME(table));
