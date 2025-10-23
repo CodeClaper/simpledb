@@ -332,7 +332,7 @@ void *BtreeSearchKeyViaRefer(Refer *refer) {
     LockBuffer(buffer, RW_READERS);
     leaf_node = GetBufferPage(buffer);
 
-    key = LeafNodeGetCellValue(leaf_node, table->key_len, table->index_value_len, table->heap_value_len, refer->cell_num);
+    key = LeafNodeGetCellKey(leaf_node, table->key_len, table->index_value_len, table->heap_value_len, refer->cell_num);
 
     UnlockBuffer(buffer);
     ReleaseBuffer(buffer);
