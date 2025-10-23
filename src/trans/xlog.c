@@ -23,22 +23,22 @@
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <string.h>
+#include <strings.h>
 #include "xlog.h"
 #include "log.h"
 #include "mmgr.h"
 #include "trans.h"
 #include "copy.h"
 #include "free.h"
-#include "ltree.h"
-#include "refer.h"
-#include "table.h"
+#include "ltsearch.h"
+#include "ltmodify.h"
 #include "select.h"
-#include "asserts.h"
+#include "insert.h"
 #include "utils.h"
-#include "pager.h"
 #include "meta.h"
 #include "row.h"
+#include "table.h"
+#include "heaptable.h"
 
 /* 
  * The XLogEntry Chain.
@@ -148,7 +148,22 @@ void ExecuteRollback() {
 
 /* Reverse insert operation. */
 static void HeapInsertXLog(Refer *refer, TransEntry *transaction) {
-    update_row_expired_xid(refer, transaction->xid);
+    Oid oid;
+    Table *table;
+    void *key, *index;
+
+    oid = refer->oid;
+    table = open_table_inner(oid);
+
+    /* Get btree key and value. */
+    key = BtreeSearchKeyViaRefer(refer);
+    index = BtreeSearchValueViaRefer(refer);
+
+    /* Update heap table exipred xid. */
+    HeapTableUpdateRowExpiredXid(table, (Refer *) index, transaction->xid);
+
+    /* Update btree expired xid. */
+    BtreeModifyExpiredXid(oid, key, transaction->xid);
 }
 
 /* Reverse delete operation. 
@@ -162,7 +177,6 @@ static void HeapDeleteXLog(Refer *refer, TransEntry *transaction) {
 
     Row *newRow = copy_row(rawRow);
     Table *table = open_table_inner(refer->oid);
-    void *key = RowFindKey(newRow, table->meta_table);
     KeyValue *expired_xid_col = lfirst(last_cell(newRow->data));
     Xid expired_xid = *(Xid *)expired_xid_col->value;
     Assert(expired_xid == transaction->xid);
@@ -170,11 +184,8 @@ static void HeapDeleteXLog(Refer *refer, TransEntry *transaction) {
     /* Make the row visible. */
     *(Xid *)expired_xid_col->value = 0;
 
-    /* Repositioning. */
-    Refer *nrefer = define_refer(table, key);
-
     /* Re-insert. */
-    insert_row_data(newRow, nrefer);
+    insert_one_row(table, newRow);
 
     free_row(newRow);
 }
@@ -196,13 +207,13 @@ static void HeadUpdateDeleteXlog(Refer *refer, TransEntry *transaction) {
     *(Xid *)expired_xid_col->value = 0;
 
     /* Repositioning. */
-    Refer *nRefer = define_refer(table, key);
+    Refer *nRefer = BtreeSearchRefer(refer->oid, key);
 
     /* Lock update refer. */
     add_refer_update_lock(nRefer);
 
     /* Re-insert. */
-    insert_row_data(newRow, nRefer);
+    insert_one_row(table, newRow);
 
     /* Free update refer lock. */
     free_refer_update_lock(nRefer);
