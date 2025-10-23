@@ -7,11 +7,8 @@
  ********************************************************************************************
  */
 #include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
 #define _XOPEN_SOURCE
 #define __USE_XOPEN
-#include <time.h>
 #include "update.h"
 #include "mmgr.h"
 #include "data.h"

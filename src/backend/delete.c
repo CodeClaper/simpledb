@@ -7,8 +7,6 @@
  ********************************************************************************************
  */
 #include <stdbool.h>
-#include <string.h>
-#include <stdio.h>
 #include "delete.h"
 #include "data.h"
 #include "table.h"

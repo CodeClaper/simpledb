@@ -12,8 +12,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
-#include <stdio.h>
-#include <time.h>
 #include "refer.h"
 #include "data.h"
 #include "mmgr.h"
