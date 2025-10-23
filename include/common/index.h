@@ -17,3 +17,15 @@ Xid IndexGetExpiredXid(void *index);
 
 /* Set index expired xid. */
 void IndexSetExpiredXid(void *index, Xid expired_xid);
+
+/* Get index sys id. */
+int64_t IndexGetSysId(void *index);
+
+/* Get index sys id. */
+void IndexSetSysId(void *index, int64_t sys_id);
+
+/* Get index refer. */
+Refer *IndexGetRefer(void *index);
+
+/* Set index refer. */
+void IndexSetRefer(void *index, Refer *refer);

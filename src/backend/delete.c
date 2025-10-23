@@ -42,21 +42,20 @@ void delete_row(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE t
         void *key, *index;
         Refer *refer;
 
+        /* Decrease row size. */
+        select_result->row_size++;
+
         key = TupleFindKey(tuple, table->meta_table);
         index = BtreeSearchValue(oid, key);
-        refer = BtreeSearchRefer(oid, key);
+
+        /* Delete from index table. */
+        refer = BtreeModifyExpiredXid(oid, key, current_xid);
 
         /* Delete tuple in heap table. */
         HeapTableUpdateRowExpiredXid(table, (Refer *) index, current_xid);
         
-        /* Delete from index table. */
-        BtreeModifyExpiredXid(oid, key, current_xid);
-
         /* Record xlog for delete. */
         RecordXlog(refer, HEAP_DELETE);
-
-        /* Decrease row size. */
-        select_result->row_size++;
 
         /* Free memeory. */
         free_refer(refer);

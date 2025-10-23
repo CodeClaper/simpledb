@@ -16,15 +16,14 @@
 #include "mmgr.h"
 #include "data.h"
 #include "meta.h"
-#include "row.h"
 #include "select.h"
 #include "delete.h"
-#include "insert.h"
 #include "copy.h"
 #include "compare.h"
 #include "table.h"
-#include "pager.h"
-#include "ltree.h"
+#include "ltsearch.h"
+#include "ltmodify.h"
+#include "ltinsert.h"
 #include "check.h"
 #include "free.h"
 #include "trans.h"
@@ -38,46 +37,91 @@
 #include "log.h"
 #include "instance.h"
 #include "optimizer.h"
+#include "tuple.h"
+#include "heaptable.h"
+#include "timer.h"
 
-/* Update cell */
-static void UpdateCell(Row *row, AssignmentNode *assign_node, MetaColumn *meta_column) {
+/* Update tuple for assignment. */
+static void UpdateTupleForAssignment(void *tuple, List *assignment_list, MetaTable *meta_table) {
+    /* Handle each of assignment. */
     ListCell *lc;
-    foreach (lc, row->data) {
-        KeyValue *key_value = lfirst(lc);
-        if (StrEq(key_value->key, assign_node->column->column_name)) {
-            ValueItemNode *value_item = assign_node->value;
-            key_value->value = ValueItemNodeAssignValue(value_item, meta_column);
-        }
-    } 
-}
+    foreach (lc, assignment_list) {
+        AssignmentNode *assign_node;
+        MetaColumn *meta_column;
+        void *new_value;
 
-/* Delete row for update */
-static void DeleteRowForUpdate(Refer *refer, Row *row) {
-    if (RowIsVisible(row)) {
-        UpdateTransactionState(row, TR_DELETE);
-        update_row_data(row, refer);
-        RecordXlog(refer, HEAP_UPDATE_DELETE);
+        assign_node = (AssignmentNode *) lfirst(lc);
+        meta_column = NameFindMetaColumn(meta_table, assign_node->column->column_name);
+        new_value = ValueItemNodeAssignValue(assign_node->value, meta_column);
+
+        /* Reset new value to tuple. */
+        TupleSetValue(tuple, meta_column, new_value);
+        dfree(new_value);
     }
 }
 
+
+/* Delete row for update */
+static Refer *DeleteRowForUpdate(Oid oid, void *key) {
+    Table *table;
+    Refer *refer;
+    void *index;
+    Xid current_xid;
+
+    table = open_table_inner(oid);
+    current_xid = GetCurrentXid();
+    index = BtreeSearchValue(oid, key);
+
+    /* Delete from heap table. */
+    HeapTableUpdateRowExpiredXid(table, (Refer *) index, current_xid);
+    
+    /* Delete from btree. */
+    refer = BtreeModifyExpiredXid(oid, key, current_xid);
+
+    /* Record xlog. */
+    RecordXlog(refer, HEAP_UPDATE_DELETE);
+
+    dfree(index);
+
+    return refer;
+}
+
 /* Insert row for update. */
-static void InsertRowForUpdate(Row *row, Table *table) {
-    void *key;
-    Refer *nrefer;
+static Refer *ReinsertRowForUpdate(Oid oid, void *key, void *tuple) {
+    Table *table;
+    Refer *refer, *hrefer;
+    int64_t sys_id;
+    Xid created_xid, expired_xid;
+    void *index;
 
-    key = RowFindKey(row, table->meta_table);
-    nrefer = define_refer(table, key);
+    table = open_table_inner(oid);
+    sys_id = get_timestamp(NANOSECOND);
+    created_xid = GetCurrentXid();
+    expired_xid = 0;
 
-    /* Update old row. */
-    UpdateTransactionState(row, TR_INSERT);
+    TupleSetCreatedXid(tuple, table->meta_table, created_xid);
+    TupleSetExpiredXid(tuple, table->meta_table, expired_xid);
+    TupleSetSysId(tuple, table->meta_table, sys_id);
+    
+    /* Reinsert into heap table. */
+    hrefer = HeapTableInsertTuple(oid, tuple);
 
-    /* Insert */
-    insert_row_data(row, nrefer);
+    /* Generate new index. */
+    index = dalloc(table->index_value_len);
+    IndexSetCreatedXid(index, created_xid);
+    IndexSetExpiredXid(index, expired_xid);
+    IndexSetSysId(index, sys_id);
+    IndexSetRefer(index, hrefer);
+
+    /* Reinsert into btree. */
+    refer = BtreeInsert(oid, key, index);
 
     /* Record xlog for insert. */
-    RecordXlog(nrefer, HEAP_UPDATE_INSERT);
+    RecordXlog(refer, HEAP_UPDATE_INSERT);
 
-    free_refer(nrefer);
+    dfree(index);
+
+    return refer;
 }
 
 
@@ -86,69 +130,61 @@ static void InsertRowForUpdate(Row *row, Table *table) {
  * Update operation is divided into delete and re-insert operation. 
  * It makes transaction rollback operation simpler. */
 static void UpdateTuple(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg) {
+    Oid oid;
     Table *table;
     Refer *oldRefer, *newRefer;
-    Row *rawRow, *currentRow, *new_row;
-    void *old_key, *new_key;
+    void *old_key, *new_key, *new_tuple;
+    Xid created_xid, expired_xid;
         
-    table = open_table_inner(select_result->oid);
-    rawRow = GenerateRow(tuple, table->meta_table);
-    /* Only update row that is visible for current transaction. */
-    if (!RowIsVisible(rawRow)) 
-        return;
+    oid = select_result->oid;
+    table = open_table_inner(oid);
+    created_xid = TupleFindCreatedXid(tuple, table->meta_table);
+    expired_xid = TupleFindExpiredXid(tuple, table->meta_table);
 
+    /* Only update row that is visible for current transaction. */
+    if (!IsVisible(created_xid, expired_xid)) 
+        return;
+    
+    /* Copy the tuple to avod influenct old data. */
+    new_tuple = copy_block(tuple, table->heap_value_len);
     select_result->row_size++;
 
     /* Get old refer, and lock update refer. */
-    old_key = RowFindKey(rawRow, table->meta_table);
-    oldRefer = define_refer(table, old_key);
-    add_refer_update_lock(oldRefer);
-    currentRow = DefineRow(oldRefer);
+    old_key = TupleFindKey(tuple, table->meta_table);
 
     /* Delete row for update. */
-    DeleteRowForUpdate(oldRefer, currentRow);
+    oldRefer = DeleteRowForUpdate(oid, old_key);
 
-    new_row = copy_row(currentRow);
+    /* Lock refer. */
+    add_refer_update_lock(oldRefer);
 
-    /* For update row funciton, the arg is the List of Assignment. */
+    /* Update tuple for assignment. */
     Assert(type == ARG_ASSIGNMENT_LIST);
-    List *assignment_list = (List *) arg;
+    UpdateTupleForAssignment(new_tuple, (List *) arg, table->meta_table);
 
-    /* Handle each of assignment. */
-    ListCell *lc;
-    foreach (lc, assignment_list) {
-        AssignmentNode *assign_node = lfirst(lc);
-        MetaColumn *meta_column = NameFindMetaColumn(table->meta_table, assign_node->column->column_name);
-        UpdateCell(new_row, assign_node, meta_column);
-    }
-   
-    /* Insert row for update. */
-    InsertRowForUpdate(new_row, table);
+    /* Get new key. */
+    new_key = TupleFindKey(new_tuple, table->meta_table);
 
-    /* Recalculate Refer, because afer insert, row refer may be changed. */
-    new_key = RowFindKey(new_row, table->meta_table);
-    newRefer = define_refer(table, new_key);
+    /* Reinsert row for update. */
+    newRefer = ReinsertRowForUpdate(oid, new_key, new_tuple);
 
     /* Free Update refer lock. */
     free_refer_update_lock(oldRefer);
     
     /* If Refer changed, update refer. */
-    if (!refer_equals(oldRefer, newRefer)) {
-        ReferUpdateEntity *refer_update_entity = new_refer_update_entity(oldRefer, newRefer);
-        update_related_tables_refer(refer_update_entity);
-        free_refer_update_entity(refer_update_entity);
-    } else {
-        free_refer(oldRefer);
-        free_refer(newRefer);
-    }
+    if (!refer_equals(oldRefer, newRefer))
+        update_refer(oid, 
+                     oldRefer->page_num, oldRefer->cell_num, 
+                     newRefer->page_num, newRefer->cell_num);
+
+    /* Free memory. */
+    free_refer(oldRefer);
+    free_refer(newRefer);
 }
 
 /* Get SearchConditionNode form WhereClause.. */
-static SearchConditionNode *WhereClauseFindSearchCondition(WhereClauseNode *where_clause) {
-    if (where_clause)
-        return where_clause->condition;
-    else
-        return NULL;
+static inline SearchConditionNode *WhereClauseFindSearchCondition(WhereClauseNode *where_clause) {
+    return where_clause != NULL ? where_clause->condition : NULL;
 }
 
 /* Execute update statment. */

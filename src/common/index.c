@@ -81,3 +81,23 @@ Xid IndexGetExpiredXid(void *index) {
 void IndexSetExpiredXid(void *index, Xid expired_xid) {
     *(Xid *) (index + REFER_SIZE + LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE) = expired_xid;
 }
+
+/* Get index sys id. */
+int64_t IndexGetSysId(void *index) {
+    return *(int64_t *) (index + REFER_SIZE + LEAF_NODE_CELL_NULL_FLAG_SIZE);
+}
+
+/* Get index sys id. */
+void IndexSetSysId(void *index, int64_t sys_id) {
+    *(int64_t *) (index + REFER_SIZE + LEAF_NODE_CELL_NULL_FLAG_SIZE) = sys_id;
+}
+
+/* Get index refer. */
+Refer *IndexGetRefer(void *index) {
+    return (Refer *) index;
+}
+
+/* Set index refer. */
+void IndexSetRefer(void *index, Refer *refer) {
+    memcpy(index, refer, REFER_SIZE);
+}

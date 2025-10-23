@@ -179,7 +179,7 @@ void *HeapTableLookupTuple(Oid oid, Refer *refer) {
     rootRefer = HeapTableGetRootRefer(root);
     Assert(rootRefer->oid == hoid);
 
-    /* Loop end here. */
+    /* If overflow, just return NULL. */
     if (refer->page_num > rootRefer->page_num || 
         (refer->page_num == rootRefer->page_num && refer->cell_num >= rootRefer->cell_num)
     ) goto direct_exist;
@@ -188,7 +188,7 @@ void *HeapTableLookupTuple(Oid oid, Refer *refer) {
     LockBuffer(buffer, RW_READERS);
     block = GetBufferBlock(buffer);
 
-    /* Deserialize row. */
+    /* Get tuple in cell. */
     tuple = HeapTableGetPageCellData(block, table->heap_value_len, refer->cell_num);
     
     /* Unlock and release buffer. */
