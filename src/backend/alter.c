@@ -27,7 +27,6 @@
 #include "tuple.h"
 #include "row.h"
 #include "log.h"
-#include "ltree.h"
 #include "tablereg.h"
 #include "systable.h"
 #include "heaptable.h"
@@ -69,7 +68,7 @@ static void *SeriableIndexValue(Table *table, void *tuple, Refer *heapRefer) {
         MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
         if (meta_column->sys_reserved) {
             void *value = TupleFindValue(tuple, meta_column);
-            assign_row_value(destination + offset, value, meta_column);
+            MetaColumnAssignValueToDestination(destination + offset, value, meta_column);
             offset += meta_column->column_length;
         }
     }
