@@ -317,3 +317,49 @@ void *BtreeSearchValue(Oid oid, void *key) {
     Assert(key != NULL);
     return BtreeSearchValueInner(oid, key, NULL, ROOT_PAGE_NUM);   
 }
+
+/* Btree seach key via refer.*/
+void *BtreeSearchKeyViaRefer(Refer *refer) {
+    Oid oid;
+    Table *table;
+    Buffer buffer;
+    void *leaf_node, *key;
+
+    oid = refer->oid;
+    table = open_table_inner(oid);
+
+    buffer = ReadBuffer(oid, refer->page_num);
+    LockBuffer(buffer, RW_READERS);
+    leaf_node = GetBufferPage(buffer);
+
+    key = LeafNodeGetCellValue(leaf_node, table->key_len, table->index_value_len, table->heap_value_len, refer->cell_num);
+
+    UnlockBuffer(buffer);
+    ReleaseBuffer(buffer);
+
+    return key;
+}
+
+
+/* Btree seach value via refer.*/
+void *BtreeSearchValueViaRefer(Refer *refer) {
+    Oid oid;
+    Table *table;
+    Buffer buffer;
+    void *leaf_node, *value;
+
+    oid = refer->oid;
+    table = open_table_inner(oid);
+
+    buffer = ReadBuffer(oid, refer->page_num);
+    LockBuffer(buffer, RW_READERS);
+    leaf_node = GetBufferPage(buffer);
+
+    value = LeafNodeGetCellValue(leaf_node, table->key_len, table->index_value_len, table->heap_value_len, refer->cell_num);
+
+    UnlockBuffer(buffer);
+    ReleaseBuffer(buffer);
+
+    return value;
+}
+
