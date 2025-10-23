@@ -12,6 +12,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
+#include <strings.h>
 #include "refer.h"
 #include "data.h"
 #include "mmgr.h"
@@ -22,18 +23,16 @@
 #include "row.h"
 #include "index.h"
 #include "tuple.h"
-#include "ltree.h"
 #include "ltsearch.h"
 #include "xlog.h"
-#include "pager.h"
 #include "utils.h"
 #include "asserts.h"
-#include "table.h"
 #include "log.h"
-#include "rowlock.h"
 #include "instance.h"
 #include "tablecache.h"
 #include "optimizer.h"
+#include "table.h"
+#include "heaptable.h"
 
 typedef struct {
     uint32_t size;
@@ -199,18 +198,19 @@ bool refer_equals(Refer *refer1, Refer *refer2) {
 }
 
 /* Update single key value refer. */
-static bool update_single_key_value_refer(KeyValue *key_value, ReferUpdateEntity *refer_update_entity) {
-    if (refer_equals(key_value->value, refer_update_entity->old_refer)) {
-        key_value->value = copy_refer(refer_update_entity->new_refer);
+static bool UpdateReferForSingleValue(void *tuple, MetaColumn *meta_column, ReferUpdateEntity *refer_update_entity) {
+    Refer *refer = TupleFindValue(tuple, meta_column);
+    if (refer_equals(refer, refer_update_entity->old_refer)) {
+        TupleSetValue(tuple, meta_column, refer_update_entity->new_refer);
         return true;
     }
     return false;
 }
 
 /* Update array key value refer. */
-static bool update_array_key_value_refer(KeyValue *key_value, ReferUpdateEntity *refer_update_entity) {
+static bool UpdateReferForArrayValue(void *tuple, MetaColumn *meta_column, ReferUpdateEntity *refer_update_entity) {
     bool flag = false;
-    ArrayValue *array_value = (ArrayValue *)key_value->value;
+    ArrayValue *array_value = TupleFindValue(tuple, meta_column);
 
     ListCell *lc;
     foreach (lc, array_value->list) {
@@ -219,63 +219,58 @@ static bool update_array_key_value_refer(KeyValue *key_value, ReferUpdateEntity 
             flag = true;
         }
     }
+    
+    if (flag)
+        TupleSetValue(tuple, meta_column, array_value);
 
     return flag;
 }
 
 /* Update row key value. */
-static void UpdateTupleReferValueExtend(Row *row, MetaColumn *meta_column, Refer *refer, 
+static void UpdateTupleReferValueExtend(Oid oid, void *tuple, 
+                                        Refer *hrefer, MetaColumn *meta_column, 
                                         ReferUpdateEntity *refer_update_entity) {
     bool flag = false;
-    ListCell *lc;
-    foreach (lc, row->data) {
-        KeyValue *key_value = lfirst(lc);
-        if (key_value->data_type == T_REFERENCE && 
-                StrEq(key_value->key, meta_column->column_name)
-        ) {
-            if (key_value->is_array) {
-                if (update_array_key_value_refer(key_value, refer_update_entity))
-                    flag = true;
-            } else {
-                if (update_single_key_value_refer(key_value, refer_update_entity))
-                    flag = true;
-            }
-        }
+
+    if (meta_column->array_dim > 0) {
+        if (UpdateReferForArrayValue(tuple, meta_column, refer_update_entity))
+            flag = true;
+    } else {
+        if (UpdateReferForSingleValue(tuple, meta_column, refer_update_entity))
+            flag = true;
     }
-    
+
     /* If satisfied above conditions, update the row. */
     if (flag)
-        update_row_data(row, refer);
+        HeapTableUpdateTuple(oid, hrefer, tuple);
 }
 
 
 /* Update row refer. */
 static void UpdateTupleReferValue(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg) {
-    Assert(arg);
-    Assert(type == ARG_REFER_UPDATE_ENTITY);
-    
     Oid oid;
     Table *table, *ref_table;
     ReferUpdateEntity *refer_update_entity;
-    void *key;
-    Refer *refer;
+    void *key, *index;
 
     oid = select_result->oid;
     table = open_table_inner(oid);
 
+    Assert(arg);
+    Assert(type == ARG_REFER_UPDATE_ENTITY);
     refer_update_entity = (ReferUpdateEntity *) arg;
     ref_table = open_table_inner(refer_update_entity->old_refer->oid);
     Assert(ref_table);
 
     key = TupleFindKey(tuple, table->meta_table);
-    refer = BtreeSearchRefer(oid, key);
+    index = BtreeSearchValue(oid, key);
 
     ListCell *lc;
     foreach (lc, table->meta_table->meta_columns) {
         MetaColumn *meta_column = (MetaColumn *) lfirst(lc);
         if (meta_column->column_type == T_REFERENCE && 
             StrEq(meta_column->table_name, GET_TABLE_NAME(ref_table))) 
-            UpdateTupleReferValueExtend(GenerateRow(tuple, table->meta_table), meta_column, refer, refer_update_entity);
+            UpdateTupleReferValueExtend(oid, tuple, (Refer *) index, meta_column, refer_update_entity);
     }
 }
 

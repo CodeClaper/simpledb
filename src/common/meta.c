@@ -653,12 +653,10 @@ static void MetaColumnAssginArrayValueToDestination(void *destination, ArrayValu
     /* span: every value in array data lenght. */
     span = (meta_column->column_length - LEAF_NODE_ARRAY_NUM_SIZE - LEAF_NODE_CELL_NULL_FLAG_SIZE) / meta_column->array_cap;
 
-    uint32_t i = 0;
     ListCell *lc;
     foreach (lc, array_value->list) {
         void *value = lfirst(lc);
-        memcpy((destination + LEAF_NODE_CELL_NULL_FLAG_SIZE + LEAF_NODE_ARRAY_NUM_SIZE + span * i), value, span);        
-        i++;
+        memcpy((destination + LEAF_NODE_CELL_NULL_FLAG_SIZE + LEAF_NODE_ARRAY_NUM_SIZE + span * __i), value, span);
     }
 }
 
