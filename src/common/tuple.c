@@ -3,22 +3,31 @@
 #include "data.h"
 #include "meta.h"
 #include "const.h"
-#include "ltree.h"
 #include "copy.h"
 #include "instance.h"
+
+/* Get array number. */
+static uint32_t GetArrayNumber(void *destination) {
+    return *(uint32_t *)(destination + LEAF_NODE_CELL_NULL_FLAG_SIZE);
+}
+
+/* Get array value. */
+static void *GetArrayValue(void *destination, uint32_t i, uint32_t span) {
+    return (destination + LEAF_NODE_CELL_NULL_FLAG_SIZE + LEAF_NODE_ARRAY_NUM_SIZE + span * i);
+}
 
 /* Get tuple array value. 
  * Return ArrayValue. */
 static ArrayValue *GetTupleArrayValue(void *destination, MetaColumn *meta_column) {
-    uint32_t array_num = get_array_number(destination);
+    uint32_t array_num, span, i;
+    ArrayValue *array_value;
 
-    /* Generate ArrayValue instance. */
-    ArrayValue *array_value = new_array_value(meta_column->column_type, array_num);
-    uint32_t span = (meta_column->column_length - LEAF_NODE_ARRAY_NUM_SIZE - LEAF_NODE_CELL_NULL_FLAG_SIZE) / meta_column->array_cap;
+    array_num = GetArrayNumber(destination);
+    span = (meta_column->column_length - LEAF_NODE_ARRAY_NUM_SIZE - LEAF_NODE_CELL_NULL_FLAG_SIZE) / meta_column->array_cap;
+    array_value = new_array_value(meta_column->column_type, array_num);
 
-    uint32_t i;
     for (i = 0; i < array_num; i++) {
-        void *value = get_array_value(destination, i, span);
+        void *value = GetArrayValue(destination, i, span);
         append_list(array_value->list, copy_value(value, meta_column->column_type));
     }
 
