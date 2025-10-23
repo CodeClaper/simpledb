@@ -1,14 +1,12 @@
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include "index.h"
 #include "const.h"
 #include "mmgr.h"
 #include "pager.h"
 #include "ltbase.h"
+#include "ltinsert.h"
 #include "meta.h"
 #include "compare.h"
 #include "common.h"
@@ -20,33 +18,44 @@
 
 /* Check if key already exists  */
  bool IndexDuplicateKeyCheck(void *key, Refer *refer) {
+    Table *table;
     Buffer buffer;
     void *node, *target;
     uint32_t key_len, value_len, default_value_len;
     MetaColumn *primary_key_meta_column;
-    Table *table = open_table_inner(refer->oid);
+    bool ret = false;
 
     /* Get the buffer. */
+    table = open_table_inner(refer->oid);
     buffer = ReadBuffer(refer->oid, refer->page_num); 
+    LockBuffer(buffer, RW_READERS);
     node = GetBufferPage(buffer);
 
     value_len = table->index_value_len;
     default_value_len = table->heap_value_len;
     key_len = table->key_len;
 
+    /* If the cell is overflow the page, it not duplcate of course. */
+    if (!BtreeInsertForLeafNodeSafe(node, key_len, value_len, default_value_len, refer->cell_num))
+        goto direct_exit;
+
     primary_key_meta_column = MetaTableFindPrimaryKey(table->meta_table);
     target = LeafNodeGetCellKey(node, key_len, value_len, default_value_len, refer->cell_num);
     Assert(target < (void *) ((char *) node + PAGE_SIZE));
 
-    /* Release the buffer. */
-    ReleaseBuffer(buffer);
-
     /* Get result. */
-    return (target < node + PAGE_SIZE) && 
+    ret = (target < node + PAGE_SIZE) && 
             EQ(GetComparableValue(target, primary_key_meta_column->column_type), 
                GetComparableValue(key, primary_key_meta_column->column_type), 
                primary_key_meta_column->column_type
     );
+
+direct_exit:
+    /* Release the buffer. */
+    UnlockBuffer(buffer);
+    ReleaseBuffer(buffer);
+    
+    return ret;
 }
 
 /* Get index created xid. */

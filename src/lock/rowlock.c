@@ -9,7 +9,8 @@
 #include "copy.h"
 #include "table.h"
 #include "meta.h"
-#include "ltree.h"
+// #include "ltree.h"
+#include "ltbase.h"
 #include "compare.h"
 
 static Queue *RowLockTable;
@@ -49,11 +50,6 @@ static RowLockEntry *AppendNewRowLock(Refer *refer) {
     return rlock;
 }
 
-/* The condition of RowLock. */
-static inline bool RowLockCondition(RowLockEntry *rlock) {
-    return rlock->acquirer == GetCurrentXid();
-}
-
 /* Acquire the row lock, will block if fail. */
 void AcquireRowLock(Refer *refer, void *key) {
     Table *table;
@@ -70,9 +66,8 @@ void AcquireRowLock(Refer *refer, void *key) {
     LockBuffer(buffer, RW_WRITER);
 
     block = GetBufferPage(buffer);
-    target_key = get_leaf_node_cell_key(block, refer->cell_num, table->key_len, 
-                                        table->index_value_len, table->heap_value_len);
-
+    target_key = LeafNodeGetCellKey(block, table->key_len, table->index_value_len, 
+                                    table->heap_value_len, refer->cell_num);
     /* If not found, append new one. */
     rlock = FindRowLock(refer);
     if (rlock == NULL)

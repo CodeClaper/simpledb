@@ -1,7 +1,7 @@
 
 includedir = ../../include
 headerdirs = $(includedir)/lock $(includedir)/common $(includedir)/memory $(includedir)/sys \
-			 $(includedir)/storage $(includedir)/utils $(includedir)/trans
+			 $(includedir)/storage $(includedir)/utils $(includedir)/trans $(includedir)/ltree
 objects := $(patsubst %.c,%.o,$(wildcard *.c))
 headers := $(shell find $(headerdirs) -name "*.h")
 CC = gcc

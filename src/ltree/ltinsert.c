@@ -611,7 +611,7 @@ static void BtreeInsertForLeafNodeUpgradeRoot(Oid oid, void *root, void *right_n
 }
 
 /* Check if leaf node is safe when inserting new item. */
-static bool BtreeInsertForLeafNodeSafe(void *leaf_node, uint32_t key_len, uint32_t value_len, uint32_t default_value_len, uint32_t cell_num) {
+bool BtreeInsertForLeafNodeSafe(void *leaf_node, uint32_t key_len, uint32_t value_len, uint32_t default_value_len, uint32_t cell_num) {
     uint32_t cell_len = key_len + value_len;
     if (NodeIsRoot(leaf_node)) {
         uint32_t column_size = RootNodeGetColumnSize(leaf_node);
