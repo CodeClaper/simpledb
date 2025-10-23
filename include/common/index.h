@@ -1,10 +1,7 @@
 #include "data.h"
 
 /* Check if key already exists. */
-bool check_duplicate_key(void *key, Refer *refer);
-
-/* Get key type name. */
-char *key_type_name(MetaColumn *meta_column);
+ bool IndexDuplicateKeyCheck(void *key, Refer *refer);
 
 /* Get index created xid. */
 Xid IndexGetCreatedXid(void *index);
@@ -29,3 +26,6 @@ Refer *IndexGetRefer(void *index);
 
 /* Set index refer. */
 void IndexSetRefer(void *index, Refer *refer);
+
+/* Generate index. */
+void *GenerateIndex(Oid oid, void *tuple, Refer *hrefer);

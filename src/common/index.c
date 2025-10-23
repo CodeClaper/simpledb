@@ -8,17 +8,18 @@
 #include "const.h"
 #include "mmgr.h"
 #include "pager.h"
-#include "ltree.h"
+#include "ltbase.h"
 #include "meta.h"
 #include "compare.h"
 #include "common.h"
 #include "log.h"
 #include "bufmgr.h"
 #include "table.h"
+#include "tuple.h"
 #include "strheaptable.h"
 
 /* Check if key already exists  */
- bool check_duplicate_key(void *key, Refer *refer) {
+ bool IndexDuplicateKeyCheck(void *key, Refer *refer) {
     Buffer buffer;
     void *node, *target;
     uint32_t key_len, value_len, default_value_len;
@@ -33,12 +34,8 @@
     default_value_len = table->heap_value_len;
     key_len = table->key_len;
 
-    /* If overflow after the new tuple inserting, it not duplcate of course. */
-    if (overflow_leaf_node(node, key_len, value_len, default_value_len, refer->cell_num))
-        return false;
-
     primary_key_meta_column = MetaTableFindPrimaryKey(table->meta_table);
-    target = get_leaf_node_cell_key(node, refer->cell_num, key_len, value_len, default_value_len);
+    target = LeafNodeGetCellKey(node, key_len, value_len, default_value_len, refer->cell_num);
     Assert(target < (void *) ((char *) node + PAGE_SIZE));
 
     /* Release the buffer. */
@@ -50,16 +47,6 @@
                GetComparableValue(key, primary_key_meta_column->column_type), 
                primary_key_meta_column->column_type
     );
-}
-
-/* Get key type name */
-char *key_type_name(MetaColumn *meta_column) {
-    if (meta_column->is_primary) 
-        return "primary";
-    else if (meta_column->is_unique)
-        return "unique";
-    else
-        return NULL;
 }
 
 /* Get index created xid. */
@@ -100,4 +87,30 @@ Refer *IndexGetRefer(void *index) {
 /* Set index refer. */
 void IndexSetRefer(void *index, Refer *refer) {
     memcpy(index, refer, REFER_SIZE);
+}
+
+/* Generate index. */
+void *GenerateIndex(Oid oid, void *tuple, Refer *hrefer) {
+    Table *table;
+    void *destination;
+    uint32_t offset = REFER_SIZE;
+
+    table = open_table_inner(oid);
+    destination = dalloc(table->index_value_len);
+    
+    /* Set refer value. */
+    IndexSetRefer(destination, hrefer);
+
+    /* Set system reserved value. */
+    ListCell *lc;
+    foreach (lc, table->meta_table->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *) lfirst(lc);
+        if (meta_column->sys_reserved) {
+            void *value = TupleFindValue(tuple, meta_column);
+            MetaColumnAssignValueToDestination(destination + offset, value, meta_column);
+            offset += meta_column->column_length;
+        }
+    }
+
+    return destination;
 }

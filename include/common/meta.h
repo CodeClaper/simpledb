@@ -52,6 +52,9 @@ uint32_t TableCalcIndexLength(Table *table);
 /* Genrate table meta info. */
 MetaTable *GenerateMetaTable(Oid oid);
 
+/* Get key type name. */
+char *GetKeyTypeName(MetaColumn *meta_column);
+
 /* Find MetaColumn by column name. */
 MetaColumn *NameFindMetaColumnInner(List *meta_columns, char *column_name);
 

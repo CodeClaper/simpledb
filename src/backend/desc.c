@@ -12,15 +12,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include "data.h"
 #include "desc.h"
+#include "data.h"
 #include "list.h"
 #include "mmgr.h"
 #include "table.h"
-#include "index.h"
 #include "meta.h"
 #include "copy.h"
-#include "session.h"
 #include "instance.h"
 #include "log.h"
 
@@ -51,7 +49,7 @@ static List *MetaTableGenerateDescribeResult(MetaTable *meta_table) {
         /* key */
         append_list(
             child_list, 
-            new_key_value("key", key_type_name(meta_column), T_VARCHAR, meta_table->table_name)
+            new_key_value("key", GetKeyTypeName(meta_column), T_VARCHAR, meta_table->table_name)
         );
 
         /* type */

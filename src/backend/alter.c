@@ -26,6 +26,7 @@
 #include "meta.h"
 #include "tuple.h"
 #include "row.h"
+#include "index.h"
 #include "log.h"
 #include "tablereg.h"
 #include "systable.h"
@@ -47,33 +48,6 @@ static void AlterCaptureTable(Oid oid) {
 static void AlterReleaseTable(Oid oid) {
     RemoveTableCache(oid);
     try_release_table(oid);
-}
-
-/* Seriable index vlaue. */
-static void *SeriableIndexValue(Table *table, void *tuple, Refer *heapRefer) {
-    uint32_t value_len;
-    void *destination;
-    MetaTable *meta_table;
-
-    value_len = table->index_value_len;
-    destination = dalloc(value_len);
-    meta_table = table->meta_table;
-
-    /* Assign the heap refer value. */
-    memcpy(destination, heapRefer, REFER_SIZE);
-
-    uint32_t offset = REFER_SIZE;
-    ListCell *lc;
-    foreach (lc, meta_table->meta_columns) {
-        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
-        if (meta_column->sys_reserved) {
-            void *value = TupleFindValue(tuple, meta_column);
-            MetaColumnAssignValueToDestination(destination + offset, value, meta_column);
-            offset += meta_column->column_length;
-        }
-    }
-
-    return destination;
 }
 
 /* Find the postion via ColumnPositionDef. */
@@ -178,10 +152,13 @@ static void LoopHeapTableAndReinsert(Table *table) {
     /* Keep loop and reinsert until there is no tuple. */
     while ((tuple = HeapTableLookupTuple(oid, refer)) != NULL) {
         key = TupleFindValue(tuple, primary_meta_column);
-        value = SeriableIndexValue(table, tuple, refer);
+        value = GenerateIndex(oid, tuple, refer);
+    
+        /* Reinsert into btree and iterator refer. */
         BtreeInsert(oid, key, value);
-        dfree(value);
         HeapTableIteratorRefer(refer);
+
+        dfree(value);
     }
 
     dfree(refer);

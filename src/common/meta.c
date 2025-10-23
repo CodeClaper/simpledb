@@ -444,6 +444,17 @@ static MetaColumn *GetMetaColumnByIndex(void *root_node, uint32_t index, uint32_
     return meta_column;
 }
 
+/* Get key type name. */
+char *GetKeyTypeName(MetaColumn *meta_column) {
+    if (meta_column->is_primary) 
+        return "primary";
+    else if (meta_column->is_unique)
+        return "unique";
+    else
+        return NULL;
+}
+
+
 /* Find MetaColumn by column name. */
 MetaColumn *NameFindMetaColumnInner(List *meta_columns, char *column_name) {
     Assert(meta_columns != NIL);

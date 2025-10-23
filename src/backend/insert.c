@@ -332,34 +332,6 @@ retry:
     return flag;
 }
 
-static void *SeriableIndexValue(Oid oid, Row *row, Refer *heapRefer) {
-    uint32_t value_len;
-    void *destination;
-    Table *table;
-    MetaTable *meta_table;
-
-    table = open_table_inner(oid);
-    value_len = table->index_value_len;
-    destination = dalloc(value_len);
-    meta_table = table->meta_table;
-
-    /* Assign the heap refer value. */
-    memcpy(destination, heapRefer, REFER_SIZE);
-
-    uint32_t offset = REFER_SIZE;
-    ListCell *lc;
-    foreach (lc, meta_table->meta_columns) {
-        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
-        if (meta_column->sys_reserved) {
-            void *value = RowGetValueOrDefault(row, meta_column);
-            MetaColumnAssignValueToDestination(destination + offset, value, meta_column);
-            offset += meta_column->column_length;
-        }
-    }
-
-    return destination;
-}
-
 /* Insert one row. 
  * ---------------
  * Return the row refer, 
@@ -379,7 +351,7 @@ Refer *insert_one_row(Table *table, Row *row) {
     
     /* Check if duplicate key. */
     if (UserPrimaryKeyExists(table->meta_table) && 
-        check_duplicate_key(key, preRefer) && 
+        IndexDuplicateKeyCheck(key, preRefer) && 
         WaitForDuplicateKeyRelease(preRefer)
     ) {
         db_log(ERROR, "key '%s' in table '%s' already exists, not allow duplicate key.", 
@@ -392,7 +364,7 @@ Refer *insert_one_row(Table *table, Row *row) {
     heapRefer = HeapTableInsertTuple(oid, tuple);
     
     /* Seriable index value. */
-    index_value = SeriableIndexValue(oid, row, heapRefer);
+    index_value = GenerateIndex(oid, tuple, heapRefer);
 
     /* Insert into btree. */
     iRefer = BtreeInsert(oid, key, index_value);
