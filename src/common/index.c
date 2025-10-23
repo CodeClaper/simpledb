@@ -5,6 +5,7 @@
 #include <string.h>
 #include <time.h>
 #include "index.h"
+#include "const.h"
 #include "mmgr.h"
 #include "pager.h"
 #include "ltree.h"
@@ -59,4 +60,24 @@ char *key_type_name(MetaColumn *meta_column) {
         return "unique";
     else
         return NULL;
+}
+
+/* Get index created xid. */
+Xid IndexGetCreatedXid(void *index) {
+    return *(Xid *) (index + REFER_SIZE + LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE);
+}
+
+/* Set index created xid. */
+void IndexSetCreatedXid(void *index, Xid created_xid) {
+    *(Xid *) (index + REFER_SIZE + LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE) = created_xid;
+}
+
+/* Get index expired xid. */
+Xid IndexGetExpiredXid(void *index) {
+    return *(Xid *) (index + REFER_SIZE + LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE);
+}
+
+/* Set index expired xid. */
+void IndexSetExpiredXid(void *index, Xid expired_xid) {
+    *(Xid *) (index + REFER_SIZE + LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE) = expired_xid;
 }

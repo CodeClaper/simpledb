@@ -10,54 +10,52 @@
 #include <string.h>
 #include <stdio.h>
 #include "delete.h"
-#include "mmgr.h"
 #include "data.h"
-#include "row.h"
 #include "table.h"
-#include "copy.h"
 #include "free.h"
-#include "select.h"
-#include "refer.h"
-#include "ltree.h"
+#include "ltsearch.h"
+#include "ltmodify.h"
 #include "check.h"
-#include "jsonwriter.h"
 #include "trans.h"
-#include "session.h"
-#include "utils.h"
 #include "xlog.h"
 #include "log.h"
-#include "pager.h"
 #include "instance.h"
 #include "optimizer.h"
+#include "tuple.h"
+#include "index.h"
+#include "heaptable.h"
 
 /* Delete row */
 void delete_row(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg) {
-    void *key;
+    Oid oid;
     Table *table;
-    Refer *refer;
-    Row *row, *currentRow;
+    Xid created_xid, expired_xid, current_xid;
     
+    oid = select_result->oid;
     table = open_table_inner(select_result->oid);
-    row = GenerateRow(tuple, table->meta_table);
+    created_xid = TupleFindCreatedXid(tuple, table->meta_table);
+    expired_xid = TupleFindExpiredXid(tuple, table->meta_table);
+    current_xid = GetCurrentXid();
+
     /* Only deal with row that is visible for current transaction. */
-    if (RowIsVisible(row)) {
-        /* Get key in row. */
-        key = RowFindKey(row, table->meta_table);
+    if (IsVisible(created_xid, expired_xid)) {
+        void *key, *index;
+        Refer *refer;
 
-        /* Define the cursor of the row. */
-        refer = define_refer(table, key);
+        key = TupleFindKey(tuple, table->meta_table);
+        index = BtreeSearchValue(oid, key);
+        refer = BtreeSearchRefer(oid, key);
 
-        /* Get the current newest row. */
-        currentRow = DefineRow(refer);
+        /* Delete tuple in heap table. */
+        HeapTableUpdateRowExpiredXid(table, (Refer *) index, current_xid);
+        
+        /* Delete from index table. */
+        BtreeModifyExpiredXid(oid, key, current_xid);
 
-        /* Update transaction state. */
-        UpdateTransactionState(currentRow, TR_DELETE);
-
-        /* Sync row data */
-        update_row_data(currentRow, refer);
-
+        /* Record xlog for delete. */
         RecordXlog(refer, HEAP_DELETE);
 
+        /* Decrease row size. */
         select_result->row_size++;
 
         /* Free memeory. */
