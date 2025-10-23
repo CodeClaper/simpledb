@@ -21,7 +21,9 @@
 #include "meta.h"
 #include "row.h"
 #include "index.h"
+#include "tuple.h"
 #include "ltree.h"
+#include "ltsearch.h"
 #include "xlog.h"
 #include "pager.h"
 #include "utils.h"
@@ -112,104 +114,20 @@ Refer *new_refer(Oid oid, int32_t page_num, int32_t cell_num) {
     return refer;
 }
 
-/* Define refer from a leaf node. */
-static Refer *define_refer_from_leaf_node(Table *table, void *leaf_node, uint32_t page_num, void *key) {
-    Refer *refer; 
-    MetaColumn *primary_meta_column;
-    uint32_t key_len, value_len, default_value_len, cell_num;
-
-    refer = new_refer(GET_TABLE_OID(table), page_num, 0);
-    primary_meta_column = MetaTableFindPrimaryKey(table->meta_table);
-
-    key_len = table->key_len;
-    value_len = table->index_value_len;
-    default_value_len = table->heap_value_len;
-    cell_num = get_leaf_node_cell_num(leaf_node, default_value_len);
-    refer->cell_num = get_leaf_node_cell_index(leaf_node, key, cell_num, key_len, value_len, default_value_len, primary_meta_column->column_type);
-
-    return refer;
-}
-
-/* Define refer from an internal node. */
-static Refer *define_refer_from_internal_node(Table *table, void *internal_node, void *key) {
-    Refer *refer;
-    MetaColumn *primary_meta_column;
-    uint32_t key_len, default_value_len, keys_num, child_page_num;
-
-    key_len = table->key_len;
-    default_value_len = table->heap_value_len;
-    keys_num = get_internal_node_keys_num(internal_node, default_value_len);
-
-    primary_meta_column = MetaTableFindPrimaryKey(table->meta_table);
-    child_page_num = get_internal_node_cell_child_page_num(internal_node, key, keys_num, key_len, default_value_len, primary_meta_column->column_type);
-    Assert(child_page_num != -1);
-
-    /* Get the child node buffer. */
-    Buffer buffer = ReadBuffer(GET_TABLE_OID(table), child_page_num);
-    LockBuffer(buffer, RW_READERS);
-    void *child_node = GetBufferPage(buffer);
-    NodeType node_type = get_node_type(child_node);
-    switch(node_type) {
-        case LEAF_NODE:
-            refer = define_refer_from_leaf_node(table, child_node, child_page_num, key);
-            break;
-        case INTERNAL_NODE:
-            refer = define_refer_from_internal_node(table, child_node, key);
-            break;
-        default:
-            UNEXPECTED_VALUE(node_type);
-            break;
-    }
-
-    /* Release the child node buffer. */
-    UnlockBuffer(buffer);
-    ReleaseBuffer(buffer);
-
-    return refer;
-}
-
-/* Define Refer. */
-Refer *define_refer(Table *table, void *key) {
-    Refer *refer;
-
-    Assert(table != NULL);
-    Assert(key != NULL);
-
-    /* Get root node buffer. */
-    Buffer buffer = ReadBuffer(GET_TABLE_OID(table), table->root_page_num);
-    LockBuffer(buffer, RW_READERS);
-    void *root_node = GetBufferPage(buffer);
-    NodeType node_type = get_node_type(root_node);
-    switch(node_type) {
-        case LEAF_NODE:
-            refer = define_refer_from_leaf_node(table, root_node, table->root_page_num, key);
-            break;
-        case INTERNAL_NODE:
-            refer = define_refer_from_internal_node(table, root_node, key);
-            break;
-        default:
-            UNEXPECTED_VALUE(node_type);
-            break;
-    }
-
-    /* Release the root buffer. */
-    UnlockBuffer(buffer);
-    ReleaseBuffer(buffer);
-
-    return refer;
-}
-
 /* Fetch Refer. 
  * If found no one or many one, return NULL.  */
 Refer *fetch_refer(MetaColumn *meta_column, SearchConditionNode *condition) {
+    Oid oid;
     Table *table;
     SelectResult *select_result;
-    Refer *refer;
     uint32_t row_size;
-
-    refer = NULL;
+    Row *row;
+    void *key;
+    Refer *refer = NULL;
+    
     table = open_table(meta_column->table_name);
-    select_result = new_select_result(UNKONWN_STMT, meta_column->table_name, true);
+    oid = GET_TABLE_OID(table);
+    select_result = new_select_result(UNKONWN_STMT, GET_TABLE_NAME(table), true);
 
     QueryUnderSearchCondition(
         select_result, 
@@ -217,16 +135,16 @@ Refer *fetch_refer(MetaColumn *meta_column, SearchConditionNode *condition) {
     );
 
     row_size = QueueSize(select_result->rows);
-    if (row_size > 1) {
+    if (row_size > 1) 
         db_log(ERROR, 
                "Expected to one reference, but found %d, maybe you can use 'in' as for array.", 
                select_result->row_size);
-        return NULL;
-    } else if (row_size == 1) {
-        /* Take the first row as refered. Maybe row size should be one, but now there is no check. */
-        Row *row = qfirst(QueueHead(select_result->rows));
-        void *key = RowFindKey(row, table->meta_table);
-        refer = define_refer(table, key);
+    else if (row_size == 1) {
+        /* Take the first row as refered. Maybe row size should be one, 
+         * but now there is no check. */
+        row = qfirst(QueueHead(select_result->rows));
+        key = RowFindKey(row, table->meta_table);
+        refer = BtreeSearchRefer(oid, key);
     }
 
     return refer;
@@ -306,8 +224,8 @@ static bool update_array_key_value_refer(KeyValue *key_value, ReferUpdateEntity 
 }
 
 /* Update row key value. */
-static void update_key_value_refer(Row *row, MetaColumn *meta_column, Refer *refer, 
-                                   ReferUpdateEntity *refer_update_entity) {
+static void UpdateTupleReferValueExtend(Row *row, MetaColumn *meta_column, Refer *refer, 
+                                        ReferUpdateEntity *refer_update_entity) {
     bool flag = false;
     ListCell *lc;
     foreach (lc, row->data) {
@@ -332,30 +250,32 @@ static void update_key_value_refer(Row *row, MetaColumn *meta_column, Refer *ref
 
 
 /* Update row refer. */
-static void update_row_refer(void *destin, SelectResult *select_result, 
-                             ROW_HANDLER_ARG_TYPE type, void *arg) {
+static void UpdateTupleReferValue(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg) {
     Assert(arg);
     Assert(type == ARG_REFER_UPDATE_ENTITY);
+    
+    Oid oid;
+    Table *table, *ref_table;
+    ReferUpdateEntity *refer_update_entity;
+    void *key;
+    Refer *refer;
 
-    Table *table = open_table_inner(select_result->oid);
-    ReferUpdateEntity *refer_update_entity = (ReferUpdateEntity *) arg;
-    Oid oid = refer_update_entity->old_refer->oid;
-    Table *ref_table = open_table_inner(oid);
+    oid = select_result->oid;
+    table = open_table_inner(oid);
+
+    refer_update_entity = (ReferUpdateEntity *) arg;
+    ref_table = open_table_inner(refer_update_entity->old_refer->oid);
     Assert(ref_table);
 
-    Row *row = GenerateRow(destin, table->meta_table);
-    void *key = RowFindKey(row, table->meta_table);
-    Refer *refer = define_refer(table, key);
-
-    /* MetaTable */
-    MetaTable *meta_table = table->meta_table;
+    key = TupleFindKey(tuple, table->meta_table);
+    refer = BtreeSearchRefer(oid, key);
 
     ListCell *lc;
-    foreach (lc, meta_table->meta_columns) {
-        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
+    foreach (lc, table->meta_table->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *) lfirst(lc);
         if (meta_column->column_type == T_REFERENCE && 
-                StrEq(meta_column->table_name, GET_TABLE_NAME(ref_table))) 
-            update_key_value_refer(row, meta_column, refer, refer_update_entity);
+            StrEq(meta_column->table_name, GET_TABLE_NAME(ref_table))) 
+            UpdateTupleReferValueExtend(GenerateRow(tuple, table->meta_table), meta_column, refer, refer_update_entity);
     }
 }
 
@@ -371,7 +291,7 @@ static void update_table_refer(MetaTable *meta_table, ReferUpdateEntity *refer_u
     /* Traverse rows to update refer. */
     QueryUnderSearchCondition(
         select_result, 
-        SimpleSelectPlan(update_row_refer, ARG_REFER_UPDATE_ENTITY, refer_update_entity, NULL)
+        SimpleSelectPlan(UpdateTupleReferValue, ARG_REFER_UPDATE_ENTITY, refer_update_entity, NULL)
     );
 }
 

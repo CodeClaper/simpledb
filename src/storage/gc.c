@@ -17,6 +17,7 @@
 #include "trans.h"
 #include "table.h"
 #include "ltree.h"
+#include "ltsearch.h"
 #include "refer.h"
 #include "tablecache.h"
 #include "select.h"
@@ -24,6 +25,7 @@
 #include "instance.h"
 #include "systable.h"
 #include "optimizer.h"
+#include "tuple.h"
 
 #define DEFAULT_GC_INTERVAL 10
 
@@ -72,18 +74,26 @@ static bool allow_gc() {
     return true;
 }
 
-/* Gc row*/
-static void gc_row(void *destin, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg) {
-    Table *table = open_table_inner(select_result->oid);
-    Row *row = GenerateRow(destin, table->meta_table);
-    void *key = RowFindKey(row, table->meta_table);
+/* GC row*/
+static void GCTuple(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg) {
+    Oid oid;
+    Table *table;
+    Xid created_xid, expired_xid;
+    void *key;
+    Refer *refer;
+
+    oid = select_result->oid;
+    table = open_table_inner(oid);
+    created_xid = TupleFindCreatedXid(tuple, table->meta_table);
+    expired_xid = TupleFindCreatedXid(tuple, table->meta_table);
+    key = TupleFindKey(tuple, table->meta_table);
 
     /* Only for deleted row. */
-    if (!RowIsDeleted(row))
+    if (!IsVisible(created_xid, expired_xid))
         return;
 
     /* Get refer. */
-    Refer *refer = define_refer(table, key);
+    refer = BtreeSearchRefer(oid, key);
 
     /* Delete row. */
     delete_row_data(key, refer);
@@ -96,7 +106,7 @@ void gc_table(char *table_name) {
 #endif
     /* Query with condition, and delete satisfied condition row. */
     SelectResult *select_result = new_select_result(UNKONWN_STMT, table_name, true);
-    QueryUnderSearchCondition(select_result, SimpleSelectPlan(gc_row, ARG_NULL, NULL, NULL));
+    QueryUnderSearchCondition(select_result, SimpleSelectPlan(GCTuple, ARG_NULL, NULL, NULL));
     free_select_result(select_result);
 }
 
