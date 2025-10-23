@@ -90,18 +90,15 @@ static Refer *DeleteRowForUpdate(Oid oid, void *key) {
 static Refer *ReinsertRowForUpdate(Oid oid, void *key, void *tuple) {
     Table *table;
     Refer *refer, *hrefer;
-    int64_t sys_id;
     Xid created_xid, expired_xid;
     void *index;
 
     table = open_table_inner(oid);
-    sys_id = get_timestamp(NANOSECOND);
     created_xid = GetCurrentXid();
     expired_xid = 0;
 
     TupleSetCreatedXid(tuple, table->meta_table, created_xid);
     TupleSetExpiredXid(tuple, table->meta_table, expired_xid);
-    TupleSetSysId(tuple, table->meta_table, sys_id);
     
     /* Reinsert into heap table. */
     hrefer = HeapTableInsertTuple(oid, tuple);
@@ -110,7 +107,6 @@ static Refer *ReinsertRowForUpdate(Oid oid, void *key, void *tuple) {
     index = dalloc(table->index_value_len);
     IndexSetCreatedXid(index, created_xid);
     IndexSetExpiredXid(index, expired_xid);
-    IndexSetSysId(index, sys_id);
     IndexSetRefer(index, hrefer);
 
     /* Reinsert into btree. */
