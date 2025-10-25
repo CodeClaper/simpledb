@@ -1,6 +1,18 @@
 #include <stdint.h>
 #include "data.h"
 
+/* If obsolute node. */
+bool NodeIsObsolute(void *node);
+
+/* If dirty node. */
+bool NodeIsDirty(void *node);
+
+/* Get node state. */
+NodeState GetNodeState(void *node);
+
+/* Set node state. */
+void SetNodeState(void *node, NodeState state);
+
 /* Get node type. */
 NodeType GetNodeType(void *node);
 

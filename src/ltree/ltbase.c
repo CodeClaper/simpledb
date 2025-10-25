@@ -8,6 +8,32 @@
 #include "table.h"
 #include "refer.h"
 
+/* If obsolute node. */
+bool NodeIsObsolute(void *node) {
+    if (node == NULL) return false;
+    uint8_t value  = *(uint8_t *)(node + NODE_STATE_SIZE_OFFSET);
+    return (NodeState) value == OBSOLETE_STATE;
+}
+
+/* If dirty node. */
+bool NodeIsDirty(void *node) {
+    if (node == NULL) return false;
+    uint8_t value  = *(uint8_t *)(node + NODE_STATE_SIZE_OFFSET);
+    return (NodeState) value == DIRTY_STATE;
+}
+
+/* Get node state. */
+NodeState GetNodeState(void *node) {
+    uint8_t value = *(uint8_t *) (node + NODE_STATE_SIZE_OFFSET);
+    return (NodeState) value;
+}
+
+/* Set node state. */
+void SetNodeState(void *node, NodeState state) {
+    uint8_t value = (uint8_t) state;
+    *(uint8_t *) (node + NODE_STATE_SIZE_OFFSET) = value;
+}
+
 /* Get node type. */
 NodeType GetNodeType(void *node) {
     uint8_t value = *(uint8_t *) (node + NODE_TYPE_OFFSET);
