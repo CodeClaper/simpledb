@@ -17,7 +17,6 @@
 #include "refer.h"
 #include "meta.h"
 #include "bufmgr.h"
-#include "ltree.h"
 #include "select.h"
 
 /* Heap table header length */
@@ -345,12 +344,12 @@ static void *NewCellAfterAppendColumn(void *destintion, Table *table, MetaColumn
     switch (newColumn->default_value_type) {
         case DEFAULT_VALUE: {
             /* Maybe default value is null, when refer value not found any match row. */
-            assign_row_value(destintion + offset, newColumn->default_value, newColumn);
+            MetaColumnAssignValueToDestination(destintion + offset, newColumn->default_value, newColumn);
             break;
         }
         case DEFAULT_VALUE_NONE:
         case DEFAULT_VALUE_NULL:
-            assign_row_value(destintion + offset, NULL, newColumn);
+            MetaColumnAssignValueToDestination(destintion + offset, NULL, newColumn);
             break;
     }
     
