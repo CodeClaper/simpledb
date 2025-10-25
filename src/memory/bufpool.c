@@ -9,7 +9,7 @@
 #include "mmgr.h"
 #include "data.h"
 #include "fdesc.h"
-#include "ltree.h"
+#include "ltbase.h"
 #include "table.h"
 #include "compres.h"
 #include "log.h"
@@ -62,7 +62,7 @@ bool BufferWriteBlock(Buffer buffer) {
     block = GetBufferBlock(buffer);
 
     /* Only flush dirty page. */
-    if (get_node_state(block) != DIRTY_STATE)
+    if (NodeIsDirty(block))
         return false;
 
     /* Maybe table has dropped before calling the function, 
