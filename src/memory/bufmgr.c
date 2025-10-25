@@ -43,14 +43,13 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 #include <strings.h>
 #include <unistd.h>
 #include "bufmgr.h"
 #include "asserts.h"
 #include "mmgr.h"
-#include "ltree.h"
+#include "ltbase.h"
 #include "buftable.h"
 #include "bufpool.h"
 #include "c.h"
@@ -291,13 +290,13 @@ inline void *GetBufferPageCopy(Buffer buffer) {
 /* Make Buffer dirty. */
 inline void MakeBufferDirty(Buffer buffer) {
     void *page = GetBufferPage(buffer);
-    set_node_state(page, DIRTY_STATE);
+    SetNodeState(page, DIRTY_STATE);
 }
 
 /* Make Buffer normal. */
 inline void MakeBufferNormal(Buffer buffer) {
     void *page = GetBufferPage(buffer);
-    set_node_state(page, NORMAL_STATE);
+    SetNodeState(page, NORMAL_STATE);
 }
 
 /* Release Buffer.
