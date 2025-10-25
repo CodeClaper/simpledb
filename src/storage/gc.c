@@ -6,8 +6,6 @@
 * When GC working on the table, it will lock the table, any transaction that trying to write the table will block.
 * =================================================================================================================
 */
-#include <stdio.h>
-#include <string.h>
 #include <unistd.h>
 #include "gc.h"
 #include "data.h"
@@ -16,7 +14,6 @@
 #include "free.h"
 #include "trans.h"
 #include "table.h"
-#include "ltree.h"
 #include "ltsearch.h"
 #include "refer.h"
 #include "tablecache.h"
@@ -96,7 +93,7 @@ static void GCTuple(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TY
     refer = BtreeSearchRefer(oid, key);
 
     /* Delete row. */
-    delete_row_data(key, refer);
+    // delete_row_data(key, refer);
 }
 
 /* Gc table */
