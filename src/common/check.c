@@ -26,7 +26,6 @@
 #include "log.h"
 #include "copy.h"
 #include "free.h"
-#include "ltree.h"
 #include "trans.h"
 #include "pager.h"
 #include "meta.h"

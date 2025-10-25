@@ -9,7 +9,6 @@
 #include "copy.h"
 #include "table.h"
 #include "meta.h"
-// #include "ltree.h"
 #include "ltbase.h"
 #include "compare.h"
 
