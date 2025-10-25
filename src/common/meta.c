@@ -2,7 +2,6 @@
 #include <stdint.h>
 #include <inttypes.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #define _XOPEN_SOURCE
 #define __USE_XOPEN
@@ -18,12 +17,11 @@
 #include "utils.h"
 #include "common.h"
 #include "const.h"
-#include "ltree.h"
+#include "ltbase.h"
 #include "list.h"
 #include "instance.h"
 #include "asserts.h"
 #include "pager.h"
-#include "check.h"
 #include "tablelock.h"
 #include "systable.h"
 #include "select.h"
@@ -435,10 +433,10 @@ uint32_t TableCalcIndexLength(Table *table) {
 
 /* Get column meta info by index. */
 static MetaColumn *GetMetaColumnByIndex(void *root_node, uint32_t index, uint32_t offset) {
-    void *destination = get_meta_column_pointer(root_node, index);
-    MetaColumn *meta_column = deserialize_meta_column(destination);
+    void *destination = RootNodeGetMetaColumn(root_node, index);
+    MetaColumn *meta_column = MetaColumnDeseriable(destination);
     if (meta_column->default_value_type == DEFAULT_VALUE) {
-        void *default_value_dest = get_default_value_cell(root_node);
+        void *default_value_dest = RootNodeGetDefaultValue(root_node);
         meta_column->default_value = copy_value(default_value_dest + offset, meta_column->column_type);
     }
     return meta_column;
@@ -538,7 +536,7 @@ MetaTable *GenerateMetaTable(Oid oid) {
     MetaTable *meta_table = instance(MetaTable);
     Buffer buffer = ReadBuffer(oid, ROOT_PAGE_NUM);
     void *root_node = GetBufferPage(buffer);
-    uint32_t column_size = get_column_size(root_node);
+    uint32_t column_size = RootNodeGetColumnSize(root_node);
 
     meta_table->table_name = IS_SYS_ROOT(oid) ? dstrdup(SYS_TABLE_NAME) : OidFindRelName(oid);
     meta_table->column_size = 0;
