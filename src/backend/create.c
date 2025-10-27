@@ -294,7 +294,7 @@ static bool SaveTableObject(Oid oid, char *relname) {
 }
 
 /* Execute create table statement. */
-void exec_create_table_statement(CreateTableNode *create_table_node, DBResult *result) {
+void ExecuteCreateTableStatement(CreateTableNode *create_table_node, DBResult *result) {
     Oid oid = FindNextOid();
 
     /* Check valid. */
@@ -332,4 +332,10 @@ void exec_create_table_statement(CreateTableNode *create_table_node, DBResult *r
     }
 
     free_meta_table(meta_table);
+}
+
+
+/* Execute create table statement. */
+void ExecuteCreateIndexStatement(CreateIndexNode *create_index_node, DBResult *result) {
+    Oid oid = FindNextOid();
 }

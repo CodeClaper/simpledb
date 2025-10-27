@@ -4,4 +4,7 @@
 MetaColumn *ColumnDefNodeGenerateMetaColumn(ColumnDefNode *column_def, char *table_name);
 
 /* Execute create table statement. */
-void exec_create_table_statement(CreateTableNode *create_table_node, DBResult *result);
+void ExecuteCreateTableStatement(CreateTableNode *create_table_node, DBResult *result);
+
+/* Execute create index statement. */
+void ExecuteCreateIndexStatement(CreateIndexNode *create_index_node, DBResult *result);

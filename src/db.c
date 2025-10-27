@@ -21,7 +21,6 @@
 #include "common.h"
 #include "session.h"
 #include "conf.h"
-#include "gc.h"
 #include "banner.h"
 #include "refer.h"
 #include "tablecache.h"

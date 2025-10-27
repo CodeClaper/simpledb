@@ -83,7 +83,14 @@ static void ExecuteRoolbackTransactionStmt(Statement *stmt, DBResult *result) {
 static void ExecuteCreateTableStmt(Statement *stmt, DBResult *result) {
     Assert(stmt->statement_type == CREATE_TABLE_STMT);
     AutoBeginTransaction();
-    exec_create_table_statement(stmt->create_table_node, result);
+    ExecuteCreateTableStatement(stmt->create_table_node, result);
+}
+
+/* Create index statement. */
+static void ExecuteCreateIndexStmt(Statement *stmt, DBResult *result) {
+    Assert(stmt->statement_type == CREATE_INDEX_STMT);
+    AutoBeginTransaction();
+    ExecuteCreateIndexStatement(stmt->create_index_node, result);
 }
 
 /* Drop table statement. */
@@ -176,6 +183,9 @@ static void ExecuteStatement(Statement *statement, DBResult *result) {
                 break;
             case CREATE_TABLE_STMT:
                 ExecuteCreateTableStmt(statement, result);
+                break;
+            case CREATE_INDEX_STMT:
+                ExecuteCreateIndexStmt(statement, result);
                 break;
             case INSERT_STMT:
                 ExecuteInsertStmt(statement, result); 

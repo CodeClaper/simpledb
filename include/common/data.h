@@ -86,6 +86,7 @@ typedef enum {
     COMMIT_TRANSACTION_STMT, 
     ROLLBACK_TRANSACTION_STMT, 
     CREATE_TABLE_STMT, 
+    CREATE_INDEX_STMT,
     SELECT_STMT, 
     INSERT_STMT, 
     UPDATE_STMT, 
@@ -94,7 +95,7 @@ typedef enum {
     SHOW_STMT, 
     DROP_TABLE_STMT,
     ALTER_TABLE_STMT,
-} StatementType; // statement type
+} StatementType; 
 
 /* Tansaction operation type. */
 typedef enum { TR_SELECT, TR_INSERT, TR_DELETE, TR_UPDATE } TransOpType;
@@ -499,6 +500,14 @@ typedef struct {
     List *base_table_element_commalist;
 } CreateTableNode;
 
+/* CreateIndexNode. */
+typedef struct CreateIndexNode {
+    char *index_name;
+    char *table_name;
+    bool is_unique;
+    List *columns;
+} CreateIndexNode;
+
 /* DropTableNode */
 typedef struct DropTableNode {
     char *table_name;
@@ -592,6 +601,7 @@ typedef struct Statement {
   StatementType statement_type;
   union {
         CreateTableNode *create_table_node;
+        CreateIndexNode *create_index_node;
         DropTableNode *drop_table_node;
         SelectNode *select_node;
         InsertNode *insert_node;

@@ -62,6 +62,7 @@ extern char *current_token;
    AlterTableAction             *alter_table_action;
    ColumnPositionDef            *column_position_def;
    CreateTableNode              *create_table_node;
+   CreateIndexNode              *create_index_node;
    DropTableNode                *drop_table_node;
    SelectNode                   *select_node;
    InsertNode                   *insert_node;
@@ -89,7 +90,7 @@ extern char *current_token;
 %token <keyword> INTO
 %token <keyword> SET
 %token <keyword> VALUES
-%token <keyword> TABLE
+%token <keyword> TABLE INDEX
 %token <keyword> LIMIT OFFSET
 %token <keyword> SHOW
 %token <keyword> TABLES
@@ -105,6 +106,7 @@ extern char *current_token;
 %token <keyword> EQ NE GT GE LT LE IN LIKE
 %token <keyword> IS NOT
 %token <keyword> ALTER COLUMN ADD RENAME
+%token <keyword> ON
 %token <keyword> BEFORE AFTER
 %token <keyword> SYSTEM CONFIG MEMORY
 %token <strVal> IDENTIFIER
@@ -113,7 +115,7 @@ extern char *current_token;
 %token <strVal> STRINGVALUE
 %type <boolVal> BOOLVALUE
 %type <referVal> REFERVALUE
-%type <strVal> table
+%type <strVal> table index_name
 %type <strVal> range_variable
 %type <scalar_exp_node> scalar_exp
 %type <list> scalar_exp_commalist
@@ -169,6 +171,7 @@ extern char *current_token;
 %type <update_node> update_statement
 %type <delete_node> delete_statement
 %type <create_table_node> create_table_statement
+%type <create_index_node> create_index_statement
 %type <drop_table_node> drop_table_statement
 %type <describe_node> describe_statement
 %type <show_node> show_statement
@@ -217,6 +220,13 @@ statement:
             Statement *statement = instance(Statement);
             statement->statement_type = CREATE_TABLE_STMT;
             statement->create_table_node = $1;
+            $$ = statement;
+        }
+    | create_index_statement
+        {
+            Statement *statement = instance(Statement);
+            statement->statement_type = CREATE_INDEX_STMT;
+            statement->create_index_node = $1;
             $$ = statement;
         }
     | drop_table_statement
@@ -293,6 +303,27 @@ create_table_statement:
             create_table_node->table_name = $3;
             create_table_node->base_table_element_commalist = $5;
             $$ = create_table_node;
+        }
+    ;
+/* Create index statement. */
+create_index_statement: 
+    CREATE INDEX index_name ON table '(' columns ')' end
+        {
+            CreateIndexNode *create_index_node = instance(CreateIndexNode);
+            create_index_node->index_name = $3;
+            create_index_node->table_name = $5;
+            create_index_node->is_unique = false;
+            create_index_node->columns = $7;
+            $$ = create_index_node;
+        }
+    | CREATE UNIQUE INDEX index_name ON table '(' columns ')' end
+        {
+            CreateIndexNode *create_index_node = instance(CreateIndexNode);
+            create_index_node->index_name = $4;
+            create_index_node->table_name = $6;
+            create_index_node->is_unique = true;
+            create_index_node->columns = $8;
+            $$ = create_index_node;
         }
     ;
 /* Drop table Statement */
@@ -515,6 +546,12 @@ table_ref:
     ;
 table:       
     IDENTIFIER     
+        {
+            $$ = $1;
+        }
+    ;
+index_name:
+    IDENTIFIER
         {
             $$ = $1;
         }
