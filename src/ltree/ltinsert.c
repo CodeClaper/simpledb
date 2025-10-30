@@ -254,18 +254,14 @@ static void BtreeInsertForInternalNodeSplit(Oid oid, void *internal_node,
         InternalNodeSetRightKey(internal_node, table->key_len, table->heap_value_len, new_child_key);
         InternalNodeSetRightNum(internal_node, table->heap_value_len, new_child_page);
 
-        /* If current internal node is not root, 
-         * should update it` parent cell key. */
-        if (!NodeIsRoot(internal_node)) {
-            uint32_t parent_num = NodeGetParentNum(internal_node);
-            BtreeInsertForInternalNodeUpdateCellKey(oid, parent_num, high_key, new_child_key);
-        }
-    
         /* Use the old right child as the new child. */
         new_child_page = right_page;
         new_child_key = old_new_key;
         /* Get target index. */
         target_index = keys_num;
+
+        /* Notice: should we update parent internal cell key for the high_key has changed? Yes we should, but not here.
+         * Actually, at the function end, we use <BtreeInsertForInternalNodeInsertCell> to update parent internal cell key. */
     } else {
         uint32_t old_target_index;
 
@@ -398,16 +394,15 @@ static void BtreeInsertForInternalNodeNoSplit(Oid oid, void *internal_node,
         /* Change the old key. */
         old_target_index = InternalNodeFindCellNum(oid, old_child_key, internal_node);
         temp = InternalNodeGetCellKey(internal_node, table->key_len, table->heap_value_len, old_target_index);
-        if (NE(GetComparableValue(old_child_key, ptype), GetComparableValue(temp, ptype), ptype))
-            Assert(EQ(GetComparableValue(old_child_key, ptype), 
-                      GetComparableValue(temp, ptype), 
-                      ptype));
+        Assert(EQ(GetComparableValue(old_child_key, ptype), 
+                  GetComparableValue(temp, ptype), 
+                  ptype));
         InternalNodeSetCellKey(internal_node, table->key_len, table->heap_value_len, old_target_index, old_new_key);
 
         /* Append new child. */
         new_target_index = InternalNodeFindCellNum(oid, new_child_key, internal_node);
         for (i = keys_num; i > new_target_index; i--) {
-            InternalNodeSetCellKey(internal_node, table->key_len, table->heap_value_len,i, 
+            InternalNodeSetCellKey(internal_node, table->key_len, table->heap_value_len, i, 
                                    InternalNodeGetCellKey(internal_node, table->key_len, table->heap_value_len, i - 1));
             InternalNodeSetCellValue(internal_node, table->key_len, table->heap_value_len, i, 
                                      InternalNodeGetCellValue(internal_node, table->key_len, table->heap_value_len, i - 1));

@@ -41,8 +41,7 @@ static void BtreeSearchReferForInternalNodeExtend(Oid oid, void *key, void *inte
 
     if (min_index > keys_num)
         db_log(PANIC, "Tried to access child_num %d > num_keys %d.", 
-               min_index, 
-               keys_num);
+               min_index, keys_num);
     else if (min_index == keys_num) {
         /* The target cell is right child. */
         boundary_key = InternalNodeGetRightKey(internal_node, table->heap_value_len);
@@ -81,7 +80,8 @@ static void BtreeSearchReferForInternalNode(Oid oid, void *key, void *boundary_k
         GT(GetComparableValue(key, ptype), GetComparableValue(high_key, ptype), ptype)
     ) {
         uint32_t next_sibling = NodeGetNextSibling(table, internal_node);
-        Assert(next_sibling != 0);
+        if (next_sibling == 0)
+            Assert(next_sibling != 0);
         BtreeSearchReferForInternalNode(oid, key, boundary_key, next_sibling, refer);
     } else
         BtreeSearchReferForInternalNodeExtend(oid, key, internal_node, refer);    
