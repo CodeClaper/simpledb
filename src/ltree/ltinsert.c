@@ -250,7 +250,7 @@ static void BtreeInsertForInternalNodeSplit(Oid oid, void *internal_node,
            GetComparableValue(high_key, ptype), 
            ptype)
     ) {
-        Assert(EQ(GetComparableValue(old_new_key, ptype), GetComparableValue(high_key, ptype), ptype));
+        Assert(EQ(GetComparableValue(old_child_key, ptype), GetComparableValue(high_key, ptype), ptype));
         InternalNodeSetRightKey(internal_node, table->key_len, table->heap_value_len, new_child_key);
         InternalNodeSetRightNum(internal_node, table->heap_value_len, new_child_page);
 
@@ -422,7 +422,13 @@ static void BtreeInsertForInternalNodeNoSplit(Oid oid, void *internal_node,
     InternalNodeIncreaseKeysNum(internal_node, table->heap_value_len);
 }
 
-/* Insert item into the internal node. */
+/* Insert item into the internal node.
+ * ------------------------------------
+ * old_child_key: The old child old cell key.
+ * old_new_key: The old child new cell key.
+ * new_child_key: The new child key.
+ * new_child_page: The new child page.
+ * */
 static void BtreeInsertForInternalNodeInsertCell(Oid oid, uint32_t page_num, 
                                                  void *old_child_key, void *old_new_key, 
                                                  void *new_child_key, uint32_t new_child_page) {
@@ -734,10 +740,8 @@ static void BtreeInsertForLeafNodeSplit(Oid oid, void *key, void *value, Buffer 
     LeafNodeSetCellNum(leaf_node, table->heap_value_len, LEFT_SPLIT_COUNT);
     LeafNodeSetCellNum(new_leaf_node, table->heap_value_len, RIGHT_SPLIT_COUNT);
 
-    /* If current is root, it need to upgrade to internal node. 
+    /* If current is root, it need to upgrade to internal root node. 
      * Otherwise, it is a normal leaf node, maybe the max key change, need update max key in parent internal node. 
-     * Note that: because of new_max_key more likely less than the old_max_key,
-     * so mass of parent internal node cells may be happen. We'll resort parent internal node cells lately.
      * */
     if (NodeIsRoot(leaf_node))
         BtreeInsertForLeafNodeUpgradeRoot(oid, leaf_node, new_leaf_node, next_page_num, refer);
