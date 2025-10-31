@@ -130,7 +130,9 @@ DirectExit:
  * */
 static void BtreeInsertForInternalNodeUpdateChildrenParent(Oid oid, void *internal_node, uint32_t parent_num) {
     Table *table;
-    uint32_t keys_num, i;
+    uint32_t keys_num, i, right_page;
+    Buffer right_buffer;
+    void *right_child_node;
 
     table = open_table_inner(oid);
     keys_num = InternalNodeGetKeysNum(internal_node, table->heap_value_len);
@@ -148,6 +150,14 @@ static void BtreeInsertForInternalNodeUpdateChildrenParent(Oid oid, void *intern
         MakeBufferDirty(child_buffer);
         ReleaseBuffer(child_buffer);
     }
+
+    right_page = InternalNodeGetRightNum(internal_node, table->heap_value_len);
+    right_buffer = ReadBuffer(oid, right_page);
+    right_child_node = GetBufferPage(right_buffer);
+    NodeSetParentNum(right_child_node, parent_num);
+
+    MakeBufferDirty(right_buffer);
+    ReleaseBuffer(right_buffer);
 }
 
 /* Upgrade root internal node. */
