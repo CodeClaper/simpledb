@@ -313,6 +313,7 @@ create_index_statement:
             create_index_node->index_name = $3;
             create_index_node->table_name = $5;
             create_index_node->is_unique = false;
+            create_index_node->type = INDEX_STANDARD;
             create_index_node->columns = $7;
             $$ = create_index_node;
         }
@@ -322,6 +323,7 @@ create_index_statement:
             create_index_node->index_name = $4;
             create_index_node->table_name = $6;
             create_index_node->is_unique = true;
+            create_index_node->type = INDEX_STANDARD;
             create_index_node->columns = $8;
             $$ = create_index_node;
         }

@@ -27,6 +27,7 @@
 #include "copy.h"
 #include "free.h"
 #include "log.h"
+#include "table.h"
 #include "tablecache.h"
 #include "heaptable.h"
 #include "systable.h"
@@ -267,6 +268,25 @@ static MetaTable *CreateTableNodeGenerateMetaTable(CreateTableNode *create_table
     return meta_table;
 }
 
+static MetaIndex *GenerateMetaIndexForCreateIndex(Oid oid, Table *table,  CreateIndexNode *create_index_node) {
+    MetaIndex *meta_index = instance(MetaIndex);
+    meta_index->oid = oid;
+    meta_index->tid = GET_TABLE_OID(table);
+    meta_index->index_name = dstrdup(create_index_node->index_name);
+    meta_index->is_unique = create_index_node->is_unique;
+    meta_index->type = create_index_node->type;
+    meta_index->column_size = create_index_node->columns->size;
+    meta_index->meta_columns = create_list(NODE_META_COLUMN);
+
+    ListCell *lc;
+    foreach (lc, create_index_node->columns) {
+        MetaColumn *meta_column = NameFindMetaColumn(table->meta_table, (char *) lfirst(lc));
+        append_list(meta_index->meta_columns, meta_column);
+    }
+
+    return meta_index;
+}
+
 /* Save to table cache. */
 static bool PrepareSaveTableCache(Oid oid, MetaTable *meta_table) {
     /* Combine table. */
@@ -344,6 +364,7 @@ void ExecuteCreateTableStatement(CreateTableNode *create_table_node, DBResult *r
 /* Execute create table statement. */
 void ExecuteCreateIndexStatement(CreateIndexNode *create_index_node, DBResult *result) {
     Oid oid;
+    MetaIndex *meta_index;
     Table *table;
 
     /* Check valid. */
@@ -357,13 +378,15 @@ void ExecuteCreateIndexStatement(CreateIndexNode *create_index_node, DBResult *r
         db_log(ERROR, "Table '%s' not exist.", create_index_node->table_name);
         return;
     }
+
+    meta_index = GenerateMetaIndexForCreateIndex(oid, table, create_index_node);
     
     /* Create index. 
      * ---------------
      * (1) Create index table.
      * (2) Save table object.
      * */
-    if (create_table(oid, table->meta_table) && 
+    if (create_index(oid, meta_index) && 
         SaveIndexObject(oid, create_index_node->index_name)
     ) {
         result->success = true;

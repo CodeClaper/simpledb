@@ -148,6 +148,9 @@ typedef enum LockMode { RD_MODE, WR_MODE } LockMode;
 /* The Four Transaction Isolation Level. */
 typedef enum { READ_UNCOMMITTED, READ_COMMITTED, REPEATABLE_READ, SERIALIZABLE } TransIsolationLevel;
 
+/* IndexType. */
+typedef enum IndexType { BTREE_INDEX, HASH_INDEX, GIN_INDEX } IndexType;
+
 
 /* DataTypeNode */
 typedef struct DataTypeNode {
@@ -505,6 +508,7 @@ typedef struct CreateIndexNode {
     char *index_name;
     char *table_name;
     bool is_unique;
+    IndexType type;
     List *columns;
 } CreateIndexNode;
 
@@ -657,12 +661,26 @@ typedef struct MetaTable {
     uint32_t all_column_size;   /* sizo of column, including system reserved columns. */
 } MetaTable;
 
+/* MetaIndex.*/
+typedef struct MetaIndex {
+    Oid oid;                    /* Oid of index. */
+    Oid tid;                    /* Oid of table. */
+    char *index_name;           /* Index name. */
+    IndexType type;             /* Index type. */
+    bool is_unique;             /* Is unique. */
+    List *meta_columns;         /* Columns. */
+    uint32_t column_size;       /* Column size. */
+    uint32_t key_len;           /* Key length. */
+    uint32_t value_len;         /* Value length. */
+} MetaIndex;
+
 /* Table */
 typedef struct Table {
     Oid oid;                    /* Oid. */
     Oid hoid;                   /* Heap table oid. */
     uint32_t root_page_num;     /* Root page num. */
     MetaTable *meta_table;      /* Meta table info. */
+    List *meta_indexs;          /* Meta index info. */   
     Pid creator;                /* The creator pid. */
     Size page_size;             /* Page size. */
     uint32_t key_len;           /* Primay key length. */
