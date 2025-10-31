@@ -26,7 +26,7 @@
 #include "meta.h"
 #include "tuple.h"
 #include "row.h"
-#include "index.h"
+#include "ltindex.h"
 #include "log.h"
 #include "tablereg.h"
 #include "systable.h"

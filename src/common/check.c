@@ -29,7 +29,7 @@
 #include "trans.h"
 #include "pager.h"
 #include "meta.h"
-#include "index.h"
+#include "ltindex.h"
 #include "select.h"
 #include "refer.h"
 #include "list.h"

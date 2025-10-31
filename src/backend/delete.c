@@ -13,6 +13,7 @@
 #include "free.h"
 #include "ltsearch.h"
 #include "ltmodify.h"
+#include "ltindex.h"
 #include "check.h"
 #include "trans.h"
 #include "xlog.h"
@@ -20,7 +21,6 @@
 #include "instance.h"
 #include "optimizer.h"
 #include "tuple.h"
-#include "index.h"
 #include "heaptable.h"
 
 /* Delete row */

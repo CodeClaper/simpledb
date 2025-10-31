@@ -7,7 +7,7 @@
 #include "copy.h"
 #include "free.h"
 #include "data.h"
-#include "index.h"
+#include "ltindex.h"
 #include "instance.h"
 #include "row.h"
 #include "meta.h"

@@ -6,7 +6,7 @@
 #include "refer.h"
 #include "asserts.h"
 #include "table.h"
-#include "index.h"
+#include "ltindex.h"
 #include "xlog.h"
 #include "log.h"
 #include "list.h"

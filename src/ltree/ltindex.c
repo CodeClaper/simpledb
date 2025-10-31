@@ -1,7 +1,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
-#include "index.h"
+#include "ltindex.h"
 #include "const.h"
 #include "mmgr.h"
 #include "pager.h"
