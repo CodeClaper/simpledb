@@ -39,9 +39,6 @@ Table *open_table(char *table_name);
 /* Create a new table. */
 bool create_table(Oid oid, MetaTable *meta_table);
 
-/* Create a new index. */
-bool create_index(Oid oid, MetaIndex *meta_index);
-
 /* Create a new table. */
 bool shrink_table(Oid oid, MetaTable *meta_table);
 

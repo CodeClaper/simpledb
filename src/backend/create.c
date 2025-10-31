@@ -28,6 +28,7 @@
 #include "free.h"
 #include "log.h"
 #include "table.h"
+#include "index.h"
 #include "tablecache.h"
 #include "heaptable.h"
 #include "systable.h"
@@ -386,7 +387,7 @@ void ExecuteCreateIndexStatement(CreateIndexNode *create_index_node, DBResult *r
      * (1) Create index table.
      * (2) Save table object.
      * */
-    if (create_index(oid, meta_index) && 
+    if (IndexCreate(meta_index) && 
         SaveIndexObject(oid, create_index_node->index_name)
     ) {
         result->success = true;

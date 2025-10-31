@@ -1,7 +1,7 @@
 
 includedir = ../../include
 headerdirs = $(includedir)/backend $(includedir)/common $(includedir)/storage \
-			 $(includedir)/memory $(includedir)/utils $(includedir)/trans $(includedir)/ltree \
+			 $(includedir)/memory $(includedir)/utils $(includedir)/trans $(includedir)/ltree $(includedir)/index \
 			 $(includedir)/sys $(includedir)/parser $(includedir)/lock $(includedir)/heap
 headers := $(shell find $(headerdirs) -name "*.h")
 objects := $(patsubst %.c,%.o,$(wildcard *.c))

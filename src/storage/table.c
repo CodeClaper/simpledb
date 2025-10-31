@@ -137,35 +137,6 @@ bool create_table(Oid oid, MetaTable *meta_table) {
     return true;
 }
 
-
-/* Create a new index. */
-bool create_index(Oid oid, MetaIndex *meta_index) {
-    char *file_path;
-    int descr;
-    void *root_node;
-    uint32_t default_value_len;
-
-    AssertFalse(ZERO_OID(oid));
-    Assert(meta_index);
-
-    file_path = table_file_path(oid);
-    if (table_file_exist(file_path)) {
-        db_log(ERROR, "Index '%s' already exists.", meta_index->index_name);
-        dfree(file_path);
-        return false;
-    }
-
-    descr = open(file_path, O_CREAT | O_WRONLY, S_IWUSR | S_IRUSR);
-    if (descr == -1) {
-        db_log(ERROR, "Open database file '%s' fail.", file_path);
-        dfree(file_path);
-        return false;
-    }
-
-    root_node = dalloc(PAGE_SIZE);
-
-}
-
 /* Create a new table. */
 bool shrink_table(Oid oid, MetaTable *meta_table) {
     Buffer root_buffer;
