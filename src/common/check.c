@@ -1286,6 +1286,16 @@ static bool CheckForTable(char *table_name) {
     }
 }
 
+/* Check index. */
+static bool CheckForIndex(char *index_name) {
+    if (check_index_exist(index_name))
+        return true;
+    else {
+        db_log(ERROR, "Index '%s' not exists.", index_name);
+        return false;
+    }
+}
+
 /* Check if table uses refer. */
 static bool TableIsRefered(Table *table, char *refer_table_name) {
     MetaTable *meta_table = table->meta_table;
@@ -1369,6 +1379,11 @@ bool CheckForCreateTable(CreateTableNode *create_table_node) {
                 CheckForBaseTableElementCommalist(create_table_node->base_table_element_commalist);
 }
 
+/* Check for create index node. */
+bool CheckForCreateIndex(CreateIndexNode *create_index_node) {
+    return CheckForTable(create_index_node->table_name) && 
+            CheckForIndex(create_index_node->index_name);
+}
 
 /* Check allowed to drop table. */
 bool CheckForDropTable(char *table_name) {

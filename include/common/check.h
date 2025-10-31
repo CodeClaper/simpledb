@@ -20,6 +20,9 @@ bool CheckForDelete(DeleteNode *delete_node);
 /* Check for create table node. */
 bool CheckForCreateTable(CreateTableNode *create_table_node);
 
+/* Check for create index node. */
+bool CheckForCreateIndex(CreateIndexNode *create_index_node);
+
 /* Chech allowed to drop table. */
 bool CheckForDropTable(char *table_name);
 

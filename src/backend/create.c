@@ -288,8 +288,14 @@ static bool PrepareSaveTableCache(Oid oid, MetaTable *meta_table) {
 }
 
 /* Save table object. */
-static bool SaveTableObject(Oid oid, char *relname) {
-    Object entity = GenerateObjectInner(oid, relname, OTABLE);
+static bool SaveTableObject(Oid oid, char *table_name) {
+    Object entity = GenerateObjectInner(oid, table_name, OTABLE);
+    return SaveObject(entity);
+}
+
+/* Save index object. */
+static bool SaveIndexObject(Oid oid, char *index_name) {
+    Object entity = GenerateObjectInner(oid, index_name, OINDEX);
     return SaveObject(entity);
 }
 
@@ -337,5 +343,33 @@ void ExecuteCreateTableStatement(CreateTableNode *create_table_node, DBResult *r
 
 /* Execute create table statement. */
 void ExecuteCreateIndexStatement(CreateIndexNode *create_index_node, DBResult *result) {
-    Oid oid = FindNextOid();
+    Oid oid;
+    Table *table;
+
+    /* Check valid. */
+    if (!CheckForCreateIndex(create_index_node)) 
+        return;
+
+    /* Fetch next oid. */
+    oid = FindNextOid();
+    table = open_table(create_index_node->table_name);
+    if (table == NULL) {
+        db_log(ERROR, "Table '%s' not exist.", create_index_node->table_name);
+        return;
+    }
+    
+    /* Create index. 
+     * ---------------
+     * (1) Create index table.
+     * (2) Save table object.
+     * */
+    if (create_table(oid, table->meta_table) && 
+        SaveIndexObject(oid, create_index_node->index_name)
+    ) {
+        result->success = true;
+        result->rows = 0;
+        result->message = FormatStr("Index '%s' created successfully.", 
+                                    create_index_node->index_name);
+        db_log(SUCCESS, "Index '%s' created successfully.", create_index_node->index_name);
+    }
 }

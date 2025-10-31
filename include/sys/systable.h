@@ -37,6 +37,9 @@ Object OidFindObject(Oid oid);
 /* Find oid by table name. */
 Oid TableNameFindOid(char *tableName);
 
+/* Find oid of index table by index name. */
+Oid IndexNameFindOid(char *indexName);
+
 /* Find oid of string table by table name. */
 Oid StrTableNameFindOid(char *tableName);
 

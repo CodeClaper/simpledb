@@ -17,6 +17,9 @@ bool check_table_exist_direct(Oid oid);
 /* Check if table exists. */
 bool check_table_exist(char *table_name); 
 
+/* Check if index exists. */
+bool check_index_exist(char *index_name);
+
 /* Check table file if exist 
  * Return true if exist or false if not exist. */
 bool table_file_exist(char *table_file_path);

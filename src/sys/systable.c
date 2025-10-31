@@ -318,6 +318,15 @@ Oid TableNameFindOid(char *tableName) {
     return RelnameAndReltypeFindOid(tableName, OTABLE);
 }
 
+/* Find oid of index table by index name. 
+ * ------------------------
+ * Return the oid of the found object.
+ * Return OID_ZERO if missing.
+ * */
+Oid IndexNameFindOid(char *indexName) {
+    return RelnameAndReltypeFindOid(indexName, OINDEX);
+}
+
 /* Find oid of string table by table name. 
  * ------------------------
  * Return the oid of the found object.

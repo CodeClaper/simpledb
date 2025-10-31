@@ -47,8 +47,7 @@
     ret = (target < node + PAGE_SIZE) && 
             EQ(GetComparableValue(target, primary_key_meta_column->column_type), 
                GetComparableValue(key, primary_key_meta_column->column_type), 
-               primary_key_meta_column->column_type
-    );
+               primary_key_meta_column->column_type);
 
 direct_exit:
     /* Release the buffer. */
@@ -123,3 +122,4 @@ void *GenerateIndex(Oid oid, void *tuple, Refer *hrefer) {
 
     return destination;
 }
+

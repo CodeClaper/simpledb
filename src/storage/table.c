@@ -60,6 +60,12 @@ bool check_table_exist(char *table_name) {
     return check_table_exist_direct(oid);
 }
 
+/* Check if index exists. */
+bool check_index_exist(char *index_name) {
+    Oid oid = IndexNameFindOid(index_name);
+    return check_table_exist_direct(oid);
+}
+
 /* Create a new table. */
 bool create_table(Oid oid, MetaTable *meta_table) {
     char *file_path;
