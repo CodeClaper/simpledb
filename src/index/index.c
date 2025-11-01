@@ -7,6 +7,7 @@
 /* Index methods. */
 struct IndexMethods {
     void (*create)(MetaIndex *meta_index);
+    MetaIndex *(*load) (Oid oid);
 };
 
 static struct IndexMethods methods[] = {
@@ -21,4 +22,8 @@ bool IndexCreate(MetaIndex *meta_index) {
     Assert(meta_index != NULL);
     methods[meta_index->type].create(meta_index);
     return true;
+}
+
+MetaIndex *IndexLoad(Oid oid) {
+    return NULL;
 }

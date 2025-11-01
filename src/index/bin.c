@@ -56,7 +56,7 @@ static char *BinRootNodeGetColumnName(void *root_node, uint32_t index) {
 
 static void BinRootNodeSetColumnName(void *root_node, uint32_t index, char *column_name) {
     Assert(NodeIsRoot(root_node));
-    memcpy((root_node + COMMON_NODE_HEADER_SIZE + BIN_ROOT_NODE_INDEX_TYPE_SIZE + BIN_ROOT_NODE_IS_UNIQUE_SIZE + BIN_ROOT_NODE_COLUMN_SIZE_SIZE + BIN_ROOT_NODE_COLUMN_NAME_SIZE * index), column_name, strlen(column_name));
+    strcpy((root_node + COMMON_NODE_HEADER_SIZE + BIN_ROOT_NODE_INDEX_TYPE_SIZE + BIN_ROOT_NODE_IS_UNIQUE_SIZE + BIN_ROOT_NODE_COLUMN_SIZE_SIZE + BIN_ROOT_NODE_COLUMN_NAME_SIZE * index), column_name);
 }
 
 /* Get bin leaf node cell num. */
@@ -154,4 +154,9 @@ void BtreeIndexCreate(MetaIndex *meta_index) {
     /* Free memory. */
     dfree(file_path);
     dfree(root_node);
+}
+
+/* Btree index load. */
+MetaIndex *BtreeIndexLoad(Oid oid) {
+    return NULL;
 }

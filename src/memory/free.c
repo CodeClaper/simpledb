@@ -665,6 +665,17 @@ void free_create_table_node(CreateTableNode *create_table_node) {
     }
 }
 
+/* Free create index node. */
+void free_create_index_node(CreateIndexNode *create_index_node) {
+    if (create_index_node != NULL) {
+        if (create_index_node->index_name)
+            dfree(create_index_node->index_name);
+        if (create_index_node->table_name)
+            dfree(create_index_node->table_name);
+        dfree(create_index_node);
+    }
+}
+
 /* Free DropTableNode. */
 void free_drop_table_node(DropTableNode *drop_table_node) {
     if (drop_table_node) {
@@ -719,6 +730,9 @@ void free_statement(Statement *statement) {
             break;
         case CREATE_TABLE_STMT:
             free_create_table_node(statement->create_table_node);
+            break;
+        case CREATE_INDEX_STMT:
+            free_create_index_node(statement->create_index_node);
             break;
         case DROP_TABLE_STMT:
             free_drop_table_node(statement->drop_table_node);

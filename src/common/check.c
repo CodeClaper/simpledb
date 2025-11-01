@@ -1288,11 +1288,11 @@ static bool CheckForTable(char *table_name) {
 
 /* Check index. */
 static bool CheckForIndex(char *index_name) {
-    if (check_index_exist(index_name))
-        return true;
-    else {
-        db_log(ERROR, "Index '%s' not exists.", index_name);
+    if (check_index_exist(index_name)) {
+        db_log(ERROR, "Index '%s' alreay exists.", index_name);
         return false;
+    } else {
+        return true;
     }
 }
 

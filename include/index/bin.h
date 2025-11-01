@@ -10,3 +10,6 @@
 
 /* Btree index create. */
 void BtreeIndexCreate(MetaIndex *meta_index);
+
+/* Btree index load. */
+MetaIndex *BtreeIndexLoad(Oid oid);

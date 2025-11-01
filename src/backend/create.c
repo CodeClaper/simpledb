@@ -281,7 +281,8 @@ static MetaIndex *GenerateMetaIndexForCreateIndex(Oid oid, Table *table,  Create
 
     ListCell *lc;
     foreach (lc, create_index_node->columns) {
-        MetaColumn *meta_column = NameFindMetaColumn(table->meta_table, (char *) lfirst(lc));
+        ColumnNode *column_node = (ColumnNode *) lfirst(lc);
+        MetaColumn *meta_column = NameFindMetaColumn(table->meta_table, column_node->column_name);
         append_list(meta_index->meta_columns, meta_column);
     }
 
