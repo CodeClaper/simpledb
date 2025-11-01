@@ -24,11 +24,12 @@
 #include "heaptable.h"
 #include "optimizer.h"
 
-/* System table meta column lisLEAF_NODE_CELL_NULL_FLAG_SIZE + MAX_COLUMN_SIZEt. */
+/* System table meta column list. */
 MetaColumn SYS_TABLE_COLUMNS[] = {
     {SYS_TABLE_NAME, SYS_TABLE_OID_NAME, T_LONG, "", (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), 0, true, false, false, false, 0, 0},
-    {SYS_TABLE_NAME, SYS_TABLE_RELNAME_NAME, T_VARCHAR, "", (LEAF_NODE_CELL_NULL_FLAG_SIZE + MAX_COLUMN_SIZE), (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), false, false, false, false, 0, 0},
-    {SYS_TABLE_NAME, SYS_TABLE_RELTYPE_NAME, T_INT, "", (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int32_t)), (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE + MAX_COLUMN_SIZE), false, false, false, false, 0, 0}
+    {SYS_TABLE_NAME, SYS_TABLE_TOID_NAME, T_LONG, "", (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), true, false, false, false, 0, 0},
+    {SYS_TABLE_NAME, SYS_TABLE_RELNAME_NAME, T_VARCHAR, "", (LEAF_NODE_CELL_NULL_FLAG_SIZE + MAX_COLUMN_SIZE), (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)) * 2, false, false, false, false, 0, 0}, 
+    {SYS_TABLE_NAME, SYS_TABLE_RELTYPE_NAME, T_INT, "", (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int32_t)), ((LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)) * 2+ LEAF_NODE_CELL_NULL_FLAG_SIZE + MAX_COLUMN_SIZE), false, false, false, false, 0, 0}
 };
 
 /* System reserved columns. */
@@ -421,9 +422,14 @@ static void *ObjectConvertKeyValue(Object entity, int i) {
             *oid = entity.oid;
             return oid;
         }
-        case 1: 
+        case 1: {
+            Oid *toid = instance(Oid);
+            *toid = entity.toid;
+            return toid;
+        }
+        case 2: 
             return dstrdup(entity.relname);
-        case 2: {
+        case 3: {
             ObjectType *type = instance(ObjectType);
             *type = entity.reltype;
             return type;
@@ -439,10 +445,12 @@ static Object TupleConvertObject(void *tuple) {
     Object entity;
 
     Oid *oid = (Oid *) TupleFindValue(tuple, SYS_TABLE_COLUMNS + 0);
-    char *relname = (char *) TupleFindValue(tuple, SYS_TABLE_COLUMNS + 1);
-    ObjectType *type = (ObjectType *) TupleFindValue(tuple, SYS_TABLE_COLUMNS + 2);
+    Oid *toid = (Oid *) TupleFindValue(tuple, SYS_TABLE_COLUMNS + 1);
+    char *relname = (char *) TupleFindValue(tuple, SYS_TABLE_COLUMNS + 2);
+    ObjectType *type = (ObjectType *) TupleFindValue(tuple, SYS_TABLE_COLUMNS + 3);
 
     entity.oid = *oid;
+    entity.toid = *toid;
     memset(entity.relname, 0, MAX_RELNAME_LEN);
     memcpy(entity.relname, relname, MAX_RELNAME_LEN);
     entity.reltype = *type;

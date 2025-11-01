@@ -56,10 +56,10 @@ static inline char *GetObjectTypeName(ObjectType type) {
  * The entity include all what an Object need.
  * */
 typedef struct Object {
-    Oid oid;                        /* Oid. */
-    Oid tid;                        /* Table oid. */
-    char relname[MAX_RELNAME_LEN];  /* Relation name. */
-    ObjectType reltype;             /* Relation type. */
+    Oid oid;                            /* Oid. */
+    Oid toid;                           /* Table oid. */
+    char relname[MAX_RELNAME_LEN];      /* Relation name. */
+    ObjectType reltype;                 /* Relation type. */
 } Object;
 
 

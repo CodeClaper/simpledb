@@ -9,13 +9,14 @@
 #define SYS_ROOT_HEAP_OID 12356
 #define SYS_TABLE_NAME "sys_table"
 #define SYS_TABLE_OID_NAME "oid"
+#define SYS_TABLE_TOID_NAME "toid"
 #define SYS_TABLE_RELNAME_NAME "relname"
 #define SYS_TABLE_RELTYPE_NAME "reltype"
 
 /* System table meta column list. */
 extern MetaColumn SYS_TABLE_COLUMNS[];
 /* System table column size. */
-#define SYS_TABLE_COLUMNS_LENGTH 3
+#define SYS_TABLE_COLUMNS_LENGTH 4
 
 /* System reserved columns. */
 extern MetaColumn SYS_RESERVED_COLUMNS[];
