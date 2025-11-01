@@ -94,6 +94,7 @@ typedef enum {
     DESCRIBE_STMT, 
     SHOW_STMT, 
     DROP_TABLE_STMT,
+    DROP_INDEX_STMT,
     ALTER_TABLE_STMT,
 } StatementType; 
 
@@ -517,6 +518,12 @@ typedef struct DropTableNode {
     char *table_name;
 } DropTableNode;
 
+
+/* DropIndexNode */
+typedef struct DropIndexNode {
+    char *index_name;
+} DropIndexNode;
+
 /* SelectNode */
 typedef struct SelectNode {
     SelectionNode *selection;
@@ -607,6 +614,7 @@ typedef struct Statement {
         CreateTableNode *create_table_node;
         CreateIndexNode *create_index_node;
         DropTableNode *drop_table_node;
+        DropIndexNode *drop_index_node;
         SelectNode *select_node;
         InsertNode *insert_node;
         UpdateNode *update_node;

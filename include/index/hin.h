@@ -1,4 +1,5 @@
+#include <stdbool.h>
 #include "data.h"
 
 /* Hash index create. */
-void HashIndexCreate(MetaIndex *meta_index);
+bool HashIndexCreate(MetaIndex *meta_index);

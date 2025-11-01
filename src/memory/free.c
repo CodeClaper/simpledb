@@ -685,6 +685,15 @@ void free_drop_table_node(DropTableNode *drop_table_node) {
     }
 }
 
+/* Free DropTableNode. */
+void free_drop_index_node(DropIndexNode *drop_index_node) {
+    if (drop_index_node) {
+        if (drop_index_node->index_name)
+            dfree(drop_index_node->index_name);
+        dfree(drop_index_node);
+    }
+}
+
 /* Free DescribeNode. */
 void free_describe_node(DescribeNode *describe_node) {
     if (describe_node) {
@@ -736,6 +745,9 @@ void free_statement(Statement *statement) {
             break;
         case DROP_TABLE_STMT:
             free_drop_table_node(statement->drop_table_node);
+            break;
+        case DROP_INDEX_STMT:
+            free_drop_index_node(statement->drop_index_node);
             break;
         case DESCRIBE_STMT:
             free_describe_node(statement->describe_node);

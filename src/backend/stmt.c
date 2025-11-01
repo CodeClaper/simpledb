@@ -23,7 +23,6 @@
 #include <stdint.h>
 #include <setjmp.h>
 #include <sys/time.h>
-#include <time.h>
 #include <unistd.h>
 #include "stmt.h"
 #include "list.h"
@@ -98,7 +97,15 @@ static void ExecuteDropTableStmt(Statement *stmt, DBResult *result) {
     Assert(stmt->statement_type == DROP_TABLE_STMT);
     char *table_name = stmt->drop_table_node->table_name;
     AutoBeginTransaction();
-    exec_drop_table_statement(table_name, result);
+    ExecuteDropTableStatement(table_name, result);
+}
+
+/* Drop index statment. */
+static void ExecuteDropIndexStmt(Statement *stmt, DBResult *result) {
+    Assert(stmt->statement_type == DROP_INDEX_STMT);
+    char *index_name = stmt->drop_index_node->index_name;
+    AutoBeginTransaction();
+    ExecuteDropIndexStatement(index_name, result);
 }
 
 /* Alter table statement. */
@@ -207,6 +214,9 @@ static void ExecuteStatement(Statement *statement, DBResult *result) {
                 break;
             case DROP_TABLE_STMT:
                 ExecuteDropTableStmt(statement, result);
+                break;
+            case DROP_INDEX_STMT:
+                ExecuteDropIndexStmt(statement, result);
                 break;
             case ALTER_TABLE_STMT:
                 ExecuteAlterTableStmt(statement, result);

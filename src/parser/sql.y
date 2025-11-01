@@ -64,6 +64,7 @@ extern char *current_token;
    CreateTableNode              *create_table_node;
    CreateIndexNode              *create_index_node;
    DropTableNode                *drop_table_node;
+   DropIndexNode                *drop_index_node;
    SelectNode                   *select_node;
    InsertNode                   *insert_node;
    UpdateNode                   *update_node;
@@ -173,6 +174,7 @@ extern char *current_token;
 %type <create_table_node> create_table_statement
 %type <create_index_node> create_index_statement
 %type <drop_table_node> drop_table_statement
+%type <drop_index_node> drop_index_statement
 %type <describe_node> describe_statement
 %type <show_node> show_statement
 %type <alter_table_node> alter_table_statement 
@@ -234,6 +236,13 @@ statement:
             Statement *statement = instance(Statement);
             statement->statement_type = DROP_TABLE_STMT;
             statement->drop_table_node = $1;
+            $$ = statement;
+        }
+    | drop_index_statement
+        {
+            Statement *statement = instance(Statement);
+            statement->statement_type = DROP_INDEX_STMT;
+            statement->drop_index_node = $1;
             $$ = statement;
         }
     | select_statement 
@@ -335,6 +344,15 @@ drop_table_statement:
             DropTableNode *drop_table_node = instance(DropTableNode);
             drop_table_node->table_name = $3;
             $$ = drop_table_node;
+        }
+    ;
+/* Drop index Statement */
+drop_index_statement:
+    DROP INDEX index_name end
+        {
+            DropIndexNode *drop_index_node = instance(DropIndexNode);
+            drop_index_node->index_name = $3;
+            $$ = drop_index_node;
         }
     ;
 /* Select Statement */

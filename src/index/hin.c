@@ -1,6 +1,7 @@
 #include "hin.h"
+#include <stdbool.h>
 
 /* Hash index create. */
-void HashIndexCreate(MetaIndex *meta_index) {
-
+bool HashIndexCreate(MetaIndex *meta_index) {
+    return false;
 }

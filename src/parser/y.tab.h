@@ -266,6 +266,7 @@ union YYSTYPE
    CreateTableNode              *create_table_node;
    CreateIndexNode              *create_index_node;
    DropTableNode                *drop_table_node;
+   DropIndexNode                *drop_index_node;
    SelectNode                   *select_node;
    InsertNode                   *insert_node;
    UpdateNode                   *update_node;
@@ -276,7 +277,7 @@ union YYSTYPE
    Statement                    *statement;
    List                         *list;
 
-#line 280 "y.tab.h"
+#line 281 "y.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

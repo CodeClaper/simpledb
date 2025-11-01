@@ -9,13 +9,14 @@
 #include "data.h"
 #include "check.h"
 #include "table.h"
+#include "index.h"
 #include "log.h"
 #include "utils.h"
 #include "heaptable.h"
 #include "strheaptable.h"
 
 /* Execute drop table statment.*/
-void exec_drop_table_statement(char *table_name, DBResult *result) { 
+void ExecuteDropTableStatement(char *table_name, DBResult *result) { 
     if (
         CheckForDropTable(table_name) && 
         drop_table(table_name) && 
@@ -28,3 +29,15 @@ void exec_drop_table_statement(char *table_name, DBResult *result) {
         db_log(SUCCESS, "Table '%s' droped successfully.", table_name);
     }
 }
+
+
+/* Execute drop index statment. */
+void ExecuteDropIndexStatement(char *index_name, DBResult *result) {
+    if (IndexDrop(index_name)) {
+        result->success = true;
+        result->rows = 0;
+        result->message = FormatStr("Index '%s' droped successfully.", index_name);
+        db_log(SUCCESS, "Index '%s' droped successfully.", index_name);
+    }   
+}
+

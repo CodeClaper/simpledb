@@ -1,4 +1,7 @@
 #include "data.h"
 
 /* Execute drop table statment.*/
-void exec_drop_table_statement(char *table_name, DBResult *result);
+void ExecuteDropTableStatement(char *table_name, DBResult *result);
+
+/* Execute drop index statment. */
+void ExecuteDropIndexStatement(char *index_name, DBResult *result);

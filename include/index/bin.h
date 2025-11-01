@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stdint.h>
 #include "data.h"
 #include "const.h"
@@ -9,7 +10,10 @@
 #define BIN_ROOT_NODE_COLUMN_NAME_SIZE MAX_COLUMN_NAME_LEN
 
 /* Btree index create. */
-void BtreeIndexCreate(MetaIndex *meta_index);
+bool BtreeIndexCreate(MetaIndex *meta_index);
 
 /* Btree index load. */
 MetaIndex *BtreeIndexLoad(Oid oid);
+
+/* Btree index drop. */
+bool BtreeIndexDrop(Oid oid);

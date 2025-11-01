@@ -1,6 +1,7 @@
 #include <fcntl.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
@@ -9,6 +10,8 @@
 #include "ltbase.h"
 #include "log.h"
 #include "mmgr.h"
+#include "fdesc.h"
+#include "systable.h"
 
 /* Set bin root node index type. */
 static void BinRootNodeSetIndexType(void *root_node, IndexType type) {
@@ -108,7 +111,7 @@ static void BinLeafNodeInitialize(void *leaf_node, bool is_root) {
 }
 
 /* Btree index create. */
-void BtreeIndexCreate(MetaIndex *meta_index) {
+bool BtreeIndexCreate(MetaIndex *meta_index) {
     char *file_path;
     int descr;
     void *root_node;
@@ -116,13 +119,13 @@ void BtreeIndexCreate(MetaIndex *meta_index) {
     file_path = table_file_path(meta_index->oid);
     if (table_file_exist(file_path)) {
         db_log(ERROR, "Index '%s' already exists.", meta_index->index_name);
-        return;
+        return false;
     }
 
     descr = open(file_path, O_CREAT | O_WRONLY, S_IWUSR | S_IRUSR);
     if (descr == -1) {
         db_log(ERROR, "Open database file '%s' fail.", file_path);
-        return;
+        return false;
     }
 
     root_node = dalloc(PAGE_SIZE);
@@ -145,7 +148,7 @@ void BtreeIndexCreate(MetaIndex *meta_index) {
     ssize_t w_size = write(descr, root_node, PAGE_SIZE);
     if (w_size == -1) {
         db_log(ERROR, "Write index meta info error and error message: %s.", strerror(errno));
-        return;
+        return false;
     }
 
     /* Close desription. */
@@ -154,9 +157,34 @@ void BtreeIndexCreate(MetaIndex *meta_index) {
     /* Free memory. */
     dfree(file_path);
     dfree(root_node);
+
+    return true;
 }
 
 /* Btree index load. */
 MetaIndex *BtreeIndexLoad(Oid oid) {
     return NULL;
+}
+
+/* Btree index drop. */
+bool BtreeIndexDrop(Oid oid) {
+    Assert(NON_ZERO_OID(oid));
+
+    char *file_path;
+
+    file_path = table_file_path(oid);
+    if (table_file_exist(file_path)) {
+        db_log(ERROR, "Logic error, not found index file %ld", oid);
+        return false;
+    }
+
+    /* Remove from disk and remove the object. */
+    if (remove(file_path) == 0 && RemoveObject(oid)) {
+        /* Unregister fdesc. */
+        unregister_fdesc(oid);
+        return true;
+    }
+
+    db_log(ERROR, "Index file %s deleted fail, error: %s", oid, strerror(errno));
+    return false;
 }
