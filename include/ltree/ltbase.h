@@ -22,6 +22,9 @@ void SetNodeType(void *node, NodeType type);
 /* If a root node */
 bool NodeIsRoot(void *node);
 
+/* Set if root node. */
+void NodeSetRoot(void *node, bool is_root);
+
 /* Get node parent page num. */
 uint32_t NodeGetParentNum(void *node);
 
