@@ -91,8 +91,8 @@ bool CreateHeapTableInner(Oid hoid) {
 }
 
 /* Create the heap table. */
-bool CreateHeapTable(char *tableName) {
-    Object entity = GenerateObject(tableName, OHEAP_TABLE);
+bool CreateHeapTable(Oid toid, char *tableName) {
+    Object entity = GenerateObject(toid, tableName, OHEAP_TABLE);
     /* Create the heap table. */
     CreateHeapTableInner(entity.oid);
     /* Save the String table Object. */

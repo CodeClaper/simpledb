@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include "table.h"
+#include "index.h"
 #include "bufpool.h"
 #include "sys.h"
 #include "systable.h"
@@ -293,21 +294,23 @@ bool drop_table(char *table_name) {
     /* Try to acquire the table lock. */
     try_acquire_table(oid);
 
-    /* Unregister fdesc. */
-    unregister_fdesc(oid);
-    unregister_fdesc(soid);
 
     /* It will do:
      * (1) Remove table file from disk. 
-     * (2) Remove systable object.
-     * (3) Remove table cache.
-     * (4) Remove table buffer. */
+     * (2) Remove related indexs.
+     * (3) Remove systable object.
+     * (4) Remove table cache.
+     * (5) Remove table buffer. */
     if (
         remove(file_path) == 0 && 
+        IndexDropByTableName(table_name) &&
         RemoveObject(oid) &&
         RemoveTableCache(oid) &&
         RemoveTableBuffer(oid)
     ) {
+        /* Unregister fdesc. */
+        unregister_fdesc(oid);
+        unregister_fdesc(soid);
         /* Release the table lock. */
         try_release_table(oid);
         return true;

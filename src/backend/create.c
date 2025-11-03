@@ -311,13 +311,13 @@ static bool PrepareSaveTableCache(Oid oid, MetaTable *meta_table) {
 
 /* Save table object. */
 static bool SaveTableObject(Oid oid, char *table_name) {
-    Object entity = GenerateObjectInner(oid, table_name, OTABLE);
+    Object entity = GenerateObjectInner(oid, oid, table_name, OTABLE);
     return SaveObject(entity);
 }
 
 /* Save index object. */
-static bool SaveIndexObject(Oid oid, char *index_name) {
-    Object entity = GenerateObjectInner(oid, index_name, OINDEX);
+static bool SaveIndexObject(Oid oid, Oid toid, char *index_name) {
+    Object entity = GenerateObjectInner(oid, toid, index_name, OINDEX);
     return SaveObject(entity);
 }
 
@@ -346,8 +346,8 @@ void ExecuteCreateTableStatement(CreateTableNode *create_table_node, DBResult *r
     if (
         create_table(oid, meta_table) && 
         SaveTableObject(oid, GET_METATABLE_NAME(meta_table)) &&
-        CreateHeapTable(meta_table->table_name) &&
-        CreateStrHeapTable(meta_table->table_name) &&
+        CreateHeapTable(oid, meta_table->table_name) &&
+        CreateStrHeapTable(oid, meta_table->table_name) &&
         PrepareSaveTableCache(oid, meta_table)
     ) {
         result->success = true;
@@ -365,7 +365,7 @@ void ExecuteCreateTableStatement(CreateTableNode *create_table_node, DBResult *r
 
 /* Execute create table statement. */
 void ExecuteCreateIndexStatement(CreateIndexNode *create_index_node, DBResult *result) {
-    Oid oid;
+    Oid oid, toid;
     MetaIndex *meta_index;
     Table *table;
 
@@ -380,7 +380,8 @@ void ExecuteCreateIndexStatement(CreateIndexNode *create_index_node, DBResult *r
         db_log(ERROR, "Table '%s' not exist.", create_index_node->table_name);
         return;
     }
-
+    
+    toid = GET_TABLE_OID(table);
     meta_index = GenerateMetaIndexForCreateIndex(oid, table, create_index_node);
     
     /* Create index. 
@@ -389,7 +390,7 @@ void ExecuteCreateIndexStatement(CreateIndexNode *create_index_node, DBResult *r
      * (2) Save table object.
      * */
     if (IndexCreate(meta_index) && 
-        SaveIndexObject(oid, create_index_node->index_name)
+        SaveIndexObject(oid, toid, create_index_node->index_name)
     ) {
         result->success = true;
         result->rows = 0;

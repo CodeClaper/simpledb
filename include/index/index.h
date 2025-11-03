@@ -9,3 +9,6 @@ MetaIndex *IndexLoad(char *index_name);
 
 /* Index drop. */
 bool IndexDrop(char *index_name);
+
+/* Index drop by table name. */
+bool IndexDropByTableName(char *table_name);

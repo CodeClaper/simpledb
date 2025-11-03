@@ -39,8 +39,6 @@ def test_create_not_any_columns():
 
 ## test drop table
 def test_drop_table():
-    sql = "DROP INDEX name_index;\n" \
-          "DROP TABLE Student; "
+    sql = "DROP TABLE Student; "
     ret = client.execute(sql)
-    assert ret[0]["success"] == True
-    assert ret[1]["success"] == True
+    assert ret["success"] == True

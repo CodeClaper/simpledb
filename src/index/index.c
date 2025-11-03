@@ -60,14 +60,33 @@ MetaIndex *IndexLoad(char *index_name) {
     return methods[type].load(oid);
 }
 
-/* Index remove. */
-bool IndexDrop(char *index_name) {
-    Oid oid;
-    IndexType type;
-
-    oid = IndexNameFindOid(index_name);
-    type = GetIndexType(oid);
-
+static bool IndexDropInner(Oid oid) {
+    IndexType type = GetIndexType(oid);
     /* Drop index. */
     return methods[type].drop(oid);
+}
+
+/* Index drop. */
+bool IndexDrop(char *index_name) {
+    Oid oid = IndexNameFindOid(index_name);
+    return IndexDropInner(oid);
+}
+
+/* Index drop by table name. */
+bool IndexDropByTableName(char *table_name) {
+    Table *table;
+    Oid toid;
+    List *indexs;
+
+    table = open_table(table_name);
+    toid = GET_TABLE_OID(table);
+    indexs = ToidFindIndexs(toid);
+
+    ListCell *lc;
+    foreach (lc, indexs) {
+        if (!IndexDropInner(*(Oid *) lfirst(lc)))
+            return false;
+    }
+
+    return true;
 }

@@ -23,7 +23,7 @@ static inline bool EmptyStrRefer(StrRefer *strRefer) {
 int CompareStrRefer(StrRefer *source, StrRefer *target);
 
 /* Create the string heap table. */
-bool CreateStrHeapTable(char *table_name);
+bool CreateStrHeapTable(Oid toid, char *table_name);
 
 /* Insert new String value. */
 StrRefer *InsertStringValue(Oid oid, char *str_val);

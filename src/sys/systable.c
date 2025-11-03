@@ -222,6 +222,81 @@ static SearchConditionNode *RelnameTypeConvertCondition(char *relname, ObjectTyp
     return search_condition;
 }
 
+/* Convert toid and reltype to a condition.
+ * ------------------------------------------
+ * Generate a condition which filtered by relname and reltype. */
+static SearchConditionNode *ToidTypeConvertCondition(Oid toid, ObjectType type) {
+    SearchConditionNode *search_condition = instance(SearchConditionNode);
+    BooleanTermNode *boolean_term = instance(BooleanTermNode);
+    BooleanFactorNode *boolean_factor = instance(BooleanFactorNode);
+    BooleanTestNode *boolean_test = instance(BooleanTestNode);
+    BooleanPrimaryNode *boolean_primary = instance(BooleanPrimaryNode);
+    PredicateNode *predicate = instance(PredicateNode);
+
+    BooleanTermNode *and_boolean_term = instance(BooleanTermNode);
+    BooleanFactorNode *and_boolean_factor = instance(BooleanFactorNode);
+    BooleanTestNode *and_boolean_test = instance(BooleanTestNode);
+    BooleanPrimaryNode *and_boolean_primary = instance(BooleanPrimaryNode);
+    PredicateNode *and_predicate = instance(PredicateNode);
+
+    /* Assemble one predicate. */
+    predicate = instance(PredicateNode);
+    predicate->type = PRE_COMPARISON;
+    predicate->comparison = instance(ComparisonNode);
+    predicate->comparison->type = O_EQ;
+    predicate->comparison->left = instance(ScalarExpNode);
+    predicate->comparison->left->type = SCALAR_COLUMN;
+    predicate->comparison->left->column = instance(ColumnNode);
+    predicate->comparison->left->column->column_name = dstrdup(SYS_TABLE_TOID_NAME);
+    predicate->comparison->right = instance(ScalarExpNode);
+    predicate->comparison->right->type = SCALAR_VALUE;
+    predicate->comparison->right->value = instance(ValueItemNode);
+    predicate->comparison->right->value->type = V_ATOM;
+    predicate->comparison->right->value->value.atom = instance(AtomNode);
+    predicate->comparison->right->value->value.atom->type = A_INT;
+    predicate->comparison->right->value->value.atom->value.intval = toid;
+
+    /* Assemble another predicate. */
+    and_predicate = instance(PredicateNode);
+    and_predicate->type = PRE_COMPARISON;
+    and_predicate->comparison = instance(ComparisonNode);
+    and_predicate->comparison->type = O_EQ;
+    and_predicate->comparison->left = instance(ScalarExpNode);
+    and_predicate->comparison->left->type = SCALAR_COLUMN;
+    and_predicate->comparison->left->column = instance(ColumnNode);
+    and_predicate->comparison->left->column->column_name = dstrdup(SYS_TABLE_RELTYPE_NAME);
+    and_predicate->comparison->right = instance(ScalarExpNode);
+    and_predicate->comparison->right->type = SCALAR_VALUE;
+    and_predicate->comparison->right->value = instance(ValueItemNode);
+    and_predicate->comparison->right->value->type = V_ATOM;
+    and_predicate->comparison->right->value->value.atom = instance(AtomNode);
+    and_predicate->comparison->right->value->value.atom->type = A_INT;
+    and_predicate->comparison->right->value->value.atom->value.intval = type;
+    
+    /* Assemble All. */
+    boolean_primary->type = PREDICATE_BOOLEAN_PRIMAYR; 
+    boolean_primary->predicate = predicate;
+    boolean_test->type = NONE_TRUE_VALUE;
+    boolean_test->boolean_primary = boolean_primary;
+    boolean_factor->is_not = false;
+    boolean_factor->boolean_test = boolean_test;
+    boolean_term->boolean_factor = boolean_factor;
+    search_condition->boolean_term = boolean_term;
+
+    and_boolean_primary->type = PREDICATE_BOOLEAN_PRIMAYR; 
+    and_boolean_primary->predicate = and_predicate;
+    and_boolean_test->type = NONE_TRUE_VALUE;
+    and_boolean_test->boolean_primary = and_boolean_primary;
+    and_boolean_factor->is_not = false;
+    and_boolean_factor->boolean_test = and_boolean_test;
+    and_boolean_term->boolean_factor = and_boolean_factor;
+
+    /* Relation the and boolean term. */
+    boolean_term->and_boolean_term = and_boolean_term;
+
+    return search_condition;
+}
+
 
 /* Find Object by oid
  * ------------------
@@ -358,6 +433,34 @@ char *OidFindRelName(Oid oid) {
     return dstrdup(entity.relname);
 }
 
+/* Find indexs by toid. 
+ * --------------------
+ * Return list of index oid.
+ * */
+List *ToidFindIndexs(Oid toid) {
+    SearchConditionNode *condition;
+    SelectResult *result;
+    List *indexs;
+    
+    indexs = create_list(NODE_VOID);
+    condition = ToidTypeConvertCondition(toid, OINDEX);
+    result = new_select_result(SELECT_STMT, SYS_TABLE_NAME, true);
+
+    /* Query. */
+    QueryUnderSearchConditionInner(
+        SYS_ROOT_OID, result, 
+        SimpleSelectPlan(SelectTuple, ARG_NULL, NULL, condition)
+    );
+    
+    QueueCell *qc;
+    qforeach (qc, result->tuples) {
+        void *tuple = (void *) qfirst(qc);
+        append_list(indexs, TupleFindValue(tuple, SYS_TABLE_COLUMNS + 0));
+    }
+
+    return indexs;
+}
+
 /* Convert tuples to object list. */
 static List *TuplesConvertObjectList(Queue *qTuples) {
     List *list = create_list(NODE_VOID);
@@ -392,7 +495,7 @@ List *FindAllObject() {
 /* Geneate Object entity. 
  * The oid supported by caller.
  * */
-Object GenerateObjectInner(Oid oid, char *relname, ObjectType reltype) {
+Object GenerateObjectInner(Oid oid, Oid toid, char *relname, ObjectType reltype) {
     Size len;
     Object entity;
 
@@ -400,6 +503,7 @@ Object GenerateObjectInner(Oid oid, char *relname, ObjectType reltype) {
     Assert(MAX_RELNAME_LEN >= len);
 
     entity.oid = oid;
+    entity.toid = toid;
     entity.reltype = reltype;
     memset(entity.relname, 0, MAX_RELNAME_LEN);
     memcpy(entity.relname, relname, len);
@@ -410,8 +514,8 @@ Object GenerateObjectInner(Oid oid, char *relname, ObjectType reltype) {
 /* Geneate Object entity. 
  * The oid is geneate by FindNextOid.
  * */
-Object GenerateObject(char *relname, ObjectType reltype) {
-    return GenerateObjectInner(FindNextOid(), relname, reltype);
+Object GenerateObject(Oid toid, char *relname, ObjectType reltype) {
+    return GenerateObjectInner(FindNextOid(), toid, relname, reltype);
 }
 
 /* Convert KeyValue. */

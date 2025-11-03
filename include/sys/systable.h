@@ -50,14 +50,17 @@ Oid TableNameFindHeapOid(char *tableName);
 /* Find relname by oid. */
 char *OidFindRelName(Oid oid);
 
+/* Find indexs by toid. */
+List *ToidFindIndexs(Oid toid);
+
 /* Find all object list. */
 List *FindAllObject();
 
 /* Geneate Object entity. */
-Object GenerateObjectInner(Oid oid, char *relname, ObjectType reltype);
+Object GenerateObjectInner(Oid oid, Oid toid, char *relname, ObjectType reltype);
 
 /* Generate Object entity. */
-Object GenerateObject(char *relname, ObjectType reltype);
+Object GenerateObject(Oid toid, char *relname, ObjectType reltype);
 
 /* Save Object. */
 bool SaveObject(Object entity);

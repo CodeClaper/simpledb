@@ -28,7 +28,7 @@ int CompareStrRefer(StrRefer *source, StrRefer *target) {
 }
 
 /* Create the string heap table. */
-bool CreateStrHeapTable(char *table_name) {
+bool CreateStrHeapTable(Oid toid, char *table_name) {
     int descr;
     Size w_size;
     void *rblock;
@@ -36,7 +36,7 @@ bool CreateStrHeapTable(char *table_name) {
     char str_table_file[MAX_TABLE_NAME_LEN + 100];
     Object entity;
     
-    entity = GenerateObject(table_name, OSTRING_HEAP_TABLE);
+    entity = GenerateObject(toid, table_name, OSTRING_HEAP_TABLE);
     memset(str_table_file, 0, MAX_TABLE_NAME_LEN + 100);
     sprintf(str_table_file, "%s%ld", conf->data_dir, entity.oid);
 
