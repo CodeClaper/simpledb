@@ -16,7 +16,7 @@ def test_wrong_drop():
     sql = "drop Student;"
     ret = client.execute(sql)
     assert ret["success"] == False
-    assert ret["message"] == "syntax error, unexpected IDENTIFIER, expecting TABLE at or near [Student]."
+    assert ret["message"] == "syntax error, unexpected IDENTIFIER, expecting TABLE or INDEX at or near [Student]."
 
 ## test wrong insert statement.
 def test_wrong_insert():

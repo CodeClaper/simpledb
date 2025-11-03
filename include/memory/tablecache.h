@@ -23,4 +23,4 @@ Table *FindTableCache(Oid oid);
 Table *NameFindTableCache(char *tableName);
 
 /* Remove table cache. */
-void RemoveTableCache(Oid oid);
+bool RemoveTableCache(Oid oid);

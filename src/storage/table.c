@@ -297,15 +297,19 @@ bool drop_table(char *table_name) {
     unregister_fdesc(oid);
     unregister_fdesc(soid);
 
-    /* Disk remove. */
-    if (remove(file_path) == 0 && RemoveObject(oid)) {
-        /* Remove table cache. */
-        RemoveTableCache(oid);
-        /* Remove table buffer. */
-        RemoveTableBuffer(oid);
+    /* It will do:
+     * (1) Remove table file from disk. 
+     * (2) Remove systable object.
+     * (3) Remove table cache.
+     * (4) Remove table buffer. */
+    if (
+        remove(file_path) == 0 && 
+        RemoveObject(oid) &&
+        RemoveTableCache(oid) &&
+        RemoveTableBuffer(oid)
+    ) {
         /* Release the table lock. */
         try_release_table(oid);
-
         return true;
     }
 

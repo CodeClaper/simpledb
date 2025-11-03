@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -154,7 +155,7 @@ void DeleteBufferTableEntry(BufferTag *tag) {
 }
 
 /* Remove all the table-relative buffer entry. */
-void RemoveTableBuffer(Oid oid) {
+bool RemoveTableBuffer(Oid oid) {
     switch_shared();
     for (Index i = 0; i < BUFFER_SLOT_NUM; i++) {
         BufferTableEntrySlot *slot; 
@@ -175,4 +176,5 @@ void RemoveTableBuffer(Oid oid) {
         }
     }
     switch_local();
+    return true;
 }

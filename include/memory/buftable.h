@@ -1,5 +1,6 @@
 #include "bufmgr.h"
 #include "rwlock.h"
+#include <stdbool.h>
 
 typedef struct BufferTableEntrySlot {
     s_lock *lock;
@@ -35,4 +36,4 @@ void InsertBufferTableEntry(BufferTag *tag, Buffer buffer);
 void DeleteBufferTableEntry(BufferTag *tag);
 
 /* Remove all the table-relative buffer entry. */
-void RemoveTableBuffer(Oid oid);
+bool RemoveTableBuffer(Oid oid);
