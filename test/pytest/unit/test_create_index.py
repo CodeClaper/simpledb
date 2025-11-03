@@ -18,6 +18,8 @@ def test_create_index():
 
 ## test drop table
 def test_drop_table():
-    sql = "DROP TABLE Student;\n"
+    sql = "DROP INDEX name_index;\n" \
+          "DROP TABLE Student; "
     ret = client.execute(sql)
-    assert ret["success"] == True
+    assert ret[0]["success"] == True
+    assert ret[1]["success"] == True

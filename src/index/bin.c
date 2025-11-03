@@ -173,7 +173,7 @@ bool BtreeIndexDrop(Oid oid) {
     char *file_path;
 
     file_path = table_file_path(oid);
-    if (table_file_exist(file_path)) {
+    if (!table_file_exist(file_path)) {
         db_log(ERROR, "Logic error, not found index file %ld", oid);
         return false;
     }
