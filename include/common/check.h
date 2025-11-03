@@ -26,6 +26,9 @@ bool CheckForCreateIndex(CreateIndexNode *create_index_node);
 /* Chech allowed to drop table. */
 bool CheckForDropTable(char *table_name);
 
+/* Check allowed to drop index. */
+bool checkForDropIndex(char *index_name);
+
 /* Check for AlterTableNode. */
 bool CheckForAlterTable(AlterTableNode *alter_table);
 

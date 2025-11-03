@@ -16,6 +16,27 @@ def test_create_index():
     ret = client.execute(sql)
     assert ret["success"] == True
 
+## test not exists table.
+def test_create_not_exists_table():
+    sql = "create index socre_index on student(score);"
+    ret = client.execute(sql)
+    assert ret["success"] == False
+    assert ret["message"] == "Table 'student' not exists."
+
+## test note exists columns.
+def test_create_not_exists_columns():
+    sql = "create index idcard_index on Student (idcard);"
+    ret = client.execute(sql)
+    assert ret["success"] == False
+    assert ret["message"] == "Table 'Student' not exists column 'idcard'."
+
+## test not any columns.
+def test_create_not_any_columns():
+    sql = "create index any_index on Student();"
+    ret = client.execute(sql)
+    assert ret["success"] == False
+    assert ret["message"] == "syntax error, unexpected ')', expecting '(' or IDENTIFIER at or near [Student]."
+
 ## test drop table
 def test_drop_table():
     sql = "DROP INDEX name_index;\n" \

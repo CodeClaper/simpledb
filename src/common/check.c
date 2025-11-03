@@ -1264,6 +1264,27 @@ static bool CheckForDropColumn(char *table_name, DropColumnDef *drop_column_def)
     return true;
 }
 
+/* Check for columns in index statement. */
+static bool CheckForIndexColumns(char *table_name, List *columns) {
+    if (list_empty(columns)) {
+        db_log(ERROR, "At least support one column for create index.");
+        return false;
+    }
+
+    ListCell *lc;
+    foreach (lc, columns) {
+        ColumnNode *column_node = (ColumnNode *) lfirst(lc);
+        if (!ColumnExistsInTable(column_node->column_name, table_name)) {
+            db_log(ERROR, "Table '%s' not exists column '%s'.", 
+                   table_name, 
+                   column_node->column_name);
+            return false;
+        }
+    }
+
+    return true;
+}
+
 
 /* Check alter table action. */
 static bool CheckForAlterTableAction(char *table_name, AlterTableAction *action) {
@@ -1382,7 +1403,8 @@ bool CheckForCreateTable(CreateTableNode *create_table_node) {
 /* Check for create index node. */
 bool CheckForCreateIndex(CreateIndexNode *create_index_node) {
     return CheckForTable(create_index_node->table_name) && 
-            CheckForIndex(create_index_node->index_name);
+            CheckForIndex(create_index_node->index_name) &&
+                CheckForIndexColumns(create_index_node->table_name, create_index_node->columns);
 }
 
 /* Check allowed to drop table. */
@@ -1408,6 +1430,17 @@ bool CheckForDropTable(char *table_name) {
     }
 
     return ret;
+}
+
+/* Check allowed to drop index. */
+bool checkForDropIndex(char *index_name) {
+    /* Check table exists. */
+    if (!check_index_exist(index_name)) {
+        db_log(ERROR, "Index '%s' not exists.", index_name);
+        return false;
+    }
+
+    return true;
 }
 
 /* Check for AlterTableNode. */

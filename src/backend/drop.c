@@ -33,7 +33,10 @@ void ExecuteDropTableStatement(char *table_name, DBResult *result) {
 
 /* Execute drop index statment. */
 void ExecuteDropIndexStatement(char *index_name, DBResult *result) {
-    if (IndexDrop(index_name)) {
+    if (
+        checkForDropIndex(index_name) && 
+        IndexDrop(index_name)
+    ) {
         result->success = true;
         result->rows = 0;
         result->message = FormatStr("Index '%s' droped successfully.", index_name);
