@@ -1326,7 +1326,9 @@ static bool TableIsRefered(Table *table, char *refer_table_name) {
         MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
         if (meta_column->sys_reserved)
             continue;
-        if (meta_column->column_type == T_REFERENCE && strcmp(meta_column->table_name, refer_table_name) == 0) {
+        if (meta_column->column_type == T_REFERENCE && 
+            strcmp(meta_column->table_name, refer_table_name) == 0) 
+        {
             db_log(ERROR , "Table '%s' is refered by column '%s' in table '%s', so can`t drop it.", 
                    refer_table_name, meta_column->column_name, table->meta_table->table_name);
             return true;
