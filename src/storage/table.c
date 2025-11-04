@@ -189,19 +189,11 @@ bool shrink_table(Oid oid, MetaTable *meta_table) {
     return true;
 }
 
-/* Append meta index into table. */
-bool TableAppendMetaIndex(Oid oid, MetaIndex *meta_index) {
-    Table *table = open_table_inner(oid);
-    Assert(table != NULL);
-    append_list(table->meta_indexs, meta_index);
-    return true;
-}
-
 /* Load meta index info by the toid. 
  * --------------------------------
  * Return list of meta index info of the table.
  * */
-static List *LoadMetaIndex(Oid toid) {
+static List *LoadMetaIndex(Oid toid, Table *table) {
     List *indexs;
     List *meta_indexs;
 
@@ -211,7 +203,7 @@ static List *LoadMetaIndex(Oid toid) {
     ListCell *lc;
     foreach (lc, indexs) {
         Oid oid = *(Oid *) lfirst(lc);
-        append_list(meta_indexs, IndexLoad(oid));
+        append_list(meta_indexs, IndexLoad(oid, table));
     }
 
     return meta_indexs;
@@ -276,7 +268,7 @@ Table *load_table(Oid oid) {
     table->root_page_num = ROOT_PAGE_NUM; 
     table->creator = getpid();
     table->meta_table = LoadMetaTable(oid);
-    table->meta_indexs = LoadMetaIndex(oid);
+    table->meta_indexs = LoadMetaIndex(oid, table);
     table->page_size = GetPageSize(oid);
     table->hoid = TableNameFindHeapOid(GET_TABLE_NAME(table));
     table->key_len = TableCalcPrimaryKeyLength(table);

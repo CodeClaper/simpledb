@@ -157,7 +157,7 @@ static void ExecuteDescribeStmt(Statement *statement, DBResult *result) {
     Assert(statement->statement_type == DESCRIBE_STMT);
     AutoBeginTransaction();
     List *list = exec_describe_statement(statement->describe_node);
-    if (list) {
+    if (list != NIL) {
         /* Success resule. */
         result->success = true;
         result->data = list;
@@ -170,7 +170,7 @@ static void ExecuteDescribeStmt(Statement *statement, DBResult *result) {
 static void ExecuteShowStmt(Statement *statement, DBResult *result) {
     Assert(statement->statement_type == SHOW_STMT);
     AutoBeginTransaction();
-    exec_show_statement(statement->show_node, result);
+    ExecuteShowStatement(statement->show_node, result);
 }
 
 /* Execute statment. */

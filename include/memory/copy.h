@@ -23,6 +23,9 @@ Row *copy_row(Row *row);
 /* Copy meta column. */
 MetaColumn *copy_meta_column(MetaColumn *meta_column);
 
+/* Copy meta index. */
+MetaIndex *copy_meta_index(MetaIndex *meta_index);
+
 /* Copy Table. */
 Table *copy_table(Table *table);
 

@@ -32,4 +32,5 @@ bool checkForDropIndex(char *index_name);
 /* Check for AlterTableNode. */
 bool CheckForAlterTable(AlterTableNode *alter_table);
 
-
+/* Check for ShowNode. */
+bool CheckForShow(ShowNode *show_node); 

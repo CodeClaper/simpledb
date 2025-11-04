@@ -76,7 +76,7 @@ typedef enum { SELECT_COLUMNS, SELECT_FUNCTION, SELECT_ALL } SelectItemType;
 typedef enum { LOGIC_CONDITION, EXEC_CONDITION } ConditionNodeType;
 
 /* ShowNodeType */
-typedef enum { SHOW_TABLES  } ShowNodeType;
+typedef enum { SHOW_TABLES, SHOW_IDNEXS } ShowNodeType;
 
 /* StatementType */
 typedef enum { 
@@ -150,8 +150,7 @@ typedef enum LockMode { RD_MODE, WR_MODE } LockMode;
 typedef enum { READ_UNCOMMITTED, READ_COMMITTED, REPEATABLE_READ, SERIALIZABLE } TransIsolationLevel;
 
 /* IndexType. */
-typedef enum IndexType { BTREE_INDEX, HASH_INDEX, GIN_INDEX } IndexType;
-
+typedef enum IndexType { BTREE_INDEX = 0, HASH_INDEX, GIN_INDEX } IndexType;
 
 /* DataTypeNode */
 typedef struct DataTypeNode {
@@ -559,6 +558,7 @@ typedef struct DescribeNode {
 /* ShowNode */
 typedef struct ShowNode {
     ShowNodeType type;
+    char *table_name;
 } ShowNode;
 
 /* AlterTableActionType */

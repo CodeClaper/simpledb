@@ -16,6 +16,12 @@ static inline char *GET_DATA_TYPE_NAME(DataType data_type) {
     return DATA_TYPE_NAMES[data_type];
 }
 
+/* Index type name. */
+static char *INDEX_TYPE_NAMES[] = { "BTREE", "HASH", "GIN" };
+static inline char *GET_INDEX_TYPE_NAME(IndexType type) {
+    return INDEX_TYPE_NAMES[type];
+}
+
 /* Default data length. */
 uint32_t DataTypeDefaultLength(DataType column_type);
 

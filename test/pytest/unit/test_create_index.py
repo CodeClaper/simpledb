@@ -1,4 +1,5 @@
 # create_test.py
+import re
 from support.db_cli import DbClient
 
 client = DbClient("127.0.0.1", 4083)    
@@ -15,6 +16,22 @@ def test_create_index():
     sql = "create index name_index on Student (name);"
     ret = client.execute(sql)
     assert ret["success"] == True
+
+## test show index.
+def test_show_indexs():
+    sql = "show index from Student;"
+    ret = client.execute(sql)
+    assert ret["success"] == True
+    assert ret["data"] == [
+        {"index_name": "name_index", "table_name": "Student", "is_unique": False, "index_type": "BTREE" }
+    ]
+
+## test show index from not exists table.
+def test_show_indexs_not_exits_table():
+    sql = "show index from Class;"
+    ret = client.execute(sql)
+    assert ret["success"] == False
+    assert ret["message"] == "Table 'Class' not exists."
 
 ## test not exists table.
 def test_create_not_exists_table():
@@ -37,7 +54,7 @@ def test_create_not_any_columns():
     assert ret["success"] == False
     assert ret["message"] == "syntax error, unexpected ')', expecting '(' or IDENTIFIER at or near [Student]."
 
-## test drop table
+# test drop table
 def test_drop_table():
     sql = "DROP TABLE Student; "
     ret = client.execute(sql)

@@ -1448,3 +1448,16 @@ bool CheckForAlterTable(AlterTableNode *alter_table) {
     return CheckForTable(alter_table->table_name)
             && CheckForAlterTableAction(alter_table->table_name, alter_table->action);
 }
+
+/* Check for ShowNode. */
+bool CheckForShow(ShowNode *show_node) {
+    switch (show_node->type) {
+        case SHOW_TABLES:
+            return true;
+        case SHOW_IDNEXS:
+            return CheckForTable(show_node->table_name);
+        default:
+            UNEXPECTED_VALUE(show_node->type);
+            return NULL;
+    }
+}

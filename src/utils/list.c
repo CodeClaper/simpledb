@@ -570,6 +570,14 @@ List *list_copy_deep(List *old_list) {
             }
             break;
         }
+        case NODE_META_INDEX: {
+            ListCell *lc;
+            foreach (lc, old_list) {
+                void *replica = copy_meta_index(lfirst(lc));
+                append_list(new_list, replica);
+            }
+            break;
+        }
         default:
             UNEXPECTED_VALUE("Not support this node to copy.");
     }

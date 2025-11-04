@@ -164,11 +164,10 @@ bool BtreeIndexCreate(MetaIndex *meta_index) {
 }
 
 /* Btree index load. */
-MetaIndex *BtreeIndexLoad(Oid oid) {
+MetaIndex *BtreeIndexLoad(Oid oid, Table *table) {
     Buffer buffer;
     void *root;
     Object object;
-    Table *table;
     MetaIndex *meta_index;
     
     meta_index = instance(MetaIndex);
@@ -177,7 +176,6 @@ MetaIndex *BtreeIndexLoad(Oid oid) {
     root = GetBufferPage(buffer);
 
     object = OidFindObject(oid);
-    table = open_table_inner(object.toid);
 
     meta_index->oid = oid;
     meta_index->tid = object.toid;

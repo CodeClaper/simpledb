@@ -429,6 +429,13 @@ show_statement:
             node->type = SHOW_TABLES;
             $$ = node;
         }
+    | SHOW INDEX FROM table end
+        {
+            ShowNode *node = instance(ShowNode);   
+            node->type = SHOW_IDNEXS;
+            node->table_name = $4;
+            $$ = node;
+        }
     ;
 /* Alter Table Statement. */
 alter_table_statement:

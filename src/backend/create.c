@@ -29,6 +29,8 @@
 #include "log.h"
 #include "table.h"
 #include "index.h"
+#include "tablelock.h"
+#include "tablereg.h"
 #include "tablecache.h"
 #include "heaptable.h"
 #include "systable.h"
@@ -321,6 +323,23 @@ static bool SaveIndexObject(Oid oid, Oid toid, char *index_name) {
     return SaveObject(entity);
 }
 
+/* Try to catpture table.
+ * If these other session on the table, wait and test. 
+ * */
+static void BeforeCaptureTable(Oid oid) {
+    try_acquire_table(oid);
+    /* Wait until capture the table exclusively. */
+    while (if_shared_table(oid)) {
+        usleep(100);
+    }
+}
+
+/* Release Table. */
+static void AfterReleaseTable(Oid oid) {
+    RemoveTableCache(oid);
+    try_release_table(oid);
+}
+
 /* Execute create table statement. */
 void ExecuteCreateTableStatement(CreateTableNode *create_table_node, DBResult *result) {
     Oid oid = FindNextOid();
@@ -382,15 +401,15 @@ void ExecuteCreateIndexStatement(CreateIndexNode *create_index_node, DBResult *r
     
     toid = GET_TABLE_OID(table);
     meta_index = GenerateMetaIndexForCreateIndex(oid, table, create_index_node);
+
+    BeforeCaptureTable(toid);
     
     /* Will do these: 
      * (1) Create index table.
      * (2) Save table object.
-     * (3) Append meta index into table.
      * */
     if (IndexCreate(meta_index) && 
-        SaveIndexObject(oid, toid, create_index_node->index_name) &&
-        TableAppendMetaIndex(toid, meta_index)
+        SaveIndexObject(oid, toid, create_index_node->index_name)
     ) {
         result->success = true;
         result->rows = 0;
@@ -398,4 +417,6 @@ void ExecuteCreateIndexStatement(CreateIndexNode *create_index_node, DBResult *r
                                     create_index_node->index_name);
         db_log(SUCCESS, "Index '%s' created successfully.", create_index_node->index_name);
     }
+
+    AfterReleaseTable(toid);
 }

@@ -224,6 +224,25 @@ MetaTable *copy_meta_table(MetaTable *meta_table) {
     return duplica;
 }
 
+/* Copy meta index. */
+MetaIndex *copy_meta_index(MetaIndex *meta_index) {
+    if (meta_index == NULL)
+        return NULL;
+
+    MetaIndex *duplica = instance(MetaIndex);
+    duplica->oid = meta_index->oid;
+    duplica->tid = meta_index->tid;
+    duplica->type = meta_index->type;
+    duplica->is_unique = meta_index->is_unique;
+    duplica->index_name = dstrdup(meta_index->index_name);
+    duplica->key_len = meta_index->key_len;
+    duplica->value_len = meta_index->value_len;
+    duplica->column_size = meta_index->column_size;
+    duplica->meta_columns = list_copy_deep(meta_index->meta_columns);
+
+    return duplica;
+}
+
 /* Copy BufferDesc. */
 BufferDesc *copy_buffer_desc(BufferDesc *buff_desc) {
     if (buff_desc == NULL)
@@ -244,6 +263,7 @@ Table *copy_table(Table *table) {
     duplica->hoid = table->hoid;
     duplica->root_page_num = table->root_page_num;
     duplica->meta_table = copy_meta_table(table->meta_table);
+    duplica->meta_indexs = list_copy_deep(table->meta_indexs);
     duplica->creator = table->creator;
     duplica->page_size = table->page_size;
     duplica->key_len = table->key_len;

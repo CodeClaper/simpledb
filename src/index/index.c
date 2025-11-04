@@ -10,7 +10,7 @@
 /* Index methods. */
 struct IndexMethods {
     bool (*create) (MetaIndex *meta_index);
-    MetaIndex *(*load) (Oid oid);
+    MetaIndex *(*load) (Oid oid, Table *table);
     bool (*drop) (Oid oid);
 };
 
@@ -49,9 +49,9 @@ bool IndexCreate(MetaIndex *meta_index) {
 }
 
 /* Index load. */
-MetaIndex *IndexLoad(Oid oid) {
+MetaIndex *IndexLoad(Oid oid, Table *table) {
     IndexType type = GetIndexType(oid);
-    return methods[type].load(oid);
+    return methods[type].load(oid, table);
 }
 
 static bool IndexDropInner(Oid oid) {

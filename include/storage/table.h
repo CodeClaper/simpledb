@@ -27,9 +27,6 @@ bool table_file_exist(char *table_file_path);
 /* Get table file path. */
 char *table_file_path(Oid refId);
 
-/* Append meta index into table. */
-bool TableAppendMetaIndex(Oid oid, MetaIndex *meta_index);
-
 /* Load Table from disk. */
 Table *load_table(Oid oid);
 
