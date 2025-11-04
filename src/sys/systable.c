@@ -584,7 +584,7 @@ static Row *ObjectConvertRow(Object entity) {
     }
     
     /* Make up the reserved columns. */
-    makeup_reserved_columns(row, SYS_TABLE_NAME);
+    MakeupReservedColumns(row, SYS_TABLE_NAME);
 
     return row;
 }
@@ -598,7 +598,7 @@ bool SaveObject(Object entity) {
     row = ObjectConvertRow(entity);
     sysTable = open_table_inner(SYS_ROOT_OID); 
     Assert(sysTable);
-    refer = insert_one_row(sysTable, row);
+    refer = InsertForRow(sysTable, row);
 
     dfree(row);
     return refer != NULL;

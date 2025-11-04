@@ -185,7 +185,7 @@ static void HeapDeleteXLog(Refer *refer, TransEntry *transaction) {
     *(Xid *)expired_xid_col->value = 0;
 
     /* Re-insert. */
-    insert_one_row(table, newRow);
+    InsertForRow(table, newRow);
 
     free_row(newRow);
 }
@@ -213,7 +213,7 @@ static void HeadUpdateDeleteXlog(Refer *refer, TransEntry *transaction) {
     add_refer_update_lock(nRefer);
 
     /* Re-insert. */
-    insert_one_row(table, newRow);
+    InsertForRow(table, newRow);
 
     /* Free update refer lock. */
     free_refer_update_lock(nRefer);

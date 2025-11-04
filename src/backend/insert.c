@@ -106,7 +106,7 @@ static KeyValue *NewExpiredXidKeyValue(char *table_name) {
 }
 
 /* Makeup the system reserved column. */
-void makeup_reserved_columns(Row *row, char *table_name) {
+void MakeupReservedColumns(Row *row, char *table_name) {
     /* Append sys_id column key value. */
     append_list(row->data, NewSysIdKeyValue(table_name));
     /* Append created_xid column key value. */
@@ -146,7 +146,7 @@ static Row *GenerateInsertRowForAllInner(MetaTable *meta_table, List *value_item
     }
 
     /* Make up the reserved columns. */
-    makeup_reserved_columns(row, meta_table->table_name);
+    MakeupReservedColumns(row, meta_table->table_name);
     
     return row;
 }
@@ -215,7 +215,7 @@ static Row *GenerateInsertRowForPartInner(MetaTable *meta_table, List *column_li
     }
 
     /* Make up the reserved columns. */
-    makeup_reserved_columns(row, meta_table->table_name);
+    MakeupReservedColumns(row, meta_table->table_name);
 
     return row;
 }
@@ -273,7 +273,7 @@ static Row *SelectRowToInsertRow(Row *select_row, Table *table) {
     }
 
     /* Make up the reserved columns. */
-    makeup_reserved_columns(insert_row, GET_TABLE_NAME(table));
+    MakeupReservedColumns(insert_row, GET_TABLE_NAME(table));
 
     return insert_row;
 }
@@ -336,7 +336,7 @@ retry:
  * ---------------
  * Return the row refer, 
  * Throw error by log if fail. */
-Refer *insert_one_row(Table *table, Row *row) {
+Refer *InsertForRow(Table *table, Row *row) {
     Oid oid;
     DataType ptype;
     void *key, *tuple, *index_value;
@@ -381,7 +381,7 @@ Refer *insert_one_row(Table *table, Row *row) {
 /* Insert for values case. 
  * ----------------------
  * Return list of Refer. */
-List *insert_for_values(InsertNode *insert_node) {
+List *InsertForValues(InsertNode *insert_node) {
     Table *table;
     List *row_list, *refer_list;
 
@@ -399,7 +399,7 @@ List *insert_for_values(InsertNode *insert_node) {
     ListCell *lc;
     foreach (lc, row_list) {
         Row *row = lfirst(lc);
-        Refer *refer = insert_one_row(table, row);
+        Refer *refer = InsertForRow(table, row);
         append_list(refer_list, refer);
     }
 
@@ -410,7 +410,7 @@ List *insert_for_values(InsertNode *insert_node) {
 }
 
 /* Insert for query spec case. */
-static List *insert_for_query_spec(InsertNode *insert_node) {
+static List *InsertForQuerySpec(InsertNode *insert_node) {
     /* Check if table exists. */
     Table *table = open_table(insert_node->table_name);
     if (!table) {
@@ -438,7 +438,7 @@ static List *insert_for_query_spec(InsertNode *insert_node) {
         QueueCell *qc;
         qforeach (qc, select_result->rows) {
             Row *insert_row = SelectRowToInsertRow((Row *)qfirst(qc), table);
-            Refer *refer = insert_one_row(table, insert_row);
+            Refer *refer = InsertForRow(table, insert_row);
             append_list(list, refer);
             free_row(insert_row);
         }
@@ -452,7 +452,7 @@ static List *insert_for_query_spec(InsertNode *insert_node) {
  * --------------------------
  * Return Refer List if it excutes successfully,
  * otherwise, return NULL. */
-List *exec_insert_statement(InsertNode *insert_node) {
+List *ExecuteInsertStatement(InsertNode *insert_node) {
     /* Check if insert node valid. */
     if (!CheckForInsert(insert_node)) 
         return NULL;
@@ -462,12 +462,12 @@ List *exec_insert_statement(InsertNode *insert_node) {
     switch (values_or_query_spec->type) {
         case VQ_VALUES: {
             /* Insert with values. */
-            return insert_for_values(insert_node);
+            return InsertForValues(insert_node);
         }
         case VQ_QUERY_SPEC: {
             /* For query spec, there is no refer. 
              * Note, maybe used in multi-values which will be supported. */
-            return insert_for_query_spec(insert_node);
+            return InsertForQuerySpec(insert_node);
         }
         default: {
             db_log(ERROR, "Unknown ValuesOrQuerySpecNode type.");

@@ -1,5 +1,4 @@
 # create_test.py
-import re
 from support.db_cli import DbClient
 
 client = DbClient("127.0.0.1", 4083)    

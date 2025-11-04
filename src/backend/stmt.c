@@ -119,7 +119,7 @@ static void ExecuteAlterTableStmt(Statement *stmt, DBResult *result) {
 static void ExecuteInsertStmt(Statement *stmt, DBResult *result) {
     Assert(stmt->statement_type == INSERT_STMT);
     AutoBeginTransaction();
-    List *list = exec_insert_statement(stmt->insert_node);
+    List *list = ExecuteInsertStatement(stmt->insert_node);
     if (list) {
         result->success = true;
         result->rows = len_list(list);
