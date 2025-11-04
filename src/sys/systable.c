@@ -438,11 +438,16 @@ char *OidFindRelName(Oid oid) {
  * Return list of index oid.
  * */
 List *ToidFindIndexs(Oid toid) {
+
     SearchConditionNode *condition;
     SelectResult *result;
     List *indexs;
     
     indexs = create_list(NODE_VOID);
+
+    /* Systable no indexs. */
+    if (IS_SYS_ROOT(toid)) return indexs;
+
     condition = ToidTypeConvertCondition(toid, OINDEX);
     result = new_select_result(SELECT_STMT, SYS_TABLE_NAME, true);
 

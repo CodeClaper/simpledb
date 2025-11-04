@@ -5,7 +5,7 @@
 bool IndexCreate(MetaIndex *meta_index);
 
 /* Index load. */
-MetaIndex *IndexLoad(char *index_name);
+MetaIndex *IndexLoad(Oid oid);
 
 /* Index drop. */
 bool IndexDrop(char *index_name);

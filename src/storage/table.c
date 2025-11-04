@@ -16,6 +16,7 @@
 #include "sys.h"
 #include "systable.h"
 #include "mmgr.h"
+#include "copy.h"
 #include "free.h"
 #include "tablecache.h"
 #include "buftable.h"
@@ -188,15 +189,94 @@ bool shrink_table(Oid oid, MetaTable *meta_table) {
     return true;
 }
 
+/* Append meta index into table. */
+bool TableAppendMetaIndex(Oid oid, MetaIndex *meta_index) {
+    Table *table = open_table_inner(oid);
+    Assert(table != NULL);
+    append_list(table->meta_indexs, meta_index);
+    return true;
+}
+
+/* Load meta index info by the toid. 
+ * --------------------------------
+ * Return list of meta index info of the table.
+ * */
+static List *LoadMetaIndex(Oid toid) {
+    List *indexs;
+    List *meta_indexs;
+
+    indexs = ToidFindIndexs(toid);
+    meta_indexs = create_list(NODE_META_INDEX);
+
+    ListCell *lc;
+    foreach (lc, indexs) {
+        Oid oid = *(Oid *) lfirst(lc);
+        append_list(meta_indexs, IndexLoad(oid));
+    }
+
+    return meta_indexs;
+}
+
+/* Load column meta info by index. */
+static MetaColumn *LoadMetaColumnByIndex(void *root_node, uint32_t index, uint32_t offset) {
+    void *destination = RootNodeGetMetaColumn(root_node, index);
+    MetaColumn *meta_column = MetaColumnDeseriable(destination);
+    if (meta_column->default_value_type == DEFAULT_VALUE) {
+        void *default_value_dest = RootNodeGetDefaultValue(root_node);
+        meta_column->default_value = copy_value(default_value_dest + offset, meta_column->column_type);
+    }
+    return meta_column;
+}
+
+/* Load table meta info. */
+MetaTable *LoadMetaTable(Oid oid) {
+    Buffer buffer;
+    void *root_node;
+    uint32_t column_size;
+    MetaTable *meta_table;
+
+    buffer = ReadBuffer(oid, ROOT_PAGE_NUM);
+    LockBuffer(buffer, RW_READERS);
+    root_node = GetBufferPage(buffer);
+    column_size = RootNodeGetColumnSize(root_node);
+
+    meta_table = instance(MetaTable);
+    meta_table->table_name = IS_SYS_ROOT(oid) ? dstrdup(SYS_TABLE_NAME) : OidFindRelName(oid);
+    meta_table->column_size = 0;
+    meta_table->all_column_size = 0;
+    meta_table->meta_columns = create_list(NODE_META_COLUMN);
+
+    uint32_t offset = 0;
+    uint32_t i;
+    for (i = 0; i < column_size; i++) {
+        MetaColumn *current = LoadMetaColumnByIndex(root_node, i, offset);
+        memcpy(current->own_table_name, meta_table->table_name, MAX_COLUMN_NAME_LEN);
+        append_list(meta_table->meta_columns, current);
+        /* Skip to system reserved column. */
+        if (!current->sys_reserved)
+            meta_table->column_size++;
+        meta_table->all_column_size++;
+        current->offset = offset;
+        offset += current->column_length;
+    }
+
+    Assert(meta_table->all_column_size == column_size);
+
+    /* Release the buffer. */
+    UnlockBuffer(buffer);
+    ReleaseBuffer(buffer);
+
+    return meta_table;
+}
+
 /* Load Table from disk. */
 Table *load_table(Oid oid) {
-    /* New table. */
     Table *table = instance(Table);
-    /* Define root page is first page. */
     table->oid = oid;
     table->root_page_num = ROOT_PAGE_NUM; 
     table->creator = getpid();
-    table->meta_table = GenerateMetaTable(oid);
+    table->meta_table = LoadMetaTable(oid);
+    table->meta_indexs = LoadMetaIndex(oid);
     table->page_size = GetPageSize(oid);
     table->hoid = TableNameFindHeapOid(GET_TABLE_NAME(table));
     table->key_len = TableCalcPrimaryKeyLength(table);

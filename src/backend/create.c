@@ -334,8 +334,7 @@ void ExecuteCreateTableStatement(CreateTableNode *create_table_node, DBResult *r
     if (meta_table == NULL) 
         return;
 
-    /* Create table. 
-     * ---------------
+    /* Will do these: 
      * (1) Create table.
      * (2) Save table object.
      * (3) Create heap table.
@@ -384,13 +383,14 @@ void ExecuteCreateIndexStatement(CreateIndexNode *create_index_node, DBResult *r
     toid = GET_TABLE_OID(table);
     meta_index = GenerateMetaIndexForCreateIndex(oid, table, create_index_node);
     
-    /* Create index. 
-     * ---------------
+    /* Will do these: 
      * (1) Create index table.
      * (2) Save table object.
+     * (3) Append meta index into table.
      * */
     if (IndexCreate(meta_index) && 
-        SaveIndexObject(oid, toid, create_index_node->index_name)
+        SaveIndexObject(oid, toid, create_index_node->index_name) &&
+        TableAppendMetaIndex(toid, meta_index)
     ) {
         result->success = true;
         result->rows = 0;

@@ -48,15 +48,9 @@ bool IndexCreate(MetaIndex *meta_index) {
     return methods[meta_index->type].create(meta_index);
 }
 
-
 /* Index load. */
-MetaIndex *IndexLoad(char *index_name) {
-    Oid oid;
-    IndexType type;
-
-    oid = IndexNameFindOid(index_name);
-    type = GetIndexType(oid);
-
+MetaIndex *IndexLoad(Oid oid) {
+    IndexType type = GetIndexType(oid);
     return methods[type].load(oid);
 }
 

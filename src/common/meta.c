@@ -431,17 +431,6 @@ uint32_t TableCalcIndexLength(Table *table) {
     return value_len;
 }
 
-/* Get column meta info by index. */
-static MetaColumn *GetMetaColumnByIndex(void *root_node, uint32_t index, uint32_t offset) {
-    void *destination = RootNodeGetMetaColumn(root_node, index);
-    MetaColumn *meta_column = MetaColumnDeseriable(destination);
-    if (meta_column->default_value_type == DEFAULT_VALUE) {
-        void *default_value_dest = RootNodeGetDefaultValue(root_node);
-        meta_column->default_value = copy_value(default_value_dest + offset, meta_column->column_type);
-    }
-    return meta_column;
-}
-
 /* Get key type name. */
 char *GetKeyTypeName(MetaColumn *meta_column) {
     if (meta_column->is_primary) 
@@ -531,39 +520,6 @@ MetaColumn *NameFindAllMetaColumn(MetaTable *meta_table, char *name) {
     return NULL;
 }
 
-/* Generate table meta info. */
-MetaTable *GenerateMetaTable(Oid oid) {
-    MetaTable *meta_table = instance(MetaTable);
-    Buffer buffer = ReadBuffer(oid, ROOT_PAGE_NUM);
-    void *root_node = GetBufferPage(buffer);
-    uint32_t column_size = RootNodeGetColumnSize(root_node);
-
-    meta_table->table_name = IS_SYS_ROOT(oid) ? dstrdup(SYS_TABLE_NAME) : OidFindRelName(oid);
-    meta_table->column_size = 0;
-    meta_table->all_column_size = 0;
-    meta_table->meta_columns = create_list(NODE_META_COLUMN);
-
-    uint32_t offset = 0;
-    uint32_t i;
-    for (i = 0; i < column_size; i++) {
-        MetaColumn *current = GetMetaColumnByIndex(root_node, i, offset);
-        memcpy(current->own_table_name, meta_table->table_name, MAX_COLUMN_NAME_LEN);
-        append_list(meta_table->meta_columns, current);
-        /* Skip to system reserved column. */
-        if (!current->sys_reserved)
-            meta_table->column_size++;
-        meta_table->all_column_size++;
-        current->offset = offset;
-        offset += current->column_length;
-    }
-
-    Assert(meta_table->all_column_size == column_size);
-
-    /* Release the buffer. */
-    ReleaseBuffer(buffer);
-
-    return meta_table;
-}
 
 /* Check if table exists the column. */
 bool ColumnExistsInTable(char *column_name, char *table_name) {

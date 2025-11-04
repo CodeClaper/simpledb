@@ -144,6 +144,16 @@ void free_meta_table(MetaTable *meta_table) {
     }
 }
 
+/* Freee meta index. */
+void free_meta_index(MetaIndex *meta_index) {
+    if (meta_index) {
+        if (meta_index->index_name)
+            dfree(meta_index->index_name);
+        free_list_deep(meta_index->meta_columns);
+        dfree(meta_index);
+    }
+}
+
 /* Free column */
 void free_column_node(ColumnNode *column_node) {
     if (column_node) {

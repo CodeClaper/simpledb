@@ -10,6 +10,8 @@
 #include "ltbase.h"
 #include "log.h"
 #include "mmgr.h"
+#include "meta.h"
+#include "bufmgr.h"
 #include "fdesc.h"
 #include "systable.h"
 
@@ -163,7 +165,42 @@ bool BtreeIndexCreate(MetaIndex *meta_index) {
 
 /* Btree index load. */
 MetaIndex *BtreeIndexLoad(Oid oid) {
-    return NULL;
+    Buffer buffer;
+    void *root;
+    Object object;
+    Table *table;
+    MetaIndex *meta_index;
+    
+    meta_index = instance(MetaIndex);
+    buffer = ReadBuffer(oid, ROOT_PAGE_NUM);
+    LockBuffer(buffer, RW_READERS);
+    root = GetBufferPage(buffer);
+
+    object = OidFindObject(oid);
+    table = open_table_inner(object.toid);
+
+    meta_index->oid = oid;
+    meta_index->tid = object.toid;
+    meta_index->index_name = dstrdup(object.relname);
+    meta_index->type = BinRootNodeGetIndexType(root);
+    meta_index->is_unique = BinRootNodeIsUnique(root);
+    meta_index->column_size = BinRootNodeGetColumnSize(root);
+    meta_index->meta_columns = create_list(NODE_META_COLUMN);
+
+    for (int i = 0; i < meta_index->column_size; i++) {
+        char *column_name;
+        MetaColumn *meta_column;
+
+        column_name = BinRootNodeGetColumnName(root, i);
+        meta_column = NameFindMetaColumn(table->meta_table, column_name);
+
+        append_list(meta_index->meta_columns, meta_column);
+    }
+
+    UnlockBuffer(buffer);
+    ReleaseBuffer(buffer);
+
+    return meta_index;
 }
 
 /* Btree index drop. */

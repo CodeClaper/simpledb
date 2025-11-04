@@ -28,6 +28,9 @@ void free_meta_column(MetaColumn *meta_column);
 /* Free meta table. */
 void free_meta_table(MetaTable *meta_table);
 
+/* Freee meta index. */
+void free_meta_index(MetaIndex *meta_index);
+
 /* Free column */
 void free_column_node(ColumnNode *column_node);
 

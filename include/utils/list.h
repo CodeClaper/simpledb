@@ -23,6 +23,7 @@ typedef enum NodeTag {
     NODE_PAGE,
     NODE_BUFFER_DESC,
     NODE_META_COLUMN,
+    NODE_META_INDEX,
     NODE_TABLE,
     NODE_STATEMENT,
     NODE_DB_RESULT,

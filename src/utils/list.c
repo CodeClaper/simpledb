@@ -671,6 +671,13 @@ void free_list_deep(List *list) {
                 }
                 break;
             }
+            case NODE_META_INDEX: {
+                ListCell *lc;
+                foreach (lc, list) {
+                    free_meta_index(lfirst(lc));
+                }
+                break;
+            }
             case NODE_TABLE: {
                 ListCell *lc;
                 foreach (lc, list) {
