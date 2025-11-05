@@ -14,6 +14,7 @@
 #include "bufmgr.h"
 #include "fdesc.h"
 #include "refer.h"
+#include "compare.h"
 #include "systable.h"
 
 /* Set bin root node index type. */
@@ -43,7 +44,7 @@ static bool BinRootNodeIsUnique(void *root_node) {
 }
 
 /* Get bin root node column size. */
-static uint32_t BinRootNodeGetColumnSize(void *root_node) {
+uint32_t BinRootNodeGetColumnSize(void *root_node) {
     Assert(NodeIsRoot(root_node));
     return *(uint32_t *) (root_node + COMMON_NODE_HEADER_SIZE + BIN_ROOT_NODE_INDEX_TYPE_SIZE + BIN_ROOT_NODE_IS_UNIQUE_SIZE);
 }
@@ -60,13 +61,157 @@ static char *BinRootNodeGetColumnName(void *root_node, uint32_t index) {
     return (char *) (root_node + COMMON_NODE_HEADER_SIZE + BIN_ROOT_NODE_INDEX_TYPE_SIZE + BIN_ROOT_NODE_IS_UNIQUE_SIZE + BIN_ROOT_NODE_COLUMN_SIZE_SIZE + BIN_ROOT_NODE_COLUMN_NAME_SIZE * index);
 }
 
+/* Set bin root node column name. */
 static void BinRootNodeSetColumnName(void *root_node, uint32_t index, char *column_name) {
     Assert(NodeIsRoot(root_node));
     strcpy((root_node + COMMON_NODE_HEADER_SIZE + BIN_ROOT_NODE_INDEX_TYPE_SIZE + BIN_ROOT_NODE_IS_UNIQUE_SIZE + BIN_ROOT_NODE_COLUMN_SIZE_SIZE + BIN_ROOT_NODE_COLUMN_NAME_SIZE * index), column_name);
 }
 
+/* Get bin internal node keys num. */
+uint32_t BinInternalNodeGetKeysNum(void *internal_node) {
+    if (NodeIsRoot(internal_node)) {
+        uint32_t column_size = BinRootNodeGetColumnSize(internal_node);
+        return *(uint32_t *)(internal_node + COMMON_NODE_HEADER_SIZE  + BIN_ROOT_NODE_INDEX_TYPE_SIZE  + BIN_ROOT_NODE_IS_UNIQUE_SIZE  + BIN_ROOT_NODE_COLUMN_SIZE_SIZE + 
+                            BIN_ROOT_NODE_COLUMN_NAME_SIZE * column_size);
+    } else
+        return *(uint32_t *)(internal_node + KEYS_NUM_OFFSET);
+}
+
+/* Set bin internal node keys num. */
+void BinInternalNodeSetKeysNum(void *internal_node, uint32_t keys_num) {
+    if (NodeIsRoot(internal_node)) {
+        uint32_t column_size = BinRootNodeGetColumnSize(internal_node);
+        *(uint32_t *)(internal_node + COMMON_NODE_HEADER_SIZE  + BIN_ROOT_NODE_INDEX_TYPE_SIZE  + BIN_ROOT_NODE_IS_UNIQUE_SIZE  + BIN_ROOT_NODE_COLUMN_SIZE_SIZE + 
+                    BIN_ROOT_NODE_COLUMN_NAME_SIZE * column_size) = keys_num;
+    } else
+        *(uint32_t *)(internal_node + KEYS_NUM_OFFSET) = keys_num;
+}
+
+/* Increase bin internal node keys num. */
+void BinInternalNodeIncreaseKeysNum(void *internal_node) {
+    if (NodeIsRoot(internal_node)) {
+        uint32_t column_size = BinRootNodeGetColumnSize(internal_node);
+        (*(uint32_t *)(internal_node + COMMON_NODE_HEADER_SIZE  + BIN_ROOT_NODE_INDEX_TYPE_SIZE  + BIN_ROOT_NODE_IS_UNIQUE_SIZE  + BIN_ROOT_NODE_COLUMN_SIZE_SIZE + 
+                      BIN_ROOT_NODE_COLUMN_NAME_SIZE * column_size))++;
+    } else
+        (*(uint32_t *)(internal_node + KEYS_NUM_OFFSET))++;
+}
+
+/* Get bin internal node next sibling. */
+uint32_t BinInternalNodeGetNextSibling(void *internal_node) {
+    if (NodeIsRoot(internal_node)) {
+        uint32_t column_size = BinRootNodeGetColumnSize(internal_node);
+        return *(uint32_t *)(internal_node + COMMON_NODE_HEADER_SIZE  + BIN_ROOT_NODE_INDEX_TYPE_SIZE  + BIN_ROOT_NODE_IS_UNIQUE_SIZE  + BIN_ROOT_NODE_COLUMN_SIZE_SIZE + 
+                            BIN_ROOT_NODE_COLUMN_NAME_SIZE * column_size + KEYS_NUM_SIZE);
+    } else
+        return *(uint32_t *)(internal_node + INTERNAL_NODE_NEXT_SIBLING_OFFSET);
+}
+
+/* Get bin internal node next sibling. */
+void BinInternalNodeSetNextSibling(void *internal_node, uint32_t sibling) {
+    if (NodeIsRoot(internal_node)) {
+        uint32_t column_size = BinRootNodeGetColumnSize(internal_node);
+        *(uint32_t *)(internal_node + COMMON_NODE_HEADER_SIZE  + BIN_ROOT_NODE_INDEX_TYPE_SIZE  + BIN_ROOT_NODE_IS_UNIQUE_SIZE  + BIN_ROOT_NODE_COLUMN_SIZE_SIZE + 
+                      BIN_ROOT_NODE_COLUMN_NAME_SIZE * column_size + KEYS_NUM_SIZE) = sibling;
+    } else
+        *(uint32_t *)(internal_node + INTERNAL_NODE_NEXT_SIBLING_OFFSET) = sibling;
+}
+
+/* Get bin internal node next sibling. */
+void *BinInternalNodeGetRightKey(void *internal_node) {
+    if (NodeIsRoot(internal_node)) {
+        uint32_t column_size = BinRootNodeGetColumnSize(internal_node);
+        return (internal_node + COMMON_NODE_HEADER_SIZE  + BIN_ROOT_NODE_INDEX_TYPE_SIZE  + BIN_ROOT_NODE_IS_UNIQUE_SIZE  + BIN_ROOT_NODE_COLUMN_SIZE_SIZE + 
+                BIN_ROOT_NODE_COLUMN_NAME_SIZE * column_size + KEYS_NUM_SIZE + INTERNAL_NODE_NEXT_SIBLING_SIZE + RIGHT_CHILD_SIZE);
+    } else
+        return (internal_node + RIGHT_CHILD_OFFSET + RIGHT_CHILD_SIZE);
+}
+
+/* Set bin internal node next sibling. */
+void BinInternalNodeSetRightKey(void *internal_node, uint32_t key_len, void *right_key) {
+    if (NodeIsRoot(internal_node)) {
+        uint32_t column_size = BinRootNodeGetColumnSize(internal_node);
+        memcpy(internal_node + COMMON_NODE_HEADER_SIZE  + BIN_ROOT_NODE_INDEX_TYPE_SIZE  + BIN_ROOT_NODE_IS_UNIQUE_SIZE  + BIN_ROOT_NODE_COLUMN_SIZE_SIZE + 
+               BIN_ROOT_NODE_COLUMN_NAME_SIZE * column_size + KEYS_NUM_SIZE + INTERNAL_NODE_NEXT_SIBLING_SIZE + RIGHT_CHILD_SIZE, right_key, key_len);
+    } else
+        memcpy(internal_node + RIGHT_CHILD_OFFSET + RIGHT_CHILD_SIZE, right_key, key_len);
+}
+
+/* Get bin internal node next sibling. */
+uint32_t BinInternalNodeGetRightNum(void *internal_node) {
+    if (NodeIsRoot(internal_node)) {
+        uint32_t column_size = BinRootNodeGetColumnSize(internal_node);
+        return *(uint32_t *)(internal_node + COMMON_NODE_HEADER_SIZE  + BIN_ROOT_NODE_INDEX_TYPE_SIZE  + BIN_ROOT_NODE_IS_UNIQUE_SIZE  + BIN_ROOT_NODE_COLUMN_SIZE_SIZE + 
+                             BIN_ROOT_NODE_COLUMN_NAME_SIZE * column_size + KEYS_NUM_SIZE + INTERNAL_NODE_NEXT_SIBLING_SIZE);
+    } else
+        return *(uint32_t *)(internal_node + RIGHT_CHILD_OFFSET);
+}
+
+/* Set bin internal node next sibling. */
+void BinInternalNodeSetRightNum(void *internal_node, uint32_t right_num) {
+    if (NodeIsRoot(internal_node)) {
+        uint32_t column_size = BinRootNodeGetColumnSize(internal_node);
+        *(uint32_t *)(internal_node + COMMON_NODE_HEADER_SIZE  + BIN_ROOT_NODE_INDEX_TYPE_SIZE  + BIN_ROOT_NODE_IS_UNIQUE_SIZE  + BIN_ROOT_NODE_COLUMN_SIZE_SIZE + 
+                      BIN_ROOT_NODE_COLUMN_NAME_SIZE * column_size + KEYS_NUM_SIZE + INTERNAL_NODE_NEXT_SIBLING_SIZE) = right_num;
+    } else
+        *(uint32_t *)(internal_node + RIGHT_CHILD_OFFSET) = right_num;
+}
+
+/* Get bin internal node cell key. */
+void *BinInternalNodeGetCellKey(void *internal_node, uint32_t key_len, uint32_t index) {
+    uint32_t cell_len = key_len + INTERNAL_NODE_CELL_CHILD_SIZE;
+    if (NodeIsRoot(internal_node)) {
+        uint32_t column_size = BinRootNodeGetColumnSize(internal_node);
+        return (internal_node + COMMON_NODE_HEADER_SIZE  + BIN_ROOT_NODE_INDEX_TYPE_SIZE  + BIN_ROOT_NODE_IS_UNIQUE_SIZE  + BIN_ROOT_NODE_COLUMN_SIZE_SIZE + 
+                BIN_ROOT_NODE_COLUMN_NAME_SIZE * column_size + KEYS_NUM_SIZE + INTERNAL_NODE_NEXT_SIBLING_SIZE + RIGHT_CHILD_SIZE + key_len + cell_len * index + INTERNAL_NODE_CELL_CHILD_SIZE);
+    } else
+        return (internal_node + COMMON_NODE_HEADER_SIZE + KEYS_NUM_SIZE + INTERNAL_NODE_NEXT_SIBLING_SIZE + RIGHT_CHILD_SIZE + key_len + cell_len * index + INTERNAL_NODE_CELL_CHILD_SIZE);
+}
+
+/* Set bin internal node cell key. */
+void BinInternalNodeSetCellKey(void *internal_node, uint32_t key_len, uint32_t index, void *cell_key) {
+    uint32_t cell_len = key_len + INTERNAL_NODE_CELL_CHILD_SIZE;
+    if (NodeIsRoot(internal_node)) {
+        uint32_t column_size = BinRootNodeGetColumnSize(internal_node);
+        memcpy(internal_node + COMMON_NODE_HEADER_SIZE  + BIN_ROOT_NODE_INDEX_TYPE_SIZE  + BIN_ROOT_NODE_IS_UNIQUE_SIZE  + BIN_ROOT_NODE_COLUMN_SIZE_SIZE + 
+               BIN_ROOT_NODE_COLUMN_NAME_SIZE * column_size + KEYS_NUM_SIZE + INTERNAL_NODE_NEXT_SIBLING_SIZE + RIGHT_CHILD_SIZE + key_len + cell_len * index + INTERNAL_NODE_CELL_CHILD_SIZE, cell_key, key_len);
+    } else
+        memcpy(internal_node + COMMON_NODE_HEADER_SIZE + KEYS_NUM_SIZE + INTERNAL_NODE_NEXT_SIBLING_SIZE + RIGHT_CHILD_SIZE + key_len + cell_len * index + INTERNAL_NODE_CELL_CHILD_SIZE, cell_key, key_len);
+}
+
+/* Get bin internal node cell value. */
+uint32_t BinInternalNodeGetCellValue(void *internal_node, uint32_t key_len, uint32_t index) {
+    uint32_t cell_len = key_len + INTERNAL_NODE_CELL_CHILD_SIZE;
+    if (NodeIsRoot(internal_node)) {
+        uint32_t column_size = BinRootNodeGetColumnSize(internal_node);
+        return *(uint32_t *)(internal_node + COMMON_NODE_HEADER_SIZE  + BIN_ROOT_NODE_INDEX_TYPE_SIZE  + BIN_ROOT_NODE_IS_UNIQUE_SIZE  + BIN_ROOT_NODE_COLUMN_SIZE_SIZE + 
+                BIN_ROOT_NODE_COLUMN_NAME_SIZE * column_size + KEYS_NUM_SIZE + INTERNAL_NODE_NEXT_SIBLING_SIZE + RIGHT_CHILD_SIZE + key_len + cell_len * index);
+    } else
+        return *(uint32_t *)(internal_node + COMMON_NODE_HEADER_SIZE + KEYS_NUM_SIZE + INTERNAL_NODE_NEXT_SIBLING_SIZE + RIGHT_CHILD_SIZE + key_len + cell_len * index);
+}
+
+/* Set bin internal node cell value. */
+void BinInternalNodeSetCellValue(void *internal_node, uint32_t key_len, uint32_t index, uint32_t cell_value) {
+    uint32_t cell_len = key_len + INTERNAL_NODE_CELL_CHILD_SIZE;
+    if (NodeIsRoot(internal_node)) {
+        uint32_t column_size = BinRootNodeGetColumnSize(internal_node);
+        *(uint32_t *)(internal_node + COMMON_NODE_HEADER_SIZE  + BIN_ROOT_NODE_INDEX_TYPE_SIZE  + BIN_ROOT_NODE_IS_UNIQUE_SIZE  + BIN_ROOT_NODE_COLUMN_SIZE_SIZE + 
+                   BIN_ROOT_NODE_COLUMN_NAME_SIZE * column_size + KEYS_NUM_SIZE + INTERNAL_NODE_NEXT_SIBLING_SIZE + RIGHT_CHILD_SIZE + key_len + cell_len * index) = cell_value;
+    } else
+        *(uint32_t *)(internal_node + COMMON_NODE_HEADER_SIZE + KEYS_NUM_SIZE + INTERNAL_NODE_NEXT_SIBLING_SIZE + RIGHT_CHILD_SIZE + key_len + cell_len * index) = cell_value;
+}
+
+/* Initialize bin internal node. */
+void BinInternalNodeInitialize(void *internal_node, bool is_root) {
+    SetNodeType(internal_node, INTERNAL_NODE);
+    NodeSetRoot(internal_node, is_root);
+    BinInternalNodeSetKeysNum(internal_node, 0);
+    BinInternalNodeSetNextSibling(internal_node, 0);
+}
+
+
 /* Get bin leaf node cell num. */
-static uint32_t BinLeafNodeGetCellNum(void *leaf_node) {
+uint32_t BinLeafNodeGetCellNum(void *leaf_node) {
     if (NodeIsRoot(leaf_node)) {
         uint32_t column_size = BinRootNodeGetColumnSize(leaf_node);
         return *(uint32_t *)(leaf_node + COMMON_NODE_HEADER_SIZE  + BIN_ROOT_NODE_INDEX_TYPE_SIZE  + BIN_ROOT_NODE_IS_UNIQUE_SIZE  + BIN_ROOT_NODE_COLUMN_SIZE_SIZE + 
@@ -76,7 +221,7 @@ static uint32_t BinLeafNodeGetCellNum(void *leaf_node) {
 }
 
 /* Set bin leaf node cell num. */
-static void BinLeafNodeSetCellNum(void *leaf_node, uint32_t cell_num) {
+void BinLeafNodeSetCellNum(void *leaf_node, uint32_t cell_num) {
     if (NodeIsRoot(leaf_node)) {
         uint32_t column_size = BinRootNodeGetColumnSize(leaf_node);
         *(uint32_t *)(leaf_node + COMMON_NODE_HEADER_SIZE  + BIN_ROOT_NODE_INDEX_TYPE_SIZE  + BIN_ROOT_NODE_IS_UNIQUE_SIZE  + BIN_ROOT_NODE_COLUMN_SIZE_SIZE + 
@@ -86,31 +231,114 @@ static void BinLeafNodeSetCellNum(void *leaf_node, uint32_t cell_num) {
 }
 
 /* Get bin leaf node sibling. */
-static uint32_t BinLeafNodeGetSibling(void *leaf_node) {
+uint32_t BinLeafNodeGetSibling(void *leaf_node) {
     if (NodeIsRoot(leaf_node)) {
         uint32_t column_size = BinRootNodeGetColumnSize(leaf_node);
         return *(uint32_t *)(leaf_node + COMMON_NODE_HEADER_SIZE  + BIN_ROOT_NODE_INDEX_TYPE_SIZE  + BIN_ROOT_NODE_IS_UNIQUE_SIZE  + BIN_ROOT_NODE_COLUMN_SIZE_SIZE + 
-                             BIN_ROOT_NODE_COLUMN_NAME_SIZE  * column_size + LEAF_NODE_NEXT_SIBLING_OFFSET);
+                             BIN_ROOT_NODE_COLUMN_NAME_SIZE  * column_size + CELL_NUM_SIZE);
     } else 
         return *(uint32_t *)(leaf_node + LEAF_NODE_NEXT_SIBLING_OFFSET);
 }
 
 /* Set bin leaf node siling. */
-static void BinLeafNodeSetNextSibling(void *leaf_node, uint32_t sibling) {
+void BinLeafNodeSetNextSibling(void *leaf_node, uint32_t sibling) {
     if (NodeIsRoot(leaf_node)) {
         uint32_t column_size = BinRootNodeGetColumnSize(leaf_node);
         *(uint32_t *)(leaf_node + COMMON_NODE_HEADER_SIZE  + BIN_ROOT_NODE_INDEX_TYPE_SIZE  + BIN_ROOT_NODE_IS_UNIQUE_SIZE  + BIN_ROOT_NODE_COLUMN_SIZE_SIZE + 
-                      BIN_ROOT_NODE_COLUMN_NAME_SIZE  * column_size + LEAF_NODE_NEXT_SIBLING_OFFSET) = sibling;
+                      BIN_ROOT_NODE_COLUMN_NAME_SIZE  * column_size + CELL_NUM_SIZE) = sibling;
     } else 
         *(uint32_t *)(leaf_node + LEAF_NODE_NEXT_SIBLING_OFFSET) = sibling;
 }
 
-/* Initialize leaf node. */
+
+/* Get bin leaf node cell key. */
+void *BinLeafNodeGetCellKey(void *leaf_node, uint32_t key_len, uint32_t value_len, uint32_t index) {
+    uint32_t cell_len = key_len + value_len;
+    if (NodeIsRoot(leaf_node)) {
+        uint32_t column_size = BinRootNodeGetColumnSize(leaf_node);
+        return (leaf_node + COMMON_NODE_HEADER_SIZE  + BIN_ROOT_NODE_INDEX_TYPE_SIZE  + BIN_ROOT_NODE_IS_UNIQUE_SIZE  + BIN_ROOT_NODE_COLUMN_SIZE_SIZE + 
+                BIN_ROOT_NODE_COLUMN_NAME_SIZE  * column_size + CELL_NUM_SIZE + LEAF_NODE_NEXT_SIBLING_SIZE + cell_len * index + value_len);
+    } else 
+        return (leaf_node + LEAF_NODE_HEAD_SIZE + cell_len * index + value_len);
+}
+
+
+/* Get bin leaf node cell key. */
+void BinLeafNodeSetCellKey(void *leaf_node, uint32_t key_len, uint32_t value_len, uint32_t index, void *cell_key) {
+    uint32_t cell_len = key_len + value_len;
+    if (NodeIsRoot(leaf_node)) {
+        uint32_t column_size = BinRootNodeGetColumnSize(leaf_node);
+        memcpy(leaf_node + COMMON_NODE_HEADER_SIZE  + BIN_ROOT_NODE_INDEX_TYPE_SIZE  + BIN_ROOT_NODE_IS_UNIQUE_SIZE  + BIN_ROOT_NODE_COLUMN_SIZE_SIZE + 
+               BIN_ROOT_NODE_COLUMN_NAME_SIZE  * column_size + CELL_NUM_SIZE + LEAF_NODE_NEXT_SIBLING_SIZE + cell_len * index + value_len, cell_key, key_len);
+    } else 
+        memcpy(leaf_node + LEAF_NODE_HEAD_SIZE + cell_len * index + value_len, cell_key, key_len);
+}
+
+
+/* Get bin leaf node cell value. */
+void *BinLeafNodeGetCellValue(void *leaf_node, uint32_t key_len, uint32_t value_len, uint32_t index) {
+    uint32_t cell_len = key_len + value_len;
+    if (NodeIsRoot(leaf_node)) {
+        uint32_t column_size = BinRootNodeGetColumnSize(leaf_node);
+        return (leaf_node + COMMON_NODE_HEADER_SIZE  + BIN_ROOT_NODE_INDEX_TYPE_SIZE  + BIN_ROOT_NODE_IS_UNIQUE_SIZE  + BIN_ROOT_NODE_COLUMN_SIZE_SIZE + 
+                BIN_ROOT_NODE_COLUMN_NAME_SIZE  * column_size + CELL_NUM_SIZE + LEAF_NODE_NEXT_SIBLING_SIZE + cell_len * index);
+    } else 
+        return (leaf_node + LEAF_NODE_HEAD_SIZE + cell_len * index);
+}
+
+
+/* Set bin leaf node cell value. */
+void BinLeafNodeSetCellValue(void *leaf_node, uint32_t key_len, uint32_t value_len, uint32_t index, void *value) {
+    uint32_t cell_len = key_len + value_len;
+    if (NodeIsRoot(leaf_node)) {
+        uint32_t column_size = BinRootNodeGetColumnSize(leaf_node);
+        memcpy(leaf_node + COMMON_NODE_HEADER_SIZE  + BIN_ROOT_NODE_INDEX_TYPE_SIZE  + BIN_ROOT_NODE_IS_UNIQUE_SIZE  + BIN_ROOT_NODE_COLUMN_SIZE_SIZE + 
+               BIN_ROOT_NODE_COLUMN_NAME_SIZE  * column_size + CELL_NUM_SIZE + LEAF_NODE_NEXT_SIBLING_SIZE + cell_len * index, value, value_len);
+    } else 
+        memcpy(leaf_node + LEAF_NODE_HEAD_SIZE + cell_len * index, value, value_len);
+}
+
+/* Initialize bin leaf node. */
 static void BinLeafNodeInitialize(void *leaf_node, bool is_root) {
     SetNodeType(leaf_node, LEAF_NODE);
     NodeSetRoot(leaf_node, true);
     BinLeafNodeSetCellNum(leaf_node, 0);
     BinLeafNodeSetNextSibling(leaf_node, 0);
+}
+
+/* Get bin node high key. */
+void *BinNodeGetHighKey(void *node, uint32_t key_len, uint32_t value_len) {
+    switch (GetNodeType(node)) {
+        case INTERNAL_NODE:
+            return BinInternalNodeGetRightKey(node);
+        case LEAF_NODE: {
+            uint32_t cell_num = BinLeafNodeGetCellNum(node);
+            return cell_num == 0
+                ? NULL
+                : BinLeafNodeGetCellValue(node, key_len, value_len, cell_num - 1);
+        }
+        default:
+            UNEXPECTED_VALUE(GetNodeType(node));
+            return NULL;
+    }
+}
+
+/* Compare bin node key. */
+int BinCompareKey(MetaIndex *meta_index, void *key1, void *key2) {
+    uint32_t offset = 0;
+
+    ListCell *lc;
+    foreach (lc, meta_index->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *) lfirst(lc);
+        void *v1 = GetComparableValue(key1 + offset, meta_column->column_type);
+        void *v2 = GetComparableValue(key2 + offset, meta_column->column_type);
+        if (EQ(v1, v2, meta_column->column_type)) continue;
+        else if (GT(v1, v2, meta_column->column_type)) return 1;
+        else return -1;
+        offset += meta_column->column_length;
+    }
+
+    return 0;
 }
 
 /* Btree index create. */

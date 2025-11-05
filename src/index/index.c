@@ -17,7 +17,7 @@ struct IndexMethods {
     bool (*create) (MetaIndex *meta_index);
     MetaIndex *(*load) (Oid oid, Table *table);
     bool (*drop) (Oid oid);
-    bool (*insert) (Oid oid, void *key, Refer *value);
+    bool (*insert) (MetaIndex *meta_index, void *key, Refer *value);
 };
 
 static struct IndexMethods methods[] = {
@@ -111,5 +111,5 @@ bool IndexDropByTableName(char *table_name) {
 /* Index insert. */
 bool IndexInsert(MetaIndex *meta_index, void *tuple, Refer *value) {
     void *key = TupleGenerateKey(meta_index, tuple);
-    return methods[meta_index->type].insert(meta_index->oid, key, value);
+    return methods[meta_index->type].insert(meta_index, key, value);
 }
