@@ -1,17 +1,23 @@
 #include <stdbool.h>
+#include <stdint.h>
+#include <string.h>
 #include "index.h"
 #include "bufpool.h"
 #include "data.h"
 #include "bin.h"
+#include "bininsert.h"
 #include "hin.h"
 #include "table.h"
 #include "systable.h"
+#include "tuple.h"
+#include "mmgr.h"
 
 /* Index methods. */
 struct IndexMethods {
     bool (*create) (MetaIndex *meta_index);
     MetaIndex *(*load) (Oid oid, Table *table);
     bool (*drop) (Oid oid);
+    bool (*insert) (Oid oid, void *key, Refer *value);
 };
 
 static struct IndexMethods methods[] = {
@@ -19,6 +25,7 @@ static struct IndexMethods methods[] = {
     [BTREE_INDEX].create = BtreeIndexCreate,
     [BTREE_INDEX].load = BtreeIndexLoad,
     [BTREE_INDEX].drop = BtreeIndexDrop,
+    [BTREE_INDEX].insert = BtreeIndexInsert,
     
     /* For hash index. */
     [HASH_INDEX].create = HashIndexCreate,
@@ -40,6 +47,22 @@ static IndexType GetIndexType(Oid oid) {
     ReleaseBuffer(buffer);
 
     return type;
+}
+
+/* Generate index key by tuple. */ 
+static void *TupleGenerateKey(MetaIndex *meta_index, void *tuple) {
+    uint32_t offset = 0;
+    void *key = dalloc(meta_index->key_len);
+
+    ListCell *lc;
+    foreach (lc, meta_index->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *) lfirst(lc);
+        void *value = TupleFindValue(tuple, meta_column);
+        memcpy(key + offset, value, meta_column->column_length);
+        offset += meta_column->column_length;
+    }
+
+    return key;
 }
 
 /* Index create. */
@@ -83,4 +106,10 @@ bool IndexDropByTableName(char *table_name) {
     }
 
     return true;
+}
+
+/* Index insert. */
+bool IndexInsert(MetaIndex *meta_index, void *tuple, Refer *value) {
+    void *key = TupleGenerateKey(meta_index, tuple);
+    return methods[meta_index->type].insert(meta_index->oid, key, value);
 }

@@ -13,6 +13,7 @@
 #include "meta.h"
 #include "bufmgr.h"
 #include "fdesc.h"
+#include "refer.h"
 #include "systable.h"
 
 /* Set bin root node index type. */
@@ -184,6 +185,8 @@ MetaIndex *BtreeIndexLoad(Oid oid, Table *table) {
     meta_index->is_unique = BinRootNodeIsUnique(root);
     meta_index->column_size = BinRootNodeGetColumnSize(root);
     meta_index->meta_columns = create_list(NODE_META_COLUMN);
+    meta_index->key_len = 0;
+    meta_index->value_len = REFER_SIZE;
 
     for (int i = 0; i < meta_index->column_size; i++) {
         char *column_name;
@@ -193,6 +196,7 @@ MetaIndex *BtreeIndexLoad(Oid oid, Table *table) {
         meta_column = NameFindMetaColumn(table->meta_table, column_name);
 
         append_list(meta_index->meta_columns, meta_column);
+        meta_index->key_len += meta_column->column_length;
     }
 
     UnlockBuffer(buffer);
@@ -223,3 +227,4 @@ bool BtreeIndexDrop(Oid oid) {
     db_log(ERROR, "Index file %s deleted fail, error: %s", oid, strerror(errno));
     return false;
 }
+
