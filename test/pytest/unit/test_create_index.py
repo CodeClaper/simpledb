@@ -16,13 +16,21 @@ def test_create_index():
     ret = client.execute(sql)
     assert ret["success"] == True
 
+## test create index.
+def test_create_composite_index():
+    sql = "create index name_address_index on Student (name, address);"
+    ret = client.execute(sql)
+    assert ret["success"] == True
+
 ## test show index.
 def test_show_indexs():
     sql = "show index from Student;"
     ret = client.execute(sql)
+    print(ret)
     assert ret["success"] == True
     assert ret["data"] == [
-        {"index_name": "name_index", "table_name": "Student", "is_unique": False, "index_type": "BTREE" }
+        {"index_name": "name_index", "table_name": "Student", "is_unique": False, "index_type": "BTREE", "columns": "name" },
+        {"index_name": "name_address_index", "table_name": "Student", "is_unique": False, "index_type": "BTREE", "columns": "name,address" }
     ]
 
 ## test show index from not exists table.

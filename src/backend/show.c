@@ -9,6 +9,8 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <dirent.h>
+#include <string.h>
+#include <strings.h>
 #include <sys/stat.h>
 #include "show.h"
 #include "mmgr.h"
@@ -18,15 +20,30 @@
 #include "free.h"
 #include "copy.h"
 #include "list.h"
-#include "session.h"
 #include "asserts.h"
-#include "jsonwriter.h"
 #include "instance.h"
 #include "check.h"
-#include "timer.h"
 #include "table.h"
 #include "systable.h"
 #include "log.h"
+
+static char *CombineColumnsForShowIndexs(MetaIndex *meta_index) {
+    char str[1024];
+    uint32_t offset = 0;
+    bzero(str, 1024);
+
+    ListCell *lc;
+    foreach (lc, meta_index->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *) lfirst(lc);
+        uint32_t len = strlen(meta_column->column_name);
+        memcpy(str + offset, meta_column->column_name, len);
+        offset += len;
+        if (last_cell(meta_index->meta_columns) != lc)
+            str[offset++] = ',';
+    }
+
+    return dstrdup(str);
+}
 
 static List *ShowForTables() {
     List *list = create_list(NODE_LIST);
@@ -97,6 +114,12 @@ static List *ShowForIndexs(char *table_name) {
         append_list(
             child_list, 
             new_key_value("index_type", GET_INDEX_TYPE_NAME(meta_index->type), T_VARCHAR, NULL)
+        );
+
+        /* Columns. */
+        append_list(
+            child_list,
+            new_key_value("columns", CombineColumnsForShowIndexs(meta_index), T_VARCHAR, NULL)
         );
 
         append_list(list, child_list);
