@@ -230,6 +230,17 @@ void BinLeafNodeSetCellNum(void *leaf_node, uint32_t cell_num) {
         *(uint32_t *)(leaf_node + CELL_NUM_OFFSET) = cell_num;
 }
 
+/* Increase bin leaf node cell num. */
+void BinLeafNodeIncreaseCellNum(void *leaf_node) {
+    if (NodeIsRoot(leaf_node)) {
+        uint32_t column_size = BinRootNodeGetColumnSize(leaf_node);
+        (*(uint32_t *)(leaf_node + COMMON_NODE_HEADER_SIZE  + BIN_ROOT_NODE_INDEX_TYPE_SIZE  + BIN_ROOT_NODE_IS_UNIQUE_SIZE  + BIN_ROOT_NODE_COLUMN_SIZE_SIZE + 
+                      BIN_ROOT_NODE_COLUMN_NAME_SIZE  * column_size))++;
+    } else
+        (*(uint32_t *)(leaf_node + CELL_NUM_OFFSET))++;
+}
+
+
 /* Get bin leaf node sibling. */
 uint32_t BinLeafNodeGetSibling(void *leaf_node) {
     if (NodeIsRoot(leaf_node)) {
@@ -304,6 +315,35 @@ static void BinLeafNodeInitialize(void *leaf_node, bool is_root) {
     NodeSetRoot(leaf_node, true);
     BinLeafNodeSetCellNum(leaf_node, 0);
     BinLeafNodeSetNextSibling(leaf_node, 0);
+}
+
+/* Find the leaf node cell num postion. 
+ * -----------------------------------
+ * We will use binary search to find the target cell.
+ * */
+uint32_t BinLeafNodeFindCellNum(MetaIndex *meta_index, void *leaf_node, void *key) {
+    uint32_t cell_num, min_index, max_index;
+
+    cell_num = BinLeafNodeGetCellNum(leaf_node);
+    min_index = 0;
+    max_index = cell_num;
+
+    while (min_index != max_index) {
+        uint32_t index;
+        void *cell_key;
+
+        index = (max_index + min_index) / 2;
+        cell_key = BinLeafNodeGetCellKey(leaf_node, meta_index->key_len, meta_index->value_len, index);
+        /* Notice: Not only greater but aslo equal opreator is really import for store data, 
+         * when keep the prince: always keep visible row lying at the forefront of same key cells. */
+        if (BinCompareKey(meta_index, cell_key, key) >= 0) {
+            max_index = index;
+        } else {
+            min_index = index + 1; 
+        }
+    }
+
+    return min_index;
 }
 
 /* Get bin node high key. */

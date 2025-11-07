@@ -33,11 +33,29 @@ uint32_t BinInternalNodeGetCellValue(void *internal_node, uint32_t key_len, uint
 /* Get bin leaf node cell num. */
 uint32_t BinLeafNodeGetCellNum(void *leaf_node);
 
+/* Increase bin leaf node cell num. */
+void BinLeafNodeIncreaseCellNum(void *leaf_node);
+
 /* Get bin leaf node sibling. */
 uint32_t BinLeafNodeGetSibling(void *leaf_node);
 
 /* Set bin leaf node siling. */
 void BinLeafNodeSetNextSibling(void *leaf_node, uint32_t sibling);
+
+/* Get bin leaf node cell key. */
+void *BinLeafNodeGetCellKey(void *leaf_node, uint32_t key_len, uint32_t value_len, uint32_t index); 
+
+/* Get bin leaf node cell key. */
+void BinLeafNodeSetCellKey(void *leaf_node, uint32_t key_len, uint32_t value_len, uint32_t index, void *cell_key);
+
+/* Get bin leaf node cell value. */
+void *BinLeafNodeGetCellValue(void *leaf_node, uint32_t key_len, uint32_t value_len, uint32_t index);
+
+/* Set bin leaf node cell value. */
+void BinLeafNodeSetCellValue(void *leaf_node, uint32_t key_len, uint32_t value_len, uint32_t index, void *value);
+
+/* Find the leaf node cell num postion. */
+uint32_t BinLeafNodeFindCellNum(MetaIndex *meta_index, void *leaf_node, void *key); 
 
 /* Get bin node high key. */
 void *BinNodeGetHighKey(void *node, uint32_t key_len, uint32_t value_len);
