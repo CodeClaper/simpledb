@@ -690,7 +690,7 @@ typedef struct Table {
     MetaTable *meta_table;      /* Meta table info. */
     List *meta_indexs;          /* Meta index info. */   
     Pid creator;                /* The creator pid. */
-    Size page_size;             /* Page size. */
+    volatile uint32_t page_size;/* Page size. */
     uint32_t key_len;           /* Primay key length. */
     uint32_t index_value_len;   /* Index table value length. */
     uint32_t heap_value_len;    /* Heap table value length. */

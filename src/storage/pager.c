@@ -20,16 +20,6 @@
 #include "fdesc.h"
 #include "mmgr.h"
 
-static s_lock *plock;
-
-/* Init Pager*/
-void InitPager() {
-    switch_shared();
-    plock = instance(s_lock);
-    init_spin_lock(plock);
-    switch_local();
-}
-
 /* Get the page size. */
 Size GetPageSize(Oid oid) {
     FDesc fdesc;
@@ -47,10 +37,10 @@ Size GetPageSize(Oid oid) {
 
 /* Get next page num. */
 uint32_t GetNextUnusedPageNum(Table *table) {
-    uint32_t page_num;
-    acquire_spin_lock(plock);
-    page_num = table->page_size++;
-    release_spin_lock(plock);
+    uint32_t page_num = table->page_size;
+    while (!__sync_bool_compare_and_swap(&table->page_size, page_num, page_num + 1)) {
+        page_num = table->page_size;
+    }
     return page_num;
 }
 

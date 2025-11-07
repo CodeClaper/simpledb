@@ -32,7 +32,6 @@
 #include "shmem.h"
 #include "tablereg.h"
 #include "bufmgr.h"
-#include "pager.h"
 #include "bgwriter.h"
 #include "asctx.h"
 #include "systable.h"
@@ -105,9 +104,6 @@ static void init_db() {
 
     /* Initialise row lock. */
     InitRowLock();
-
-    /* Init pager. */
-    InitPager();
 
     /* Initialise table cache. */
     InitTableCache();

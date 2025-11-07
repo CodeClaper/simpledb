@@ -1,10 +1,6 @@
 #include <stdint.h>
 #include "data.h"
 
-
-/* Init Pager*/
-void InitPager();
-
 /* Get the page size. */
 Size GetPageSize(Oid oid);
 
