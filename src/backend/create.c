@@ -8,9 +8,7 @@
  */
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
-#include <time.h>
 #include <unistd.h>
 #include "create.h"
 #include "strheaptable.h"
@@ -280,6 +278,7 @@ static MetaIndex *GenerateMetaIndexForCreateIndex(Oid oid, Table *table,  Create
     meta_index->type = create_index_node->type;
     meta_index->column_size = create_index_node->columns->size;
     meta_index->meta_columns = create_list(NODE_META_COLUMN);
+    meta_index->page_num = 1;
 
     ListCell *lc;
     foreach (lc, create_index_node->columns) {

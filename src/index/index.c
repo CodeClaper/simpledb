@@ -65,6 +65,16 @@ static void *TupleGenerateKey(MetaIndex *meta_index, void *tuple) {
     return key;
 }
 
+
+/* Get index next unused page num. */
+uint32_t IndexGetNextUnusedPageNum(MetaIndex *meta_index) {
+    uint32_t page_num = meta_index->page_num;
+    while (!__sync_bool_compare_and_swap(&meta_index->page_num, page_num, page_num + 1)) {
+        page_num = meta_index->page_num;
+    }
+    return page_num;
+}
+
 /* Index create. */
 bool IndexCreate(MetaIndex *meta_index) {
     Assert(meta_index != NULL);

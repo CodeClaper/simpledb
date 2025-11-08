@@ -1,6 +1,9 @@
 #include <stdbool.h>
 #include "data.h"
 
+/* Get index next unused page num. */
+uint32_t IndexGetNextUnusedPageNum(MetaIndex *meta_index);
+
 /* Index create. */
 bool IndexCreate(MetaIndex *meta_index);
 

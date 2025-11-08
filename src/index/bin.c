@@ -14,6 +14,7 @@
 #include "bufmgr.h"
 #include "fdesc.h"
 #include "refer.h"
+#include "pager.h"
 #include "compare.h"
 #include "systable.h"
 
@@ -310,7 +311,7 @@ void BinLeafNodeSetCellValue(void *leaf_node, uint32_t key_len, uint32_t value_l
 }
 
 /* Initialize bin leaf node. */
-static void BinLeafNodeInitialize(void *leaf_node, bool is_root) {
+void BinLeafNodeInitialize(void *leaf_node, bool is_root) {
     SetNodeType(leaf_node, LEAF_NODE);
     NodeSetRoot(leaf_node, true);
     BinLeafNodeSetCellNum(leaf_node, 0);
@@ -453,6 +454,7 @@ MetaIndex *BtreeIndexLoad(Oid oid, Table *table) {
     meta_index->is_unique = BinRootNodeIsUnique(root);
     meta_index->column_size = BinRootNodeGetColumnSize(root);
     meta_index->meta_columns = create_list(NODE_META_COLUMN);
+    meta_index->page_num = GetPageSize(oid);
     meta_index->key_len = 0;
     meta_index->value_len = REFER_SIZE;
 

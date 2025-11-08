@@ -680,6 +680,7 @@ typedef struct MetaIndex {
     uint32_t column_size;       /* Column size. */
     uint32_t key_len;           /* Key length. */
     uint32_t value_len;         /* Value length. */
+    volatile uint32_t page_num; /* Page num. */
 } MetaIndex;
 
 /* Table */

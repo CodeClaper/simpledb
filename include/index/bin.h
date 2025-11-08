@@ -54,6 +54,9 @@ void *BinLeafNodeGetCellValue(void *leaf_node, uint32_t key_len, uint32_t value_
 /* Set bin leaf node cell value. */
 void BinLeafNodeSetCellValue(void *leaf_node, uint32_t key_len, uint32_t value_len, uint32_t index, void *value);
 
+/* Initialize bin leaf node. */
+void BinLeafNodeInitialize(void *leaf_node, bool is_root);
+
 /* Find the leaf node cell num postion. */
 uint32_t BinLeafNodeFindCellNum(MetaIndex *meta_index, void *leaf_node, void *key); 
 
