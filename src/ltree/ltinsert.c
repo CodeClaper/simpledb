@@ -728,7 +728,7 @@ static void BtreeInsertForLeafNodeSplit(Oid oid, void *key, void *value, Buffer 
             /* Redefine the refer info. */
             refer->cell_num = target_index;
             refer->page_num = destination_page;
-        } else if (i > refer->cell_num) {
+        } else if (i > target_index) {
             /* Define new position, and right cells make cell space. */
             memcpy(destination, LeafNodeGetCellValue(leaf_node, table->key_len, table->index_value_len, table->heap_value_len, i - 1), cell_len);
             /* Update refer. */
