@@ -3,6 +3,7 @@
 #include <string.h>
 #include "bininsert.h"
 #include "bin.h"
+#include "index.h"
 #include "bufmgr.h"
 #include "mmgr.h"
 #include "log.h"
@@ -10,12 +11,14 @@
 #include "heaptable.h"
 #include "table.h"
 #include "tuple.h"
+#include "copy.h"
 
 #define OK   1
 #define WAIT 0
 #define ERRO -1
 
 static void BinInsertInner(MetaIndex *meta_index, void *key, void *boundary_key, Refer *value, uint32_t page_num);
+static void BinInsertForInternalNodeInsertCell(MetaIndex *meta_index, uint32_t page_num, void *old_child_key, void *old_new_key, void *new_child_key, uint32_t new_child_page);
 
 /* Predicate duplicate key.
  * These are three duplicate key type.
@@ -80,22 +83,347 @@ static void BinInsertForInternalNodeUpdateCellKey(MetaIndex *meta_index, uint32_
         uint32_t index;
         void *cell_key;
 
+        index = BinInternalNodeFindCellNum(meta_index, internal_node, old_key);
+        cell_key = BinInternalNodeGetCellKey(internal_node, meta_index->key_len, index);
+        /* Theoretically EQ, just for check. Lots of tricky bugs are caught by the check. */
+        Assert(BinCompareKey(meta_index, old_key, cell_key) == 0);
+        BinInternalNodeSetCellKey(internal_node, meta_index->key_len, index, new_key);
     } else if (BinCompareKey(meta_index, old_key, high_key) == 0) {
+        BinInternalNodeSetRightKey(internal_node, meta_index->key_len, new_key);
     } else {
+        uint32_t next_sibling = BinInternalNodeGetNextSibling(internal_node); 
+        Assert(next_sibling != 0);
+        BinInsertForInternalNodeUpdateCellKey(meta_index, next_sibling, old_key, new_key);
+        goto DirectExit; 
     }
 
     MakeBufferDirty(buffer);
     
     /* Update current internal node parent. */
-    if (!NodeIsRoot(internal_node) &&
-        BinCompareKey(meta_index, new_key, high_key)
-    ) {
+    if (!NodeIsRoot(internal_node) && BinCompareKey(meta_index, new_key, high_key)) {
         uint32_t parent_num;
         parent_num = NodeGetParentNum(internal_node);
         BinInsertForInternalNodeUpdateCellKey(meta_index, parent_num, old_key, new_key);
     }
 
 DirectExit:
+    UnlockBuffer(buffer);
+    ReleaseBuffer(buffer);
+}
+
+/* Bin update internal node chidren parent. 
+ * ------------------------------------
+ * Indeed, update the child node parent, should lock it and update it.
+ * But, we do not use any lock, and think it` ok. The reason as follow:
+ * There are only two operations to use parent num, insert new item to parent 
+ * and update parent cell key. Search operation does not use parent num. 
+ * In both the two operations, We use sibling link to make sure find the right target parent.
+ * */
+static void BinInsertForInternalNodeUpdateChildrenParent(MetaIndex *meta_index, void *internal_node, uint32_t parent_num) {
+    uint32_t keys_num, i, right_child_page;
+    Buffer right_buffer;
+    void *right_child;
+
+    keys_num = BinInternalNodeGetKeysNum(internal_node);
+    for (i = 0; i < keys_num; i++) {
+        uint32_t child_page;
+        Buffer child_buffer;
+        void *child_node;
+
+        child_page = BinInternalNodeGetCellValue(internal_node, meta_index->key_len, i);
+        child_buffer = ReadBuffer(meta_index->oid, child_page);
+        child_node = GetBufferPage(child_buffer);
+        NodeSetParentNum(child_node, parent_num);
+        
+        MakeBufferDirty(child_buffer);
+        ReleaseBuffer(child_buffer);
+    }
+
+    right_child_page = BinInternalNodeGetRightNum(internal_node);
+    right_buffer = ReadBuffer(meta_index->oid, right_child_page);
+    right_child = GetBufferPage(right_buffer);
+    NodeSetParentNum(right_child, parent_num);
+
+    MakeBufferDirty(right_buffer);
+    ReleaseBuffer(right_buffer);
+}
+
+/* Bin upgrade root internal node. */
+static void BinInsertForInternalNodeUpgradeRoot(MetaIndex *meta_index, void *root, void *right_child, uint32_t right_child_page) {
+    uint32_t next_page_num, keys_num, i;
+    Buffer new_buffer;
+    void *new_internal_node;
+
+    keys_num = BinInternalNodeGetKeysNum(root);
+    next_page_num = IndexGetNextUnusedPageNum(meta_index);
+    new_buffer = ReadBuffer(meta_index->oid, next_page_num);
+    new_internal_node = GetBufferPage(new_buffer);
+
+    /* Initialize new internal node. */
+    BinInternalNodeInitialize(new_internal_node, false);
+    /* Set keys num, */
+    BinInternalNodeSetKeysNum(new_internal_node, keys_num);
+    /* Set sibling. */
+    BinInternalNodeSetNextSibling(new_internal_node, right_child_page);
+    /* Set right child*/
+    BinInternalNodeSetRightKey(new_internal_node, meta_index->key_len, 
+                               BinInternalNodeGetRightKey(root));
+    BinInternalNodeSetRightNum(new_internal_node, 
+                               BinInternalNodeGetRightNum(root));
+
+    /* Set cells. */
+    for (i = 0; i < keys_num; i++) {
+        BinInternalNodeSetCellKey(new_internal_node, meta_index->key_len, i,
+                                  BinInternalNodeGetCellKey(root, meta_index->key_len, i));
+        BinInternalNodeSetCellValue(new_internal_node, meta_index->key_len, i,
+                                    BinInternalNodeGetCellValue(root, meta_index->key_len, i));
+    }
+
+    /* Update chidren parent of the new internal node. */
+    BinInsertForInternalNodeUpdateChildrenParent(meta_index, new_internal_node, next_page_num);
+
+    /* Set keys num. */
+    BinInternalNodeSetKeysNum(root, 1);
+
+    /* Register leaf node to root. */
+    BinInternalNodeSetCellKey(root, meta_index->key_len, 0, BinNodeGetHighKey(new_internal_node, meta_index->key_len, meta_index->value_len));
+    BinInternalNodeSetCellValue(root, meta_index->key_len, 0, next_page_num);
+    BinInternalNodeSetRightKey(root, meta_index->key_len, BinNodeGetHighKey(right_child, meta_index->key_len, meta_index->value_len));
+    BinInternalNodeSetRightNum(root, right_child_page);
+
+    MakeBufferDirty(new_buffer);
+    ReleaseBuffer(new_buffer);
+}
+
+/* Check if bin internal node is safe when inserting new item. */
+static bool BinInsertForInternalNodeSafe(void *internal_node, uint32_t key_len) {
+    uint32_t cell_len = key_len + INTERNAL_NODE_CELL_CHILD_SIZE;
+    uint32_t keys_num = BinInternalNodeGetKeysNum(internal_node);
+    if (NodeIsRoot(internal_node)) {
+        uint32_t column_size = BinRootNodeGetColumnSize(internal_node);
+        return (COMMON_NODE_HEADER_SIZE  + BIN_ROOT_NODE_INDEX_TYPE_SIZE  + BIN_ROOT_NODE_IS_UNIQUE_SIZE  + BIN_ROOT_NODE_COLUMN_SIZE_SIZE + 
+                BIN_ROOT_NODE_COLUMN_NAME_SIZE * column_size + KEYS_NUM_SIZE + INTERNAL_NODE_NEXT_SIBLING_SIZE + RIGHT_CHILD_SIZE + key_len + cell_len * (keys_num + 1)) <= PAGE_SIZE;
+    } else
+        return (COMMON_NODE_HEADER_SIZE + KEYS_NUM_SIZE + INTERNAL_NODE_NEXT_SIBLING_SIZE + RIGHT_CHILD_SIZE + key_len + cell_len * (keys_num + 1)) <= PAGE_SIZE;
+}
+
+/* Bin insert item into internal node and split. */
+static void BinInsertForInternalNodeSplit(MetaIndex *meta_index, void *internal_node, void *old_child_key, void *old_new_key, void *new_child_key, uint32_t new_child_page) {
+    Buffer new_buffer;
+    void *new_internal_node, *high_key;
+    uint32_t keys_num, right_child_page, next_page_num, target_index, LEFT_SPLIT_COUNT, RIGHT_SPLIT_COUNT;
+    
+    high_key = copy_block(BinNodeGetHighKey(internal_node, meta_index->key_len, meta_index->value_len), meta_index->key_len);
+    keys_num = BinInternalNodeGetKeysNum(internal_node);
+    right_child_page = BinInternalNodeGetRightNum(internal_node);
+
+    next_page_num = IndexGetNextUnusedPageNum(meta_index);
+    new_buffer = ReadBuffer(meta_index->oid, next_page_num);
+    new_internal_node = GetBufferPage(new_buffer);
+
+    /* Initialize new internal node. */
+    BinInternalNodeInitialize(new_internal_node, false);
+    /* Switch sibling. */
+    BinInternalNodeSetNextSibling(new_internal_node, BinInternalNodeGetNextSibling(internal_node));
+    BinInternalNodeSetNextSibling(internal_node, next_page_num);
+
+    /* Set parent. */
+    NodeSetParentNum(new_internal_node, NodeGetParentNum(internal_node));
+
+    /* We need to deal with two case:
+     * (1) The new child key is greater than or equal to high key, which means should be the right child of the internal node. 
+     * (2) Otherwise, the new child should be in cells of the internal node. */
+    if (BinCompareKey(meta_index, new_child_key, high_key) >= 0) {
+        Assert(BinCompareKey(meta_index, old_child_key, high_key) == 0);
+        BinInternalNodeSetRightKey(internal_node, meta_index->key_len, new_child_key);
+        BinInternalNodeSetRightNum(internal_node, new_child_page);
+
+        /* Use the old right child as the new child. */
+        new_child_page = right_child_page;
+        new_child_key = old_new_key;
+        /* Get target index. */
+        target_index = keys_num;
+
+        /* Notice: should we update parent internal cell key for the high_key has changed? Yes we should, but not here.
+         * Actually, at the function end, we use <BtreeInsertForInternalNodeInsertCell> to update parent internal cell key. */
+    } else {
+        uint32_t old_target_index;
+
+        old_target_index = BinInternalNodeFindCellNum(meta_index, internal_node, old_child_key);
+        Assert(BinCompareKey(meta_index, old_child_key, BinInternalNodeGetCellKey(internal_node, meta_index->key_len, old_target_index))); 
+        BinInternalNodeSetCellKey(internal_node, meta_index->key_len, old_target_index, old_new_key);
+        /* Get target index. */
+        target_index = BinInternalNodeFindCellNum(meta_index, internal_node, new_child_key);
+    }
+
+    RIGHT_SPLIT_COUNT = (keys_num + 1) / 2;
+    LEFT_SPLIT_COUNT = (keys_num + 1) - RIGHT_SPLIT_COUNT;
+
+    int i;
+    for (i = keys_num; i >= 0; i--) {
+        uint32_t new_index;
+        void *destination_node;
+
+        /* New position. */
+        new_index = i % LEFT_SPLIT_COUNT;
+        /* Define which node. */ 
+        destination_node = (i >= LEFT_SPLIT_COUNT)
+                    ? new_internal_node 
+                    : internal_node;
+
+        if (i == target_index) {
+            BinInternalNodeSetCellKey(destination_node, meta_index->key_len, new_index, new_child_key); 
+            BinInternalNodeSetCellValue(destination_node, meta_index->key_len, new_index, new_child_page);
+        } else if (i > target_index) {
+            /* Right cells make cell space. */
+            BinInternalNodeSetCellKey(destination_node, meta_index->key_len, new_index, 
+                                      BinInternalNodeGetCellKey(internal_node, meta_index->key_len, i - 1));
+            BinInternalNodeSetCellValue(destination_node, meta_index->key_len, new_index, 
+                                        BinInternalNodeGetCellValue(internal_node, meta_index->key_len, i - 1));
+        } else {
+            BinInternalNodeSetCellKey(destination_node, meta_index->key_len, new_index, 
+                                      BinInternalNodeGetCellKey(internal_node, meta_index->key_len, i));
+            BinInternalNodeSetCellValue(destination_node, meta_index->key_len, new_index, 
+                                        BinInternalNodeGetCellValue(internal_node, meta_index->key_len, i));
+        }
+    }
+
+    /* Set new internal node keys num. */
+    BinInternalNodeSetKeysNum(new_internal_node, RIGHT_SPLIT_COUNT);
+    /* Set new internal right child. */
+    BinInternalNodeSetRightKey(new_internal_node, meta_index->key_len, 
+                               BinInternalNodeGetRightKey(internal_node));
+    BinInternalNodeSetRightNum(new_internal_node, 
+                               BinInternalNodeGetRightNum(internal_node));
+    /* Update chidren parent of the new internal node. */
+    BinInsertForInternalNodeUpdateChildrenParent(meta_index, new_internal_node, next_page_num);
+
+
+    /* Set old internal node keys num. */
+    BinInternalNodeSetKeysNum(internal_node, LEFT_SPLIT_COUNT - 1);
+    /* Set old internal node right child. */
+    BinInternalNodeSetRightKey(internal_node, meta_index->key_len, 
+                               BinInternalNodeGetCellKey(internal_node, meta_index->key_len, LEFT_SPLIT_COUNT - 1));
+    BinInternalNodeSetRightNum(internal_node, 
+                               BinInternalNodeGetCellValue(internal_node, meta_index->key_len, LEFT_SPLIT_COUNT -1));
+
+
+    /* If old internal is root, need to upgrade. 
+     * Otherwise, it`s a normal internal node. 
+     * Maybe the max key change, need update max key in parent internal node. 
+     * Note that: because of new_max_key more likely less than the old_max_key,
+     * so mass of parent internal node cells may be happer.
+     * We'll resort parent internal node cells lately. 
+     * */
+    if (NodeIsRoot(internal_node)) 
+        BinInsertForInternalNodeUpgradeRoot(meta_index, internal_node, new_internal_node, next_page_num);
+    else {
+        uint32_t parent_num;
+        void *child_key, *old_new_key;
+
+        parent_num = NodeGetParentNum(internal_node);
+        old_new_key = BinNodeGetHighKey(internal_node, meta_index->key_len, meta_index->value_len);
+        child_key = BinNodeGetHighKey(new_internal_node, meta_index->key_len, meta_index->value_len);
+
+        /* Insert new internal node to parent. */
+        BinInsertForInternalNodeInsertCell(meta_index, parent_num, high_key, old_new_key, child_key, next_page_num);
+    }
+
+    dfree(high_key);
+
+    MakeBufferDirty(new_buffer);
+    ReleaseBuffer(new_buffer);
+}
+
+
+/* Bin insert item into internal node without split. */
+static void BinInsertForInternalNodeNoSplit(MetaIndex *meta_index, void *internal_node, void *old_child_key, void *old_new_key, void *new_child_key, uint32_t new_child_page) {
+    uint32_t keys_num;
+    void *high_key;
+
+    keys_num = BinInternalNodeGetKeysNum(internal_node);
+    high_key = BinNodeGetHighKey(internal_node, meta_index->key_len, meta_index->value_len);
+
+    /* We need to deal with two case:
+     * (1) The new child key is greater than or equal to high key, which means should be the right child of the internal node. 
+     * (2) Otherwise, the new child should be in cells of the internal node. */
+    if (BinCompareKey(meta_index, new_child_key, high_key) >= 0) {
+        Assert(BinCompareKey(meta_index, old_child_key, high_key) == 0);
+        BinInternalNodeSetCellKey(internal_node, meta_index->key_len, keys_num, old_new_key);
+        BinInternalNodeSetCellValue(internal_node, meta_index->key_len, keys_num, 
+                                    BinInternalNodeGetRightNum(internal_node));
+        BinInternalNodeSetRightKey(internal_node, meta_index->key_len, new_child_key);
+        BinInternalNodeSetRightNum(internal_node, new_child_page); 
+
+        /* If current internal node is not root, 
+         * should update it`s parent cell key. */
+        if (!NodeIsRoot(internal_node)) {
+            uint32_t parent_num = NodeGetParentNum(internal_node);
+            BinInsertForInternalNodeUpdateCellKey(meta_index, parent_num, old_child_key, new_child_key);
+        }
+    } else {
+        uint32_t old_target_index, new_target_index, i;
+        void *temp;
+        
+        /* Change the old key. */
+        old_target_index = BinInternalNodeFindCellNum(meta_index, internal_node, old_child_key);
+        temp = BinInternalNodeGetCellKey(internal_node, meta_index->key_len, old_target_index);
+        Assert(BinCompareKey(meta_index, old_child_key, temp) == 0);
+        BinInternalNodeSetCellKey(internal_node, meta_index->key_len, old_target_index, old_new_key);
+
+        /* Append new child. */
+        new_target_index = BinInternalNodeFindCellNum(meta_index, internal_node, new_child_key);
+        for (i = keys_num; i > new_target_index; i--) {
+            BinInternalNodeSetCellKey(internal_node, meta_index->key_len, i, 
+                                      BinInternalNodeGetCellKey(internal_node, meta_index->key_len, i - 1));
+            BinInternalNodeSetCellValue(internal_node, meta_index->key_len, i, 
+                                        BinInternalNodeGetCellValue(internal_node, meta_index->key_len, i - 1));
+        }
+
+        /* Set new child cell. */
+        BinInternalNodeSetCellKey(internal_node, meta_index->key_len, new_target_index, new_child_key);
+        BinInternalNodeSetCellValue(internal_node, meta_index->key_len, new_target_index, new_child_page);
+    }
+
+    /* Increase keys num. */
+    BinInternalNodeIncreaseKeysNum(internal_node);
+}
+
+/* Bin insert item into the internal node.
+ * ------------------------------------
+ * old_child_key: The old child old cell key.
+ * old_new_key: The old child new cell key.
+ * new_child_key: The new child key.
+ * new_child_page: The new child page.
+ * */
+static void BinInsertForInternalNodeInsertCell(MetaIndex *meta_index, uint32_t page_num, void *old_child_key, void *old_new_key, void *new_child_key, uint32_t new_child_page) {
+    Buffer buffer;
+    void *internal_node, *high_key;
+
+    buffer = ReadBuffer(meta_index->oid, page_num);
+    LockBuffer(buffer, RW_WRITER);
+    internal_node = GetBufferPage(buffer);
+    high_key = BinNodeGetHighKey(internal_node, meta_index->key_len, meta_index->value_len);
+
+    /* Only one condition to move to sibling:
+     * The old child key is more than high key. */
+    if (BinCompareKey(meta_index, old_child_key, high_key) > 0) {
+        uint32_t next_sibling = BinInternalNodeGetNextSibling(internal_node);
+        Assert(next_sibling != 0);
+        BinInsertForInternalNodeInsertCell(meta_index, next_sibling, old_child_key, old_new_key, new_child_key, new_child_page);
+    } else {
+        /* If current is safe, just insert new cell, not split.
+         * Otherwise, split first and then insert new cell. */
+        if (BinInsertForInternalNodeSafe(internal_node, meta_index->key_len))
+            BinInsertForInternalNodeNoSplit(meta_index, internal_node, old_child_key, old_new_key, new_child_key, new_child_page);
+        else
+            BinInsertForInternalNodeSplit(meta_index, internal_node, old_child_key, old_new_key, new_child_key, new_child_page);
+            
+        /* Make buffer dirty. */
+        MakeBufferDirty(buffer);
+    }
+
+
     UnlockBuffer(buffer);
     ReleaseBuffer(buffer);
 }
@@ -175,6 +503,58 @@ static void BinInsertForInternalNode(MetaIndex *meta_index, void *key, void *bou
     dfree(internal_node);
 }
 
+
+/* Root bin leaf node upgrade to root internal node. */
+static void BinInsertForLeafNodeUpgradeRoot(MetaIndex *meta_index, void *root, void *right_child, uint32_t right_child_page) {
+    Buffer new_buffer;   
+    uint32_t cell_num, next_page_num, i;
+    void *new_leaf_node;
+
+    cell_num = BinLeafNodeGetCellNum(root);
+    next_page_num = IndexGetNextUnusedPageNum(meta_index);
+    new_buffer = ReadBuffer(meta_index->oid, next_page_num);
+    new_leaf_node = GetBufferPage(new_buffer);
+    
+    /* Initialize leaf node. */
+    BinLeafNodeInitialize(new_leaf_node, false);
+    /* Set cell num. */
+    BinLeafNodeSetCellNum(new_leaf_node, cell_num);
+    /* Set sibling. */
+    BinLeafNodeSetNextSibling(new_leaf_node, right_child_page);
+
+    /* Copy each cell. */
+    for (i = 0; i < cell_num; i++) {
+        BinLeafNodeSetCellKey(new_leaf_node, meta_index->key_len, meta_index->value_len, i,
+                              BinLeafNodeGetCellKey(root, meta_index->key_len, meta_index->value_len, i));
+        BinLeafNodeSetCellValue(new_leaf_node, meta_index->key_len, meta_index->value_len, i, 
+                                BinLeafNodeGetCellValue(root, meta_index->key_len, meta_index->value_len, i));
+    }
+    
+    /* Set parent. */
+    NodeSetParentNum(new_leaf_node, ROOT_PAGE_NUM);
+    NodeSetParentNum(right_child, ROOT_PAGE_NUM);
+
+    /* Make clear outsides header. */
+    uint32_t ROOT_LEAF_NODE_HEADER_SIZE = COMMON_NODE_HEADER_SIZE  + BIN_ROOT_NODE_INDEX_TYPE_SIZE  + BIN_ROOT_NODE_IS_UNIQUE_SIZE + 
+                                          BIN_ROOT_NODE_COLUMN_SIZE_SIZE + BIN_ROOT_NODE_COLUMN_NAME_SIZE * meta_index->column_size;
+    memset(root + ROOT_LEAF_NODE_HEADER_SIZE, 0, PAGE_SIZE - ROOT_LEAF_NODE_HEADER_SIZE);
+    
+    /* upgrade to internal node. */
+    SetNodeType(root, INTERNAL_NODE);
+
+    /* Set keys num. */
+    BinInternalNodeSetKeysNum(root, 1);
+
+    /* Register leaf node to root. */
+    BinInternalNodeSetCellKey(root, meta_index->key_len, 0, BinNodeGetHighKey(new_leaf_node, meta_index->key_len, meta_index->value_len));
+    BinInternalNodeSetCellValue(root, meta_index->key_len, 0, next_page_num);
+    BinInternalNodeSetRightKey(root, meta_index->key_len, BinNodeGetHighKey(right_child, meta_index->key_len, meta_index->value_len));
+    BinInternalNodeSetRightNum(root, right_child_page);
+
+    MakeBufferDirty(new_buffer);
+    ReleaseBuffer(new_buffer);
+}
+
 /* Check if bin leaf node is safe when inserting new cell. */
 static bool BinInsertForLeafNodeSafe(MetaIndex *meta_index, void *leaf_node) {
     uint32_t cell_len, cell_num;
@@ -191,13 +571,15 @@ static bool BinInsertForLeafNodeSafe(MetaIndex *meta_index, void *leaf_node) {
 }
 
 /* Bin insert into a cell and split leaf node. */
-static void BinInsertForLeafNodeSplit(MetaIndex *meta_index, void *key, void *value, Buffer buffer) {
-    Buffer new_buffer;
-    uint32_t cell_num, target_index, next_page_num;
+static void BinInsertForLeafNodeSplit(MetaIndex *meta_index, void *key, void *value, uint32_t page_num) {
+    Buffer buffer, new_buffer;
+    uint32_t cell_num, target_index, next_page_num, LEFT_SPLIT_COUNT, RIGHT_SPLIT_COUNT;
     void *leaf_node, *high_key, *cell_key, *new_leaf_node;
 
+    buffer = ReadBuffer(meta_index->oid, page_num);
     leaf_node = GetBufferPage(buffer);
     cell_num = BinLeafNodeGetCellNum(leaf_node);
+    high_key = copy_block(BinNodeGetHighKey(leaf_node, meta_index->key_len, meta_index->value_len), meta_index->key_len);
     target_index = BinLeafNodeFindCellNum(meta_index, leaf_node, key);
     cell_key = BinLeafNodeGetCellKey(leaf_node, meta_index->key_len, meta_index->value_len, target_index);
 
@@ -235,13 +617,99 @@ static void BinInsertForLeafNodeSplit(MetaIndex *meta_index, void *key, void *va
                 break;
         }
     }
+
+    next_page_num = IndexGetNextUnusedPageNum(meta_index);
+    new_buffer = ReadBuffer(meta_index->oid, next_page_num);
+    new_leaf_node = GetBufferPage(new_buffer);
+
+    /* Initialize leaf node. */
+    BinLeafNodeInitialize(new_leaf_node, false);
+    /* Switch sibling. */
+    BinLeafNodeSetNextSibling(new_leaf_node, BinLeafNodeGetNextSibling(leaf_node));
+    BinLeafNodeSetNextSibling(leaf_node, next_page_num);
+
+    /* Set parent. */
+    NodeSetParentNum(new_leaf_node, NodeGetParentNum(leaf_node));
+
+    /* All existing keys plus new key should should be divided 
+     * evenly between old (left) and new (right) nodes.
+     * Starting from the right, move each key to correct position. */
+    RIGHT_SPLIT_COUNT = (cell_num + 1) / 2;
+    LEFT_SPLIT_COUNT = (cell_num + 1) - RIGHT_SPLIT_COUNT;
+
+    /* Notice, cant make i uint32_t when i decrease, 
+     * when i = 0 and decrease, it still satisfy i >= 0. */
+    int i; 
+    for (i = cell_num; i >= 0; i--) {
+        uint32_t new_index;
+        void *destination_node, *destination;
+
+        /* If index GT than LEAF_SPLIT_COUNT, destination is new old, 
+         * othersize, stay in the old node. */
+        destination_node = (i >= LEFT_SPLIT_COUNT) 
+                            ? new_leaf_node 
+                            : leaf_node;
+        /* New position. */
+        new_index = i % LEFT_SPLIT_COUNT;
+        destination = BinLeafNodeGetCellValue(destination_node, meta_index->key_len, meta_index->value_len, new_index);
+
+        /* The cursor rigth cells should move one cell to the right to make space for the cursor, 
+         * include the cell having the old same num as cursor. The cursor leaf cells don`t need to make space.
+         * Because i start with cell number and decrease, right cells firstly move and make space. */
+        if (i == target_index) {
+            /* Deposit cursor. */
+            BinLeafNodeSetCellKey(destination_node, meta_index->key_len, meta_index->value_len, new_index, key);
+            BinLeafNodeSetCellValue(destination_node, meta_index->key_len, meta_index->value_len,  new_index, value);
+        } else if (i > target_index) 
+            /* Define new position, and right cells make cell space. */
+            memcpy(destination, 
+                   BinLeafNodeGetCellValue(leaf_node, meta_index->key_len, meta_index->value_len, i - 1), 
+                   meta_index->key_len + meta_index->value_len);
+        else
+            /* Define new position. */
+            memcpy(destination, 
+                   BinLeafNodeGetCellValue(leaf_node, meta_index->key_len, meta_index->value_len, i), 
+                   meta_index->key_len + meta_index->value_len);
+    }
+
+    /* Reset cell num. */
+    BinLeafNodeSetCellNum(leaf_node, LEFT_SPLIT_COUNT);
+    BinLeafNodeSetCellNum(new_leaf_node, RIGHT_SPLIT_COUNT);
+
+    /* If current is root, it need to upgrade to internal root node. 
+     * Otherwise, it is a normal leaf node, maybe the max key change, need update max key in parent internal node. 
+     * */
+    if (NodeIsRoot(leaf_node))
+        BinInsertForLeafNodeUpgradeRoot(meta_index, leaf_node, new_leaf_node, next_page_num);
+    else {
+        uint32_t parent_num;
+        void *new_hight_key, *child_key;
+
+        parent_num = NodeGetParentNum(leaf_node);
+        new_hight_key = BinNodeGetHighKey(leaf_node, meta_index->key_len, meta_index->value_len); 
+        child_key = BinNodeGetHighKey(new_leaf_node, meta_index->key_len, meta_index->value_len);
+        
+        /* Insert new leaf into parent. */
+        BinInsertForInternalNodeInsertCell(meta_index, parent_num, high_key, new_hight_key, child_key, next_page_num);
+    }
+
+    dfree(high_key);
+
+    MakeBufferDirty(new_buffer);
+    ReleaseBuffer(new_buffer);
+
+    MakeBufferDirty(buffer);
+    UnlockBuffer(buffer);
+    ReleaseBuffer(buffer);
 }
 
 /* Bin insert into a cell and not split leaf node. */
-static void BinInsertForLeafNodeNoSplit(MetaIndex *meta_index, void *key, void *value, Buffer buffer) {
+static void BinInsertForLeafNodeNoSplit(MetaIndex *meta_index, void *key, void *value, uint32_t page_num) {
+    Buffer buffer;
     uint32_t cell_num, target_index;
     void *leaf_node, *cell_key;
     
+    buffer = ReadBuffer(meta_index->oid, page_num);
     leaf_node = GetBufferPage(buffer);
     cell_num = BinLeafNodeGetCellNum(leaf_node);
     target_index = BinLeafNodeFindCellNum(meta_index, leaf_node, key);
@@ -322,12 +790,14 @@ static void BinInsertForLeafNodeNoSplit(MetaIndex *meta_index, void *key, void *
 
 
 /* Bin insert into a cell. */
-static void BinInsertForLeafNodeInsertCell(MetaIndex *meta_index, void *key, void *value, Buffer buffer) {
+static void BinInsertForLeafNodeInsertCell(MetaIndex *meta_index, void *key, void *value, uint32_t page_num) {
+    Buffer buffer = ReadBuffer(meta_index->oid, page_num);
     void *leaf_node = GetBufferPage(buffer);
+
     if (BinInsertForLeafNodeSafe(meta_index, leaf_node))
-        BinInsertForLeafNodeNoSplit(meta_index, key, value, buffer);
+        BinInsertForLeafNodeNoSplit(meta_index, key, value, page_num);
     else
-        BinInsertForLeafNodeSplit(meta_index, key, value, buffer);
+        BinInsertForLeafNodeSplit(meta_index, key, value, page_num);
 }
 
 /* Bin insert for leaf node. */
@@ -349,7 +819,7 @@ static void BinInsertForLeafNode(MetaIndex *meta_index, void *key, void *boundar
     if (BinCompareKey(meta_index, boundary_key, high_key) > 0 &&
         BinCompareKey(meta_index, key, high_key) > 0
     ) {
-        uint32_t next_sibling = BinLeafNodeGetSibling(leaf_node);
+        uint32_t next_sibling = BinLeafNodeGetNextSibling(leaf_node);
         Assert(next_sibling != 0);
         BinInsertForLeafNode(meta_index, key, boundary_key, value, next_sibling);
 

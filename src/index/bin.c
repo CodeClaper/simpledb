@@ -210,6 +210,33 @@ void BinInternalNodeInitialize(void *internal_node, bool is_root) {
     BinInternalNodeSetNextSibling(internal_node, 0);
 }
 
+/* Find the internal node cell num postion. 
+ * -----------------------------------------
+ * In this function, we will use binary search to find the target cell.
+ * */
+uint32_t BinInternalNodeFindCellNum(MetaIndex *meta_index, void *internal_node, void *key) {
+    uint32_t keys_num, min_index, max_index;
+
+    keys_num = BinInternalNodeGetKeysNum(internal_node);
+    min_index = 0;
+    max_index = keys_num;
+
+    while (min_index != max_index) {
+        uint32_t index;
+        void *cell_key;
+
+        index = (max_index + min_index) / 2;
+        cell_key = BinInternalNodeGetCellKey(internal_node, meta_index->key_len, index);
+        /* Notice: Greate EQ opreator is really import for store data, 
+         * when keep the prince: always keep visible row lie at the forefront of same key cells. */
+        if (BinCompareKey(meta_index, cell_key, key) >= 0) 
+            max_index = index;
+        else 
+            min_index = index + 1;
+    }
+    
+    return min_index;
+}
 
 /* Get bin leaf node cell num. */
 uint32_t BinLeafNodeGetCellNum(void *leaf_node) {
@@ -243,7 +270,7 @@ void BinLeafNodeIncreaseCellNum(void *leaf_node) {
 
 
 /* Get bin leaf node sibling. */
-uint32_t BinLeafNodeGetSibling(void *leaf_node) {
+uint32_t BinLeafNodeGetNextSibling(void *leaf_node) {
     if (NodeIsRoot(leaf_node)) {
         uint32_t column_size = BinRootNodeGetColumnSize(leaf_node);
         return *(uint32_t *)(leaf_node + COMMON_NODE_HEADER_SIZE  + BIN_ROOT_NODE_INDEX_TYPE_SIZE  + BIN_ROOT_NODE_IS_UNIQUE_SIZE  + BIN_ROOT_NODE_COLUMN_SIZE_SIZE + 
