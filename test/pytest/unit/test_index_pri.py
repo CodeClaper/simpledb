@@ -1,4 +1,4 @@
-# test_index.py
+# test_index_pri.py
 from support.db_cli import DbClient
 from support.asserts import assert_all
 
