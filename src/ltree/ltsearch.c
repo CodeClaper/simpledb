@@ -10,8 +10,8 @@
 #include "log.h"
 #include "copy.h"
 
-static void BtreeSearchReferInner(Oid oid, void *key, void *boundary_key, uint64_t page_num, Refer *refer);
-static void *BtreeSearchValueInner(Oid oid, void *key, void *boundary_key, uint64_t page_num);
+static void BtreeSearchReferInner(Oid oid, void *key, void *boundary_key, uint32_t page_num, Refer *refer);
+static void *BtreeSearchValueInner(Oid oid, void *key, void *boundary_key, uint32_t page_num);
 
 static void BtreeSearchReferForInternalNodeExtend(Oid oid, void *key, void *internal_node, Refer *refer) {
     Table *table;
@@ -55,7 +55,7 @@ static void BtreeSearchReferForInternalNodeExtend(Oid oid, void *key, void *inte
     }
 }
 
-static void BtreeSearchReferForInternalNode(Oid oid, void *key, void *boundary_key, uint64_t page_num, Refer *refer) {
+static void BtreeSearchReferForInternalNode(Oid oid, void *key, void *boundary_key, uint32_t page_num, Refer *refer) {
     Table *table;
     DataType ptype;
     Buffer buffer;
@@ -89,7 +89,7 @@ static void BtreeSearchReferForInternalNode(Oid oid, void *key, void *boundary_k
     dfree(internal_node);
 }
 
-static void BtreeSearchReferForLeafNode(Oid oid, void *key, void *boundary_key, uint64_t page_num, Refer *refer) {
+static void BtreeSearchReferForLeafNode(Oid oid, void *key, void *boundary_key, uint32_t page_num, Refer *refer) {
     Table *table;
     DataType ptype;
     Buffer buffer;
@@ -122,7 +122,7 @@ static void BtreeSearchReferForLeafNode(Oid oid, void *key, void *boundary_key, 
 }
 
 /* Btree search for refer. */
-static void BtreeSearchReferInner(Oid oid, void *key, void *boundary_key, uint64_t page_num, Refer *refer) {
+static void BtreeSearchReferInner(Oid oid, void *key, void *boundary_key, uint32_t page_num, Refer *refer) {
     Buffer buffer;
     void *node;
     NodeType type;
@@ -202,7 +202,7 @@ static void *BtreeSearchValueForInternalNodeExtend(Oid oid, void *key, void *int
 }
 
 /* Btree search for internal node. */
-static void *BtreeSearchValueForInternalNode(Oid oid, void *key, void *boundary_key, uint64_t page_num) {
+static void *BtreeSearchValueForInternalNode(Oid oid, void *key, void *boundary_key, uint32_t page_num) {
     Table *table;
     DataType ptype;
     Buffer buffer;
@@ -251,7 +251,7 @@ static void *BtreeSearchValueForLeafNodeExtend(Oid oid, void *key, void *leaf_no
 }
 
 /* Btree search for leaf node. */
-static void *BtreeSearchValueForLeafNode(Oid oid, void *key, void *boundary_key, uint64_t page_num) {
+static void *BtreeSearchValueForLeafNode(Oid oid, void *key, void *boundary_key, uint32_t page_num) {
     Table *table;
     DataType ptype;
     Buffer buffer;
@@ -284,7 +284,7 @@ static void *BtreeSearchValueForLeafNode(Oid oid, void *key, void *boundary_key,
     return value;
 }
 
-static void *BtreeSearchValueInner(Oid oid, void *key, void *boundary_key, uint64_t page_num) {
+static void *BtreeSearchValueInner(Oid oid, void *key, void *boundary_key, uint32_t page_num) {
     Buffer buffer;
     void *node;
     NodeType type;
