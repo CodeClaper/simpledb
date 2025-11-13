@@ -23,9 +23,9 @@ struct IndexMethods {
 
 static struct IndexMethods methods[] = {
     /* For btree index. */
-    [BTREE_INDEX].create = BtreeIndexCreate,
-    [BTREE_INDEX].load = BtreeIndexLoad,
-    [BTREE_INDEX].drop = BtreeIndexDrop,
+    [BTREE_INDEX].create = BinCreate,
+    [BTREE_INDEX].load = BinLoad,
+    [BTREE_INDEX].drop = BinDrop,
     [BTREE_INDEX].insert = BtreeIndexInsert,
     
     /* For hash index. */

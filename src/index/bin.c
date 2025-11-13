@@ -416,7 +416,7 @@ int BinCompareKey(MetaIndex *meta_index, void *key1, void *key2) {
 }
 
 /* Btree index create. */
-bool BtreeIndexCreate(MetaIndex *meta_index) {
+bool BinCreate(MetaIndex *meta_index) {
     char *file_path;
     int descr;
     void *root_node;
@@ -467,7 +467,7 @@ bool BtreeIndexCreate(MetaIndex *meta_index) {
 }
 
 /* Btree index load. */
-MetaIndex *BtreeIndexLoad(Oid oid, Table *table) {
+MetaIndex *BinLoad(Oid oid, Table *table) {
     Buffer buffer;
     void *root;
     Object object;
@@ -509,7 +509,7 @@ MetaIndex *BtreeIndexLoad(Oid oid, Table *table) {
 }
 
 /* Btree index drop. */
-bool BtreeIndexDrop(Oid oid) {
+bool BinDrop(Oid oid) {
     Assert(NON_ZERO_OID(oid));
 
     char *file_path;

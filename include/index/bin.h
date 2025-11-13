@@ -97,10 +97,10 @@ void *BinNodeGetHighKey(void *node, uint32_t key_len, uint32_t value_len);
 int BinCompareKey(MetaIndex *meta_index, void *key1, void *key2);
 
 /* Btree index create. */
-bool BtreeIndexCreate(MetaIndex *meta_index);
+bool BinCreate(MetaIndex *meta_index);
 
 /* Btree index load. */
-MetaIndex *BtreeIndexLoad(Oid oid, Table *table);
+MetaIndex *BinLoad(Oid oid, Table *table);
 
 /* Btree index drop. */
-bool BtreeIndexDrop(Oid oid);
+bool BinDrop(Oid oid);
