@@ -19,6 +19,7 @@
 void init_exlock(ExLockEntry *lock_entry) {
     Assert(lock_entry);
     lock_entry->pid = 0;
+    lock_entry->refcount = 0;
     init_spin_lock(&lock_entry->lock);
 }
 
@@ -29,10 +30,13 @@ void acquire_exlock(ExLockEntry *lock_entry) {
     pid_t ppid = getppid();
     /* If current processor is the one that aleary 
      * acuqiring the lock, return.*/
-    if (pid == lock_entry->pid || ppid == lock_entry->pid)
+    if (pid == lock_entry->pid || ppid == lock_entry->pid) {
+        lock_entry->refcount++;
         return;
+    }
     acquire_spin_lock(&lock_entry->lock);
     lock_entry->pid = pid;
+    lock_entry->refcount = 1;
 }
 
 /* Release the exclusive lock. */
@@ -42,7 +46,10 @@ void release_exlock(ExLockEntry *lock_entry) {
     /* Only the same processor that has acuqired the lock can release the lock.*/
     pid_t pid = getpid();
     Assert(pid == lock_entry->pid);
-
+    lock_entry->refcount--;
+    if (lock_entry->refcount != 0) return;
+    
+    /* Only if refcount is zeor, then release the spin lock. */
     release_spin_lock(&lock_entry->lock);
     lock_entry->pid = 0;
 }

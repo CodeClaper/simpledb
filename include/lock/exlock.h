@@ -1,11 +1,13 @@
 #include "spinlock.h"
+#include <stdint.h>
 
 #ifndef EXLOCK_H
 #define EXLOCK_H
 
 typedef struct ExLockEntry {
-    volatile s_lock lock;   /* The lock. */
-    volatile pid_t pid;     /* The pid that acquiring the lock.*/
+    volatile s_lock lock;           /* The lock. */
+    volatile pid_t pid;             /* The pid that acquiring the lock.*/
+    volatile uint32_t refcount;     /* Referenct count. */
 } ExLockEntry;
 
 /* Init exclusive lock. */
