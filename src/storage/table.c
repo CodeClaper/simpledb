@@ -368,17 +368,18 @@ bool drop_table(char *table_name) {
 
 
     /* It will do:
-     * (1) Remove table file from disk. 
-     * (2) Remove related indexs.
-     * (3) Remove systable object.
-     * (4) Remove table cache.
-     * (5) Remove table buffer. */
+     * (1) Remove related indexs.
+     * (2) Remove systable object.
+     * (3) Remove table cache.
+     * (4) Remove table buffer. 
+     * (5) Remove table file from disk. 
+     * */
     if (
-        remove(file_path) == 0 && 
         IndexDropByTableName(table_name) &&
         RemoveObject(oid) &&
         RemoveTableCache(oid) &&
-        RemoveTableBuffer(oid)
+        RemoveTableBuffer(oid) &&
+        remove(file_path) == 0 
     ) {
         /* Unregister fdesc. */
         unregister_fdesc(oid);
