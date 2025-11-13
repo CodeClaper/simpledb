@@ -11,7 +11,7 @@ bool IndexCreate(MetaIndex *meta_index);
 MetaIndex *IndexLoad(Oid oid, Table *table);
 
 /* Index drop. */
-bool IndexDrop(char *index_name);
+bool IndexDrop(Oid oid);
 
 /* Index drop by table name. */
 bool IndexDropByTableName(char *table_name);

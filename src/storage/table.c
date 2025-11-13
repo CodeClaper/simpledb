@@ -348,14 +348,11 @@ Table *open_table(char *table_name) {
 
 /* Drop an existed table. */
 bool drop_table(char *table_name) {
-    Oid oid, soid;
+    Oid oid;
 
     /* Check if exist the table. */
     oid = TableNameFindOid(table_name);
-    soid = StrTableNameFindOid(table_name);
-
     Assert(NON_ZERO_OID(oid));
-    Assert(NON_ZERO_OID(soid));
 
     char *file_path = table_file_path(oid);
     if (!table_file_exist(file_path)) {
@@ -363,19 +360,13 @@ bool drop_table(char *table_name) {
         return false;
     }
 
-    /* Try to acquire the table lock. */
-    try_acquire_table(oid);
-
-
     /* It will do:
-     * (1) Remove related indexs.
-     * (2) Remove systable object.
+     * (1) Remove systable object.
      * (3) Remove table cache.
      * (4) Remove table buffer. 
      * (5) Remove table file from disk. 
      * */
     if (
-        IndexDropByTableName(table_name) &&
         RemoveObject(oid) &&
         RemoveTableCache(oid) &&
         RemoveTableBuffer(oid) &&
@@ -383,15 +374,9 @@ bool drop_table(char *table_name) {
     ) {
         /* Unregister fdesc. */
         unregister_fdesc(oid);
-        unregister_fdesc(soid);
-        /* Release the table lock. */
-        try_release_table(oid);
         return true;
     }
 
-    /* Release the table lock. */
-    try_release_table(oid);
-    
     /* Not reach here logically. */
     db_log(ERROR, "Table '%s' deleted fail, error: %s", 
            table_name, strerror(errno));

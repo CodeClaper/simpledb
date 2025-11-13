@@ -11,6 +11,7 @@
 #include "systable.h"
 #include "tuple.h"
 #include "mmgr.h"
+#include "fdesc.h"
 
 /* Index methods. */
 struct IndexMethods {
@@ -86,17 +87,10 @@ MetaIndex *IndexLoad(Oid oid, Table *table) {
     IndexType type = GetIndexType(oid);
     return methods[type].load(oid, table);
 }
-
-static bool IndexDropInner(Oid oid) {
+ 
+bool IndexDrop(Oid oid) {
     IndexType type = GetIndexType(oid);
-    /* Drop index. */
     return methods[type].drop(oid);
-}
-
-/* Index drop. */
-bool IndexDrop(char *index_name) {
-    Oid oid = IndexNameFindOid(index_name);
-    return IndexDropInner(oid);
 }
 
 /* Index drop by table name. */
@@ -111,7 +105,7 @@ bool IndexDropByTableName(char *table_name) {
 
     ListCell *lc;
     foreach (lc, indexs) {
-        if (!IndexDropInner(*(Oid *) lfirst(lc)))
+        if (!IndexDrop(*(Oid *) lfirst(lc)))
             return false;
     }
 

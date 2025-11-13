@@ -13,6 +13,7 @@
 #include "mmgr.h"
 #include "refer.h"
 #include "bufmgr.h"
+#include "fdesc.h"
 #include "systable.h"
 
 /* Compare two StrRefers. */
@@ -329,8 +330,11 @@ bool DropStrHeapTable(char *table_name) {
     }
 
     /* Delete physically. */
-    if (remove(str_table_file) == 0 && RemoveObject(oid))
+    if (remove(str_table_file) == 0 && RemoveObject(oid)) {
+        /* Unregister fdesc. */
+        unregister_fdesc(oid);
         return true;
+    }
 
     /* Not reach here logically. */
     db_log(ERROR, 

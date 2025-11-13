@@ -46,6 +46,7 @@
 #include "strheaptable.h"
 #include "heaptable.h"
 #include "ltinsert.h"
+#include "index.h"
 
 /* Get value in insert node to assign column at index. */
 static void *GetInsertValue(List *value_item_list, uint32_t index, MetaColumn *meta_column) {
@@ -331,6 +332,11 @@ retry:
     dfree(leaf_node);
     return flag;
 }
+
+static void InsertForIndex(Table *table, void *tuple) {
+    
+}
+
 
 /* Insert one row. 
  * ---------------

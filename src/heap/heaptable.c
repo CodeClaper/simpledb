@@ -18,6 +18,7 @@
 #include "meta.h"
 #include "bufmgr.h"
 #include "select.h"
+#include "fdesc.h"
 
 /* Heap table header length */
 #define HEAP_TABLE_HEADER_LEN (NODE_STATE_SIZE + CELL_NUM_SIZE + REFER_SIZE)
@@ -302,12 +303,14 @@ bool DropHeapTable(char *tableName) {
     }
 
     /* Delete physically. */
-    if (remove(heap_table_file) == 0 && RemoveObject(oid))
+    if (remove(heap_table_file) == 0 && RemoveObject(oid)) {
+        /* Unregister fdesc. */
+        unregister_fdesc(oid);
         return true;
+    }
 
     /* Not reach here logically. */
-    db_log(ERROR, 
-           "Try to drop heap table '%s' fail, error : %s", 
+    db_log(ERROR, "Try to drop heap table '%s' fail, error : %s", 
            tableName, strerror(errno));
 
     return false;
