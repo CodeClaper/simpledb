@@ -391,10 +391,9 @@ void *BinNodeGetHighKey(void *node, uint32_t key_len, uint32_t value_len) {
     }
 }
 
-/* Compare bin node key. */
-int BinCompareKey(MetaIndex *meta_index, void *key1, void *key2) {
+/* Compare reach key in order. */
+static int BinCompareKeyInner(MetaIndex *meta_index, void *key1, void *key2) {
     uint32_t offset = 0;
-
     ListCell *lc;
     foreach (lc, meta_index->meta_columns) {
         MetaColumn *meta_column = (MetaColumn *) lfirst(lc);
@@ -405,8 +404,15 @@ int BinCompareKey(MetaIndex *meta_index, void *key1, void *key2) {
         else return -1;
         offset += meta_column->column_length;
     }
-
     return 0;
+}
+
+/* Compare bin node key. */
+int BinCompareKey(MetaIndex *meta_index, void *key1, void *key2) {
+    if (key1 == NULL && key2 == NULL) return 0;
+    else if (key1 != NULL && key2 == NULL) return 1;
+    else if (key1 == NULL && key2 != NULL) return -1;
+    else return BinCompareKeyInner(meta_index, key1, key2);
 }
 
 /* Btree index create. */
