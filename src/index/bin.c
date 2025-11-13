@@ -340,7 +340,7 @@ void BinLeafNodeSetCellValue(void *leaf_node, uint32_t key_len, uint32_t value_l
 /* Initialize bin leaf node. */
 void BinLeafNodeInitialize(void *leaf_node, bool is_root) {
     SetNodeType(leaf_node, LEAF_NODE);
-    NodeSetRoot(leaf_node, true);
+    NodeSetRoot(leaf_node, is_root);
     BinLeafNodeSetCellNum(leaf_node, 0);
     BinLeafNodeSetNextSibling(leaf_node, 0);
 }
@@ -383,7 +383,7 @@ void *BinNodeGetHighKey(void *node, uint32_t key_len, uint32_t value_len) {
             uint32_t cell_num = BinLeafNodeGetCellNum(node);
             return cell_num == 0
                 ? NULL
-                : BinLeafNodeGetCellValue(node, key_len, value_len, cell_num - 1);
+                : BinLeafNodeGetCellKey(node, key_len, value_len, cell_num - 1);
         }
         default:
             UNEXPECTED_VALUE(GetNodeType(node));
@@ -391,7 +391,7 @@ void *BinNodeGetHighKey(void *node, uint32_t key_len, uint32_t value_len) {
     }
 }
 
-/* Compare reach key in order. */
+/* Compare each key in order. */
 static int BinCompareKeyInner(MetaIndex *meta_index, void *key1, void *key2) {
     uint32_t offset = 0;
     ListCell *lc;
@@ -436,7 +436,7 @@ bool BtreeIndexCreate(MetaIndex *meta_index) {
     root_node = dalloc(PAGE_SIZE);
     
     /* Initialize bin leaf node. */
-    BinLeafNodeInitialize(root_node, false);
+    BinLeafNodeInitialize(root_node, true);
     BinRootNodeSetUnique(root_node, meta_index->is_unique);
     BinRootNodeSetIndexType(root_node, meta_index->type);
     BinRootNodeSetUnique(root_node, meta_index->is_unique);

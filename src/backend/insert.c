@@ -333,10 +333,6 @@ retry:
     return flag;
 }
 
-static void InsertForIndex(Table *table, void *tuple) {
-    
-}
-
 
 /* Insert one row. 
  * ---------------
@@ -365,15 +361,23 @@ Refer *InsertForRow(Table *table, Row *row) {
         return NULL;
     }
 
-    /* Insert into heap table. */
+    /* 
+     * As follow, we will do those:
+     * (1) Insert tuple to heap table.
+     * (2) Insert index to main index table.
+     * (3) Insert index to other index table.
+     * */
     tuple = RowSeriableTuple(row, table);
     heapRefer = HeapTableInsertTuple(oid, tuple);
-    
-    /* Seriable index value. */
-    index_value = GenerateIndex(oid, tuple, heapRefer);
 
-    /* Insert into btree. */
+    index_value = GenerateIndex(oid, tuple, heapRefer);
     iRefer = BtreeInsert(oid, key, index_value);
+
+    ListCell *lc;
+    foreach (lc, table->meta_indexs) {
+        MetaIndex *meta_index = (MetaIndex *) lfirst(lc);
+        IndexInsert(meta_index, tuple, heapRefer);
+    }
 
     /* Record xlog for insert operation. */
     RecordXlog(iRefer, HEAP_INSERT);

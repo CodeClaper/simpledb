@@ -239,6 +239,7 @@ MetaIndex *copy_meta_index(MetaIndex *meta_index) {
     duplica->value_len = meta_index->value_len;
     duplica->column_size = meta_index->column_size;
     duplica->meta_columns = list_copy_deep(meta_index->meta_columns);
+    duplica->page_num = meta_index->page_num;
 
     return duplica;
 }

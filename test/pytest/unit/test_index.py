@@ -19,13 +19,12 @@ def test_create_name_index():
 
 ## test insert students. 
 def test_insert_students():
-    students = generate_students(2);
+    students = generate_students(10000);
     for student in students:
         sql = f"insert into Student values ('{student["id"]}', '{student["name"]}', {student["age"]},  '{student["grade"]}', '{student["sex"]}', '{student["birth"]}', '{student["phone"]}', '{student["address"]}', '{student["createTime"]}');"
         ret = client.execute(sql)
         assert ret["success"] == True
     
-
 ## test drop table.
 def test_drop_table():
     sql = "drop table Student;"

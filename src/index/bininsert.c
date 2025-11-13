@@ -571,12 +571,11 @@ static bool BinInsertForLeafNodeSafe(MetaIndex *meta_index, void *leaf_node) {
 }
 
 /* Bin insert into a cell and split leaf node. */
-static void BinInsertForLeafNodeSplit(MetaIndex *meta_index, void *key, void *value, uint32_t page_num) {
-    Buffer buffer, new_buffer;
+static void BinInsertForLeafNodeSplit(MetaIndex *meta_index, void *key, void *value, Buffer buffer) {
+    Buffer new_buffer;
     uint32_t cell_num, target_index, next_page_num, LEFT_SPLIT_COUNT, RIGHT_SPLIT_COUNT;
     void *leaf_node, *high_key, *cell_key, *new_leaf_node;
 
-    buffer = ReadBuffer(meta_index->oid, page_num);
     leaf_node = GetBufferPage(buffer);
     cell_num = BinLeafNodeGetCellNum(leaf_node);
     high_key = copy_block(BinNodeGetHighKey(leaf_node, meta_index->key_len, meta_index->value_len), meta_index->key_len);
@@ -704,12 +703,10 @@ static void BinInsertForLeafNodeSplit(MetaIndex *meta_index, void *key, void *va
 }
 
 /* Bin insert into a cell and not split leaf node. */
-static void BinInsertForLeafNodeNoSplit(MetaIndex *meta_index, void *key, void *value, uint32_t page_num) {
-    Buffer buffer;
+static void BinInsertForLeafNodeNoSplit(MetaIndex *meta_index, void *key, void *value, Buffer buffer) {
     uint32_t cell_num, target_index;
     void *leaf_node, *cell_key;
     
-    buffer = ReadBuffer(meta_index->oid, page_num);
     leaf_node = GetBufferPage(buffer);
     cell_num = BinLeafNodeGetCellNum(leaf_node);
     target_index = BinLeafNodeFindCellNum(meta_index, leaf_node, key);
@@ -790,14 +787,13 @@ static void BinInsertForLeafNodeNoSplit(MetaIndex *meta_index, void *key, void *
 
 
 /* Bin insert into a cell. */
-static void BinInsertForLeafNodeInsertCell(MetaIndex *meta_index, void *key, void *value, uint32_t page_num) {
-    Buffer buffer = ReadBuffer(meta_index->oid, page_num);
+static void BinInsertForLeafNodeInsertCell(MetaIndex *meta_index, void *key, void *value, Buffer buffer) {
     void *leaf_node = GetBufferPage(buffer);
 
     if (BinInsertForLeafNodeSafe(meta_index, leaf_node))
-        BinInsertForLeafNodeNoSplit(meta_index, key, value, page_num);
+        BinInsertForLeafNodeNoSplit(meta_index, key, value, buffer);
     else
-        BinInsertForLeafNodeSplit(meta_index, key, value, page_num);
+        BinInsertForLeafNodeSplit(meta_index, key, value, buffer);
 }
 
 /* Bin insert for leaf node. */
