@@ -105,12 +105,11 @@ static void init_db() {
     /* Initialise row lock. */
     InitRowLock();
 
-    /* Initialise table cache. */
-    InitTableCache();
-
     /* Init system table. */
     InitSysTable();
 
+    /* Initialise table cache. */
+    InitTableCache();
 }
 
 /* Start bgwriter. */

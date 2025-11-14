@@ -907,17 +907,17 @@ static char *SearchTableNameViaAlias(SelectPlan *select_plan, char *alias_name) 
 /* Scan from leaf node. 
  * -------------------
  * Note that: Scan-index operation only supports for one-table query. */
-static void ScanLeafNode(SelectResult *select_result, uint32_t page_num, 
-                         void *boundary_key, Table *table, SelectPlan *select_plan) {
-    /* Get cell number, key length and value lenght. */
-    uint32_t key_len, value_len, default_value_len, cell_num;
+static void ScanLeafNode(Oid oid, uint32_t page_num, void *boundary_key, SelectResult *select_result, SelectPlan *select_plan) {
+    Table *table;
     Buffer buffer;
     DataType ptype;
     void *leaf_node, *high_key;
     TransEntry *current_trans;
+    uint32_t key_len, value_len, default_value_len, cell_num;
 
     /* Get leaf node buffer. */
-    buffer = ReadBuffer(GET_TABLE_OID(table), page_num);
+    table = open_table_inner(oid);
+    buffer = ReadBuffer(oid, page_num);
     LockBuffer(buffer, RW_READERS);
     leaf_node = GetBufferPage(buffer);
 
@@ -944,7 +944,7 @@ static void ScanLeafNode(SelectResult *select_result, uint32_t page_num,
     if (GT(GetComparableValue(boundary_key, ptype), GetComparableValue(high_key, ptype), ptype)) {
         uint32_t next_sibling = NodeGetNextSibling(table, leaf_node);
         Assert(next_sibling != 0);
-        ScanLeafNode(select_result, next_sibling, boundary_key, table, select_plan);
+        ScanLeafNode(oid, next_sibling, boundary_key, select_result, select_plan);
     }
     
     /* Release the buffer. */
@@ -953,9 +953,8 @@ static void ScanLeafNode(SelectResult *select_result, uint32_t page_num,
 }
 
 /* Select through leaf node. */
-static void SelectLeafNode(SelectResult *select_result, uint32_t page_num, 
-                           void *boundary_key, Table *table, SelectPlan *select_plan) {
-    Oid oid;
+static void SelectLeafNode(Oid oid, uint32_t page_num, void *boundary_key, SelectResult *select_result, SelectPlan *select_plan) {
+    Table *table;
     Buffer buffer;
     DataType ptype;
     void *leaf_node, *high_key;
@@ -964,11 +963,9 @@ static void SelectLeafNode(SelectResult *select_result, uint32_t page_num,
     uint32_t key_len, value_len, default_value_len, cell_num ;
 
     /* If LimitClauseNode full, not continue. */
-    if (LimitClauseIsFull(select_plan))
-        return;
+    if (LimitClauseIsFull(select_plan)) return;
 
-    /* Get leaf node buffer. */
-    oid = GET_TABLE_OID(table);
+    table = open_table_inner(oid);
     buffer = ReadBuffer(oid, page_num);
     LockBuffer(buffer, RW_READERS);
     leaf_node = select_plan->onlyCount 
@@ -1038,7 +1035,7 @@ static void SelectLeafNode(SelectResult *select_result, uint32_t page_num,
     if (GT(GetComparableValue(boundary_key, ptype), GetComparableValue(high_key, ptype), ptype)) {
         uint32_t next_sibling = NodeGetNextSibling(table, leaf_node);
         Assert(next_sibling != 0);
-        SelectLeafNode(select_result, next_sibling, boundary_key, table, select_plan);
+        SelectLeafNode(oid, next_sibling, boundary_key, select_result, select_plan);
     }
     
     /* Release the buffer. */
@@ -1046,19 +1043,19 @@ static void SelectLeafNode(SelectResult *select_result, uint32_t page_num,
 }
 
 /* Select through internal node. */
-static void SelectInternalNode(SelectResult *select_result, uint32_t page_num, 
-                               void *boundary_key, Table *table, SelectPlan *select_plan) {
-    /* If LimitClauseNode full, not continue. */
-    if (LimitClauseIsFull(select_plan))
-        return;
-
+static void SelectInternalNode(Oid oid, uint32_t page_num, void *boundary_key, SelectResult *select_result, SelectPlan *select_plan) {
+    Table *table;
     Buffer buffer;
     DataType ptype;
     MetaColumn *primary_meta_column;
     void *internal_node, *high_key;
     uint32_t key_len, default_value_len, keys_num;
 
-    buffer = ReadBuffer(GET_TABLE_OID(table), page_num);
+    /* If LimitClauseNode full, not continue. */
+    if (LimitClauseIsFull(select_plan)) return;
+
+    table = open_table_inner(oid);
+    buffer = ReadBuffer(oid, page_num);
     LockBuffer(buffer, RW_READERS);
     internal_node = GetBufferPageCopy(buffer);
     UnlockBuffer(buffer);
@@ -1105,22 +1102,13 @@ static void SelectInternalNode(SelectResult *select_result, uint32_t page_num,
         switch (GetNodeType(child_node)) {
             case LEAF_NODE: {
                 if (select_plan->onlyScanIndex)
-                    ScanLeafNode(
-                        select_result, child_page_num, 
-                        child_high_key, table, select_plan
-                    );
+                    ScanLeafNode(oid, child_page_num, child_high_key, select_result, select_plan);
                 else
-                    SelectLeafNode(
-                        select_result, child_page_num, 
-                        child_high_key, table, select_plan
-                    );
+                    SelectLeafNode(oid, child_page_num, child_high_key, select_result, select_plan);
                 break;
             }
             case INTERNAL_NODE:
-                SelectInternalNode(
-                    select_result, child_page_num, 
-                    child_high_key, table, select_plan
-                );
+                SelectInternalNode(oid, child_page_num, child_high_key, select_result, select_plan);
                 break;
             default:
                 db_log(PANIC, "Unknown node type.");
@@ -1145,22 +1133,13 @@ static void SelectInternalNode(SelectResult *select_result, uint32_t page_num,
     switch (GetNodeType(right_child_node)) {
         case LEAF_NODE: {
             if (select_plan->onlyScanIndex)
-                ScanLeafNode(
-                    select_result, right_child_page_num, 
-                    right_high_key, table, select_plan
-                );
+                ScanLeafNode(oid, right_child_page_num, right_high_key, select_result, select_plan);
             else
-                SelectLeafNode(
-                    select_result, right_child_page_num, 
-                    right_high_key, table, select_plan
-                );
+                SelectLeafNode(oid, right_child_page_num, right_high_key, select_result, select_plan);
             break;
         }
         case INTERNAL_NODE:
-            SelectInternalNode(
-                select_result, right_child_page_num, 
-                right_high_key, table, select_plan
-            );
+            SelectInternalNode(oid, right_child_page_num, right_high_key, select_result, select_plan);
             break;
         default:
             db_log(PANIC, "Unknown node type.");
@@ -1174,7 +1153,7 @@ static void SelectInternalNode(SelectResult *select_result, uint32_t page_num,
     if (GT(GetComparableValue(boundary_key, ptype), GetComparableValue(high_key, ptype), ptype)) {
         uint32_t next_sibling = NodeGetNextSibling(table, internal_node);
         Assert(next_sibling != 0);
-        SelectInternalNode(select_result, next_sibling, boundary_key, table, select_plan);
+        SelectInternalNode(oid, next_sibling, boundary_key, select_result, select_plan);
     }
 
 
@@ -1192,24 +1171,21 @@ static void SelectInternalNodeChildTask(void *taskArg) {
     SelectResult *select_result = args->select_result;
     Table *table = args->table;
     SelectPlan *select_plan = args->select_plan;
+
+    Oid oid;
     Buffer child_buffer;
     void *child_node;
 
+    oid = GET_TABLE_OID(table);
     child_buffer = ReadBuffer(GET_TABLE_OID(table), child_page_num);
     child_node = GetBufferPage(child_buffer);
 
     switch (GetNodeType(child_node)) {
         case LEAF_NODE:
-            SelectLeafNode(
-                select_result, child_page_num, 
-                NULL, table, select_plan
-            );
+            SelectLeafNode(oid, child_page_num, NULL, select_result, select_plan);
             break;
         case INTERNAL_NODE:
-            SelectInternalNode(
-                select_result, child_page_num, 
-                NULL, table, select_plan
-            );
+            SelectInternalNode(oid, child_page_num, NULL, select_result, select_plan);
             break;
         default:
             db_log(PANIC, "Unknown node type.");
@@ -1221,18 +1197,19 @@ static void SelectInternalNodeChildTask(void *taskArg) {
 }
 
 /* Select through internal node. */
-static void SelectInternalNodeAsync(SelectResult *select_result, uint32_t page_num, Table *table, SelectPlan *select_plan) {
+static void SelectInternalNodeAsync(Oid oid, uint32_t page_num, SelectResult *select_result,  SelectPlan *select_plan) {
     /* If LimitClauseNode full, not continue. */
     if (LimitClauseIsFull(select_plan))
         return;
 
+    Table *table;
     Buffer buffer;
     void *internal_node;
     MetaColumn *primary_meta_column;
     uint32_t key_len, value_len, keys_num;
 
-    /* Get the internal node buffer. */
-    buffer = ReadBuffer(GET_TABLE_OID(table), page_num);
+    table = open_table_inner(oid);
+    buffer = ReadBuffer(oid, page_num);
     internal_node = GetBufferPage(buffer);
 
     /* Get variables. */
@@ -1311,43 +1288,25 @@ static bool AsyncCondition(SelectResult *select_result) {
 
 /* Query with condition inner. */
 void QueryUnderSearchConditionInner(Oid oid, SelectResult *select_result, SelectPlan *select_plan) {
-    Table *table;
     Buffer buffer;
     void *root;
     
-    /* Check if table exists. */
-    table = open_table_inner(oid);
-    if (table == NULL)
-        return;
-
     buffer = ReadBuffer(oid, ROOT_PAGE_NUM); 
     root = GetBufferPage(buffer);
 
     switch (GetNodeType(root)) {
         case LEAF_NODE: {
             if (select_plan->onlyScanIndex)
-                ScanLeafNode(
-                    select_result, table->root_page_num, 
-                    NULL, table, select_plan
-                );
+                ScanLeafNode(oid, ROOT_PAGE_NUM, NULL, select_result, select_plan);
             else
-                SelectLeafNode(
-                    select_result,table->root_page_num, 
-                    NULL, table, select_plan
-                );
+                SelectLeafNode(oid, ROOT_PAGE_NUM, NULL, select_result, select_plan);
             break;
         }
         case INTERNAL_NODE: {
             if (AsyncCondition(select_result)) 
-                SelectInternalNodeAsync(
-                    select_result, table->root_page_num,
-                    table, select_plan
-                );
+                SelectInternalNodeAsync(oid, ROOT_PAGE_NUM, select_result, select_plan);
             else
-                SelectInternalNode(
-                    select_result, table->root_page_num,
-                    NULL, table, select_plan
-                );
+                SelectInternalNode(oid, ROOT_PAGE_NUM, NULL, select_result, select_plan);
             break;
         }
         default:

@@ -27,6 +27,7 @@ typedef struct SelectPlan {
     bool onlyCount;                 /* Only count int select statement. */
     bool onlyScanIndex;             /* Only scan index. */
     bool indexValid;                /* Index if valid. */
+    MetaIndex *meta_index;          /* The meta index if using index. */
     SearchConditionNode *condition; /* The search condition. */
     List *selectTableList;          /* List of SelectTable. */
     volatile int32_t offset;        /* Current offset. Need volatile in parall calculating.*/
