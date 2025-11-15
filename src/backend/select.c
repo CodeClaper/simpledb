@@ -991,8 +991,6 @@ static void SelectForLeafNode(Oid oid, uint32_t page_num, void *boundary_key, Se
         void *cell_value = LeafNodeGetCellValue(leaf_node, key_len, value_len, default_value_len, i);
         Xid created_xid = LeafNodeGetCellCreatedXid(leaf_node, key_len, value_len, default_value_len, i);
         Xid expired_xid = LeafNodeGetCellExpiredXid(leaf_node, key_len, value_len, default_value_len, i);
-        if (created_xid == 0)
-           Assert(created_xid != 0);
 
         /* If not visible, skip it. */
         if (!IsVisibleInner(created_xid, expired_xid, current_trans))
@@ -1077,7 +1075,7 @@ static void SelectForInternalNode(Oid oid, uint32_t page_num, void *boundary_key
     uint32_t i;
     for (i = 0; i < keys_num; i++) {
         /* Check if index column, use index to avoid full text scanning. */
-        /* Current internal node cell key as max key, previous cell key as min key, so the the range of values is (max_key, max_key]. */
+        /* Current internal node cell key as max key, previous cell key as min key, so the the range of values is (min_key, max_key]. */
 
         void *max_key, *min_key;
         KeyValue *max_key_value, *min_key_value, *child_boundary_key;

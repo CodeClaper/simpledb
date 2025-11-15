@@ -1,4 +1,5 @@
 #include "data.h"
+#include "select.h"
 
-/* Bin search refer via key. */
-Refer *BinSearch(MetaIndex *meta_index, void *key);
+/* Bin search under conditon. */
+void BinSearchUnderCondition(SelectResult *select_result, SelectPlan *select_plan);

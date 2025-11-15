@@ -88,6 +88,15 @@ def test_critical_value3():
     assert ret[0]["data"] == ret[1]["data"]
     assert ret[0]["duration"] * 10 < ret[1]["duration"]
 
+## test critical value
+def test_critical_value4():
+    sql = "select * from Demo where id = '31180' or id = '144460' or id = '5357' or sid = '75862';\n" \
+          "select * from Demo where sid = '31180' or sid = '144460' or sid = '5357' or sid = '75862';"
+    ret = client.execute(sql)
+    assert_all(ret)
+    assert ret[0]["data"] == ret[1]["data"]
+    assert abs(ret[0]["duration"] - ret[1]["duration"]) < 1
+
 ## test index valid for like predicate
 def test_index_valid_like1():
     sql = "select * from Demo where id like '%99999%';\n" \
