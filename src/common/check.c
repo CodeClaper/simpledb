@@ -20,7 +20,9 @@
 #include "asserts.h"
 #include "compare.h"
 #include "data.h"
+#include "tuple.h"
 #include "row.h"
+#include "index.h"
 #include "func.h"
 #include "table.h"
 #include "log.h"
@@ -799,27 +801,33 @@ static bool CheckUpdateForUniqueColumn(Table *table, MetaColumn *meta_column, vo
     /* Although this cehck update node, but new select result is SELECT_STMT. */
     select_result = new_select_result(SELECT_STMT, update_node->table_name, true);
     condition = WhereClauseFindSearchCondition(update_node->where_clause);
-    QueryUnderSearchCondition(select_result, SimpleSelectPlan(SelectRow, ARG_NULL, NULL, condition));
+    QueryUnderSearchCondition(select_result, SimpleSelectPlan(SelectTuple, ARG_NULL, NULL, condition));
 
-    /* If selected rows more than one, 
-     * which means at least two rows has same value.*/
+    /**
+     * Consider tow cases:
+     * (1) More than one rows hit the condition, which means at least two rows will be set as the same values.
+     * (2) Just one row hits the condition, we need to check if the same row as one we will update.
+     *.*/
     if (select_result->row_size > 1) {
         db_log(ERROR, "Column '%s' is unique, not allowd duplicate.", 
                meta_column->column_name);
         return false;
     } else if (select_result->row_size == 1) {
-        MetaColumn *primary_column = MetaTableFindPrimaryKey(table->meta_table);
-        Row *selected_row = qfirst(select_result->rows->head);
-        SelectResult *result = SelectWithColumnValue(GET_TABLE_OID(table), meta_column, value);
+        MetaIndex *pri_meta_index;
+        SelectResult *result;
+        void *select_tuple, *target_tuple, *select_key, *target_key;
+
+        pri_meta_index = TableFindPrimaryMetaIndex(table);
+        select_tuple = qfirst(QueueHead(select_result->tuples));
+        select_key = TupleFindKey(select_tuple, table->meta_table);
+        result = SelectWithColumnValue(GET_TABLE_OID(table), meta_column, value);
+
         QueueCell *qc;
-        qforeach(qc, result->rows) {
-            Row *row = (Row *) qfirst(qc);
-            void *key = RowFindKey(row, table);
-            void *target_key = RowFindKey(selected_row, table);
-            if (NE(GetComparableValue(key, primary_column->column_type), 
-                   GetComparableValue(target_key, primary_column->column_type), 
-                   primary_column->column_type)
-            ) {
+        qforeach(qc, result->tuples) {
+            target_tuple = (void *) qfirst(qc);
+            target_key = TupleFindKey(target_tuple, table->meta_table);
+
+            if (CompareKey(pri_meta_index, select_key, target_key) != 0) {
                 db_log(ERROR, "Key '%s' already exists, not allowd duplicate key. ",
                        KeyGetUserStrValue(value, meta_column->column_type));
                 return false;

@@ -1376,7 +1376,7 @@ SelectResult *SelectWithColumnValue(Oid oid, MetaColumn *meta_column, void *valu
     Assert(table != NULL);
     SearchConditionNode *condtion = ColumnValueConvertCondition(meta_column, value);
     SelectResult *result = new_select_result(SELECT_STMT, GET_TABLE_NAME(table), true);
-    QueryUnderSearchConditionInner(oid, result, SimpleSelectPlan(SelectRow, ARG_NULL, NULL, condtion));
+    QueryUnderSearchConditionInner(oid, result, SimpleSelectPlan(SelectTuple, ARG_NULL, NULL, condtion));
     return result;
 }
 
