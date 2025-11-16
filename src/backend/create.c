@@ -190,7 +190,6 @@ static void OperateContraintForPrimaryKey(MetaTable *meta_table, List *commalist
         meta_column->is_primary = true;
         meta_column->is_unique = true;
         meta_column->not_null = true;
-        break; /* Not support mult-columns as primary key. */
     }
 }
 
@@ -350,8 +349,7 @@ void ExecuteCreateTableStatement(CreateTableNode *create_table_node, DBResult *r
 
     /* Combine MetaTable. */
     MetaTable *meta_table = CreateTableNodeGenerateMetaTable(create_table_node);
-    if (meta_table == NULL) 
-        return;
+    if (meta_table == NULL) return;
 
     /* Will do these: 
      * (1) Create table.
