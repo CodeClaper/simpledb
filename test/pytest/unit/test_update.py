@@ -74,6 +74,13 @@ def test_duplicate_key_when_batch_update():
     ret = client.execute(sql)
     assert ret["success"] == False
 
+## try query id = '6'
+def test_try_query_id6():
+    sql = "select * from A where id = '6';"
+    ret = client.execute(sql)
+    assert ret["success"] == True
+    assert ret["data"] == []
+
 ## test loop update
 def test_loop_update():
     for _ in range(1, 101):
