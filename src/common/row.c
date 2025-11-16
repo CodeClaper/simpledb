@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include <string.h>
 #include "row.h"
 #include "tuple.h"
@@ -74,22 +75,27 @@ void *RowSeriableTuple(Row *row, Table *table) {
  * ---------------------
  * Return NULL if not found.
  * */
-void *RowFindKey(Row *row, MetaTable *meta_table) {
+void *RowFindKey(Row *row, Table *table) {
     Assert(row != NULL);
-    Assert(meta_table != NULL);
-    
-    ListCell *lc;
-    MetaColumn *primary_meta_column;
+    Assert(table != NULL);
+        
+    void *key;
+    MetaIndex *pri_meta_index;
+    uint32_t offset = 0;
 
-    primary_meta_column = MetaTableFindPrimaryKey(meta_table);
-    foreach (lc, row->data) {
-        KeyValue *key_value = (KeyValue *) lfirst(lc);
-        AssertFalse(StrIsEmpty(key_value->table_name));
-        if (StrEq(key_value->key, primary_meta_column->column_name) && StrEq(key_value->table_name, meta_table->table_name))
-            return key_value->value;
+    pri_meta_index = TableFindPrimaryMetaIndex(table);
+    key = dalloc(pri_meta_index->key_len);
+
+
+    ListCell *lc;
+    foreach (lc, pri_meta_index->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *) lfirst(lc);
+        void *value = RowGetValueOrDefault(row, meta_column);
+        memcpy(key + offset, value, meta_column->column_length);
+        offset += meta_column->column_length;
     }
 
-    return NULL;
+    return key;
 }
 
 /* Get row value or default. 

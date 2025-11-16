@@ -197,7 +197,7 @@ static void HeadUpdateDeleteXlog(Refer *refer, TransEntry *transaction) {
 
     Table *table = open_table_inner(refer->oid);
     Row *newRow = copy_row(rawRow);
-    void *key = RowFindKey(newRow, table->meta_table);
+    void *key = RowFindKey(newRow, table);
 
     KeyValue *expired_xid_col = lfirst(last_cell(newRow->data));
     Xid expired_xid = *(Xid *)expired_xid_col->value;

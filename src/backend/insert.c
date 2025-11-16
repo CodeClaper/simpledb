@@ -347,7 +347,7 @@ Refer *InsertForRow(Table *table, Row *row) {
     oid = GET_TABLE_OID(table);
     ptype = MetaTableFindPrimaryDataType(table->meta_table);
     
-    key = RowFindKey(row, table->meta_table);
+    key = RowFindKey(row, table);
     Assert(key != NULL);
     preRefer = BtreeSearchRefer(oid, key);
     

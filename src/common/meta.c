@@ -9,6 +9,7 @@
 #include "meta.h"
 #include "data.h"
 #include "table.h"
+#include "index.h"
 #include "mmgr.h"
 #include "copy.h"
 #include "free.h"
@@ -644,4 +645,15 @@ void MetaColumnAssignValueToDestination(void *destination, void *value, MetaColu
         else
             memset(destination + LEAF_NODE_CELL_NULL_FLAG_SIZE, 0, meta_column->column_length - LEAF_NODE_CELL_NULL_FLAG_SIZE);
     } 
+}
+
+/* Table find primary meta index. */
+MetaIndex *TableFindPrimaryMetaIndex(Table *table) {
+    ListCell *lc;
+    foreach (lc, table->meta_indexs) {
+        MetaIndex *meta_index = (MetaIndex *) lfirst(lc);
+        if (meta_index->is_pri) return meta_index;
+    }
+
+    return NULL;
 }

@@ -142,7 +142,7 @@ Refer *fetch_refer(MetaColumn *meta_column, SearchConditionNode *condition) {
         /* Take the first row as refered. Maybe row size should be one, 
          * but now there is no check. */
         row = qfirst(QueueHead(select_result->rows));
-        key = RowFindKey(row, table->meta_table);
+        key = RowFindKey(row, table);
         refer = BtreeSearchRefer(oid, key);
     }
 

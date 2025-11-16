@@ -814,8 +814,8 @@ static bool CheckUpdateForUniqueColumn(Table *table, MetaColumn *meta_column, vo
         QueueCell *qc;
         qforeach(qc, result->rows) {
             Row *row = (Row *) qfirst(qc);
-            void *key = RowFindKey(row, table->meta_table);
-            void *target_key = RowFindKey(selected_row, table->meta_table);
+            void *key = RowFindKey(row, table);
+            void *target_key = RowFindKey(selected_row, table);
             if (NE(GetComparableValue(key, primary_column->column_type), 
                    GetComparableValue(target_key, primary_column->column_type), 
                    primary_column->column_type)
