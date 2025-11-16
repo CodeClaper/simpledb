@@ -1,8 +1,10 @@
-1. Heap table --Down.
-2. Stream output --Down.
-3. Multi-table query --Ongoing.
-4. Expand the search condition --Down.
-5. Row lock.
-6. Index --Ongoing.
-7. Subquery.
-8. More functions.
+1.  Heap table --Down.
+2.  Stream output --Down.
+3.  Multi-table query --Ongoing.
+4.  Expand the search condition --Down.
+5.  Row lock.
+6.  Index --Ongoing.
+7.  Subquery.
+8.  More functions.
+9.  WAL
+10. RAFT duplica
