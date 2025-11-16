@@ -13,6 +13,7 @@
 #include "trans.h"
 #include "copy.h"
 #include "row.h"
+#include "index.h"
 #include "heaptable.h"
 #include "instance.h" 
 #include "compare.h"
@@ -496,7 +497,7 @@ static void BinSearchUnderConditionForInternalNode(MetaIndex *meta_index, uint32
 
     /* The only condition to move to sibling:
      * The target node has spliten. */
-    if (BinCompareKey(meta_index, boundary_key, high_key) > 0) {
+    if (CompareKey(meta_index, boundary_key, high_key) > 0) {
         uint32_t next_sibling = BinInternalNodeGetNextSibling(internal_node);
         Assert(next_sibling != 0);
         BinSearchUnderConditionForInternalNode(meta_index, next_sibling, boundary_key, select_result, select_plan);

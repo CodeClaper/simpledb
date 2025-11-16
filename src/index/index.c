@@ -12,6 +12,8 @@
 #include "tuple.h"
 #include "mmgr.h"
 #include "fdesc.h"
+#include "meta.h"
+#include "compare.h"
 
 /* Index methods. */
 struct IndexMethods {
@@ -116,4 +118,28 @@ bool IndexDropByTableName(char *table_name) {
 bool IndexInsert(MetaIndex *meta_index, void *tuple, Refer *value) {
     void *key = TupleGenerateKey(meta_index, tuple);
     return methods[meta_index->type].insert(meta_index, key, value);
+}
+
+/* Compare each key in order. */
+static int CompareKeyInner(MetaIndex *meta_index, void *key1, void *key2) {
+    uint32_t offset = 0;
+    ListCell *lc;
+    foreach (lc, meta_index->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *) lfirst(lc);
+        void *v1 = GetComparableValue(key1 + offset, meta_column->column_type);
+        void *v2 = GetComparableValue(key2 + offset, meta_column->column_type);
+        if (EQ(v1, v2, meta_column->column_type)) continue;
+        else if (GT(v1, v2, meta_column->column_type)) return 1;
+        else return -1;
+        offset += meta_column->column_length;
+    }
+    return 0;
+}
+
+/* Compare bin node key. */
+int CompareKey(MetaIndex *meta_index, void *key1, void *key2) {
+    if (key1 == NULL && key2 == NULL) return 0;
+    else if (key1 != NULL && key2 == NULL) return 1;
+    else if (key1 == NULL && key2 != NULL) return -1;
+    else return CompareKeyInner(meta_index, key1, key2);
 }

@@ -79,16 +79,16 @@ static void BinInsertForInternalNodeUpdateCellKey(MetaIndex *meta_index, uint32_
      * (1) Old key is less than high key, which means it is in the cells of the internal node. 
      * (2) Old key is equals to high key, which means it is the right child.
      * (3) Old key is more than high key, which means the old internal node has spliten, and need to move to next sibling to search. */
-    if (BinCompareKey(meta_index, old_key, high_key) < 0) {
+    if (CompareKey(meta_index, old_key, high_key) < 0) {
         uint32_t index;
         void *cell_key;
 
         index = BinInternalNodeFindCellNum(meta_index, internal_node, old_key);
         cell_key = BinInternalNodeGetCellKey(internal_node, meta_index->key_len, index);
         /* Theoretically EQ, just for check. Lots of tricky bugs are caught by the check. */
-        Assert(BinCompareKey(meta_index, old_key, cell_key) == 0);
+        Assert(CompareKey(meta_index, old_key, cell_key) == 0);
         BinInternalNodeSetCellKey(internal_node, meta_index->key_len, index, new_key);
-    } else if (BinCompareKey(meta_index, old_key, high_key) == 0) {
+    } else if (CompareKey(meta_index, old_key, high_key) == 0) {
         BinInternalNodeSetRightKey(internal_node, meta_index->key_len, new_key);
     } else {
         uint32_t next_sibling = BinInternalNodeGetNextSibling(internal_node); 
@@ -100,7 +100,7 @@ static void BinInsertForInternalNodeUpdateCellKey(MetaIndex *meta_index, uint32_
     MakeBufferDirty(buffer);
     
     /* Update current internal node parent. */
-    if (!NodeIsRoot(internal_node) && BinCompareKey(meta_index, new_key, high_key)) {
+    if (!NodeIsRoot(internal_node) && CompareKey(meta_index, new_key, high_key)) {
         uint32_t parent_num;
         parent_num = NodeGetParentNum(internal_node);
         BinInsertForInternalNodeUpdateCellKey(meta_index, parent_num, old_key, new_key);
@@ -233,8 +233,8 @@ static void BinInsertForInternalNodeSplit(MetaIndex *meta_index, void *internal_
     /* We need to deal with two case:
      * (1) The new child key is greater than or equal to high key, which means should be the right child of the internal node. 
      * (2) Otherwise, the new child should be in cells of the internal node. */
-    if (BinCompareKey(meta_index, new_child_key, high_key) >= 0) {
-        Assert(BinCompareKey(meta_index, old_child_key, high_key) == 0);
+    if (CompareKey(meta_index, new_child_key, high_key) >= 0) {
+        Assert(CompareKey(meta_index, old_child_key, high_key) == 0);
         BinInternalNodeSetRightKey(internal_node, meta_index->key_len, new_child_key);
         BinInternalNodeSetRightNum(internal_node, new_child_page);
 
@@ -250,7 +250,7 @@ static void BinInsertForInternalNodeSplit(MetaIndex *meta_index, void *internal_
         uint32_t old_target_index;
 
         old_target_index = BinInternalNodeFindCellNum(meta_index, internal_node, old_child_key);
-        Assert(BinCompareKey(meta_index, old_child_key, BinInternalNodeGetCellKey(internal_node, meta_index->key_len, old_target_index))); 
+        Assert(CompareKey(meta_index, old_child_key, BinInternalNodeGetCellKey(internal_node, meta_index->key_len, old_target_index))); 
         BinInternalNodeSetCellKey(internal_node, meta_index->key_len, old_target_index, old_new_key);
         /* Get target index. */
         target_index = BinInternalNodeFindCellNum(meta_index, internal_node, new_child_key);
@@ -347,8 +347,8 @@ static void BinInsertForInternalNodeNoSplit(MetaIndex *meta_index, void *interna
     /* We need to deal with two case:
      * (1) The new child key is greater than or equal to high key, which means should be the right child of the internal node. 
      * (2) Otherwise, the new child should be in cells of the internal node. */
-    if (BinCompareKey(meta_index, new_child_key, high_key) >= 0) {
-        Assert(BinCompareKey(meta_index, old_child_key, high_key) == 0);
+    if (CompareKey(meta_index, new_child_key, high_key) >= 0) {
+        Assert(CompareKey(meta_index, old_child_key, high_key) == 0);
         BinInternalNodeSetCellKey(internal_node, meta_index->key_len, keys_num, old_new_key);
         BinInternalNodeSetCellValue(internal_node, meta_index->key_len, keys_num, 
                                     BinInternalNodeGetRightNum(internal_node));
@@ -368,7 +368,7 @@ static void BinInsertForInternalNodeNoSplit(MetaIndex *meta_index, void *interna
         /* Change the old key. */
         old_target_index = BinInternalNodeFindCellNum(meta_index, internal_node, old_child_key);
         temp = BinInternalNodeGetCellKey(internal_node, meta_index->key_len, old_target_index);
-        Assert(BinCompareKey(meta_index, old_child_key, temp) == 0);
+        Assert(CompareKey(meta_index, old_child_key, temp) == 0);
         BinInternalNodeSetCellKey(internal_node, meta_index->key_len, old_target_index, old_new_key);
 
         /* Append new child. */
@@ -407,7 +407,7 @@ static void BinInsertForInternalNodeInsertCell(MetaIndex *meta_index, uint32_t p
 
     /* Only one condition to move to sibling:
      * The old child key is more than high key. */
-    if (BinCompareKey(meta_index, old_child_key, high_key) > 0) {
+    if (CompareKey(meta_index, old_child_key, high_key) > 0) {
         uint32_t next_sibling = BinInternalNodeGetNextSibling(internal_node);
         Assert(next_sibling != 0);
         BinInsertForInternalNodeInsertCell(meta_index, next_sibling, old_child_key, old_new_key, new_child_key, new_child_page);
@@ -448,7 +448,7 @@ static void BinInsertForInternalNodeExtend(MetaIndex *meta_index, void *key, Ref
         cell_key = BinInternalNodeGetCellKey(internal_node, meta_index->key_len, index);
         /* Notice: Greate EQ opreator is really import for store data, 
          * when keep the prince: always keep visible row lie at the forefront of same key cells. */
-        if (BinCompareKey(meta_index, cell_key, key) >= 0) 
+        if (CompareKey(meta_index, cell_key, key) >= 0) 
             max_index = index;
         else 
             min_index = index + 1;
@@ -491,8 +491,8 @@ static void BinInsertForInternalNode(MetaIndex *meta_index, void *key, void *bou
      * (1) The target node has spliten.
      * (2) The key is greater the high key, 
      *     which means the target cell not in the current node. */
-    if (BinCompareKey(meta_index, boundary_key, high_key) > 0 &&
-        BinCompareKey(meta_index, key, high_key) > 0
+    if (CompareKey(meta_index, boundary_key, high_key) > 0 &&
+        CompareKey(meta_index, key, high_key) > 0
     ) {
         uint32_t next_sibling = BinInternalNodeGetNextSibling(internal_node);
         Assert(next_sibling != 0);
@@ -585,7 +585,7 @@ static void BinInsertForLeafNodeSplit(MetaIndex *meta_index, void *key, void *va
     /* Avoid duplicate key, two conditions:
      * (1) The index is unique.
      * (2) Duplicate key already exists. */
-    if (meta_index->is_unique && BinCompareKey(meta_index, key, cell_key) == 0) {
+    if (meta_index->is_unique && CompareKey(meta_index, key, cell_key) == 0) {
         Table *table;
         Refer *refer;
         void *tuple;
@@ -715,7 +715,7 @@ static void BinInsertForLeafNodeNoSplit(MetaIndex *meta_index, void *key, void *
     /* Avoid duplicate key, two conditions:
      * (1) The index is unique.
      * (2) Duplicate key already exists. */
-    if (meta_index->is_unique && BinCompareKey(meta_index, key, cell_key) == 0) {
+    if (meta_index->is_unique && CompareKey(meta_index, key, cell_key) == 0) {
         Table *table;
         Refer *refer;
         void *tuple;
@@ -812,8 +812,8 @@ static void BinInsertForLeafNode(MetaIndex *meta_index, void *key, void *boundar
      * (1) The target node has spliten.
      * (2) The key is greater the high key, 
      *     which means the target cell not in the current node. */
-    if (BinCompareKey(meta_index, boundary_key, high_key) > 0 &&
-        BinCompareKey(meta_index, key, high_key) > 0
+    if (CompareKey(meta_index, boundary_key, high_key) > 0 &&
+        CompareKey(meta_index, key, high_key) > 0
     ) {
         uint32_t next_sibling = BinLeafNodeGetNextSibling(leaf_node);
         Assert(next_sibling != 0);

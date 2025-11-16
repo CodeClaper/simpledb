@@ -93,8 +93,6 @@ uint32_t BinLeafNodeFindCellNum(MetaIndex *meta_index, void *leaf_node, void *ke
 /* Get bin node high key. */
 void *BinNodeGetHighKey(void *node, uint32_t key_len, uint32_t value_len);
 
-/* Compare bin node key. */
-int BinCompareKey(MetaIndex *meta_index, void *key1, void *key2);
 
 /* Btree index create. */
 bool BinCreate(MetaIndex *meta_index);

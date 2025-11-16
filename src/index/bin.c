@@ -15,8 +15,8 @@
 #include "fdesc.h"
 #include "refer.h"
 #include "pager.h"
-#include "compare.h"
 #include "systable.h"
+#include "index.h"
 
 /* Set bin root node index type. */
 static void BinRootNodeSetIndexType(void *root_node, IndexType type) {
@@ -229,7 +229,7 @@ uint32_t BinInternalNodeFindCellNum(MetaIndex *meta_index, void *internal_node, 
         cell_key = BinInternalNodeGetCellKey(internal_node, meta_index->key_len, index);
         /* Notice: Greate EQ opreator is really import for store data, 
          * when keep the prince: always keep visible row lie at the forefront of same key cells. */
-        if (BinCompareKey(meta_index, cell_key, key) >= 0) 
+        if (CompareKey(meta_index, cell_key, key) >= 0) 
             max_index = index;
         else 
             min_index = index + 1;
@@ -364,7 +364,7 @@ uint32_t BinLeafNodeFindCellNum(MetaIndex *meta_index, void *leaf_node, void *ke
         cell_key = BinLeafNodeGetCellKey(leaf_node, meta_index->key_len, meta_index->value_len, index);
         /* Notice: Not only greater but aslo equal opreator is really import for store data, 
          * when keep the prince: always keep visible row lying at the forefront of same key cells. */
-        if (BinCompareKey(meta_index, cell_key, key) >= 0) {
+        if (CompareKey(meta_index, cell_key, key) >= 0) {
             max_index = index;
         } else {
             min_index = index + 1; 
@@ -389,30 +389,6 @@ void *BinNodeGetHighKey(void *node, uint32_t key_len, uint32_t value_len) {
             UNEXPECTED_VALUE(GetNodeType(node));
             return NULL;
     }
-}
-
-/* Compare each key in order. */
-static int BinCompareKeyInner(MetaIndex *meta_index, void *key1, void *key2) {
-    uint32_t offset = 0;
-    ListCell *lc;
-    foreach (lc, meta_index->meta_columns) {
-        MetaColumn *meta_column = (MetaColumn *) lfirst(lc);
-        void *v1 = GetComparableValue(key1 + offset, meta_column->column_type);
-        void *v2 = GetComparableValue(key2 + offset, meta_column->column_type);
-        if (EQ(v1, v2, meta_column->column_type)) continue;
-        else if (GT(v1, v2, meta_column->column_type)) return 1;
-        else return -1;
-        offset += meta_column->column_length;
-    }
-    return 0;
-}
-
-/* Compare bin node key. */
-int BinCompareKey(MetaIndex *meta_index, void *key1, void *key2) {
-    if (key1 == NULL && key2 == NULL) return 0;
-    else if (key1 != NULL && key2 == NULL) return 1;
-    else if (key1 == NULL && key2 != NULL) return -1;
-    else return BinCompareKeyInner(meta_index, key1, key2);
 }
 
 /* Btree index create. */

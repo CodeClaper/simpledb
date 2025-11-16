@@ -18,3 +18,6 @@ bool IndexDropByTableName(char *table_name);
 
 /* Index insert. */
 bool IndexInsert(MetaIndex *meta_index, void *tuple, Refer *value);
+
+/* Compare key. */
+int CompareKey(MetaIndex *meta_index, void *key1, void *key2);
