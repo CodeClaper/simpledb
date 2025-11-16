@@ -29,6 +29,7 @@ def test_show_indexs():
     print(ret)
     assert ret["success"] == True
     assert ret["data"] == [
+        {"index_name": "Student_pri_index", "table_name": "Student", "is_unique": True, "index_type": "BTREE", "columns": "id" },
         {"index_name": "name_index", "table_name": "Student", "is_unique": False, "index_type": "BTREE", "columns": "name" },
         {"index_name": "name_address_index", "table_name": "Student", "is_unique": False, "index_type": "BTREE", "columns": "name,address" }
     ]

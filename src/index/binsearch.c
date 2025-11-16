@@ -19,8 +19,6 @@
 
 static void BinSearchUnderConditionInner(MetaIndex *meta_index, uint32_t page_num, void *boundary_key, SelectResult *select_result, SelectPlan *select_plan);
 static bool BinSearchInternalNodeForSearchCondition(SelectPlan *select_plan, void *min_key, void *max_key, SearchConditionNode *condition);
-static bool BinSearchLeafNodeForSearchCondition(SelectPlan *select_plan, List *meta_columns, void *tuple, SearchConditionNode *search_condition);
-static KeyValue *QueryTupleColumnValue(SelectPlan *select_plan, List *meta_columns, ColumnNode *column, void *tuple);
 
 /* Check if LimitClauseNode is full. 
  * LimitClauseNode full means the poffset >= the offset.
@@ -560,8 +558,8 @@ static void BinSearchUnderConditionForLeafNode(MetaIndex *meta_index, uint32_t p
         Assert(ntuple != NULL);
         
         /* Filt the leaf node. */
-        if (BinSearchLeafNodeForSearchCondition(select_plan, columns, ntuple, select_plan->condition)) 
-            select_plan->rowHanler(ntuple, head, select_plan->type, select_plan->arg);
+        /*if (BinSearchLeafNodeForSearchCondition(select_plan, columns, ntuple, select_plan->condition)) */
+        /*    select_plan->rowHanler(ntuple, head, select_plan->type, select_plan->arg);*/
         
         /* When nested not null, means ntuple dalloc new memory. */
         if (head->nested != NULL)

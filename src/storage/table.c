@@ -189,6 +189,35 @@ bool shrink_table(Oid oid, MetaTable *meta_table) {
     return true;
 }
 
+/* Load primary meta index info. */
+static MetaIndex *LoadPrimaryMetaIndex(Table *table) {
+    MetaIndex *meta_index = instance(MetaIndex);
+
+    meta_index->oid = table->oid;
+    meta_index->tid = table->oid;
+    meta_index->index_name = FormatStr("%s_pri_index", GET_TABLE_NAME(table));
+    meta_index->type = BTREE_INDEX;
+    meta_index->is_pri = true;
+    meta_index->is_unique = true;
+    meta_index->page_num = GetPageSize(table->oid);
+    meta_index->value_len = table->index_value_len;
+    meta_index->column_size = 0;
+    meta_index->key_len = 0;
+    meta_index->meta_columns = create_list(NODE_META_COLUMN);
+
+    ListCell *lc;
+    foreach (lc, table->meta_table->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *) lfirst(lc);
+        if (meta_column->is_primary) {
+            append_list(meta_index->meta_columns, meta_column);
+            meta_index->key_len += meta_column->column_length;
+            meta_index->column_size++;
+        }
+    }
+
+    return meta_index;
+}
+
 /* Load meta index info by the toid. 
  * --------------------------------
  * Return list of meta index info of the table.
@@ -200,6 +229,10 @@ static List *LoadMetaIndex(Oid toid, Table *table) {
     indexs = ToidFindIndexs(toid);
     meta_indexs = create_list(NODE_META_INDEX);
 
+    /* Load primary meta index. */
+    append_list(meta_indexs, LoadPrimaryMetaIndex(table));
+
+    /* Load non-primary meta index. */
     ListCell *lc;
     foreach (lc, indexs) {
         Oid oid = *(Oid *) lfirst(lc);

@@ -663,38 +663,39 @@ typedef struct MetaColumn {
 
 /* MetaTable */
 typedef struct MetaTable {
-    char *table_name;           /* Table name.*/
-    List *meta_columns;         /* Meta column list. */
-    uint32_t column_size;       /* size of column, excluding system reserved columns. */
-    uint32_t all_column_size;   /* sizo of column, including system reserved columns. */
+    char *table_name;               /* Table name.*/
+    List *meta_columns;             /* Meta column list. */
+    uint32_t column_size;           /* size of column, excluding system reserved columns. */
+    uint32_t all_column_size;       /* sizo of column, including system reserved columns. */
 } MetaTable;
 
 /* MetaIndex.*/
 typedef struct MetaIndex {
-    Oid oid;                    /* Oid of index. */
-    Oid tid;                    /* Oid of table. */
-    char *index_name;           /* Index name. */
-    IndexType type;             /* Index type. */
-    bool is_unique;             /* Is unique. */
-    List *meta_columns;         /* Columns. */
-    uint32_t column_size;       /* Column size. */
-    uint32_t key_len;           /* Key length. */
-    uint32_t value_len;         /* Value length. */
-    volatile uint32_t page_num; /* Page num. */
+    Oid oid;                        /* Oid of index. */
+    Oid tid;                        /* Oid of table. */
+    char *index_name;               /* Index name. */
+    IndexType type;                 /* Index type. */
+    bool is_unique;                 /* Is unique. */
+    bool is_pri;                    /* Is primary. */
+    List *meta_columns;             /* Columns. */
+    uint32_t column_size;           /* Column size. */
+    uint32_t key_len;               /* Key length. */
+    uint32_t value_len;             /* Value length. */
+    volatile uint32_t page_num;     /* Page num. */
 } MetaIndex;
 
 /* Table */
 typedef struct Table {
-    Oid oid;                    /* Oid. */
-    Oid hoid;                   /* Heap table oid. */
-    uint32_t root_page_num;     /* Root page num. */
-    MetaTable *meta_table;      /* Meta table info. */
-    List *meta_indexs;          /* Meta index info. */   
-    Pid creator;                /* The creator pid. */
-    volatile uint32_t page_size;/* Page size. */
-    uint32_t key_len;           /* Primay key length. */
-    uint32_t index_value_len;   /* Index table value length. */
-    uint32_t heap_value_len;    /* Heap table value length. */
+    Oid oid;                        /* Oid. */
+    Oid hoid;                       /* Heap table oid. */
+    uint32_t root_page_num;         /* Root page num. */
+    MetaTable *meta_table;          /* Meta table info. */
+    List *meta_indexs;              /* Meta index info. */   
+    Pid creator;                    /* The creator pid. */
+    volatile uint32_t page_size;    /* Page size. */
+    uint32_t key_len;               /* Primay key length. */
+    uint32_t index_value_len;       /* Index table value length. */
+    uint32_t heap_value_len;        /* Heap table value length. */
 } Table;
 
 /* TableBufferEntry */

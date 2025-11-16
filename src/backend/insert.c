@@ -376,6 +376,8 @@ Refer *InsertForRow(Table *table, Row *row) {
     ListCell *lc;
     foreach (lc, table->meta_indexs) {
         MetaIndex *meta_index = (MetaIndex *) lfirst(lc);
+        /* Skip primary index. */
+        if (meta_index->is_pri) continue;
         IndexInsert(meta_index, tuple, heapRefer);
     }
 
