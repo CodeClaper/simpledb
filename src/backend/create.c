@@ -303,7 +303,7 @@ static bool PrepareSaveTableCache(Oid oid, MetaTable *meta_table) {
     table->key_len = TableCalcPrimaryKeyLength(table);
     table->index_value_len = TableCalcIndexLength(table);
     table->heap_value_len = TableCalcRowLength(table);
-    table->meta_indexs = create_list(NODE_META_INDEX); 
+    table->meta_indexs = LoadMetaIndex(oid, table); 
 
     /* Save into cache. */
     SaveTableCache(table);

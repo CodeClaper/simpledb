@@ -222,7 +222,7 @@ static MetaIndex *LoadPrimaryMetaIndex(Table *table) {
  * --------------------------------
  * Return list of meta index info of the table.
  * */
-static List *LoadMetaIndex(Oid toid, Table *table) {
+List *LoadMetaIndex(Oid toid, Table *table) {
     List *indexs;
     List *meta_indexs;
 
