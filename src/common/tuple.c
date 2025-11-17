@@ -5,6 +5,7 @@
 #include "const.h"
 #include "copy.h"
 #include "instance.h"
+#include "mmgr.h"
 
 /* Get array number. */
 static uint32_t GetArrayNumber(void *destination) {
@@ -56,10 +57,23 @@ void TupleSetValue(void *tuple, MetaColumn *meta_column, void *value) {
 }
 
 /* Get primary key value in tuple. */
-void *TupleFindKey(void *tuple, MetaTable *meta_table) {
-    MetaColumn *primary_meta_column = MetaTableFindPrimaryKey(meta_table);
-    Assert(primary_meta_column != NULL);
-    return TupleFindValue(tuple, primary_meta_column);
+void *TupleFindKey(void *tuple, Table *table) {
+    void *key;
+    MetaIndex *pri_meta_index;
+    uint32_t offset = 0;
+
+    pri_meta_index = TableFindPrimaryMetaIndex(table);
+    key = dalloc(pri_meta_index->key_len);
+
+    ListCell *lc;
+    foreach (lc, pri_meta_index->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *) lfirst(lc);
+        void *value = TupleFindValue(tuple, meta_column);
+        memcpy(key + offset, value, meta_column->column_length);
+        offset += meta_column->column_length;
+    }
+
+    return key;
 }
 
 /* Get created xid in tuple. */

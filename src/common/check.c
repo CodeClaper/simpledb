@@ -819,13 +819,13 @@ static bool CheckUpdateForUniqueColumn(Table *table, MetaColumn *meta_column, vo
 
         pri_meta_index = TableFindPrimaryMetaIndex(table);
         select_tuple = qfirst(QueueHead(select_result->tuples));
-        select_key = TupleFindKey(select_tuple, table->meta_table);
+        select_key = TupleFindKey(select_tuple, table);
         result = SelectWithColumnValue(GET_TABLE_OID(table), meta_column, value);
 
         QueueCell *qc;
         qforeach(qc, result->tuples) {
             target_tuple = (void *) qfirst(qc);
-            target_key = TupleFindKey(target_tuple, table->meta_table);
+            target_key = TupleFindKey(target_tuple, table);
 
             if (CompareKey(pri_meta_index, select_key, target_key) != 0) {
                 db_log(ERROR, "Key '%s' already exists, not allowd duplicate key. ",

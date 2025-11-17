@@ -262,7 +262,7 @@ static void UpdateTupleReferValue(void *tuple, SelectResult *select_result, ROW_
     ref_table = open_table_inner(refer_update_entity->old_refer->oid);
     Assert(ref_table);
 
-    key = TupleFindKey(tuple, table->meta_table);
+    key = TupleFindKey(tuple, table);
     index = BtreeSearchValue(oid, key);
 
     ListCell *lc;

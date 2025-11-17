@@ -7,7 +7,7 @@ void *TupleFindValue(void *tuple, MetaColumn *meta_column);
 void TupleSetValue(void *tuple, MetaColumn *meta_column, void *value);
 
 /* Get primary key value in tuple. */
-void *TupleFindKey(void *tuple, MetaTable *meta_table);
+void *TupleFindKey(void *tuple, Table *table);
 
 /* Get created xid in tuple. */
 Xid TupleFindCreatedXid(void *tuple, MetaTable *meta_table);

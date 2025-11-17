@@ -135,15 +135,14 @@ static void UpdateTuple(void *tuple, SelectResult *select_result, ROW_HANDLER_AR
     expired_xid = TupleFindExpiredXid(tuple, table->meta_table);
 
     /* Only update row that is visible for current transaction. */
-    if (!IsVisible(created_xid, expired_xid)) 
-        return;
+    if (!IsVisible(created_xid, expired_xid)) return;
     
     /* Copy the tuple to avod influenct old data. */
     new_tuple = copy_block(tuple, table->heap_value_len);
     select_result->row_size++;
 
     /* Get old refer, and lock update refer. */
-    old_key = TupleFindKey(tuple, table->meta_table);
+    old_key = TupleFindKey(tuple, table);
 
     /* Delete row for update. */
     oldRefer = DeleteRowForUpdate(oid, old_key);
@@ -156,7 +155,7 @@ static void UpdateTuple(void *tuple, SelectResult *select_result, ROW_HANDLER_AR
     UpdateTupleForAssignment(new_tuple, (List *) arg, table->meta_table);
 
     /* Get new key. */
-    new_key = TupleFindKey(new_tuple, table->meta_table);
+    new_key = TupleFindKey(new_tuple, table);
 
     /* Reinsert row for update. */
     newRefer = ReinsertRowForUpdate(oid, new_key, new_tuple);

@@ -43,7 +43,7 @@ void delete_row(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE t
         /* Decrease row size. */
         select_result->row_size++;
 
-        key = TupleFindKey(tuple, table->meta_table);
+        key = TupleFindKey(tuple, table);
         index = BtreeSearchValue(oid, key);
 
         /* Delete from index table. */
