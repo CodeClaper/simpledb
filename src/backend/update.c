@@ -181,7 +181,7 @@ static inline SearchConditionNode *WhereClauseFindSearchCondition(WhereClauseNod
 }
 
 /* Execute update statment. */
-void exec_update_statment(UpdateNode *update_node, DBResult *result) {
+void ExecuteUpdateStatement(UpdateNode *update_node, DBResult *result) {
     Table *table;
     SelectResult *select_result;
     SearchConditionNode *condition_node;
@@ -192,8 +192,7 @@ void exec_update_statment(UpdateNode *update_node, DBResult *result) {
         db_log(ERROR, "Try to open table '%s' fail.", update_node->table_name);
 
     /* Check out update node. */
-    if (!CheckForUpdate(update_node)) 
-        return;
+    if (!CheckForUpdate(update_node)) return;
 
     /* Query with conditon, and update satisfied condition row. */
     select_result = new_select_result(UPDATE_STMT, update_node->table_name, true);

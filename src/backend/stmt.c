@@ -142,7 +142,7 @@ static void ExecuteSelectStmt(Statement *statement, DBResult *result) {
 static void ExecuteUpdateStmt(Statement *statement, DBResult *result) {
     Assert(statement->statement_type == UPDATE_STMT);
     AutoBeginTransaction();
-    exec_update_statment(statement->update_node, result);
+    ExecuteUpdateStatement(statement->update_node, result);
 }
 
 /*Delete Statement*/
