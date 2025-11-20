@@ -21,10 +21,11 @@ static void BinInsertInner(MetaIndex *meta_index, void *key, void *boundary_key,
 static void BinInsertForInternalNodeInsertCell(MetaIndex *meta_index, uint32_t page_num, void *old_child_key, void *old_new_key, void *new_child_key, uint32_t new_child_page);
 
 /* Predicate duplicate key.
+ * --------------------------
  * These are three duplicate key type.
- * (1) 1: A deleted duplicate key which does not need to care about.
- * (2) 0: An un-commited duplicate key which need to wait for commit.
- * (3) -1: A commited duplicate key which case duplicate key issue. 
+ * (1) OK: A deleted duplicate key which does not need to care about.
+ * (2) WAIT: An un-commited duplicate key which need to wait for commit.
+ * (3) ERRO: A commited duplicate key which case duplicate key issue. 
  * */
 static int BinInsertDuplicateKeyPredicate(Xid current_xid, Xid created_xid, Xid expired_xid) {
     Assert(created_xid != 0);
@@ -589,7 +590,7 @@ static void BinInsertForLeafNodeSplit(MetaIndex *meta_index, void *key, void *va
         Table *table;
         Refer *refer;
         void *tuple;
-        uint32_t predicate;
+        int predicate;
         Xid current_xid, created_xid, expired_xid;
         
         table = open_table_inner(meta_index->tid);
@@ -719,7 +720,7 @@ static void BinInsertForLeafNodeNoSplit(MetaIndex *meta_index, void *key, void *
         Table *table;
         Refer *refer;
         void *tuple;
-        uint32_t predicate;
+        int predicate;
         Xid current_xid, created_xid, expired_xid;
         
         table = open_table_inner(meta_index->tid);
