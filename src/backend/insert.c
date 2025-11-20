@@ -333,6 +333,35 @@ retry:
     return flag;
 }
 
+/* 
+ * Insert for tuple.
+ * -------------------
+ * As follow, we will do those:
+ * (1) Insert tuple to heap table.
+ * (2) Insert index to main index table.
+ * (3) Insert index to other index table.
+ * */
+Refer *InsertForTuple(Oid oid, void *key, void *tuple) {
+    Table *table;
+    Refer *heapRefer, *refer;
+    void *value;
+
+    table = open_table_inner(oid);
+    heapRefer = HeapTableInsertTuple(oid, tuple);
+    value = GenerateIndex(oid, tuple, heapRefer);
+    refer = BtreeInsert(oid, key, value);
+
+    ListCell *lc;
+    foreach (lc, table->meta_indexs) {
+        MetaIndex *meta_index = (MetaIndex *) lfirst(lc);
+        /* Skip primary index. */
+        if (meta_index->is_pri) continue;
+        IndexInsert(meta_index, tuple, heapRefer);
+    }
+
+    return refer;
+}
+
 
 /* Insert one row. 
  * ---------------
@@ -341,8 +370,8 @@ retry:
 Refer *InsertForRow(Table *table, Row *row) {
     Oid oid;
     DataType ptype;
-    void *key, *tuple, *index_value;
-    Refer *preRefer, *heapRefer, *iRefer;
+    void *key, *tuple;
+    Refer *preRefer, *refer;
 
     oid = GET_TABLE_OID(table);
     ptype = MetaTableFindPrimaryDataType(table->meta_table);
@@ -361,33 +390,13 @@ Refer *InsertForRow(Table *table, Row *row) {
         return NULL;
     }
 
-    /* 
-     * As follow, we will do those:
-     * (1) Insert tuple to heap table.
-     * (2) Insert index to main index table.
-     * (3) Insert index to other index table.
-     * */
     tuple = RowSeriableTuple(row, table);
-    heapRefer = HeapTableInsertTuple(oid, tuple);
-
-    index_value = GenerateIndex(oid, tuple, heapRefer);
-    iRefer = BtreeInsert(oid, key, index_value);
-
-    ListCell *lc;
-    foreach (lc, table->meta_indexs) {
-        MetaIndex *meta_index = (MetaIndex *) lfirst(lc);
-        /* Skip primary index. */
-        if (meta_index->is_pri) continue;
-        IndexInsert(meta_index, tuple, heapRefer);
-    }
+    refer = InsertForTuple(oid, key, tuple);
 
     /* Record xlog for insert operation. */
-    RecordXlog(iRefer, HEAP_INSERT);
+    RecordXlog(refer, HEAP_INSERT);
 
-    dfree(index_value);
-    dfree(tuple);
-
-    return iRefer;    
+    return refer;    
 }
 
 /* Insert for values case. 

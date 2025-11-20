@@ -37,6 +37,7 @@
 #include "utils.h"
 #include "meta.h"
 #include "row.h"
+#include "tuple.h"
 #include "table.h"
 #include "heaptable.h"
 
@@ -47,7 +48,7 @@ static XLogEntry *XLHeader = NULL;
 
 static void HeapInsertXLog(Refer *refer, TransEntry *transaction);
 static void HeapDeleteXLog(Refer *refer, TransEntry *transaction);
-static void HeadUpdateDeleteXlog(Refer *refer, TransEntry *transaction);
+static void HeapUpdateDeleteXlog(Refer *refer, TransEntry *transaction);
 
 /* Genrate new XLogEntry. */
 static XLogEntry *NewXLogEntry(Xid xid, Refer *refer, XLogHeapType type) {
@@ -138,7 +139,7 @@ void ExecuteRollback() {
                 HeapInsertXLog(current->refer, trans);
                 break;
             case HEAP_UPDATE_DELETE:
-                HeadUpdateDeleteXlog(current->refer, trans);
+                HeapUpdateDeleteXlog(current->refer, trans);
                 break;
             default:
                 db_log(PANIC, "Unknown XLogHeapType.");
@@ -191,7 +192,7 @@ static void HeapDeleteXLog(Refer *refer, TransEntry *transaction) {
 }
 
 /* Reverse update delete transaction. */
-static void HeadUpdateDeleteXlog(Refer *refer, TransEntry *transaction) {
+static void HeapUpdateDeleteXlog(Refer *refer, TransEntry *transaction) {
     Row *rawRow = DefineRow(refer);
     Assert(RowIsDeleted(rawRow));
 
@@ -209,12 +210,7 @@ static void HeadUpdateDeleteXlog(Refer *refer, TransEntry *transaction) {
     /* Repositioning. */
     Refer *nRefer = BtreeSearchRefer(refer->oid, key);
 
-    /* Lock update refer. */
     add_refer_update_lock(nRefer);
-
-    /* Re-insert. */
     InsertForRow(table, newRow);
-
-    /* Free update refer lock. */
     free_refer_update_lock(nRefer);
 }
