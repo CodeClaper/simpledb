@@ -14,6 +14,7 @@
 #include "data.h"
 #include "meta.h"
 #include "select.h"
+#include "insert.h"
 #include "delete.h"
 #include "copy.h"
 #include "compare.h"
@@ -58,37 +59,41 @@ static void UpdateTupleForAssignment(void *tuple, List *assignment_list, MetaTab
 }
 
 
-/* Delete row for update */
+/* Delete row for update 
+ * ---------------------
+ * Will do thoese:
+ * (1) Delete heap tuple.
+ * (2) Delete index.
+ * (3) Record xlog for HEAP_UPDATE_DELETE.
+ * */
 static Refer *DeleteRowForUpdate(Oid oid, void *key) {
     Table *table;
-    Refer *refer;
-    void *index;
     Xid current_xid;
+    Refer *heap_refer, *refer;
 
     table = open_table_inner(oid);
     current_xid = GetCurrentXid();
-    index = BtreeSearchValue(oid, key);
+    heap_refer = (Refer *) BtreeSearchValue(oid, key);
 
-    /* Delete from heap table. */
-    HeapTableUpdateRowExpiredXid(table, (Refer *) index, current_xid);
-    
-    /* Delete from btree. */
+    HeapTableUpdateRowExpiredXid(table, heap_refer, current_xid);
     refer = BtreeModifyExpiredXid(oid, key, current_xid);
-
-    /* Record xlog. */
     RecordXlog(refer, HEAP_UPDATE_DELETE);
 
-    dfree(index);
+    dfree(heap_refer);
 
     return refer;
 }
 
-/* Insert row for update. */
+/* Insert row for update.
+ * ----------------------
+ * Will do these:
+ * (1) Reinsert the tuple.
+ * (2) Record xlog for HEAP_UPDATE_INSERT.
+ * */
 static Refer *ReinsertRowForUpdate(Oid oid, void *key, void *tuple) {
     Table *table;
-    Refer *refer, *hrefer;
+    Refer *refer;
     Xid created_xid, expired_xid;
-    void *index;
 
     table = open_table_inner(oid);
     created_xid = GetCurrentXid();
@@ -97,22 +102,11 @@ static Refer *ReinsertRowForUpdate(Oid oid, void *key, void *tuple) {
     TupleSetCreatedXid(tuple, table->meta_table, created_xid);
     TupleSetExpiredXid(tuple, table->meta_table, expired_xid);
     
-    /* Reinsert into heap table. */
-    hrefer = HeapTableInsertTuple(oid, tuple);
-
-    /* Generate new index. */
-    index = dalloc(table->index_value_len);
-    IndexSetCreatedXid(index, created_xid);
-    IndexSetExpiredXid(index, expired_xid);
-    IndexSetRefer(index, hrefer);
-
-    /* Reinsert into btree. */
-    refer = BtreeInsert(oid, key, index);
+    /* Reinsert. */
+    refer = InsertForTuple(oid, key, tuple);
 
     /* Record xlog for insert. */
     RecordXlog(refer, HEAP_UPDATE_INSERT);
-
-    dfree(index);
 
     return refer;
 }
@@ -137,7 +131,7 @@ static void UpdateTuple(void *tuple, SelectResult *select_result, ROW_HANDLER_AR
     /* Only update row that is visible for current transaction. */
     if (!IsVisible(created_xid, expired_xid)) return;
     
-    /* Copy the tuple to avod influenct old data. */
+    /* Copy the tuple to avod impact the old tuple data. */
     new_tuple = copy_block(tuple, table->heap_value_len);
     select_result->row_size++;
 
@@ -204,8 +198,8 @@ void ExecuteUpdateStatement(UpdateNode *update_node, DBResult *result) {
     );
     
     /* Combine the result. */
-    result->success = true;
     result->rows = select_result->row_size;
+    result->success = true;
     result->message = FormatStr("Successfully updated %d row data.", result->rows);
 
     db_log(SUCCESS, "Successfully updated %d row data.", result->rows);
