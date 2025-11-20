@@ -138,7 +138,7 @@ Refer *MakeEmptyRefer() {
 }
 
 /* Generate new ReferUpdateEntity. */
-ReferUpdateEntity *new_refer_update_entity(Refer *old_refer, Refer *new_refer) {
+static ReferUpdateEntity *NewReferUpdateEntity(Refer *old_refer, Refer *new_refer) {
     ReferUpdateEntity *refer_update_entity = instance(ReferUpdateEntity);
     refer_update_entity->old_refer = old_refer;
     refer_update_entity->new_refer = new_refer;
@@ -293,14 +293,13 @@ void UpdateRefer(Oid oid, int32_t old_page_num, int32_t old_cell_num, int32_t ne
 
     oldRefer = new_refer(oid, old_page_num, old_cell_num);
     newRefer = new_refer(oid, new_page_num, new_cell_num);
-    ruEntity = new_refer_update_entity(oldRefer, newRefer);
-   
+    ruEntity = NewReferUpdateEntity(oldRefer, newRefer);
+
     /* Update related tables. */
     UpdateRelatedTablesRefer(ruEntity);
 
     /* Update Xlog. */
     UpdateXlogEntryRefer(ruEntity);
 
-    /* Free memory. */
     free_refer_update_entity(ruEntity);
 }

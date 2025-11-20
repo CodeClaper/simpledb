@@ -23,9 +23,6 @@ static inline int CompareRefer(Refer srefer, Refer trefer) {
 }
 
 
-/* Generate new ReferUpdateEntity. */
-ReferUpdateEntity *new_refer_update_entity(Refer *old_refer, Refer *new_refer);
-
 /* Fetch Refer. */
 Refer *FetchRefer(MetaColumn *meta_column, SearchConditionNode *condition);
 
