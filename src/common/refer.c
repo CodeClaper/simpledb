@@ -34,69 +34,53 @@
 #include "table.h"
 #include "heaptable.h"
 
-typedef struct {
-    uint32_t size;
-    Refer **list;
-} UpdateReferLockContent;
-
-static UpdateReferLockContent *update_refer_lock_content;
+/**
+ * UpdateReferLockContent.
+ * This lock content is used to record the refer info, 
+ * to avoid the old refer change when update, which may cause data mass.
+ */
+static Queue *updateReferLockContent;
 
 /* Check if a refer include in ReferUpdateEntity. */
-static bool include_update_refer_lock(Refer *refer);
+static bool ReferUpdateLockHas(Refer *refer);
 
 /* Init Refer. */
-void init_refer() {
-    update_refer_lock_content = instance(UpdateReferLockContent);
-    update_refer_lock_content->list = dalloc(0);
-    update_refer_lock_content->size = 0;
-}
-
-/* Check refer */
-void check_refer(Refer *refer) {
-    Assert(refer->page_num >= 0);
-    Assert(refer->cell_num >= 0);
+void InitRefer() {
+    switch_shared();
+    updateReferLockContent = CreateQueue(NODE_REFER);
+    switch_local();
 }
 
 /* Get refer oid. */
-static inline Oid get_refer_oid(ReferUpdateEntity *refer_update_entity) {
+static inline Oid ReferGetOid(ReferUpdateEntity *refer_update_entity) {
     return refer_update_entity->old_refer->oid;
 }
 
-/* Add Refer to UpdateReferLockContent. */
-void add_refer_update_lock(Refer *refer) {
-    if (!include_update_refer_lock(refer)) {
-        update_refer_lock_content->list = drealloc(update_refer_lock_content->list, sizeof(Refer *) * (update_refer_lock_content->size + 1));
-        update_refer_lock_content->list[update_refer_lock_content->size++] = copy_refer(refer);
+/* Add Refer to UpdateReferLockContent. 
+ * -----------------------------------
+ * Return the refer will be used when <ReferUpdateLockFree>.
+ * */
+Refer *ReferUpdateLockAdd(Refer *refer) {
+    if (!ReferUpdateLockHas(refer)) {
+        switch_shared();
+        Refer *duplica = copy_refer(refer);
+        AppendQueue(updateReferLockContent, duplica);
+        switch_local();
+        return duplica;
     }
+    return NULL;
 }
 
 /* Free refer in UpdateReferLockContent. */
-void free_refer_update_lock(Refer *refer) {
-    Assert(update_refer_lock_content);
-    uint32_t i, j;
-    for (i = 0; i < update_refer_lock_content->size; i++) {
-        Refer *current = update_refer_lock_content->list[i];
-        if (refer_equals(refer, current)) {
-            for (j = i; j < update_refer_lock_content->size; j++) {
-                memcpy(update_refer_lock_content->list + j, update_refer_lock_content->list + j + 1, sizeof(Refer *));
-            }
-            memset(update_refer_lock_content->list + j, 0, sizeof(Refer *));
-
-            free_refer(current);
-
-            update_refer_lock_content->size--;
-            update_refer_lock_content->list = drealloc(update_refer_lock_content->list, sizeof(Refer *) * update_refer_lock_content->size);
-            break;
-        }
-    }
+void ReferUpdateLockFree(Refer *refer) {
+    DeleteQueue(updateReferLockContent, refer);
 }
 
 /* Check if a refer include in ReferUpdateEntity. */
-static bool include_update_refer_lock(Refer *refer) {
-    Assert(update_refer_lock_content);
-    uint32_t i;
-    for (i = 0; i < update_refer_lock_content->size; i++) {
-        Refer *current = update_refer_lock_content->list[i];
+static bool ReferUpdateLockHas(Refer *refer) {
+    QueueCell *qc;
+    qforeach (qc, updateReferLockContent) {
+        Refer *current = (Refer *) qfirst(qc);
         if (refer_equals(refer, current))
             return true;
     }
@@ -277,8 +261,7 @@ static void UpdateTupleReferValue(void *tuple, SelectResult *select_result, ROW_
 /* Update table refer. */
 static void update_table_refer(MetaTable *meta_table, ReferUpdateEntity *refer_update_entity) {
     /* Skip update locked refer. */
-    if (include_update_refer_lock(refer_update_entity->old_refer))
-        return;
+    if (ReferUpdateLockHas(refer_update_entity->old_refer)) return;
 
     /* Query with condition, and delete satisfied condition row. */
     SelectResult *select_result = new_select_result(UPDATE_STMT, meta_table->table_name, true);
@@ -296,7 +279,7 @@ void update_related_tables_refer(ReferUpdateEntity *refer_update_entity) {
     List *table_list;
 
     /* Get self name. */
-    self_oid = get_refer_oid(refer_update_entity);
+    self_oid = ReferGetOid(refer_update_entity);
     table_list = GetAllTableCache();
 
     /* Update table refer. */

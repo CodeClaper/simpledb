@@ -119,7 +119,7 @@ static Refer *ReinsertRowForUpdate(Oid oid, void *key, void *tuple) {
 static void UpdateTuple(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg) {
     Oid oid;
     Table *table;
-    Refer *oldRefer, *newRefer;
+    Refer *oldRefer, *newRefer, *lockRefer;
     void *old_key, *new_key, *new_tuple;
     Xid created_xid, expired_xid;
         
@@ -142,7 +142,7 @@ static void UpdateTuple(void *tuple, SelectResult *select_result, ROW_HANDLER_AR
     oldRefer = DeleteRowForUpdate(oid, old_key);
 
     /* Lock refer. */
-    add_refer_update_lock(oldRefer);
+    lockRefer = ReferUpdateLockAdd(oldRefer);
 
     /* Update tuple for assignment. */
     Assert(type == ARG_ASSIGNMENT_LIST);
@@ -155,7 +155,7 @@ static void UpdateTuple(void *tuple, SelectResult *select_result, ROW_HANDLER_AR
     newRefer = ReinsertRowForUpdate(oid, new_key, new_tuple);
 
     /* Free Update refer lock. */
-    free_refer_update_lock(oldRefer);
+    ReferUpdateLockFree(lockRefer);
     
     /* If Refer changed, update refer. */
     if (!refer_equals(oldRefer, newRefer))
