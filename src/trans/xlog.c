@@ -23,6 +23,7 @@
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <string.h>
 #include <strings.h>
 #include "xlog.h"
 #include "log.h"
@@ -79,7 +80,7 @@ void RecordXlog(Refer *refer, XLogHeapType type) {
 
 /* Update xlog entry refer. */
 void UpdateXlogEntryRefer(ReferUpdateEntity *refer_update_entity) {
-    if (XLHeader) {
+    if (XLHeader != NULL) {
         for (XLogEntry *current = XLHeader; current != NULL; current = current->next) {
             Refer *current_refer = current->refer;
             if (ReferIsEqual(current_refer, refer_update_entity->old_refer)) {

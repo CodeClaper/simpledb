@@ -344,8 +344,7 @@ void ExecuteCreateTableStatement(CreateTableNode *create_table_node, DBResult *r
     Oid oid = FindNextOid();
 
     /* Check valid. */
-    if (!CheckForCreateTable(create_table_node)) 
-        return;
+    if (!CheckForCreateTable(create_table_node)) return;
 
     /* Combine MetaTable. */
     MetaTable *meta_table = CreateTableNodeGenerateMetaTable(create_table_node);
@@ -386,8 +385,7 @@ void ExecuteCreateIndexStatement(CreateIndexNode *create_index_node, DBResult *r
     Table *table;
 
     /* Check valid. */
-    if (!CheckForCreateIndex(create_index_node)) 
-        return;
+    if (!CheckForCreateIndex(create_index_node)) return;
 
     /* Fetch next oid. */
     oid = FindNextOid();
