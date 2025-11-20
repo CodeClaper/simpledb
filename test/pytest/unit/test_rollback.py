@@ -10,10 +10,13 @@ client2.login("root", "Zc120130211")
 ## create mock table:
 def test_create_mock_table():
     sql = "create table Class (id string primary key, location string);\n" \
-          "create table Student (id string primary key, name string, age int, birth date, class Class);\n"  
+          "create table Student (id string primary key, name string, age int, birth date, class Class);\n" \
+          "create table Teacher (id string primary key, name string, phone varchar(12), subject varchar(16));\n"
     ret = client1.execute(sql)
     assert ret[0]["success"] == True
     assert ret[1]["success"] == True
+    assert ret[2]["success"] == True
+
 
 # test nothing-to-do rollback.
 def test_nothing_to_do_rollback():
@@ -158,11 +161,81 @@ def test_select_after_delete2():
     assert ret2["data"] == [{"id": "S001", "name": "zhangsan", "age": 10, "birth": "2014-10-12", 
                             "class": {"id": "C001", "location": "mid of third"}}]
 
+def test_insert_teacher():
+    sql = "insert into Teacher values ('T001', 'bob', '182893901110', 'Math'), ('T002', 'July', '137989291110', 'English'), ('T003', 'David', '17233782204', 'Math'), ('T004', 'Dan', '131203099821', 'History');"
+    ret = client1.execute(sql)
+    assert ret["success"] == True
+
+def test_select_teachers():
+    sql = "select * from Teacher;"
+    ret = client1.execute(sql)
+    assert ret["success"] == True
+    assert ret["data"] == [
+        {'id': 'T001', 'name': 'bob', 'phone': '182893901110', 'subject': 'Math'}, 
+        {'id': 'T002', 'name': 'July', 'phone': '137989291110', 'subject': 'English'}, 
+        {'id': 'T003', 'name': 'David', 'phone': '17233782204', 'subject': 'Math'}, 
+        {'id': 'T004', 'name': 'Dan', 'phone': '131203099821', 'subject': 'History'}
+    ]
+
+def test_update_rollback():
+    sql = "begin;\n"\
+          "update Teacher set name = 'Math' where subject = 'Math';\n" \
+          "select * from Teacher;\n" \
+          "rollback;\n" 
+    ret = client1.execute(sql)
+    print(ret)
+    assert_all(ret)
+    assert ret[2]["data"] == [
+        {'id': 'T001', 'name': 'Math', 'phone': '182893901110', 'subject': 'Math'}, 
+        {'id': 'T002', 'name': 'July', 'phone': '137989291110', 'subject': 'English'}, 
+        {'id': 'T003', 'name': 'Math', 'phone': '17233782204', 'subject': 'Math'}, 
+        {'id': 'T004', 'name': 'Dan', 'phone': '131203099821', 'subject': 'History'}
+    ]
+
+def test_select_teachers_agin():
+    sql = "select * from Teacher;"
+    ret = client1.execute(sql)
+    assert ret["success"] == True
+    assert ret["data"] == [
+        {'id': 'T001', 'name': 'bob', 'phone': '182893901110', 'subject': 'Math'}, 
+        {'id': 'T002', 'name': 'July', 'phone': '137989291110', 'subject': 'English'}, 
+        {'id': 'T003', 'name': 'David', 'phone': '17233782204', 'subject': 'Math'}, 
+        {'id': 'T004', 'name': 'Dan', 'phone': '131203099821', 'subject': 'History'}
+    ]
+
+def test_update_rollback_again():
+    sql = "begin;\n"\
+          "update Teacher set name = 'Math' where subject = 'Math';\n" \
+          "select * from Teacher;\n" \
+          "commit;\n" 
+    ret = client1.execute(sql)
+    print(ret)
+    assert_all(ret)
+    assert ret[2]["data"] == [
+        {'id': 'T001', 'name': 'Math', 'phone': '182893901110', 'subject': 'Math'}, 
+        {'id': 'T002', 'name': 'July', 'phone': '137989291110', 'subject': 'English'}, 
+        {'id': 'T003', 'name': 'Math', 'phone': '17233782204', 'subject': 'Math'}, 
+        {'id': 'T004', 'name': 'Dan', 'phone': '131203099821', 'subject': 'History'}
+    ]
+
+def test_select_teachers_agin_and_agin():
+    sql = "select * from Teacher;"
+    ret = client1.execute(sql)
+    assert ret["success"] == True
+    assert ret["data"] == [
+        {'id': 'T001', 'name': 'Math', 'phone': '182893901110', 'subject': 'Math'}, 
+        {'id': 'T002', 'name': 'July', 'phone': '137989291110', 'subject': 'English'}, 
+        {'id': 'T003', 'name': 'Math', 'phone': '17233782204', 'subject': 'Math'}, 
+        {'id': 'T004', 'name': 'Dan', 'phone': '131203099821', 'subject': 'History'}
+    ]
+
+
 ## test drop table
 def test_drop_mock_tables():
     sql = "drop table Student;\n"\
-          "drop table Class;"
+          "drop table Class;\n" \
+          "drop table Teacher;"
     ret = client1.execute(sql)
     assert ret[0]["success"] == True
     assert ret[1]["success"] == True
-
+    assert ret[2]["success"] == True
