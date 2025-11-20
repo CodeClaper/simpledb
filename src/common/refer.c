@@ -243,8 +243,8 @@ static void UpdateTupleReferValue(void *tuple, SelectResult *select_result, ROW_
     foreach (lc, table->meta_table->meta_columns) {
         MetaColumn *meta_column = (MetaColumn *) lfirst(lc);
         if (meta_column->column_type == T_REFERENCE && 
-            StrEq(meta_column->table_name, GET_TABLE_NAME(ref_table))) 
-            UpdateTupleReferValueExtend(oid, tuple, (Refer *) index, meta_column, refer_update_entity);
+            StrEq(meta_column->table_name, GET_TABLE_NAME(ref_table))
+        ) UpdateTupleReferValueExtend(oid, tuple, (Refer *) index, meta_column, refer_update_entity);
     }
 }
 
