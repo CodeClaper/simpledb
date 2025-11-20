@@ -230,7 +230,7 @@ static void UpdateTupleReferValue(void *tuple, SelectResult *select_result, ROW_
     oid = select_result->oid;
     table = open_table_inner(oid);
 
-    Assert(arg);
+    Assert(arg != NULL);
     Assert(type == ARG_REFER_UPDATE_ENTITY);
     refer_update_entity = (ReferUpdateEntity *) arg;
     ref_table = open_table_inner(refer_update_entity->old_refer->oid);
