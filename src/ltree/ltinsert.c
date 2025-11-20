@@ -27,10 +27,11 @@ static void BtreeInsertForInternalNodeInsertCell(Oid oid, uint32_t page_num, voi
 
 
 /* Predicate duplicate key.
+ * ---------------------------
  * These are three duplicate key type.
- * (1) 1: A deleted duplicate key which does not need to care about.
- * (2) 0: An un-commited duplicate key which need to wait for commit.
- * (3) -1: A commited duplicate key which case duplicate key issue. 
+ * (1) OK: A deleted duplicate key which does not need to care about.
+ * (2) WAIT: An un-commited duplicate key which need to wait for commit.
+ * (3) ERRO: A commited duplicate key which case duplicate key issue. 
  * */
 static int BtreeInsertDuplicateKeyPredicate(Xid current_xid, Xid created_xid, Xid expired_xid) {
     Assert(created_xid != 0);
@@ -653,7 +654,7 @@ static void BtreeInsertForLeafNodeSplit(Oid oid, void *key, void *value, Buffer 
 
     /* Avoid duplicate key. */
     if (EQ(GetComparableValue(key, ptype), GetComparableValue(cell_key, ptype), ptype)) {
-        uint32_t predicate;
+        int predicate;
         Xid current_xid, created_xid, expired_xid;
 
         current_xid = GetCurrentXid();
@@ -791,7 +792,7 @@ static void BtreeInsertForLeafNodeNoSplit(Oid oid, void *key, void *value, Buffe
 
     /* Avoid duplicate key. */
     if (EQ(GetComparableValue(key, ptype), GetComparableValue(cell_key, ptype), ptype)) {
-        uint32_t predicate;
+        int predicate;
         Xid current_xid, created_xid, expired_xid;
     
         current_xid = GetCurrentXid();
