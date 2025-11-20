@@ -239,7 +239,7 @@ static inline Refer *ReferValueFindRefer(ReferValue *refer_value, MetaColumn *me
             panic("Logic error");
             break;
         case INDIRECTLY:
-            return fetch_refer(meta_column, refer_value->condition);
+            return FetchRefer(meta_column, refer_value->condition);
         default:
             UNEXPECTED_VALUE(refer_value->type);
     }
@@ -703,12 +703,10 @@ void *DefineTuple(Refer *refer) {
 
     /* Check table exists. */
     Table *table = open_table_inner(refer->oid);
-    if (table == NULL)
-        return NULL;
+    if (table == NULL) return NULL;
 
     /* Check if refer null. */
-    if (refer_null(refer))
-        return NULL;
+    if (ReferIsEmpty(refer)) return NULL;
 
     uint32_t key_len, value_len, default_value_len;
     key_len = table->key_len;
@@ -738,12 +736,10 @@ Row *DefineRow(Refer *refer) {
 
     /* Check table exists. */
     Table *table = open_table_inner(refer->oid);
-    if (table == NULL)
-        return NULL;
+    if (table == NULL) return NULL;
 
     /* Check if refer null. */
-    if (refer_null(refer))
-        return NULL;
+    if (ReferIsEmpty(refer)) return NULL;
 
     uint32_t key_len, value_len, default_value_len;
     key_len = table->key_len;
@@ -2330,7 +2326,7 @@ static KeyValue *QueryRowValueItem(ValueItemNode *value_item, Row *row) {
         case A_STRING:
             return new_key_value(VALUE_NAME, atom_node->value.strval, T_STRING, NULL);
         case A_REFERENCE:
-            return new_key_value(VALUE_NAME, make_null_refer(), T_STRING, NULL);
+            return new_key_value(VALUE_NAME, MakeEmptyRefer(), T_STRING, NULL);
         default:
             UNEXPECTED_VALUE(atom_node->type);
             return NULL;

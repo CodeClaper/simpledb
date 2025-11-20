@@ -81,25 +81,15 @@ static bool ReferUpdateLockHas(Refer *refer) {
     QueueCell *qc;
     qforeach (qc, updateReferLockContent) {
         Refer *current = (Refer *) qfirst(qc);
-        if (refer_equals(refer, current))
+        if (ReferIsEqual(refer, current))
             return true;
     }
     return false;
 }
 
-/* Generate new Refer. 
- * Note: if page_num is -1 and cell_num is -1 which means refer null. */
-Refer *new_refer(Oid oid, int32_t page_num, int32_t cell_num) {
-    Refer *refer = instance(Refer);
-    refer->oid = oid;
-    refer->page_num = page_num;
-    refer->cell_num = cell_num;
-    return refer;
-}
-
 /* Fetch Refer. 
  * If found no one or many one, return NULL.  */
-Refer *fetch_refer(MetaColumn *meta_column, SearchConditionNode *condition) {
+Refer *FetchRefer(MetaColumn *meta_column, SearchConditionNode *condition) {
     Oid oid;
     Table *table;
     SelectResult *select_result;
@@ -133,14 +123,14 @@ Refer *fetch_refer(MetaColumn *meta_column, SearchConditionNode *condition) {
     return refer;
 }
 
-/* Check if refer null. 
- * If page number is -1 and cell number is -1, it means refer null. */
-bool refer_null(Refer *refer) {
+/* Check if refer empty. 
+ * If page number is -1 and cell number is -1, it means refer empty. */
+bool ReferIsEmpty(Refer *refer) {
     return refer->page_num == -1 && refer->cell_num == -1;
 }
 
 /* Make a NULL Refer. */
-Refer *make_null_refer() {
+Refer *MakeEmptyRefer() {
     Refer *refer = instance(Refer);
     refer->page_num = -1;
     refer->cell_num = -1;
@@ -156,7 +146,7 @@ ReferUpdateEntity *new_refer_update_entity(Refer *old_refer, Refer *new_refer) {
 }
 
 /* Check if table has column refer to. */
-static bool if_related_table(MetaTable *meta_table, Oid refer_oid) {
+static bool TableRelatedRefer(MetaTable *meta_table, Oid refer_oid) {
     Table *refer_table;
 
     refer_table = open_table_inner(refer_oid);
@@ -175,7 +165,7 @@ static bool if_related_table(MetaTable *meta_table, Oid refer_oid) {
 }
 
 /* Check if refer equals. */
-bool refer_equals(Refer *refer1, Refer *refer2) {
+bool ReferIsEqual(Refer *refer1, Refer *refer2) {
     return refer1->oid == refer2->oid && 
                 refer1->page_num == refer2->page_num && 
                     refer1->cell_num == refer2->cell_num;
@@ -184,7 +174,7 @@ bool refer_equals(Refer *refer1, Refer *refer2) {
 /* Update single key value refer. */
 static bool UpdateReferForSingleValue(void *tuple, MetaColumn *meta_column, ReferUpdateEntity *refer_update_entity) {
     Refer *refer = TupleFindValue(tuple, meta_column);
-    if (refer_equals(refer, refer_update_entity->old_refer)) {
+    if (ReferIsEqual(refer, refer_update_entity->old_refer)) {
         TupleSetValue(tuple, meta_column, refer_update_entity->new_refer);
         return true;
     }
@@ -198,7 +188,7 @@ static bool UpdateReferForArrayValue(void *tuple, MetaColumn *meta_column, Refer
 
     ListCell *lc;
     foreach (lc, array_value->list) {
-        if (refer_equals(lfirst(lc), refer_update_entity->old_refer)) {
+        if (ReferIsEqual(lfirst(lc), refer_update_entity->old_refer)) {
             lfirst(lc) = copy_refer(refer_update_entity->new_refer);
             flag = true;
         }
@@ -259,7 +249,7 @@ static void UpdateTupleReferValue(void *tuple, SelectResult *select_result, ROW_
 }
 
 /* Update table refer. */
-static void update_table_refer(MetaTable *meta_table, ReferUpdateEntity *refer_update_entity) {
+static void UpdateTableRefer(MetaTable *meta_table, ReferUpdateEntity *refer_update_entity) {
     /* Skip update locked refer. */
     if (ReferUpdateLockHas(refer_update_entity->old_refer)) return;
 
@@ -274,7 +264,7 @@ static void update_table_refer(MetaTable *meta_table, ReferUpdateEntity *refer_u
 }
 
 /* Update releated tables reference. */
-void update_related_tables_refer(ReferUpdateEntity *refer_update_entity) {
+void UpdateRelatedTablesRefer(ReferUpdateEntity *refer_update_entity) {
     Oid self_oid;
     List *table_list;
 
@@ -288,8 +278,8 @@ void update_related_tables_refer(ReferUpdateEntity *refer_update_entity) {
         /* Check other tables. */
         Table *table = (Table *) lfirst(lc);
         MetaTable *meta_table = table->meta_table;
-        if (if_related_table(meta_table, self_oid)) 
-            update_table_refer(meta_table, refer_update_entity);
+        if (TableRelatedRefer(meta_table, self_oid)) 
+            UpdateTableRefer(meta_table, refer_update_entity);
     }
 }
 
@@ -297,7 +287,7 @@ void update_related_tables_refer(ReferUpdateEntity *refer_update_entity) {
 /* Update Refer 
  * When referenct target be changed (updated or deleted), 
  * must to update row reference value which pointer to it. */
-void update_refer(Oid oid, int32_t old_page_num, int32_t old_cell_num, int32_t new_page_num, int32_t new_cell_num) {
+void UpdateRefer(Oid oid, int32_t old_page_num, int32_t old_cell_num, int32_t new_page_num, int32_t new_cell_num) {
     Refer *oldRefer, *newRefer;
     ReferUpdateEntity *ruEntity;
 
@@ -306,7 +296,7 @@ void update_refer(Oid oid, int32_t old_page_num, int32_t old_cell_num, int32_t n
     ruEntity = new_refer_update_entity(oldRefer, newRefer);
    
     /* Update related tables. */
-    update_related_tables_refer(ruEntity);
+    UpdateRelatedTablesRefer(ruEntity);
 
     /* Update Xlog. */
     UpdateXlogEntryRefer(ruEntity);

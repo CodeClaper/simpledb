@@ -32,6 +32,7 @@
 #include "systable.h"
 #include "heaptable.h"
 #include "ltinsert.h"
+#include "instance.h"
 
 /* Try to catpture table.
  * If these other session on the table, wait and test. 

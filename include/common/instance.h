@@ -12,3 +12,5 @@ ArrayValue *new_array_value(DataType data_type, uint32_t size);
 /* New select result structure. */
 SelectResult *new_select_result(StatementType stype, char *table_name, bool is_head);
 
+/* Generate new Refer. */
+Refer *new_refer(Oid oid, int32_t page_num, int32_t cell_num);

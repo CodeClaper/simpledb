@@ -62,3 +62,14 @@ DBResult *new_db_result() {
     return result;
 }
 
+
+/* Generate new Refer. 
+ * Note: if page_num is -1 and cell_num is -1 which means refer null. */
+Refer *new_refer(Oid oid, int32_t page_num, int32_t cell_num) {
+    Refer *refer = instance(Refer);
+    refer->oid = oid;
+    refer->page_num = page_num;
+    refer->cell_num = cell_num;
+    return refer;
+}
+

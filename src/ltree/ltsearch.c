@@ -6,6 +6,7 @@
 #include "table.h"
 #include "meta.h"
 #include "compare.h"
+#include "instance.h"
 #include "mmgr.h"
 #include "log.h"
 #include "copy.h"

@@ -158,10 +158,10 @@ static void UpdateTuple(void *tuple, SelectResult *select_result, ROW_HANDLER_AR
     ReferUpdateLockFree(lockRefer);
     
     /* If Refer changed, update refer. */
-    if (!refer_equals(oldRefer, newRefer))
-        update_refer(oid, 
-                     oldRefer->page_num, oldRefer->cell_num, 
-                     newRefer->page_num, newRefer->cell_num);
+    if (!ReferIsEqual(oldRefer, newRefer))
+        UpdateRefer(oid, 
+                    oldRefer->page_num, oldRefer->cell_num, 
+                    newRefer->page_num, newRefer->cell_num);
 
     /* Free memory. */
     free_refer(oldRefer);

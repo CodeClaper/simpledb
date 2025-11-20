@@ -15,6 +15,7 @@
 #include "bufmgr.h"
 #include "fdesc.h"
 #include "systable.h"
+#include "instance.h"
 
 /* Compare two StrRefers. */
 int CompareStrRefer(StrRefer *source, StrRefer *target) {

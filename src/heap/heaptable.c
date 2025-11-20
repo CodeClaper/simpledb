@@ -19,6 +19,7 @@
 #include "bufmgr.h"
 #include "select.h"
 #include "fdesc.h"
+#include "instance.h"
 
 /* Heap table header length */
 #define HEAP_TABLE_HEADER_LEN (NODE_STATE_SIZE + CELL_NUM_SIZE + REFER_SIZE)

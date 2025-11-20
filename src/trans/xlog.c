@@ -82,7 +82,7 @@ void UpdateXlogEntryRefer(ReferUpdateEntity *refer_update_entity) {
     if (XLHeader) {
         for (XLogEntry *current = XLHeader; current != NULL; current = current->next) {
             Refer *current_refer = current->refer;
-            if (refer_equals(current_refer, refer_update_entity->old_refer)) {
+            if (ReferIsEqual(current_refer, refer_update_entity->old_refer)) {
                 /* Switch to CACHE_MEMORY_CONTEXT. */
                 MemoryContext oldcontext = CURRENT_MEMORY_CONTEXT;
                 MemoryContextSwitchTo(CACHE_MEMORY_CONTEXT);

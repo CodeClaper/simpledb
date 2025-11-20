@@ -16,6 +16,7 @@
 #include "copy.h"
 #include "log.h"
 #include "trans.h"
+#include "instance.h"
 
 #define OK   1
 #define WAIT 0
@@ -589,7 +590,7 @@ static void BtreeInsertForLeafNodeUpgradeRoot(Oid oid, void *root, void *right_n
         LeafNodeSetCellValue(new_leaf_node, table->key_len, table->index_value_len, table->heap_value_len, i, 
                              LeafNodeGetCellValue(root, table->key_len, table->index_value_len, table->heap_value_len, i));
         /* Update refer. */
-        update_refer(oid, ROOT_PAGE_NUM, i, next_page_num, i);
+        UpdateRefer(oid, ROOT_PAGE_NUM, i, next_page_num, i);
     }
 
     /* Set parent. */
@@ -732,12 +733,12 @@ static void BtreeInsertForLeafNodeSplit(Oid oid, void *key, void *value, Buffer 
             /* Define new position, and right cells make cell space. */
             memcpy(destination, LeafNodeGetCellValue(leaf_node, table->key_len, table->index_value_len, table->heap_value_len, i - 1), cell_len);
             /* Update refer. */
-            update_refer(oid, refer->page_num, i - 1, destination_page, new_index);
+            UpdateRefer(oid, refer->page_num, i - 1, destination_page, new_index);
         } else {
             /* Define new position. */
             memcpy(destination, LeafNodeGetCellValue(leaf_node, table->key_len, table->index_value_len, table->heap_value_len, i), cell_len);
             /* Update refer. */
-            update_refer(oid, refer->page_num, i, destination_page, new_index);
+            UpdateRefer(oid, refer->page_num, i, destination_page, new_index);
         }
     }
 
@@ -828,7 +829,7 @@ static void BtreeInsertForLeafNodeNoSplit(Oid oid, void *key, void *value, Buffe
                 cell_len
             );
             /* Update refer. */
-            update_refer(oid, refer->page_num, i - 1, refer->page_num, i);
+            UpdateRefer(oid, refer->page_num, i - 1, refer->page_num, i);
         }
     }
     

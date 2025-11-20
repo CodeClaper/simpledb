@@ -56,7 +56,7 @@ bool EQ(void *source, void *target, DataType data_type) {
         case T_DATE:
             return *(time_t *)source == *(time_t *)target;
         case T_REFERENCE:
-            return refer_equals(source, target);
+            return ReferIsEqual(source, target);
         default:
             db_log(ERROR, "Not implement data type when operate equal.");
             break;
@@ -389,7 +389,7 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
         case T_REFERENCE: {
             switch (right->data_type) {
                 case T_REFERENCE:
-                    return refer_equals(left->value, right->value);
+                    return ReferIsEqual(left->value, right->value);
                 default:
                     goto ERR_TYPE;
             }

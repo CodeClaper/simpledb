@@ -28,8 +28,7 @@ static RowLockEntry *FindRowLock(Refer *refer) {
     QueueCell *qc;
     qforeach(qc, RowLockTable) {
         RowLockEntry *rlock = (RowLockEntry *) qfirst(qc);
-        if (refer_equals(refer, rlock->refer))
-            return rlock;
+        if (ReferIsEqual(refer, rlock->refer)) return rlock;
     }
     return NULL;
 }
@@ -77,12 +76,10 @@ void AcquireRowLock(Refer *refer, void *key) {
     ReleaseBuffer(buffer);
 
     /* No key conflict. */
-    if (NE(key, target_key, pmeta_column->column_type)) 
-        return;
+    if (NE(key, target_key, pmeta_column->column_type)) return;
 
     /* Allow reenter. */
-    if (rlock->acquirer == current_xid) 
-        return;
+    if (rlock->acquirer == current_xid) return;
 
     /* Block if fail. */
     acquire_spin_lock(&rlock->lock);

@@ -172,7 +172,7 @@ static void *AtomNodeAssignValue(AtomNode *atom_node, MetaColumn *meta_column) {
                     return lfirst(first_cell(refer_list));
                 }
                 case INDIRECTLY: {
-                    return fetch_refer(meta_column, refer_value->condition);
+                    return FetchRefer(meta_column, refer_value->condition);
                 }
                 default:
                     UNEXPECTED_VALUE(refer_value->type);
