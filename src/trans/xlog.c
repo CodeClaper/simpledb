@@ -36,7 +36,6 @@
 #include "insert.h"
 #include "utils.h"
 #include "meta.h"
-#include "row.h"
 #include "tuple.h"
 #include "table.h"
 #include "heaptable.h"
@@ -45,10 +44,6 @@
  * The XLogEntry Chain.
  */
 static XLogEntry *XLHeader = NULL;
-
-static void HeapInsertXLog(Refer *refer, TransEntry *transaction);
-static void HeapDeleteXLog(Refer *refer, TransEntry *transaction);
-static void HeapUpdateDeleteXlog(Refer *refer, TransEntry *transaction);
 
 /* Genrate new XLogEntry. */
 static XLogEntry *NewXLogEntry(Xid xid, Refer *refer, XLogHeapType type) {
@@ -116,6 +111,52 @@ void CommitXlog() {
     MemoryContextSwitchTo(oldcontext);
 }
 
+
+/* Reverse insert operation. */
+static void HeapInsertXLog(Refer *refer, TransEntry *transaction) {
+    Table *table;
+    void *key, *index;
+
+    table = open_table_inner(refer->oid);
+
+    /* Get btree key and value. */
+    key = BtreeSearchKeyViaRefer(refer);
+    index = BtreeSearchValueViaRefer(refer);
+
+    /* Update heap table exipred xid. */
+    HeapTableUpdateRowExpiredXid(table, (Refer *) index, transaction->xid);
+
+    /* Update btree expired xid. */
+    BtreeModifyExpiredXid(refer->oid, key, transaction->xid);
+}
+
+/* Reverse delete operation. 
+ * -------------------------
+ * Notice that: when reverse delete operation, it does`t "resurrect" the row, 
+ * rather than re-insert the row to keep the principle that visible row always 
+ * lies in the forefront of the same key cells.
+ * */
+static void HeapDeleteXLog(Refer *refer, TransEntry *transaction) {
+    Table *table;
+    void *key, *tuple, *new_tuple;
+    Xid created_xid, expired_xid;
+
+    table = open_table_inner(refer->oid);
+    tuple = DefineTuple(refer);
+    created_xid = TupleFindCreatedXid(tuple, table->meta_table);
+    expired_xid = TupleFindExpiredXid(tuple, table->meta_table);
+    Assert(expired_xid == transaction->xid); 
+    AssertFalse(IsVisibleInner(created_xid, expired_xid, transaction));
+
+    key = TupleFindKey(tuple, table);
+    new_tuple = copy_block(tuple, table->heap_value_len);
+    TupleSetExpiredXid(new_tuple, table->meta_table, 0);
+    
+    /* Reinsert. */
+    InsertForTuple(refer->oid, key, new_tuple);
+}
+
+
 /* Execute rollback. */
 void ExecuteRollback() {
     /* First, find current transaction and it should exist.*/
@@ -139,78 +180,10 @@ void ExecuteRollback() {
                 HeapInsertXLog(current->refer, trans);
                 break;
             case HEAP_UPDATE_DELETE:
-                HeapUpdateDeleteXlog(current->refer, trans);
+                HeapDeleteXLog(current->refer, trans);
                 break;
             default:
                 db_log(PANIC, "Unknown XLogHeapType.");
         }        
     }
-}
-
-/* Reverse insert operation. */
-static void HeapInsertXLog(Refer *refer, TransEntry *transaction) {
-    Oid oid;
-    Table *table;
-    void *key, *index;
-
-    oid = refer->oid;
-    table = open_table_inner(oid);
-
-    /* Get btree key and value. */
-    key = BtreeSearchKeyViaRefer(refer);
-    index = BtreeSearchValueViaRefer(refer);
-
-    /* Update heap table exipred xid. */
-    HeapTableUpdateRowExpiredXid(table, (Refer *) index, transaction->xid);
-
-    /* Update btree expired xid. */
-    BtreeModifyExpiredXid(oid, key, transaction->xid);
-}
-
-/* Reverse delete operation. 
- * Notice that: when reverse delete operation, it does`t "resurrect" the row, 
- * rather than re-insert the row to keep the principle that visible row always 
- * lies in the forefront of the same key cells.
- * */
-static void HeapDeleteXLog(Refer *refer, TransEntry *transaction) {
-    Row *rawRow = DefineRow(refer);
-    Assert(RowIsDeleted(rawRow));
-
-    Row *newRow = copy_row(rawRow);
-    Table *table = open_table_inner(refer->oid);
-    KeyValue *expired_xid_col = lfirst(last_cell(newRow->data));
-    Xid expired_xid = *(Xid *)expired_xid_col->value;
-    Assert(expired_xid == transaction->xid);
-
-    /* Make the row visible. */
-    *(Xid *)expired_xid_col->value = 0;
-
-    /* Re-insert. */
-    InsertForRow(table, newRow);
-
-    free_row(newRow);
-}
-
-/* Reverse update delete transaction. */
-static void HeapUpdateDeleteXlog(Refer *refer, TransEntry *transaction) {
-    Row *rawRow = DefineRow(refer);
-    Assert(RowIsDeleted(rawRow));
-
-    Table *table = open_table_inner(refer->oid);
-    Row *newRow = copy_row(rawRow);
-    void *key = RowFindKey(newRow, table);
-
-    KeyValue *expired_xid_col = lfirst(last_cell(newRow->data));
-    Xid expired_xid = *(Xid *)expired_xid_col->value;
-    Assert(expired_xid == transaction->xid); 
-
-    /* Make the row visible. */
-    *(Xid *)expired_xid_col->value = 0;
-
-    /* Repositioning. */
-    Refer *nRefer = BtreeSearchRefer(refer->oid, key);
-
-    add_refer_update_lock(nRefer);
-    InsertForRow(table, newRow);
-    free_refer_update_lock(nRefer);
 }

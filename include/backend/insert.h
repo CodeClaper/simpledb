@@ -1,5 +1,8 @@
 #include "data.h"
 
+/* Insert for tuple. */
+Refer *InsertForTuple(Oid oid, void *key, void *tuple);
+
 /* Insert one row. */
 Refer *InsertForRow(Table *table, Row *row);
 
