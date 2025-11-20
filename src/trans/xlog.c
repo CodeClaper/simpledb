@@ -80,22 +80,22 @@ void RecordXlog(Refer *refer, XLogHeapType type) {
 
 /* Update xlog entry refer. */
 void UpdateXlogEntryRefer(ReferUpdateEntity *refer_update_entity) {
-    if (XLHeader != NULL) {
-        for (XLogEntry *current = XLHeader; current != NULL; current = current->next) {
-            Refer *current_refer = current->refer;
-            if (ReferIsEqual(current_refer, refer_update_entity->old_refer)) {
-                /* Switch to CACHE_MEMORY_CONTEXT. */
-                MemoryContext oldcontext = CURRENT_MEMORY_CONTEXT;
-                MemoryContextSwitchTo(CACHE_MEMORY_CONTEXT);
+    if (XLHeader == NULL) return;
 
-                current->refer = copy_refer(refer_update_entity->new_refer);
-                free_refer(current_refer);
+    for (XLogEntry *current = XLHeader; current != NULL; current = current->next) {
+        Refer *current_refer = current->refer;
+        if (ReferIsEqual(current_refer, refer_update_entity->old_refer)) {
+            /* Switch to CACHE_MEMORY_CONTEXT. */
+            MemoryContext oldcontext = CURRENT_MEMORY_CONTEXT;
+            MemoryContextSwitchTo(CACHE_MEMORY_CONTEXT);
 
-                /* Recover the MemoryContext. */
-                MemoryContextSwitchTo(oldcontext);
-            }
-        }  
-    }
+            current->refer = copy_refer(refer_update_entity->new_refer);
+            free_refer(current_refer);
+
+            /* Recover the MemoryContext. */
+            MemoryContextSwitchTo(oldcontext);
+        }
+    }  
 }
 
 /* Commit XLog . */

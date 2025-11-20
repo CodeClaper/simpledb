@@ -81,8 +81,7 @@ static bool ReferUpdateLockHas(Refer *refer) {
     QueueCell *qc;
     qforeach (qc, updateReferLockContent) {
         Refer *current = (Refer *) qfirst(qc);
-        if (ReferIsEqual(refer, current))
-            return true;
+        if (ReferIsEqual(refer, current)) return true;
     }
     return false;
 }
