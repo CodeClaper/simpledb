@@ -30,18 +30,18 @@ static uint32_t random_loop = 0;
 
 /* System table meta column list. */
 MetaColumn SYS_TABLE_COLUMNS[] = {
-    {SYS_ROOT_OID, SYS_TABLE_OID_NAME, T_LONG, 0, (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), 0, true, false, false, false, 0, 0},
-    {SYS_ROOT_OID, SYS_TABLE_TOID_NAME, T_LONG, 0, (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), true, false, false, false, 0, 0},
-    {SYS_ROOT_OID, SYS_TABLE_RELNAME_NAME, T_VARCHAR, 0, (LEAF_NODE_CELL_NULL_FLAG_SIZE + MAX_COLUMN_SIZE), (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)) * 2, false, false, false, false, 0, 0}, 
-    {SYS_ROOT_OID, SYS_TABLE_RELTYPE_NAME, T_INT, 0, (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int32_t)), ((LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)) * 2 + LEAF_NODE_CELL_NULL_FLAG_SIZE + MAX_COLUMN_SIZE), false, false, false, false, 0, 0}
+    {SYS_ROOT_OID, SYS_TABLE_OID_NAME, T_LONG, 0, (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), 0, true, false, false, false, 0, 0, DEFAULT_VALUE_NONE, NULL, false, ""},
+    {SYS_ROOT_OID, SYS_TABLE_TOID_NAME, T_LONG, 0, (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), true, false, false, false, 0, 0, DEFAULT_VALUE_NONE, NULL, false, ""},
+    {SYS_ROOT_OID, SYS_TABLE_RELNAME_NAME, T_VARCHAR, 0, (LEAF_NODE_CELL_NULL_FLAG_SIZE + MAX_COLUMN_SIZE), (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)) * 2, false, false, false, false, 0, 0, DEFAULT_VALUE_NONE, NULL, false, ""}, 
+    {SYS_ROOT_OID, SYS_TABLE_RELTYPE_NAME, T_INT, 0, (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int32_t)), ((LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)) * 2 + LEAF_NODE_CELL_NULL_FLAG_SIZE + MAX_COLUMN_SIZE), false, false, false, false, 0, 0, DEFAULT_VALUE_NONE, NULL, false, ""}
 };
 
 /* System reserved columns. */
 MetaColumn SYS_RESERVED_COLUMNS[] = {
-    {0, SYS_RESERVED_ID_COLUMN_NAME, T_LONG, 0, (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), 0, false, false, false, true, 0, 0},
-    {0, SYS_REF_ID_COLUMN_NAME, T_LONG, 0, (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), 0, false, false, false, true, 0, 0},
-    {0, CREATED_XID_COLUMN_NAME, T_LONG, 0, (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), 0, false, false, false, true, 0, 0},
-    {0, EXPIRED_XID_COLUMN_NAME, T_LONG, 0, (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), 0, false, false, false, true, 0, 0}
+    {0, SYS_RESERVED_ID_COLUMN_NAME, T_LONG, 0, (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), 0, false, false, false, true, 0, 0, DEFAULT_VALUE_NONE, NULL, false, ""},
+    {0, SYS_REF_ID_COLUMN_NAME, T_LONG, 0, (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), 0, false, false, false, true, 0, 0, DEFAULT_VALUE_NONE, NULL, false, ""},
+    {0, CREATED_XID_COLUMN_NAME, T_LONG, 0, (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), 0, false, false, false, true, 0, 0, DEFAULT_VALUE_NONE, NULL, false, ""},
+    {0, EXPIRED_XID_COLUMN_NAME, T_LONG, 0, (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), 0, false, false, false, true, 0, 0, DEFAULT_VALUE_NONE, NULL, false, ""}
 }; 
 
 static Object TupleConvertObject(void *tuple);
