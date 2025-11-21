@@ -213,8 +213,7 @@ StrRefer *InsertStringValue(Oid oid, char *str_val) {
     LockBuffer(rbuffer, RW_WRITER);
     root = GetBufferPage(rbuffer);
     rRefer = GetRootRefer(root);
-    if (rRefer->oid != oid)
-        Assert(rRefer->oid == oid);
+    Assert(rRefer->oid == oid);
     
     /* Get StrRefer. */
     strRefer = instance(StrRefer);

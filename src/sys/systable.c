@@ -12,7 +12,7 @@
 #include "defs.h"
 #include "table.h"
 #include "log.h"
-#include "random.h"
+#include "timer.h"
 #include "queue.h"
 #include "instance.h"
 #include "insert.h"
@@ -25,6 +25,8 @@
 #include "sysstate.h"
 #include "heaptable.h"
 #include "optimizer.h"
+
+static uint32_t random_loop = 0;
 
 /* System table meta column list. */
 MetaColumn SYS_TABLE_COLUMNS[] = {
@@ -45,7 +47,10 @@ static Object TupleConvertObject(void *tuple);
 
 /* Find next Oid. */
 inline Oid FindNextOid() {
-    return RandomUint64();
+    random_loop++;
+    if (random_loop > 12345) random_loop = 0;
+    int64_t timestamp = get_timestamp(NANOSECOND);
+    return (timestamp & 0xFFFFFFFFFFFFF00) | (random_loop % 8);
 }
 
 /* If system table file already exists, 
