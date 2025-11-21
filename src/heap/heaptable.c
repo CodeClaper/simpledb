@@ -405,8 +405,7 @@ static void HeapTableAppendColumnNormal(Table *table, MetaColumn *newColumn, int
  * -----------------------------------
  * Return refer of re-insert-row postion, which freed by caller.
  * */
-static Refer *HeapTableSplitReInsert(Refer *rootRefer, Table *table, void *data) {
-    Refer *refer;
+static void HeapTableSplitReInsert(Refer *rootRefer, Table *table, void *tuple) {
     Buffer buffer;
     void *block;
     uint32_t cell_num;
@@ -415,10 +414,9 @@ static Refer *HeapTableSplitReInsert(Refer *rootRefer, Table *table, void *data)
     LockBuffer(buffer, RW_WRITER);
     block = GetBufferBlock(buffer);
     cell_num = HeapTableGetPageCellNum(block);
-    refer = new_refer(rootRefer->oid, rootRefer->page_num, rootRefer->cell_num);
     
     void *destintion = HeapTableGetPageCellData(block, table->heap_value_len, rootRefer->cell_num);
-    memcpy(destintion, data, table->heap_value_len);
+    memcpy(destintion, tuple, table->heap_value_len);
     rootRefer->cell_num++;
     /* Increase cell num. */
     HeapTableSetPageCellNum(block, ++cell_num);
@@ -432,8 +430,6 @@ static Refer *HeapTableSplitReInsert(Refer *rootRefer, Table *table, void *data)
     MakeBufferDirty(buffer);
     UnlockBuffer(buffer);
     ReleaseBuffer(buffer);
-
-    return refer;
 }
 
 /* Heap table split and append new column. 
@@ -447,19 +443,20 @@ static void HeapTableSplitAppendColumn(Refer *rootRefer, Table *table, MetaColum
                                        int pos, void *block, uint32_t cell_num) {
     int i;
     uint32_t left_num;
+    void *tuple;
     left_num = cell_num / 2;
 
     /* Reinsert the right part cell. */
     for (i = cell_num - 1; i > left_num; i--) {
-        void *destintion = HeapTableGetPageCellData(block, table->heap_value_len, i);
-        HeapTableSplitReInsert(rootRefer, table, destintion);
+        tuple = HeapTableGetPageCellData(block, table->heap_value_len, i);
+        HeapTableSplitReInsert(rootRefer, table, tuple);
     }
     
     for (i = left_num; i >= 0; i--) {
-        void *destintion = HeapTableGetPageCellData(block, table->heap_value_len, i);
+        tuple = HeapTableGetPageCellData(block, table->heap_value_len, i);
         memmove(
             NewCellPostionAferAppendColumn(block, newColumn, table->heap_value_len, i), 
-            NewCellAfterAppendColumn(destintion, table, newColumn, pos, table->heap_value_len), 
+            NewCellAfterAppendColumn(tuple, table, newColumn, pos, table->heap_value_len), 
             table->heap_value_len + newColumn->column_length
         );
     }
