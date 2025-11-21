@@ -33,12 +33,13 @@ MetaColumn SYS_TABLE_COLUMNS[] = {
     {SYS_ROOT_OID, SYS_TABLE_OID_NAME, T_LONG, 0, (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), 0, true, false, false, false, 0, 0},
     {SYS_ROOT_OID, SYS_TABLE_TOID_NAME, T_LONG, 0, (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), true, false, false, false, 0, 0},
     {SYS_ROOT_OID, SYS_TABLE_RELNAME_NAME, T_VARCHAR, 0, (LEAF_NODE_CELL_NULL_FLAG_SIZE + MAX_COLUMN_SIZE), (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)) * 2, false, false, false, false, 0, 0}, 
-    {SYS_ROOT_OID, SYS_TABLE_RELTYPE_NAME, T_INT, 0, (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int32_t)), ((LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)) * 2+ LEAF_NODE_CELL_NULL_FLAG_SIZE + MAX_COLUMN_SIZE), false, false, false, false, 0, 0}
+    {SYS_ROOT_OID, SYS_TABLE_RELTYPE_NAME, T_INT, 0, (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int32_t)), ((LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)) * 2 + LEAF_NODE_CELL_NULL_FLAG_SIZE + MAX_COLUMN_SIZE), false, false, false, false, 0, 0}
 };
 
 /* System reserved columns. */
 MetaColumn SYS_RESERVED_COLUMNS[] = {
     {0, SYS_RESERVED_ID_COLUMN_NAME, T_LONG, 0, (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), 0, false, false, false, true, 0, 0},
+    {0, SYS_REF_ID_COLUMN_NAME, T_LONG, 0, (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), 0, false, false, false, true, 0, 0},
     {0, CREATED_XID_COLUMN_NAME, T_LONG, 0, (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), 0, false, false, false, true, 0, 0},
     {0, EXPIRED_XID_COLUMN_NAME, T_LONG, 0, (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), 0, false, false, false, true, 0, 0}
 }; 
@@ -50,7 +51,7 @@ inline Oid FindNextOid() {
     random_loop++;
     if (random_loop > 12345) random_loop = 0;
     int64_t timestamp = get_timestamp(NANOSECOND);
-    return (timestamp & 0xFFFFFFFFFFFFF00) | (random_loop % 8);
+    return (timestamp & 0xFFFFFFFFFFFFF000) | (random_loop % 8);
 }
 
 /* If system table file already exists, 

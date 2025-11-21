@@ -85,14 +85,21 @@ static SelectNode *QuerySpceToSelection(QuerySpecNode *query_spec) {
 }
 
 /* Generate new sys_id column.*/
-static KeyValue *NewSysIdKeyValue(Oid tid) {
+static KeyValue *NewKeyValueForSysId(Oid tid) {
     /* Automatically insert sys_id using current sys time. */
     int64_t sys_id = get_timestamp(NANOSECOND);
     return new_key_value(SYS_RESERVED_ID_COLUMN_NAME, &sys_id, T_LONG, tid);
 }
 
+/* Generate new ref_id column. */
+static KeyValue *NewKeyValueForRefId(Oid tid) {
+    /* Automatically insert sys_id using current sys time. */
+    int64_t ref_id = get_timestamp(NANOSECOND);
+    return new_key_value(SYS_REF_ID_COLUMN_NAME, &ref_id, T_LONG, tid);
+}
+
 /* Generate new created_xid column.*/
-static KeyValue *NewCreatedXidKeyValue(Oid tid) {
+static KeyValue *NewKeyValueForCreatedXid(Oid tid) {
     /* Get current transaction. */
     TransEntry *current_trans = FindTransaction();
     Assert(current_trans);
@@ -100,7 +107,7 @@ static KeyValue *NewCreatedXidKeyValue(Oid tid) {
 }
 
 /* Generate new expired_xid column. */
-static KeyValue *NewExpiredXidKeyValue(Oid tid) {
+static KeyValue *NewKeyValueForExpiredXid(Oid tid) {
     /* For expired_xid */
     int64_t zero = 0;
     return new_key_value(EXPIRED_XID_COLUMN_NAME, &zero, T_LONG, tid);
@@ -109,11 +116,13 @@ static KeyValue *NewExpiredXidKeyValue(Oid tid) {
 /* Makeup the system reserved column. */
 void MakeupReservedColumns(Oid tid, Row *row) {
     /* Append sys_id column key value. */
-    append_list(row->data, NewSysIdKeyValue(tid));
+    append_list(row->data, NewKeyValueForSysId(tid));
+    /* Append ref_id column key value. */
+    append_list(row->data, NewKeyValueForRefId(tid));
     /* Append created_xid column key value. */
-    append_list(row->data, NewCreatedXidKeyValue(tid));
+    append_list(row->data, NewKeyValueForCreatedXid(tid));
     /* Append expired_xid column key value. */
-    append_list(row->data, NewExpiredXidKeyValue(tid));
+    append_list(row->data, NewKeyValueForExpiredXid(tid));
 }
 
 

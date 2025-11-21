@@ -47,6 +47,7 @@
 #include "parall.h"
 #include "optimizer.h"
 #include "tablecache.h"
+#include "systable.h"
 #include "strheaptable.h"
 #include "heaptable.h"
 
@@ -766,12 +767,10 @@ Row *DefineRow(Refer *refer) {
  * */
 static void* PurgeRow(Row *row) {
     List *list = row->data;
-    /* At least, more 3 sys-reserved column. */
-    Assert(list->size > 3);
-
-    /* Delete last 3 sys-reserved items. */
-    list_delete_tail(list, 3);
-
+    /* At least, more than sys-reserved column. */
+    Assert(list->size > SYS_RESERVED_COLUMNS_LENGTH );
+    /* Delete last all sys-reserved items. */
+    list_delete_tail(list, SYS_RESERVED_COLUMNS_LENGTH);
     return row;
 }
 

@@ -26,3 +26,9 @@ int64_t TupleGetSysId(void *tuple, MetaTable *meta_table);
 
 /* Set sys id in tuple. */
 void TupleSetSysId(void *tuple, MetaTable *meta_table, int64_t sys_id);
+
+/* Get ref id in tuple. */
+int64_t TupleGetRefId(void *tuple, MetaTable *meta_table);
+
+/* Set ref id in tuple. */
+void TupleSetRefId(void *tuple, MetaTable *meta_table, int64_t sys_id);

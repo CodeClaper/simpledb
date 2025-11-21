@@ -118,3 +118,17 @@ void TupleSetSysId(void *tuple, MetaTable *meta_table, int64_t sys_id) {
     TupleSetValue(tuple, sys_id_meta_column, &sys_id);
 }
 
+/* Get ref id in tuple. */
+int64_t TupleGetRefId(void *tuple, MetaTable *meta_table) {
+    MetaColumn *ref_id_meta_column = NameFindAllMetaColumn(meta_table, SYS_REF_ID_COLUMN_NAME);
+    Assert(ref_id_meta_column != NULL);
+    return *(Xid *)TupleFindValue(tuple, ref_id_meta_column);
+}
+
+/* Set ref id in tuple. */
+void TupleSetRefId(void *tuple, MetaTable *meta_table, int64_t sys_id) {
+    MetaColumn *ref_id_meta_column = NameFindAllMetaColumn(meta_table, SYS_RESERVED_ID_COLUMN_NAME);
+    Assert(ref_id_meta_column != NULL);
+    TupleSetValue(tuple, ref_id_meta_column, &sys_id);
+}
+

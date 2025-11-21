@@ -81,8 +81,7 @@ static void BtreeSearchReferForInternalNode(Oid oid, void *key, void *boundary_k
         GT(GetComparableValue(key, ptype), GetComparableValue(high_key, ptype), ptype)
     ) {
         uint32_t next_sibling = NodeGetNextSibling(table, internal_node);
-        if (next_sibling == 0)
-            Assert(next_sibling != 0);
+        Assert(next_sibling != 0);
         BtreeSearchReferForInternalNode(oid, key, boundary_key, next_sibling, refer);
     } else
         BtreeSearchReferForInternalNodeExtend(oid, key, internal_node, refer);    

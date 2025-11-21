@@ -59,22 +59,22 @@ direct_exit:
 
 /* Get index created xid. */
 Xid IndexGetCreatedXid(void *index) {
-    return *(Xid *) (index + REFER_SIZE + LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE);
+    return *(Xid *) (index + REFER_SIZE + (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)) * 2 + LEAF_NODE_CELL_NULL_FLAG_SIZE);
 }
 
 /* Set index created xid. */
 void IndexSetCreatedXid(void *index, Xid created_xid) {
-    *(Xid *) (index + REFER_SIZE + LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE) = created_xid;
+    *(Xid *) (index + REFER_SIZE + (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)) * 2 + LEAF_NODE_CELL_NULL_FLAG_SIZE) = created_xid;
 }
 
 /* Get index expired xid. */
 Xid IndexGetExpiredXid(void *index) {
-    return *(Xid *) (index + REFER_SIZE + LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE);
+    return *(Xid *) (index + REFER_SIZE + (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)) * 3 + LEAF_NODE_CELL_NULL_FLAG_SIZE);
 }
 
 /* Set index expired xid. */
 void IndexSetExpiredXid(void *index, Xid expired_xid) {
-    *(Xid *) (index + REFER_SIZE + LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE) = expired_xid;
+    *(Xid *) (index + REFER_SIZE + (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)) * 3 + LEAF_NODE_CELL_NULL_FLAG_SIZE) = expired_xid;
 }
 
 /* Get index sys id. */

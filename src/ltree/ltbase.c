@@ -408,13 +408,13 @@ void LeafNodeSetCellValue(void *leaf_node, uint32_t key_len, uint32_t value_len,
 /* Get created xid. */
 Xid LeafNodeGetCellCreatedXid(void *leaf_node, uint32_t key_len, uint32_t value_len, uint32_t default_value_len, uint32_t index) {
     void *cell_value = LeafNodeGetCellValue(leaf_node, key_len, value_len, default_value_len, index);
-    return *(Xid *) (cell_value + REFER_SIZE + LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE);
+    return *(Xid *) (cell_value + REFER_SIZE + (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)) * 2 + LEAF_NODE_CELL_NULL_FLAG_SIZE);
 }
 
 /* Get created xid. */
 Xid LeafNodeGetCellExpiredXid(void *leaf_node, uint32_t key_len, uint32_t value_len, uint32_t default_value_len, uint32_t index) {
     void *cell_value = LeafNodeGetCellValue(leaf_node, key_len, value_len, default_value_len, index);
-    return *(Xid *) (cell_value + REFER_SIZE + LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t) + LEAF_NODE_CELL_NULL_FLAG_SIZE);
+    return *(Xid *) (cell_value + REFER_SIZE + (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)) * 3 + LEAF_NODE_CELL_NULL_FLAG_SIZE);
 }
 
 /* Initialize leaf node. */

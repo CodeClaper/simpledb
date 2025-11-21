@@ -21,7 +21,7 @@ extern MetaColumn SYS_TABLE_COLUMNS[];
 /* System reserved columns. */
 extern MetaColumn SYS_RESERVED_COLUMNS[];
 /* System reserved columns length. */
-#define SYS_RESERVED_COLUMNS_LENGTH 3
+#define SYS_RESERVED_COLUMNS_LENGTH 4
 
 #define IS_SYS_ROOT(oid) (oid == SYS_ROOT_OID)
 #define IS_SYS_ROOT_HEAP(oid) (oid == SYS_ROOT_HEAP_OID)

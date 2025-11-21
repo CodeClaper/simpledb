@@ -49,6 +49,7 @@
 #define ROOT_PAGE_NUM 0
 
 #define SYS_RESERVED_ID_COLUMN_NAME  "sys_id"
+#define SYS_REF_ID_COLUMN_NAME "ref_id"
 #define CREATED_XID_COLUMN_NAME  "created_xid"
 #define EXPIRED_XID_COLUMN_NAME  "expired_xid"
 
