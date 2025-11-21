@@ -405,7 +405,7 @@ static void HeapTableAppendColumnNormal(Table *table, MetaColumn *newColumn, int
  * -----------------------------------
  * Return refer of re-insert-row postion, which freed by caller.
  * */
-static Refer *HeapTableSplitReInsertRow(Refer *rootRefer, Table *table, void *data) {
+static Refer *HeapTableSplitReInsert(Refer *rootRefer, Table *table, void *data) {
     Refer *refer;
     Buffer buffer;
     void *block;
@@ -452,7 +452,7 @@ static void HeapTableSplitAppendColumn(Refer *rootRefer, Table *table, MetaColum
     /* Reinsert the right part cell. */
     for (i = cell_num - 1; i > left_num; i--) {
         void *destintion = HeapTableGetPageCellData(block, table->heap_value_len, i);
-        HeapTableSplitReInsertRow(rootRefer, table, destintion);
+        HeapTableSplitReInsert(rootRefer, table, destintion);
     }
     
     for (i = left_num; i >= 0; i--) {
