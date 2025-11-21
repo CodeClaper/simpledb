@@ -367,11 +367,8 @@ void ExecuteCreateTableStatement(CreateTableNode *create_table_node, DBResult *r
     ) {
         result->success = true;
         result->rows = 0;
-        result->message = FormatStr("Table '%s' created successfully.", 
-                                 create_table_node->table_name);
-
-        db_log(SUCCESS, "Table '%s' created successfully.", 
-               create_table_node->table_name);
+        result->message = FormatStr("Table '%s' created successfully.", create_table_node->table_name);
+        db_log(SUCCESS, "Table '%s' created successfully.", create_table_node->table_name);
     }
 
     free_meta_table(meta_table);
@@ -409,8 +406,7 @@ void ExecuteCreateIndexStatement(CreateIndexNode *create_index_node, DBResult *r
     ) {
         result->success = true;
         result->rows = 0;
-        result->message = FormatStr("Index '%s' created successfully.", 
-                                    create_index_node->index_name);
+        result->message = FormatStr("Index '%s' created successfully.", create_index_node->index_name);
         db_log(SUCCESS, "Index '%s' created successfully.", create_index_node->index_name);
     }
 
