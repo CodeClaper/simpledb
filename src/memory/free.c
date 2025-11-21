@@ -36,8 +36,6 @@ void free_key_value(KeyValue *key_value) {
     if (key_value) {
         if (key_value->key)
             dfree(key_value->key);
-        if (key_value->table_name)
-            dfree(key_value->table_name);
         if (key_value->is_array)
             free_array_value(key_value->value);
         else

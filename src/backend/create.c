@@ -112,11 +112,11 @@ static void ColumnDefOptListForMetaColumn(MetaColumn *meta_column, List *column_
 }
 
 /* Combine user-level column. */
-MetaColumn *ColumnDefNodeGenerateMetaColumn(ColumnDefNode *column_def, char *table_name) {
+MetaColumn *ColumnDefNodeGenerateMetaColumn(Oid tid, Oid stid, ColumnDefNode *column_def) {
     MetaColumn *meta_column = instance(MetaColumn);
 
     /* Base info. */
-    memcpy(meta_column->own_table_name, table_name, MAX_COLUMN_NAME_LEN);
+    meta_column->tid = tid;
     memcpy(meta_column->column_name, column_def->column->column, MAX_COLUMN_NAME_LEN);
     meta_column->is_primary = false;
     meta_column->is_unique = false;
@@ -133,15 +133,14 @@ MetaColumn *ColumnDefNodeGenerateMetaColumn(ColumnDefNode *column_def, char *tab
     if (column_def->data_type->type == T_REFERENCE) {
         Table *sub_table = open_table(column_def->data_type->table_name);
         if (sub_table) 
-            memcpy(meta_column->table_name, column_def->data_type->table_name, strlen(column_def->data_type->table_name) + 1);
+            meta_column->type_oid = GET_TABLE_OID(sub_table);
         else 
             db_log(ERROR, "Table '%s' not exists.", column_def->data_type->table_name);
     }
 
     /* Special handling STRING, record the strheaptable name. */
-    if (column_def->data_type->type == T_STRING) {
-        memcpy(meta_column->table_name, table_name, strlen(table_name) + 1);
-    }
+    if (column_def->data_type->type == T_STRING) 
+        meta_column->type_oid = stid;
 
     /* Operate column. */
     ColumnDefOptListForMetaColumn(meta_column, column_def->column_def_opt_list);
@@ -226,7 +225,7 @@ static void GenerateSystemPrimaryKey(MetaTable *meta_table) {
 }
 
 /* Combine meta table by create table node. */
-static MetaTable *CreateTableNodeGenerateMetaTable(CreateTableNode *create_table_node) {
+static MetaTable *CreateTableNodeGenerateMetaTable(Oid tid, Oid stid, CreateTableNode *create_table_node) {
     MetaTable *meta_table = instance(MetaTable);
     meta_table->table_name = dstrdup(create_table_node->table_name);
     meta_table->column_size = CreateTableNodeColumnSize(create_table_node); 
@@ -240,7 +239,7 @@ static MetaTable *CreateTableNodeGenerateMetaTable(CreateTableNode *create_table
         BaseTableElementNode *base_table_element = lfirst(lc);
         switch (base_table_element->type) {
             case TELE_COLUMN_DEF: {
-                MetaColumn *current = ColumnDefNodeGenerateMetaColumn(base_table_element->column_def, create_table_node->table_name);
+                MetaColumn *current = ColumnDefNodeGenerateMetaColumn(tid, stid, base_table_element->column_def);
                 current->offset = offset;
                 append_list(meta_table->meta_columns, current);
                 offset += current->column_length;
@@ -290,11 +289,12 @@ static MetaIndex *GenerateMetaIndexForCreateIndex(Oid oid, Table *table,  Create
 }
 
 /* Save to table cache. */
-static bool PrepareSaveTableCache(Oid oid, MetaTable *meta_table) {
+static bool PrepareSaveTableCache(Oid oid, Oid hid, Oid stid, MetaTable *meta_table) {
     /* Combine table. */
     Table *table = instance(Table);
     table->oid = oid;
-    table->hoid = TableNameFindHeapOid(meta_table->table_name);
+    table->hoid = hid;
+    table->stid = stid;
     table->meta_table = meta_table;
     table->root_page_num = ROOT_PAGE_NUM;
     table->page_size = 1;
@@ -341,13 +341,17 @@ static void AfterReleaseTable(Oid oid) {
 
 /* Execute create table statement. */
 void ExecuteCreateTableStatement(CreateTableNode *create_table_node, DBResult *result) {
-    Oid oid = FindNextOid();
+    Oid tid = FindNextOid();
+    Oid hid = FindNextOid();
+    Oid stid = FindNextOid();
+
+    Assert(tid != hid && hid != stid && tid != stid);
 
     /* Check valid. */
     if (!CheckForCreateTable(create_table_node)) return;
 
     /* Combine MetaTable. */
-    MetaTable *meta_table = CreateTableNodeGenerateMetaTable(create_table_node);
+    MetaTable *meta_table = CreateTableNodeGenerateMetaTable(tid, stid, create_table_node);
     if (meta_table == NULL) return;
 
     /* Will do these: 
@@ -359,11 +363,11 @@ void ExecuteCreateTableStatement(CreateTableNode *create_table_node, DBResult *r
      * Although the table maybe not have any string column, just in case.
      * */
     if (
-        create_table(oid, meta_table) && 
-        SaveTableObject(oid, GET_METATABLE_NAME(meta_table)) &&
-        CreateHeapTable(oid, meta_table->table_name) &&
-        CreateStrHeapTable(oid, meta_table->table_name) &&
-        PrepareSaveTableCache(oid, meta_table)
+        create_table(tid, meta_table) && 
+        SaveTableObject(tid, GET_METATABLE_NAME(meta_table)) &&
+        CreateHeapTable(hid, tid, meta_table->table_name) &&
+        CreateStrHeapTable(stid, tid, meta_table->table_name) &&
+        PrepareSaveTableCache(tid, hid, stid, meta_table)
     ) {
         result->success = true;
         result->rows = 0;

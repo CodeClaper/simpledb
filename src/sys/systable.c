@@ -1,8 +1,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <time.h>
 #include "systable.h"
 #include "mmgr.h"
 #include "data.h"
@@ -10,7 +12,7 @@
 #include "defs.h"
 #include "table.h"
 #include "log.h"
-#include "timer.h"
+#include "random.h"
 #include "queue.h"
 #include "instance.h"
 #include "insert.h"
@@ -26,24 +28,24 @@
 
 /* System table meta column list. */
 MetaColumn SYS_TABLE_COLUMNS[] = {
-    {SYS_TABLE_NAME, SYS_TABLE_OID_NAME, T_LONG, "", (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), 0, true, false, false, false, 0, 0},
-    {SYS_TABLE_NAME, SYS_TABLE_TOID_NAME, T_LONG, "", (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), true, false, false, false, 0, 0},
-    {SYS_TABLE_NAME, SYS_TABLE_RELNAME_NAME, T_VARCHAR, "", (LEAF_NODE_CELL_NULL_FLAG_SIZE + MAX_COLUMN_SIZE), (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)) * 2, false, false, false, false, 0, 0}, 
-    {SYS_TABLE_NAME, SYS_TABLE_RELTYPE_NAME, T_INT, "", (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int32_t)), ((LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)) * 2+ LEAF_NODE_CELL_NULL_FLAG_SIZE + MAX_COLUMN_SIZE), false, false, false, false, 0, 0}
+    {SYS_ROOT_OID, SYS_TABLE_OID_NAME, T_LONG, 0, (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), 0, true, false, false, false, 0, 0},
+    {SYS_ROOT_OID, SYS_TABLE_TOID_NAME, T_LONG, 0, (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), true, false, false, false, 0, 0},
+    {SYS_ROOT_OID, SYS_TABLE_RELNAME_NAME, T_VARCHAR, 0, (LEAF_NODE_CELL_NULL_FLAG_SIZE + MAX_COLUMN_SIZE), (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)) * 2, false, false, false, false, 0, 0}, 
+    {SYS_ROOT_OID, SYS_TABLE_RELTYPE_NAME, T_INT, 0, (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int32_t)), ((LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)) * 2+ LEAF_NODE_CELL_NULL_FLAG_SIZE + MAX_COLUMN_SIZE), false, false, false, false, 0, 0}
 };
 
 /* System reserved columns. */
 MetaColumn SYS_RESERVED_COLUMNS[] = {
-    { "", SYS_RESERVED_ID_COLUMN_NAME, T_LONG, "", (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), 0, false, false, false, true, 0, 0 },
-    { "", CREATED_XID_COLUMN_NAME, T_LONG, "", (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), 0, false, false, false, true, 0, 0 },
-    { "", EXPIRED_XID_COLUMN_NAME, T_LONG, "", (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), 0, false, false, false, true, 0, 0 }
+    {0, SYS_RESERVED_ID_COLUMN_NAME, T_LONG, 0, (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), 0, false, false, false, true, 0, 0},
+    {0, CREATED_XID_COLUMN_NAME, T_LONG, 0, (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), 0, false, false, false, true, 0, 0},
+    {0, EXPIRED_XID_COLUMN_NAME, T_LONG, 0, (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)), 0, false, false, false, true, 0, 0}
 }; 
 
 static Object TupleConvertObject(void *tuple);
 
 /* Find next Oid. */
 inline Oid FindNextOid() {
-    return (Oid) get_timestamp(NANOSECOND);
+    return RandomUint64();
 }
 
 /* If system table file already exists, 
@@ -95,8 +97,7 @@ static MetaTable *CreateSysMetaTable() {
  * */
 void InitSysTable() {
     /* Avoid repeat create system table. */
-    if (SysTableFileExists()) 
-        return;
+    if (SysTableFileExists()) return;
 
     MetaTable *sysMetaTable = CreateSysMetaTable();
     if (!create_table(SYS_ROOT_OID, sysMetaTable) || !CreateHeapTableInner(SYS_ROOT_HEAP_OID))
@@ -409,6 +410,8 @@ Oid IndexNameFindOid(char *indexName) {
  * Return OID_ZERO if missing.
  * */
 Oid StrTableNameFindOid(char *tableName) {
+    if (StrEq(tableName, SYS_TABLE_NAME))
+        return OID_ZERO;
     return RelnameAndReltypeFindOid(tableName, OSTRING_HEAP_TABLE);
 }
 
@@ -579,12 +582,12 @@ static Row *ObjectConvertRow(Object entity) {
         KeyValue *key_value = new_key_value(meta_column.column_name, 
                                             ObjectConvertKeyValue(entity, i), 
                                             meta_column.column_type, 
-                                            meta_column.own_table_name);
+                                            meta_column.tid);
         append_list(row->data, key_value);
     }
     
     /* Make up the reserved columns. */
-    MakeupReservedColumns(row, SYS_TABLE_NAME);
+    MakeupReservedColumns(SYS_ROOT_OID , row);
 
     return row;
 }

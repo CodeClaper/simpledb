@@ -426,12 +426,12 @@ static void TransactionInsertRow(Row *row) {
     Assert(entry != NULL);
 
     /* For created_xid */
-    KeyValue *created_xid_col = new_key_value(CREATED_XID_COLUMN_NAME, &entry->xid, T_LONG, NULL);
+    KeyValue *created_xid_col = new_key_value(CREATED_XID_COLUMN_NAME, &entry->xid, T_LONG, OID_ZERO);
     lfirst(second_last_cell(row->data)) = created_xid_col;
 
     /* For expired_xid */
     Xid zero = 0;
-    KeyValue *expired_xid_col = new_key_value(EXPIRED_XID_COLUMN_NAME, &zero, T_LONG, NULL);
+    KeyValue *expired_xid_col = new_key_value(EXPIRED_XID_COLUMN_NAME, &zero, T_LONG, OID_ZERO);
     lfirst(last_cell(row->data)) = expired_xid_col;
 }
 

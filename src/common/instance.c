@@ -8,12 +8,12 @@
 #include "systable.h"
 
 /* Generate new KeyValue instance. */
-KeyValue *new_key_value(char *key, void *value, DataType data_type, char *table_name) {
+KeyValue *new_key_value(char *key, void *value, DataType data_type, Oid tid) {
     KeyValue *key_value = instance(KeyValue);
     key_value->key = dstrdup(key);
     key_value->value = copy_value(value, data_type);
     key_value->data_type = data_type;
-    key_value->table_name = StrIsEmpty(table_name) ? NULL : dstrdup(table_name);
+    key_value->tid = tid;
     key_value->is_array = false;
     return key_value;
 }

@@ -129,21 +129,21 @@ KeyValue *copy_key_value(KeyValue *key_value) {
         return NULL;
 
     /* copy key value */
-    KeyValue *key_value_copy = instance(KeyValue);
+    KeyValue *duplica = instance(KeyValue);
 
-    key_value_copy->key = dstrdup(key_value->key);
+    duplica->key = dstrdup(key_value->key);
     /* Meta column may be null, in fact, for key aggregate function, 
      * key is min, max, sum, avg ect. there is no meta column. */
-    key_value_copy->data_type = key_value->data_type;
-    key_value_copy->is_array = key_value->is_array;
+    duplica->data_type = key_value->data_type;
+    duplica->is_array = key_value->is_array;
     /* Single and array data have difference way to deal. */
-    if (key_value_copy->is_array)
-        key_value_copy->value = copy_array_value(key_value->value);
+    if (duplica->is_array)
+        duplica->value = copy_array_value(key_value->value);
     else
-        key_value_copy->value = copy_value(key_value->value, key_value->data_type);
-    key_value_copy->table_name = dstrdup(key_value->table_name);
+        duplica->value = copy_value(key_value->value, key_value->data_type);
+    duplica->tid = key_value->tid;
 
-    return key_value_copy;
+    return duplica;
 }
 
 /* Copy row. */
@@ -191,10 +191,10 @@ MetaColumn *copy_meta_column(MetaColumn *meta_column) {
         return NULL;
 
     MetaColumn *duplica = instance(MetaColumn);
-    memcpy(duplica->own_table_name, meta_column->own_table_name, MAX_COLUMN_NAME_LEN);
+    duplica->tid = meta_column->tid;
     memcpy(duplica->column_name, meta_column->column_name, MAX_COLUMN_NAME_LEN);
     duplica->column_type = meta_column->column_type;
-    memcpy(duplica->table_name, meta_column->table_name, MAX_TABLE_NAME_LEN);
+    duplica->type_oid = meta_column->type_oid;
     duplica->column_length = meta_column->column_length;
     duplica->offset = meta_column->offset;
     duplica->is_primary = meta_column->is_primary;
@@ -263,6 +263,7 @@ Table *copy_table(Table *table) {
     Table *duplica = instance(Table);
     duplica->oid = table->oid;
     duplica->hoid = table->hoid;
+    duplica->stid = table->stid;
     duplica->root_page_num = table->root_page_num;
     duplica->meta_table = copy_meta_table(table->meta_table);
     duplica->meta_indexs = list_copy_deep(table->meta_indexs);

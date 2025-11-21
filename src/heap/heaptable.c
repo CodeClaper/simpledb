@@ -61,8 +61,10 @@ bool CreateHeapTableInner(Oid hoid) {
     sprintf(heap_table_file, "%s%ld", conf->data_dir, hoid);
 
     /* Avoid repeatly create. */
-    if (table_file_exist(heap_table_file))
+    if (table_file_exist(heap_table_file)) {
+        db_log(PANIC, "Heap table file %s alreay exists.", heap_table_file);
         return true;
+    }
 
     descr = open(heap_table_file, O_CREAT | O_WRONLY, S_IWUSR | S_IRUSR);
     if (descr == -1) {
@@ -93,13 +95,9 @@ bool CreateHeapTableInner(Oid hoid) {
 }
 
 /* Create the heap table. */
-bool CreateHeapTable(Oid toid, char *tableName) {
-    Object entity = GenerateObject(toid, tableName, OHEAP_TABLE);
-    /* Create the heap table. */
-    CreateHeapTableInner(entity.oid);
-    /* Save the String table Object. */
-    SaveObject(entity);
-    return true;
+bool CreateHeapTable(Oid oid, Oid toid, char *tableName) {
+    Object entity = GenerateObjectInner(oid, toid, tableName, OHEAP_TABLE);
+    return CreateHeapTableInner(entity.oid) && SaveObject(entity);
 }
 
 /* Insert intadd_new_meta_columno heap table. */

@@ -411,7 +411,7 @@ static bool CheckFunctionForValueType(FunctionType type, ColumnNode *column, Met
                 break;
         }
     } else if (column->sub_column) {
-        Table *table = open_table(meta_column->table_name);
+        Table *table = open_table_inner(meta_column->type_oid);
         MetaColumn *sub_meta_column = NameFindMetaColumn(table->meta_table, column->sub_column->column_name);
         return CheckFunctionForValueType(type, column->sub_column, sub_meta_column);
     } else if (column->has_sub_column) {
@@ -432,7 +432,7 @@ static bool CheckForColumn(ColumnNode *column_node, MetaTable *meta_table) {
             if (column_node->has_sub_column == false)
                 return true;
             else if (meta_column->column_type == T_REFERENCE && column_node->has_sub_column) {
-                Table *table = open_table(meta_column->table_name);
+                Table *table = open_table_inner(meta_column->type_oid);
                 if (column_node->sub_column)
                     return CheckForColumn(column_node->sub_column, table->meta_table);
                 else if (column_node->scalar_exp_list) {
@@ -1326,7 +1326,7 @@ static bool CheckForIndex(char *index_name) {
 }
 
 /* Check if table uses refer. */
-static bool TableIsRefered(Table *table, char *refer_table_name) {
+static bool TableIsRefered(Table *table, Table *ref_table) {
     MetaTable *meta_table = table->meta_table;
 
     ListCell *lc;
@@ -1335,10 +1335,10 @@ static bool TableIsRefered(Table *table, char *refer_table_name) {
         if (meta_column->sys_reserved)
             continue;
         if (meta_column->column_type == T_REFERENCE && 
-            strcmp(meta_column->table_name, refer_table_name) == 0) 
-        {
+            meta_column->type_oid == GET_TABLE_OID(ref_table)
+        ) {
             db_log(ERROR , "Table '%s' is refered by column '%s' in table '%s', so can`t drop it.", 
-                   refer_table_name, meta_column->column_name, table->meta_table->table_name);
+                   GET_TABLE_NAME(ref_table), meta_column->column_name, table->meta_table->table_name);
             return true;
         }
     }
@@ -1426,6 +1426,8 @@ bool CheckForDropTable(char *table_name) {
         db_log(ERROR, "Table '%s' not exists.", table_name);
         return false;
     }
+
+    Table *ref_table = open_table(table_name);
     
     /* Check table refered by others. */
     List *table_list = GetAllTableCache();
@@ -1433,7 +1435,7 @@ bool CheckForDropTable(char *table_name) {
     ListCell *lc;
     foreach (lc, table_list) {
         Table *table = (Table *) lfirst(lc);
-        if (TableIsRefered(table, table_name))  {
+        if (TableIsRefered(table, ref_table))  {
             ret = false;
             break;
         }

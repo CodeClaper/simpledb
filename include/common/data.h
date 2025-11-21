@@ -642,11 +642,11 @@ typedef enum DefaultValueType {
 
 /* MetaColumn */
 typedef struct MetaColumn {
-    char own_table_name[MAX_COLUMN_NAME_LEN];   /* Own table name, not seriable. */
+    Oid tid;                                    /* Table oid. */
     char column_name[MAX_COLUMN_NAME_LEN];      /* Column Name. */
     DataType column_type;                       /* Column data type. */
-    char table_name[MAX_TABLE_NAME_LEN];        /* Table Name. Note: for REFERENCE type, the table name is refered table name, 
-                                                   for STRING type, the table name is the strheaptable name. */
+    Oid type_oid;                               /* Type oid. Note: for REFERENCE type, the type oid is refered table oid, 
+                                                   for STRING type, the type oid is the strheaptable name. */
     uint32_t column_length;                     /* Column data length. Not allowed exceed the length limit. */
     uint32_t offset;                            /* Offset from the beginning. */
     bool is_primary;                            /* Primary-key column. */
@@ -688,6 +688,7 @@ typedef struct MetaIndex {
 typedef struct Table {
     Oid oid;                        /* Oid. */
     Oid hoid;                       /* Heap table oid. */
+    Oid stid;                       /* String heap table oid. */
     uint32_t root_page_num;         /* Root page num. */
     MetaTable *meta_table;          /* Meta table info. */
     List *meta_indexs;              /* Meta index info. */   
@@ -709,7 +710,7 @@ typedef struct KeyValue {
     char *key;
     void *value;
     DataType data_type;
-    char *table_name;
+    Oid tid;
     bool is_array;
 } KeyValue;
 

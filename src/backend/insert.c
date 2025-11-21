@@ -85,41 +85,41 @@ static SelectNode *QuerySpceToSelection(QuerySpecNode *query_spec) {
 }
 
 /* Generate new sys_id column.*/
-static KeyValue *NewSysIdKeyValue(char *table_name) {
+static KeyValue *NewSysIdKeyValue(Oid tid) {
     /* Automatically insert sys_id using current sys time. */
     int64_t sys_id = get_timestamp(NANOSECOND);
-    return new_key_value(SYS_RESERVED_ID_COLUMN_NAME, &sys_id, T_LONG, table_name);
+    return new_key_value(SYS_RESERVED_ID_COLUMN_NAME, &sys_id, T_LONG, tid);
 }
 
 /* Generate new created_xid column.*/
-static KeyValue *NewCreatedXidKeyValue(char *table_name) {
+static KeyValue *NewCreatedXidKeyValue(Oid tid) {
     /* Get current transaction. */
     TransEntry *current_trans = FindTransaction();
     Assert(current_trans);
-    return new_key_value(CREATED_XID_COLUMN_NAME, &current_trans->xid, T_LONG, table_name);
+    return new_key_value(CREATED_XID_COLUMN_NAME, &current_trans->xid, T_LONG, tid);
 }
 
 /* Generate new expired_xid column. */
-static KeyValue *NewExpiredXidKeyValue(char *table_name) {
+static KeyValue *NewExpiredXidKeyValue(Oid tid) {
     /* For expired_xid */
     int64_t zero = 0;
-    return new_key_value(EXPIRED_XID_COLUMN_NAME, &zero, T_LONG, table_name);
+    return new_key_value(EXPIRED_XID_COLUMN_NAME, &zero, T_LONG, tid);
 }
 
 /* Makeup the system reserved column. */
-void MakeupReservedColumns(Row *row, char *table_name) {
+void MakeupReservedColumns(Oid tid, Row *row) {
     /* Append sys_id column key value. */
-    append_list(row->data, NewSysIdKeyValue(table_name));
+    append_list(row->data, NewSysIdKeyValue(tid));
     /* Append created_xid column key value. */
-    append_list(row->data, NewCreatedXidKeyValue(table_name));
+    append_list(row->data, NewCreatedXidKeyValue(tid));
     /* Append expired_xid column key value. */
-    append_list(row->data, NewExpiredXidKeyValue(table_name));
+    append_list(row->data, NewExpiredXidKeyValue(tid));
 }
 
 
 /* Generate insert row for all columns. 
  * Return Row. */
-static Row *GenerateInsertRowForAllInner(MetaTable *meta_table, List *value_item_list) {
+static Row *GenerateInsertRowForAllInner(Oid tid, MetaTable *meta_table, List *value_item_list) {
     /* Check NodeType. */
     Assert(value_item_list->type == NODE_VALUE_ITEM);
 
@@ -137,7 +137,7 @@ static Row *GenerateInsertRowForAllInner(MetaTable *meta_table, List *value_item
         KeyValue *key_value = new_key_value(meta_column->column_name, 
                                             NULL,
                                             meta_column->column_type, 
-                                            meta_table->table_name);
+                                            tid);
 
         /* Maybe array value, and the funciton <copy_value> 
          * not support ArrayValue, so specially assign here.*/
@@ -147,7 +147,7 @@ static Row *GenerateInsertRowForAllInner(MetaTable *meta_table, List *value_item
     }
 
     /* Make up the reserved columns. */
-    MakeupReservedColumns(row, meta_table->table_name);
+    MakeupReservedColumns(tid, row);
     
     return row;
 }
@@ -172,7 +172,7 @@ static List *GenerateInsertRowForAll(InsertNode *insert_node) {
     ListCell *lc;
     foreach (lc, value_list) {
         List *value_item_list = lfirst(lc);
-        Row *row = GenerateInsertRowForAllInner(meta_table, value_item_list);
+        Row *row = GenerateInsertRowForAllInner(GET_TABLE_OID(table), meta_table, value_item_list);
         append_list(row_list, row);
     }
     
@@ -184,7 +184,7 @@ static List *GenerateInsertRowForAll(InsertNode *insert_node) {
  * -------------------------------------
  * Return a Row which need to be freed by caller.
  * */
-static Row *GenerateInsertRowForPartInner(MetaTable *meta_table, List *column_list, List *value_item_list) {
+static Row *GenerateInsertRowForPartInner(Oid tid, MetaTable *meta_table, List *column_list, List *value_item_list) {
     /* Instance row. */
     Row *row = NewRow();
     
@@ -202,7 +202,7 @@ static Row *GenerateInsertRowForPartInner(MetaTable *meta_table, List *column_li
         KeyValue *key_value = new_key_value(meta_column->column_name, 
                                             NULL,
                                             meta_column->column_type, 
-                                            meta_table->table_name);
+                                            tid);
 
         /* Maybe the value is array value, and the funciton <copy_value> 
          * not support ArrayValue, so specially assign here.*/
@@ -216,7 +216,7 @@ static Row *GenerateInsertRowForPartInner(MetaTable *meta_table, List *column_li
     }
 
     /* Make up the reserved columns. */
-    MakeupReservedColumns(row, meta_table->table_name);
+    MakeupReservedColumns(tid, row);
 
     return row;
 }
@@ -241,7 +241,7 @@ static List *GenerateInsertRowForPart(InsertNode *insert_node) {
     ListCell *lc;
     foreach (lc, value_list) {
         List *value_item_list = lfirst(lc);
-        Row *row = GenerateInsertRowForPartInner(meta_table, column_list, value_item_list);
+        Row *row = GenerateInsertRowForPartInner(GET_TABLE_OID(table), meta_table, column_list, value_item_list);
         append_list(row_list, row);
     }
 
@@ -269,12 +269,12 @@ static Row *SelectRowToInsertRow(Row *select_row, Table *table) {
         KeyValue *key_value = new_key_value(current->key, 
                                             current->value, 
                                             current->data_type, 
-                                            GET_TABLE_NAME(table));
+                                            GET_TABLE_OID(table));
         append_list(insert_row->data, key_value);
     }
 
     /* Make up the reserved columns. */
-    MakeupReservedColumns(insert_row, GET_TABLE_NAME(table));
+    MakeupReservedColumns(GET_TABLE_OID(table), insert_row);
 
     return insert_row;
 }

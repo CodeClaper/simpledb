@@ -97,7 +97,7 @@ Refer *FetchRefer(MetaColumn *meta_column, SearchConditionNode *condition) {
     void *key;
     Refer *refer = NULL;
     
-    table = open_table(meta_column->table_name);
+    table = open_table_inner(meta_column->type_oid);
     oid = GET_TABLE_OID(table);
     select_result = new_select_result(UNKONWN_STMT, GET_TABLE_NAME(table), true);
 
@@ -146,18 +146,12 @@ static ReferUpdateEntity *NewReferUpdateEntity(Refer *old_refer, Refer *new_refe
 
 /* Check if table has column refer to. */
 static bool TableRelatedRefer(MetaTable *meta_table, Oid refer_oid) {
-    Table *refer_table;
-
-    refer_table = open_table_inner(refer_oid);
-    Assert(refer_table);
-    Assert(meta_table);
-
     ListCell *lc;
     foreach (lc, meta_table->meta_columns) {
         MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
         if (meta_column->column_type == T_REFERENCE && 
-                strcmp(meta_column->table_name, GET_TABLE_NAME(refer_table)) == 0)
-            return true;
+            meta_column->type_oid == refer_oid
+        ) return true;
     }
 
     return false;
@@ -221,8 +215,8 @@ static void UpdateTupleReferValueExtend(Oid oid, void *tuple,
 
 /* Update row refer. */
 static void UpdateTupleReferValue(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg) {
-    Oid oid;
-    Table *table, *ref_table;
+    Oid oid, refer_oid;
+    Table *table;
     ReferUpdateEntity *refer_update_entity;
     void *key, *index;
 
@@ -232,8 +226,7 @@ static void UpdateTupleReferValue(void *tuple, SelectResult *select_result, ROW_
     Assert(arg != NULL);
     Assert(type == ARG_REFER_UPDATE_ENTITY);
     refer_update_entity = (ReferUpdateEntity *) arg;
-    ref_table = open_table_inner(refer_update_entity->old_refer->oid);
-    Assert(ref_table);
+    refer_oid = refer_update_entity->old_refer->oid;
 
     key = TupleFindKey(tuple, table);
     index = BtreeSearchValue(oid, key);
@@ -242,7 +235,7 @@ static void UpdateTupleReferValue(void *tuple, SelectResult *select_result, ROW_
     foreach (lc, table->meta_table->meta_columns) {
         MetaColumn *meta_column = (MetaColumn *) lfirst(lc);
         if (meta_column->column_type == T_REFERENCE && 
-            StrEq(meta_column->table_name, GET_TABLE_NAME(ref_table))
+            meta_column->type_oid == refer_oid
         ) UpdateTupleReferValueExtend(oid, tuple, (Refer *) index, meta_column, refer_update_entity);
     }
 }

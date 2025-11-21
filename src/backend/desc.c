@@ -28,59 +28,67 @@ static inline char *DescribeNodeFindTableName(DescribeNode *describe_node) {
 }
 
 /* Generate DescribeResult. */
-static List *MetaTableGenerateDescribeResult(MetaTable *meta_table) {
+static List *MetaTableGenerateDescribeResult(Oid tid, MetaTable *meta_table) {
     List *list = create_list(NODE_LIST);
 
     ListCell *lc;
     foreach (lc, meta_table->meta_columns) {
-        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
-        /* Skip system-reserved column. */
-        if (meta_column->sys_reserved)
-            continue;
+        List *child_list;
+        Table *subTable;
+        MetaColumn *meta_column;
+        uint32_t column_length;
+        bool is_array;
 
-        List *child_list = create_list(NODE_KEY_VALUE);
+        meta_column = (MetaColumn *)lfirst(lc);
+        /* Skip system-reserved column. */
+        if (meta_column->sys_reserved) continue;
+
+        child_list = create_list(NODE_KEY_VALUE);
+        column_length = CalcUserMetaColumnLen(meta_column);
+        is_array = meta_column->array_dim > 0;
+        subTable = meta_column->column_type == T_REFERENCE || meta_column->column_type == T_STRING 
+                 ? open_table_inner(meta_column->type_oid) 
+                 : NULL;
 
         /* filed */
         append_list(
             child_list, 
-            new_key_value("field", meta_column->column_name, T_VARCHAR, meta_table->table_name)
+            new_key_value("field", meta_column->column_name, T_VARCHAR, tid)
         );
     
         /* key */
         append_list(
             child_list, 
-            new_key_value("key", GetKeyTypeName(meta_column), T_VARCHAR, meta_table->table_name)
+            new_key_value("key", GetKeyTypeName(meta_column), T_VARCHAR, tid)
         );
-
+    
         /* type */
         append_list(
             child_list, 
             new_key_value("type", 
-                          meta_column->column_type == T_REFERENCE ? meta_column->table_name : GET_DATA_TYPE_NAME(meta_column->column_type), 
+                          meta_column->column_type == T_REFERENCE ?  GET_TABLE_NAME(subTable): GET_DATA_TYPE_NAME(meta_column->column_type), 
                           T_VARCHAR, 
-                          meta_table->table_name)
+                          tid)
         );
 
         /* length */
-        uint32_t column_length = CalcUserMetaColumnLen(meta_column);
         append_list(
             child_list, 
-            new_key_value("length", &column_length, T_INT, meta_table->table_name)
+            new_key_value("length", &column_length, T_INT, tid)
         );
 
 
         /* array dim */
-        bool is_array = meta_column->array_dim > 0;
         append_list(
             child_list, 
-            new_key_value("array", &is_array, T_BOOL, meta_table->table_name)
+            new_key_value("array", &is_array, T_BOOL, tid)
         );
 
         /* primary key */
         if (is_array)  {
             append_list(
                 child_list, 
-                new_key_value("array_dim", &meta_column->array_dim, T_BOOL, meta_table->table_name)
+                new_key_value("array_dim", &meta_column->array_dim, T_BOOL, tid)
             );
         }
 
@@ -91,13 +99,13 @@ static List *MetaTableGenerateDescribeResult(MetaTable *meta_table) {
             case DEFAULT_VALUE_NULL:
                 append_list(
                     child_list, 
-                    new_key_value("default", NULL, meta_column->column_type, meta_table->table_name)
+                    new_key_value("default", NULL, meta_column->column_type, tid)
                 );
                 break;
             case DEFAULT_VALUE:
                 append_list(
                     child_list, 
-                    new_key_value("default", meta_column->default_value, meta_column->column_type, meta_table->table_name)
+                    new_key_value("default", meta_column->default_value, meta_column->column_type, tid)
                 );
                 break;
                 
@@ -107,7 +115,7 @@ static List *MetaTableGenerateDescribeResult(MetaTable *meta_table) {
         if (meta_column->has_comment) {
             append_list(
                 child_list, 
-                new_key_value("comment", meta_column->comment, T_VARCHAR, meta_table->table_name)
+                new_key_value("comment", meta_column->comment, T_VARCHAR, tid)
             );
         }
 
@@ -130,5 +138,5 @@ List *exec_describe_statement(DescribeNode *describe_node) {
         return NULL;
     }
 
-    return MetaTableGenerateDescribeResult(table->meta_table);
+    return MetaTableGenerateDescribeResult(GET_TABLE_OID(table), table->meta_table);
 }

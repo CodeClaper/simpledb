@@ -7,7 +7,7 @@ Refer *InsertForTuple(Oid oid, void *key, void *tuple);
 Refer *InsertForRow(Table *table, Row *row);
 
 /* Makeup the system reserved column. */
-void MakeupReservedColumns(Row *row, char *table_name);
+void MakeupReservedColumns(Oid tid, Row *row);
 
 /* Make a fake InsertNode. */
 InsertNode *GenerateInsertNode(char *table_name, List *value_list);

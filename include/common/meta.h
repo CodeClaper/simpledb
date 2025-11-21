@@ -62,7 +62,7 @@ char *GetKeyTypeName(MetaColumn *meta_column);
 MetaColumn *NameFindMetaColumnInner(List *meta_columns, char *column_name);
 
 /* Find MetaColumn by table name and column name. */
-MetaColumn *TableColumnNameFindMetaColumn(List *meta_columns, char *table_name, char *column_name);
+MetaColumn *TableColumnNameFindMetaColumn(List *meta_columns, Oid toid, char *column_name);
 
 /* Get meta column info by column name. */
 MetaColumn *NameFindMetaColumn(MetaTable *meta_table, char *name);

@@ -216,10 +216,12 @@ static bool AlterDropColumnInnder(Oid oid, DropColumnDef *drop_column_def) {
 /* Add new Column. */
 static void AlterAddNewColumn(AddColumnDef *add_column_def, char *table_name, DBResult *result) {
     Oid oid;
+    Table *table;
     MetaColumn *new_meta_column;
 
     oid = TableNameFindOid(table_name);
-    new_meta_column = ColumnDefNodeGenerateMetaColumn(add_column_def->column_def, table_name);        
+    table = open_table_inner(oid);
+    new_meta_column = ColumnDefNodeGenerateMetaColumn(oid, table->stid, add_column_def->column_def);        
 
     /* By now, not support primary key alter operation. */
     if (new_meta_column->is_primary)

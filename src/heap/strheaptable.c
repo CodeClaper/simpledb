@@ -30,7 +30,7 @@ int CompareStrRefer(StrRefer *source, StrRefer *target) {
 }
 
 /* Create the string heap table. */
-bool CreateStrHeapTable(Oid toid, char *table_name) {
+bool CreateStrHeapTable(Oid oid, Oid tid, char *table_name) {
     int descr;
     Size w_size;
     void *rblock;
@@ -38,13 +38,15 @@ bool CreateStrHeapTable(Oid toid, char *table_name) {
     char str_table_file[MAX_TABLE_NAME_LEN + 100];
     Object entity;
     
-    entity = GenerateObject(toid, table_name, OSTRING_HEAP_TABLE);
+    entity = GenerateObjectInner(oid, tid, table_name, OSTRING_HEAP_TABLE);
     memset(str_table_file, 0, MAX_TABLE_NAME_LEN + 100);
-    sprintf(str_table_file, "%s%ld", conf->data_dir, entity.oid);
+    sprintf(str_table_file, "%s%ld", conf->data_dir, oid);
 
     /* Avoid repeatly create. */
-    if (table_file_exist(str_table_file))
-        return true;
+    if (table_file_exist(str_table_file)) {
+        db_log(PANIC, "String heap table file %s alreay exists.", str_table_file);
+        return false;
+    }
 
     descr = open(str_table_file, O_CREAT | O_WRONLY, S_IWUSR | S_IRUSR);
     if (descr == -1) {
@@ -53,7 +55,7 @@ bool CreateStrHeapTable(Oid toid, char *table_name) {
     }
     
     rblock = dalloc(PAGE_SIZE);
-    rRefer = new_refer(entity.oid, STRING_TABLE_ROOT_PAGE, STRING_FIRST_CELL_NUM);
+    rRefer = new_refer(oid, STRING_TABLE_ROOT_PAGE, STRING_FIRST_CELL_NUM);
     memcpy(rblock + NODE_STATE_SIZE, rRefer, sizeof(Refer));
     
     /* Flush to disk. */
@@ -204,13 +206,15 @@ StrRefer *InsertStringValue(Oid oid, char *str_val) {
     void *root;
     Refer *rRefer;
     StrRefer *strRefer;
-
+    
+    AssertFalse(ZERO_OID(oid));
     size = strlen(str_val) + 1;
     rbuffer = ReadBuffer(oid, STRING_TABLE_ROOT_PAGE);
     LockBuffer(rbuffer, RW_WRITER);
     root = GetBufferPage(rbuffer);
     rRefer = GetRootRefer(root);
-    Assert(rRefer->oid == oid);
+    if (rRefer->oid != oid)
+        Assert(rRefer->oid == oid);
     
     /* Get StrRefer. */
     strRefer = instance(StrRefer);

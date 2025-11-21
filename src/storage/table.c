@@ -275,7 +275,7 @@ MetaTable *LoadMetaTable(Oid oid) {
     uint32_t i;
     for (i = 0; i < column_size; i++) {
         MetaColumn *current = LoadMetaColumnByIndex(root_node, i, offset);
-        memcpy(current->own_table_name, meta_table->table_name, MAX_COLUMN_NAME_LEN);
+        current->tid = oid;
         append_list(meta_table->meta_columns, current);
         /* Skip to system reserved column. */
         if (!current->sys_reserved)
@@ -304,6 +304,7 @@ Table *load_table(Oid oid) {
     table->meta_indexs = LoadMetaIndex(oid, table);
     table->page_size = GetPageSize(oid);
     table->hoid = TableNameFindHeapOid(GET_TABLE_NAME(table));
+    table->stid = StrTableNameFindOid(GET_TABLE_NAME(table));
     table->key_len = TableCalcPrimaryKeyLength(table);
     table->index_value_len = TableCalcIndexLength(table);
     table->heap_value_len = TableCalcRowLength(table);
