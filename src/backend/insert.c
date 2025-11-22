@@ -35,7 +35,6 @@
 #include "free.h"
 #include "refer.h"
 #include "trans.h"
-#include "timer.h"
 #include "xlog.h"
 #include "log.h"
 #include "utils.h"
@@ -43,6 +42,7 @@
 #include "rowlock.h"
 #include "jsonwriter.h"
 #include "instance.h"
+#include "systable.h"
 #include "strheaptable.h"
 #include "heaptable.h"
 #include "ltinsert.h"
@@ -87,14 +87,14 @@ static SelectNode *QuerySpceToSelection(QuerySpecNode *query_spec) {
 /* Generate new sys_id column.*/
 static KeyValue *NewKeyValueForSysId(Oid tid) {
     /* Automatically insert sys_id using current sys time. */
-    int64_t sys_id = get_timestamp(NANOSECOND);
+    int64_t sys_id = FindNextOid();
     return new_key_value(SYS_RESERVED_ID_COLUMN_NAME, &sys_id, T_LONG, tid);
 }
 
 /* Generate new ref_id column. */
 static KeyValue *NewKeyValueForRefId(Oid tid) {
     /* Automatically insert sys_id using current sys time. */
-    int64_t ref_id = get_timestamp(NANOSECOND);
+    int64_t ref_id = FindNextOid();
     return new_key_value(SYS_REF_ID_COLUMN_NAME, &ref_id, T_LONG, tid);
 }
 
@@ -140,18 +140,12 @@ static Row *GenerateInsertRowForAllInner(Oid tid, MetaTable *meta_table, List *v
     foreach (lc, meta_table->meta_columns) {
         MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
         /* Ship system reserved. */
-        if (meta_column->sys_reserved) 
-            continue;
-
-        KeyValue *key_value = new_key_value(meta_column->column_name, 
-                                            NULL,
-                                            meta_column->column_type, 
-                                            tid);
-
+        if (meta_column->sys_reserved) continue;
+        KeyValue *key_value = new_key_value(meta_column->column_name, NULL,
+                                            meta_column->column_type, tid);
         /* Maybe array value, and the funciton <copy_value> 
          * not support ArrayValue, so specially assign here.*/
         key_value->value = GetInsertValue(value_item_list, __i, meta_column);
-
         append_list(row->data, key_value);
     }
 

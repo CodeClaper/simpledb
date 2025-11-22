@@ -36,8 +36,8 @@
 #include "instance.h"
 #include "optimizer.h"
 #include "tuple.h"
+#include "systable.h"
 #include "heaptable.h"
-#include "timer.h"
 
 /* Update tuple for assignment. */
 static void UpdateTupleForAssignment(void *tuple, List *assignment_list, MetaTable *meta_table) {
@@ -87,20 +87,23 @@ static Refer *DeleteRowForUpdate(Oid oid, void *key) {
 /* Insert row for update.
  * ----------------------
  * Will do these:
- * (1) Reinsert the tuple.
+ * (1) Reinsert the tuple with new ref id.
  * (2) Record xlog for HEAP_UPDATE_INSERT.
  * */
 static Refer *ReinsertRowForUpdate(Oid oid, void *key, void *tuple) {
     Table *table;
     Refer *refer;
     Xid created_xid, expired_xid;
+    int64_t ref_id;
 
     table = open_table_inner(oid);
     created_xid = GetCurrentXid();
     expired_xid = 0;
+    ref_id = FindNextOid();
 
     TupleSetCreatedXid(tuple, table->meta_table, created_xid);
     TupleSetExpiredXid(tuple, table->meta_table, expired_xid);
+    TupleSetSysId(tuple, table->meta_table, ref_id);
     
     /* Reinsert. */
     refer = InsertForTuple(oid, key, tuple);
