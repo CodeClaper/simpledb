@@ -45,6 +45,11 @@ static void *HeapTableGetPageCellData(void *page, uint32_t cell_len, int index) 
     return (page + HEAP_TABLE_HEADER_LEN) + cell_len * index;
 }
 
+ /* If overflow page size. */
+static inline bool HeapTableOverflowForInsert(Refer *refer, uint32_t row_len) {
+    return (HEAP_TABLE_HEADER_LEN + (refer->cell_num + 1) * row_len) > PAGE_SIZE;
+}
+
 /* Move next page. */
 static void HeapTableMoveNextPage(Refer *rootRefer) {
     Buffer buffer;
@@ -61,11 +66,6 @@ static void HeapTableMoveNextPage(Refer *rootRefer) {
     MakeBufferDirty(buffer);
     UnlockBuffer(buffer);
     ReleaseBuffer(buffer);
-}
-
- /* If overflow page size. */
-static inline bool HeapTableOverflowForInsert(Refer *refer, uint32_t row_len) {
-    return (HEAP_TABLE_HEADER_LEN + (refer->cell_num + 1) * row_len) > PAGE_SIZE;
 }
 
 /* Create table inner. */
