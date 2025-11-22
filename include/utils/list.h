@@ -13,6 +13,7 @@ typedef enum NodeTag {
     NODE_BOOL,
     NODE_FLOAT,
     NODE_DOUBLE,
+    NODE_LONG,
     NODE_VOID,
     NODE_STRING,
     NODE_LIST,
@@ -46,6 +47,7 @@ typedef union ListCell {
     bool bool_value;
     float float_value;
     double double_value;
+    int64_t long_value;
 } ListCell;
 
 /* List */
@@ -63,6 +65,7 @@ typedef struct List {
 #define lfirst_bool(l) ((l)->bool_value)
 #define lfirst_float(l) ((l)->float_value)
 #define lfirst_double(l) ((l)->double_value)
+#define lfirst_long(l) ((l)->long_value)
 
 /* foreach: a macro for looping through a list.
  * Notice: there use __i rather than i as iterators, 

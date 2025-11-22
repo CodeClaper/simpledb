@@ -81,6 +81,14 @@ void append_list_double(List *list, double item) {
     lfirst_double(last_cell(list)) = item;
 }
 
+void append_list_long(List *list, int64_t item) {
+    if (list->size >= list->capacity)
+        enlarge_list(list);
+    list->size++;
+    lfirst_long(last_cell(list)) = item;
+}
+
+
 void append_list_ptr(List *list, void *item) {
     if (list->size >= list->capacity)
         enlarge_list(list);
@@ -102,6 +110,9 @@ void append_list(List *list, void *item) {
             break;
         case NODE_DOUBLE:
             append_list_double(list, *(double *)item);
+            break;
+        case NODE_LONG:
+            append_list_long(list, *(int64_t *)item);
             break;
         default:
             append_list_ptr(list, item);
@@ -142,7 +153,7 @@ static void append_list_float_at(List *list, float item, uint32_t index) {
     list->size++;
 }
 
-static void append_list_double_at(List *list,  double item, uint32_t index) {
+static void append_list_double_at(List *list, double item, uint32_t index) {
     if (list->size >= list->capacity)
         enlarge_list(list);
 
@@ -150,6 +161,18 @@ static void append_list_double_at(List *list,  double item, uint32_t index) {
         memcpy(list->elements + i, list->elements + i - 1, sizeof(ListCell));
     }
     lfirst_double(list->elements + index) = item;
+    list->size++;
+}
+
+
+static void append_list_long_at(List *list, int64_t item, uint32_t index) {
+    if (list->size >= list->capacity)
+        enlarge_list(list);
+
+    for (int i = list->size; i > index; i--) {
+        memcpy(list->elements + i, list->elements + i - 1, sizeof(ListCell));
+    }
+    lfirst_long(list->elements + index) = item;
     list->size++;
 }
 
@@ -178,6 +201,9 @@ void append_list_at(List *list, void *item, uint32_t index) {
             break;
         case NODE_DOUBLE:
             append_list_double_at(list, *(double *)item, index);
+            break;
+        case NODE_LONG:
+            append_list_long_at(list, *(int64_t *)item, index);
             break;
         default:
             append_list_ptr_at(list, item, index);
@@ -225,6 +251,16 @@ bool list_member_double(List *list, double item) {
     return false;
 }
 
+/* Check if the long item is the member of list. */
+bool list_member_long(List *list, int64_t item) {
+    ListCell *lc;
+    foreach (lc, list) {
+        if (lfirst_long(lc) == item) 
+            return true;
+    }
+    return false;
+}
+
 /* Check if the pointer is the member of list. */
 bool list_member_ptr(List *list, void *ptr) {
     ListCell *lc;
@@ -246,6 +282,8 @@ bool list_member(List *list, void *item) {
             return list_member_float(list, *(float *)item);
         case NODE_DOUBLE:
             return list_member_double(list, *(double *)item);
+        case NODE_LONG:
+            return list_member_long(list, *(int64_t *)item);
         default:
             return list_member_ptr(list, item);
     }
@@ -315,10 +353,22 @@ void list_delete_float(List *list, float item) {
  * Skip if not found in list.
  * */
 void list_delete_double(List *list, double item) {
-
     ListCell *lc;
     foreach (lc, list) {
         if (lfirst_double(lc) == item) {
+            list_delete_cell(list, lc);
+        }
+    }
+}
+
+
+/* Delete long item in List. 
+ * Skip if not found in list.
+ * */
+void list_delete_long(List *list, int64_t item) {
+    ListCell *lc;
+    foreach (lc, list) {
+        if (lfirst_long(lc) == item) {
             list_delete_cell(list, lc);
         }
     }
@@ -354,6 +404,9 @@ void list_delete(List *list, void *item) {
             break;
         case NODE_DOUBLE:
             list_delete_double(list, *(double *)item);
+            break;
+        case NODE_LONG:
+            list_delete_long(list, *(int64_t *)item);
             break;
         default:
             list_delete_ptr(list, item);
@@ -416,6 +469,13 @@ void list_replace_at_double(List *list, int n, double item) {
 
 
 /* Replace list at n. */
+void list_replace_at_long(List *list, int n, long item) {
+    ListCell *lc = list_nth_cell(list, n);
+    lfirst_long(lc) = item;
+}
+
+
+/* Replace list at n. */
 void list_replace_at_ptr(List *list, int n, void *item) {
     ListCell *lc = list_nth_cell(list, n);
     lfirst(lc) = item;
@@ -438,6 +498,9 @@ void list_replace_at(List *list, int n, void *item) {
             break;
         case NODE_DOUBLE:
             list_replace_at_double(list, n, *(double *)item);
+            break;
+        case NODE_LONG:
+            list_replace_at_long(list, n, *(int64_t *) item);
             break;
         default:
             list_replace_at_ptr(list, n, item);
