@@ -11,6 +11,7 @@
 #include "systable.h"
 #include "defs.h"
 #include "row.h"
+#include "tuple.h"
 #include "table.h"
 #include "log.h"
 #include "mmgr.h"
@@ -42,6 +43,24 @@ static inline void HeapTableSetPageCellNum(void *page, uint32_t cell_num) {
 /* Get the cell data. */
 static void *HeapTableGetPageCellData(void *page, uint32_t cell_len, int index) {
     return (page + HEAP_TABLE_HEADER_LEN) + cell_len * index;
+}
+
+/* Move next page. */
+static void HeapTableMoveNextPage(Refer *rootRefer) {
+    Buffer buffer;
+    void *block;
+    
+    rootRefer->page_num++;
+    rootRefer->cell_num = HEAP_TABLE_FIRST_CELL_NUM;
+    buffer = ReadBuffer(rootRefer->oid, rootRefer->page_num);
+    LockBuffer(buffer, RW_WRITER);
+    block = GetBufferPage(buffer);
+    
+    HeapTableSetPageCellNum(block, 0);
+
+    MakeBufferDirty(buffer);
+    UnlockBuffer(buffer);
+    ReleaseBuffer(buffer);
 }
 
  /* If overflow page size. */
@@ -125,10 +144,8 @@ static void HeapTableInsertTupleInner(Oid oid, Refer *rootRefer, void *tuple) {
     HeapTableSetPageCellNum(block, ++cell_num);
 
     /* If overflow, move to next page. */
-    if (HeapTableOverflowForInsert(rootRefer, table->heap_value_len)) {
-        rootRefer->page_num++;
-        rootRefer->cell_num = HEAP_TABLE_FIRST_CELL_NUM;
-    }
+    if (HeapTableOverflowForInsert(rootRefer, table->heap_value_len)) 
+        HeapTableMoveNextPage(rootRefer);
 
     MakeBufferDirty(buffer);
     UnlockBuffer(buffer);
@@ -410,6 +427,8 @@ static void HeapTableSplitReInsert(Refer *rootRefer, Table *table, void *tuple) 
     void *block;
     uint32_t cell_num;
 
+    /* Logically, will not overflow page size. */
+    AssertFalse(HeapTableOverflowForInsert(rootRefer, table->heap_value_len));
     buffer = ReadBuffer(rootRefer->oid, rootRefer->page_num);
     LockBuffer(buffer, RW_WRITER);
     block = GetBufferBlock(buffer);
@@ -422,10 +441,8 @@ static void HeapTableSplitReInsert(Refer *rootRefer, Table *table, void *tuple) 
     HeapTableSetPageCellNum(block, ++cell_num);
 
     /* If overflow, move to next page. */
-    if (HeapTableOverflowForInsert(rootRefer, table->heap_value_len)) {
-        rootRefer->page_num++;
-        rootRefer->cell_num = HEAP_TABLE_FIRST_CELL_NUM;
-    }
+    if (HeapTableOverflowForInsert(rootRefer, table->heap_value_len))
+        HeapTableMoveNextPage(rootRefer);
 
     MakeBufferDirty(buffer);
     UnlockBuffer(buffer);
@@ -440,14 +457,19 @@ static void HeapTableSplitReInsert(Refer *rootRefer, Table *table, void *tuple) 
  * the right part reinsert as new row.
  * */
 static void HeapTableSplitAppendColumn(Refer *rootRefer, Table *table, MetaColumn *newColumn, 
-                                       int pos, void *block, uint32_t cell_num) {
+                                       int pos, void *block, uint32_t page_num, uint32_t cell_num) {
     int i;
     uint32_t left_num;
     void *tuple;
     left_num = cell_num / 2;
 
+    /* If root refer page is overflow after appending, we need move to next page to avoid 
+     * reinsert data will be covered by the following code. */
+    if (rootRefer->page_num == page_num)
+        HeapTableMoveNextPage(rootRefer);
+
     /* Reinsert the right part cell. */
-    for (i = cell_num - 1; i > left_num; i--) {
+    for (i = left_num + 1; i < cell_num; i++) {
         tuple = HeapTableGetPageCellData(block, table->heap_value_len, i);
         HeapTableSplitReInsert(rootRefer, table, tuple);
     }
@@ -467,20 +489,20 @@ static void HeapTableSplitAppendColumn(Refer *rootRefer, Table *table, MetaColum
 
 /* Heap table append column looping each page. */
 static void HeapTableAppendColumnForeachPage(Refer *rootRefer, Oid oid, Oid hoid,
-                                             int pageNum, int pos, MetaColumn *newColumn) {
+                                             int page_num, int pos, MetaColumn *newColumn) {
     Table *table;
     void *block;
     Buffer buffer;
     uint32_t cell_num;
 
     table = open_table_inner(oid);
-    buffer = ReadBuffer(hoid, pageNum);
+    buffer = ReadBuffer(hoid, page_num);
     LockBuffer(buffer, RW_WRITER);
     block = GetBufferBlock(buffer);
     cell_num = HeapTableGetPageCellNum(block);
     
     if (HeapTableOverflowForAppend(cell_num, table->heap_value_len, newColumn)) 
-        HeapTableSplitAppendColumn(rootRefer, table, newColumn, pos, block, cell_num);
+        HeapTableSplitAppendColumn(rootRefer, table, newColumn, pos, block, page_num, cell_num);
     else 
         HeapTableAppendColumnNormal(table, newColumn, pos, block, cell_num);
 
