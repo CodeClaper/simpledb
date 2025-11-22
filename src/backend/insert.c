@@ -159,18 +159,20 @@ static Row *GenerateInsertRowForAllInner(Oid tid, MetaTable *meta_table, List *v
  * Return list of Row.
  * */
 static List *GenerateInsertRowForAll(InsertNode *insert_node) {
-    List *value_list = insert_node->values_or_query_spec->values;
+    Table *table;
+    MetaTable *meta_table;
+    List *value_list, *row_list;
 
     /* Table and MetaTable. */
-    Table *table = open_table(insert_node->table_name);
+    table = open_table(insert_node->table_name);
     if (table == NULL) {
         db_log(ERROR, "Try to open table '%s' fail.", insert_node->table_name);
         return NULL;
     }
 
-    MetaTable *meta_table = table->meta_table;
-
-    List *row_list = create_list(NODE_ROW);
+    value_list = insert_node->values_or_query_spec->values;
+    row_list = create_list(NODE_ROW);
+    meta_table = table->meta_table;
 
     ListCell *lc;
     foreach (lc, value_list) {
