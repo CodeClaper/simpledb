@@ -1,7 +1,21 @@
 #include "data.h"
+#include <stdint.h>
 
 #ifndef REFER_H
 #define REFER_H
+
+/* Define Rid. 
+ * Rid is the global unique identifier for tuple.
+ * */
+typedef int64_t Rid;
+
+/* RID_ZERO. 
+ * RID_ZERO means the Rid not found.
+ * */
+#define RID_ZERO 0
+
+#define ZERO_RID(rid) (rid == RID_ZERO)
+#define NON_ZERO_RID(rid) (rid != OID_ZERO)
 
 #define REFER_SIZE sizeof(Refer)
 
