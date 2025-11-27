@@ -674,6 +674,7 @@ void free_list_deep(List *list) {
             case NODE_BOOL:
             case NODE_FLOAT:
             case NODE_DOUBLE:
+            case NODE_LONG:
                 break;
             case NODE_LIST: {
                 ListCell *lc;
