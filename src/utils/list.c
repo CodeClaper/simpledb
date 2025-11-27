@@ -569,6 +569,13 @@ List *list_copy_deep(List *old_list) {
             }
             break;
         }
+        case NODE_LONG: {
+            ListCell *lc;
+            foreach (lc, old_list) {
+                append_list_long(new_list, lfirst_long(lc));
+            }
+            break;
+        }
         case NODE_STRING: {
             ListCell *lc;
             foreach (lc, old_list) {
