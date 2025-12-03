@@ -7,6 +7,7 @@
 #include "mmgr.h"
 #include "instance.h"
 #include "log.h"
+#include "table.h"
 
 /* New a row. */
 Row *NewRow() {
@@ -27,7 +28,8 @@ Row *GenerateRowInner(void *tuple, List *meta_columns) {
         KeyValue *key_value = new_key_value(meta_column->column_name,
                                             TupleFindValue(tuple, meta_column),
                                             meta_column->column_type,
-                                            meta_column->tid);
+                                            meta_column->tid,
+                                            meta_column->type_oid);
         key_value->is_array = meta_column->array_dim > 0;
 
         /* Append to row data. */
@@ -40,6 +42,13 @@ Row *GenerateRowInner(void *tuple, List *meta_columns) {
 /* Generate row by tuple. */
 Row *GenerateRow(void *tuple, MetaTable *meta_table) {
     return GenerateRowInner(tuple, meta_table->meta_columns);
+}
+
+/* Fetch subrow. */
+Row *FetchSubRow(Oid toid, Rid ref_id) {
+    Table *table = open_table_inner(toid);
+    void *tuple = FetchTupleViaRid(toid, ref_id);
+    return GenerateRow(tuple, table->meta_table);
 }
 
 /* Seriable row to tuple. */
@@ -124,5 +133,4 @@ void *RowGetValueOrDefault(Row *row, MetaColumn *meta_column) {
             UNEXPECTED_VALUE(meta_column->default_value_type);
     }
 }
-
 

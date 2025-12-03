@@ -35,7 +35,7 @@
 /* Handle duplicate Key. */
 static void handle_dulicate_key(Row *row);
 
-static void json_key_value_inner(char *key, void *value, DataType type) {
+static void json_key_value_inner(Oid oid, char *key, void *value, DataType type) {
     switch(type) {
         case T_BOOL: 
             db_send("\"%s\": %s", key, value && (*(bool *)value) ? "true" : "false");
@@ -85,12 +85,11 @@ static void json_key_value_inner(char *key, void *value, DataType type) {
             db_send("\"%s\": \"%s\"", key, strVal ? EscapStr(strVal) : "null");
             break;
         }
-        /* Specially deal with T_REFERENCE data. */
-        case T_REFERENCE: {
+        /* Specially deal with T_RID data. */
+        case T_RID: {
             db_send("\"%s\": ", key);
-            Refer *refer = (Refer *)value;
-            assert_not_null(refer, "Try to get Reference type value fail.\n");
-            Row *subrow = DefineVisibleRow(refer);
+            Rid ref_id = *(Rid *)value;
+            Row *subrow = DefineVisibleRow(oid, ref_id);
             json_row(subrow);
             break;
         }
@@ -105,7 +104,7 @@ static void json_key_value_inner(char *key, void *value, DataType type) {
     }
 }
 
-static void json_key_array_value_inner(char *key, ArrayValue *array_value, DataType type) {
+static void json_key_array_value_inner(Oid oid, char *key, ArrayValue *array_value, DataType type) {
     switch (type) {
         case T_BOOL: {
             db_send("\"%s\": [", key);
@@ -233,13 +232,13 @@ static void json_key_array_value_inner(char *key, ArrayValue *array_value, DataT
             db_send("]");
             break;
         }
-        case T_REFERENCE: {
+        case T_RID: {
             db_send("\"%s\": [", key);
 
             ListCell *lc;
             foreach (lc, array_value->list) {
-                Refer *refer = (Refer *)lfirst(lc);
-                Row *subrow = DefineVisibleRow(refer);
+                Rid ref_id = *(Rid *)lfirst(lc);
+                Row *subrow = DefineVisibleRow(oid, ref_id);
                 json_row(subrow);
                 if (last_cell(array_value->list) != lc)
                     db_send(",");
@@ -260,7 +259,7 @@ static void json_single_tuple_entry(MetaColumn *meta_column, void *value) {
     if (value == NULL)
         db_send("\"%s\": %s", key, "null");
     else 
-        json_key_value_inner(key, value, type);
+        json_key_value_inner(meta_column->type_oid, key, value, type);
 }
 
 /* Json array-value key value. */
@@ -270,7 +269,7 @@ static void json_array_tuple_entry(MetaColumn *meta_column, ArrayValue *array_va
     if (!array_value)
         db_send("\"%s\": %s", key, "null");
     else 
-        json_key_array_value_inner(key, array_value, type);
+        json_key_array_value_inner(meta_column->type_oid, key, array_value, type);
 }
 
 /* Json single-value key value. */
@@ -282,7 +281,7 @@ static void json_single_key_value(KeyValue *key_value) {
     if (!value)
         db_send("\"%s\": %s", key, "null");
     else {
-        json_key_value_inner(key, value, type);
+        json_key_value_inner(key_value->tid, key, value, type);
     }
 }
 
@@ -295,7 +294,7 @@ static void json_array_key_value(KeyValue *key_value) {
     if (!array_value)
         db_send("\"%s\": %s", key, "null");
     else 
-        json_key_array_value_inner(key, array_value, type);
+        json_key_array_value_inner(key_value->tid, key, array_value, type);
 }
 
 /* Json key value. */

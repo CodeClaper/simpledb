@@ -18,9 +18,6 @@ static void free_search_condition_node(SearchConditionNode *condition_node);
 void free_value(void *value, DataType data_type) {
     if (value) {
         switch (data_type) {
-            case T_REFERENCE:
-                free_refer((Refer *)value);
-                break;
             case T_OBJECT:
                 free_row((Row *)value);
                 break;

@@ -33,3 +33,6 @@ Rid TupleGetRefId(void *tuple, MetaTable *meta_table);
 
 /* Set ref id in tuple. */
 void TupleSetRefId(void *tuple, MetaTable *meta_table, int64_t sys_id);
+
+/* Fetch tuple via rid. */
+void *FetchTupleViaRid(Oid toid, Rid ref_id);

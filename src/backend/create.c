@@ -92,7 +92,7 @@ static void ColumnDefOptListForMetaColumn(MetaColumn *meta_column, List *column_
                 meta_column->default_value_type = DEFAULT_VALUE;
                 meta_column->default_value = ValueItemNodeAssignValue(column_def_opt->value, meta_column);
                 /* You can use indirect refer value as default value, but is must exist. */
-                if (meta_column->column_type == T_REFERENCE) {
+                if (meta_column->column_type == T_RID) {
                     if (meta_column->default_value == NULL)
                         db_log(ERROR, "Try to use refer value as default value, but it does not exist.");
                 }
@@ -131,7 +131,7 @@ MetaColumn *ColumnDefNodeGenerateMetaColumn(Oid tid, Oid stid, ColumnDefNode *co
     meta_column->default_value = NULL;
 
     /* Special handling Reference, record the refer table name. */
-    if (column_def->data_type->type == T_REFERENCE) {
+    if (column_def->data_type->type == T_RID) {
         Table *sub_table = open_table(column_def->data_type->table_name);
         if (sub_table) 
             meta_column->type_oid = GET_TABLE_OID(sub_table);
@@ -290,15 +290,17 @@ static MetaIndex *GenerateMetaIndexForCreateIndex(Oid oid, Table *table,  Create
 }
 
 /* Save to table cache. */
-static bool PrepareSaveTableCache(Oid oid, Oid hid, Oid stid, MetaTable *meta_table) {
+static bool PrepareSaveTableCache(Oid oid, Oid roid, Oid hid, Oid stid, MetaTable *meta_table) {
     /* Combine table. */
     Table *table = instance(Table);
     table->oid = oid;
+    table->roid = roid;
     table->hoid = hid;
     table->stid = stid;
     table->meta_table = meta_table;
     table->root_page_num = ROOT_PAGE_NUM;
     table->page_size = 1;
+    table->rid_page_size = 1;
     table->creator = getpid();
     table->key_len = TableCalcPrimaryKeyLength(table);
     table->index_value_len = TableCalcIndexLength(table);
@@ -371,7 +373,7 @@ void ExecuteCreateTableStatement(CreateTableNode *create_table_node, DBResult *r
         CreateRidTable(roid, toid, GET_METATABLE_NAME(meta_table)) &&
         CreateHeapTable(hoid, toid, meta_table->table_name) &&
         CreateStrHeapTable(stoid, toid, meta_table->table_name) &&
-        PrepareSaveTableCache(toid, hoid, stoid, meta_table)
+        PrepareSaveTableCache(toid, roid, hoid, stoid, meta_table)
     ) {
         result->success = true;
         result->rows = 0;

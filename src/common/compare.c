@@ -55,8 +55,6 @@ bool EQ(void *source, void *target, DataType data_type) {
             return *(time_t *)source == *(time_t *)target;
         case T_DATE:
             return *(time_t *)source == *(time_t *)target;
-        case T_REFERENCE:
-            return ReferIsEqual(source, target);
         case T_RID:
             return *(Rid *) source == *(Rid *) target;
         default:
@@ -102,11 +100,8 @@ bool GT(void *source, void *target, DataType data_type) {
             return *(bool *)source > *(bool *)target;
         case T_DATE:
             return *(time_t *)source > *(time_t *)target;
-        case T_REFERENCE:
-            db_log(ERROR, "Refer data not allowed to be operated GT.");
-            break;
         case T_RID:
-            db_log(ERROR, "Rid data not allowed to be operated GT.");
+            db_log(ERROR, "Refer data not allowed to be operated GT.");
             break;
         default:
             db_log(ERROR, "Not implement data type when operate GT.");
@@ -391,9 +386,9 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
             }
             break;
         }
-        case T_REFERENCE: {
+        case T_RID: {
             switch (right->data_type) {
-                case T_REFERENCE:
+                case T_RID:
                     return ReferIsEqual(left->value, right->value);
                 default:
                     goto ERR_TYPE;
@@ -665,9 +660,9 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
             }
             break;
         }
-        case T_REFERENCE: {
+        case T_RID: {
             switch (right->data_type) {
-                case T_REFERENCE:
+                case T_RID:
                     db_log(ERROR, "Refer data not allowed to be operated GT.");
                 default:
                     goto ERR_TYPE;

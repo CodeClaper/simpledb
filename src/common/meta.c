@@ -58,7 +58,7 @@ uint32_t DataTypeDefaultLength(DataType column_type) {
             return DEFAULT_DATE_LENGTH;
         case T_TIMESTAMP:
             return DEFAULT_TIMESTAMP_LENGTH;
-        case T_REFERENCE:
+        case T_RID:
             return DEFAULT_REFERENCE_LENGTH;
         default:
             UNEXPECTED_VALUE("Unknown column type");
@@ -78,7 +78,7 @@ DataType AtomTypeConvertDataType(AtomType atom_type) {
         case A_STRING:
             return T_VARCHAR;
         case A_REFERENCE:
-            return T_REFERENCE;
+            return T_RID;
         default:
             UNEXPECTED_VALUE(atom_type);
     }
@@ -271,7 +271,6 @@ void *ValueItemNodeFindValue(ValueItemNode *value_item_node) {
  * This function will convert value to comparable value.
  * By now, it only works for T_STRING type value.
  * For T_STRING value, we will compare the string value rather than the StrRefer value.
- * But for T_REFERENCE, we will still compare its refer value. 
  * */
 void *GetComparableValue(void *value, DataType type) {
     if (value == NULL)
@@ -565,7 +564,7 @@ void *MetaColumnSeriable(MetaColumn *meta_column) {
     *(uint32_t *)(destination + ROOT_NODE_META_COLUMN_NAME_SIZE) = (uint32_t) meta_column->column_type;
     *(uint32_t *)(destination + ROOT_NODE_META_COLUMN_NAME_SIZE + ROOT_NODE_META_COLUMN_TYPE_SIZE) = (uint32_t) meta_column->column_length;
     *(uint8_t *)(destination + ROOT_NODE_META_COLUMN_NAME_SIZE + ROOT_NODE_META_COLUMN_TYPE_SIZE + ROOT_NODE_META_COLUMN_LENGTH_SIZE) = meta_column->is_primary;  
-    if (meta_column->column_type == T_REFERENCE || meta_column->column_type == T_STRING)
+    if (meta_column->column_type == T_RID || meta_column->column_type == T_STRING)
         *(Oid *)(destination + ROOT_NODE_META_COLUMN_NAME_SIZE + ROOT_NODE_META_COLUMN_TYPE_SIZE + ROOT_NODE_META_COLUMN_LENGTH_SIZE + ROOT_NODE_IS_PRIMARY_SIZE) = meta_column->type_oid;
     *(uint8_t *)(destination + ROOT_NODE_META_COLUMN_NAME_SIZE + ROOT_NODE_META_COLUMN_TYPE_SIZE + ROOT_NODE_META_COLUMN_LENGTH_SIZE + ROOT_NODE_IS_PRIMARY_SIZE + ROOT_NODE_META_COLUMN_TYPE_OID_SIZE) = meta_column->sys_reserved;  
     *(uint8_t *)(destination + ROOT_NODE_META_COLUMN_NAME_SIZE + ROOT_NODE_META_COLUMN_TYPE_SIZE + ROOT_NODE_META_COLUMN_LENGTH_SIZE + ROOT_NODE_IS_PRIMARY_SIZE + ROOT_NODE_META_COLUMN_TYPE_OID_SIZE + ROOT_NODE_SYS_RESERVED_SIZE) = meta_column->is_unique;  
@@ -587,7 +586,7 @@ MetaColumn *MetaColumnDeseriable(void *destination) {
     meta_column->column_type = (DataType)*(uint32_t *)(destination + ROOT_NODE_META_COLUMN_NAME_SIZE);
     meta_column->column_length = *(uint32_t *)(destination + ROOT_NODE_META_COLUMN_NAME_SIZE + ROOT_NODE_META_COLUMN_TYPE_SIZE);
     meta_column->is_primary = (bool)*(uint8_t *)(destination + ROOT_NODE_META_COLUMN_NAME_SIZE + ROOT_NODE_META_COLUMN_TYPE_SIZE + ROOT_NODE_META_COLUMN_LENGTH_SIZE);
-    if (meta_column->column_type == T_REFERENCE || meta_column->column_type == T_STRING)
+    if (meta_column->column_type == T_RID || meta_column->column_type == T_STRING)
         meta_column->type_oid = *(Oid *)(destination + ROOT_NODE_META_COLUMN_NAME_SIZE + ROOT_NODE_META_COLUMN_TYPE_SIZE + ROOT_NODE_META_COLUMN_LENGTH_SIZE + ROOT_NODE_IS_PRIMARY_SIZE);
     meta_column->sys_reserved = (bool)*(uint8_t *)(destination + ROOT_NODE_META_COLUMN_NAME_SIZE + ROOT_NODE_META_COLUMN_TYPE_SIZE + ROOT_NODE_META_COLUMN_LENGTH_SIZE + ROOT_NODE_IS_PRIMARY_SIZE + ROOT_NODE_META_COLUMN_TYPE_OID_SIZE);
     meta_column->is_unique = (bool)*(uint8_t *)(destination + ROOT_NODE_META_COLUMN_NAME_SIZE + ROOT_NODE_META_COLUMN_TYPE_SIZE + ROOT_NODE_META_COLUMN_LENGTH_SIZE + ROOT_NODE_IS_PRIMARY_SIZE + ROOT_NODE_META_COLUMN_TYPE_OID_SIZE + ROOT_NODE_SYS_RESERVED_SIZE);

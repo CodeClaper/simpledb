@@ -59,7 +59,7 @@
 typedef enum { O_EQ, O_NE, O_GT, O_GE, O_LT, O_LE } CompareType;
 
 /* DataType */
-typedef enum DataType {T_UNKNOWN, T_BOOL, T_CHAR, T_VARCHAR, T_INT, T_LONG, T_DOUBLE, T_FLOAT, T_STRING, T_DATE, T_TIMESTAMP, T_REFERENCE, T_RID, T_OBJECT } DataType;
+typedef enum DataType {T_UNKNOWN, T_BOOL, T_CHAR, T_VARCHAR, T_INT, T_LONG, T_DOUBLE, T_FLOAT, T_STRING, T_DATE, T_TIMESTAMP, T_RID, T_OBJECT } DataType;
 
 /* FunctionType */
 typedef enum { F_COUNT, F_MAX, F_MIN, F_SUM, F_AVG } FunctionType;
@@ -710,11 +710,12 @@ typedef struct TableBufferEntry {
 
 /* KeyValue */
 typedef struct KeyValue {
-    char *key;
-    void *value;
-    DataType data_type;
-    Oid tid;
-    bool is_array;
+    char *key;                                  /* The key. */
+    void *value;                                /* The value. */
+    DataType data_type;                         /* Value data type. */
+    Oid tid;                                    /* Own table oid. */
+    Oid type_id;                                /* Table type oid if T_RID. */
+    bool is_array;                              /* Is Array.*/
 } KeyValue;
 
 /* User-level Row. 

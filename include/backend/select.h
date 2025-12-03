@@ -1,6 +1,8 @@
 #include <stdbool.h>
 #include "data.h"
 #include "spinlock.h"
+#include "refer.h"
+
 #ifndef SELECT_H
 #define SELECT_H
 
@@ -64,13 +66,9 @@ void OutputTuple(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE 
  * Return the tuple not matter if it is deleted and caller checks if deleted. */
 void *DefineTuple(Refer *refer);
 
-/* Define the row by refer. 
- * Return the row not matter if it is deleted and caller checks if deleted.. */
-Row *DefineRow(Refer *refer);
-
 /* Define row by refer. 
  * Return undelted row, return NULL if deleted. */
-Row *DefineVisibleRow(Refer *refer);
+Row *DefineVisibleRow(Oid toid, Rid ref_id);
 
 /* Query with column and value. */
 SelectResult *SelectWithColumnValue(Oid oid, MetaColumn *meta_column, void *value);

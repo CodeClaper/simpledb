@@ -232,7 +232,7 @@ static bool CheckValueMatchType(DataType column_type, AtomNode *atom_node, char 
                 return true;
             break;
         }
-        case T_REFERENCE: 
+        case T_RID:
             /* For Reference, it`s complicate, user can pass a refer or subrow column, 
              * to be simple, just make flag true. */
             return true;
@@ -257,7 +257,7 @@ bool CheckValueIsValid(MetaColumn *meta_column, AtomNode *atom_node) {
         case T_BOOL:
         case T_LONG:
         case T_DOUBLE:
-        case T_REFERENCE: 
+        case T_RID: 
         case T_STRING:
             return true;
         case T_INT: {
@@ -400,7 +400,7 @@ static bool CheckFunctionForValueType(FunctionType type, ColumnNode *column, Met
             case F_AVG:
             case F_MAX:
             case F_MIN: {
-                if (meta_column->column_type == T_REFERENCE) {
+                if (meta_column->column_type == T_RID) {
                     db_log(ERROR, "Function %s not support for reference type column.", 
                            GET_FUNCTION_TYPE_NAME(type));
                     return false;
@@ -431,7 +431,7 @@ static bool CheckForColumn(ColumnNode *column_node, MetaTable *meta_table) {
         if (StrEq(meta_column->column_name, column_node->column_name)) {
             if (column_node->has_sub_column == false)
                 return true;
-            else if (meta_column->column_type == T_REFERENCE && column_node->has_sub_column) {
+            else if (meta_column->column_type == T_RID && column_node->has_sub_column) {
                 Table *table = open_table_inner(meta_column->type_oid);
                 if (column_node->sub_column)
                     return CheckForColumn(column_node->sub_column, table->meta_table);
@@ -951,7 +951,7 @@ static bool CheckForDefaultAtomValueType(AtomNode *atom_node, DataType data_type
                 return true;
             break;
         }
-        case T_REFERENCE:  {
+        case T_RID:  {
             /* For Reference, it`s complicate. We not support subrow value. 
              * The logic is not appended sub row by the system instead of users. 
              * But we support for refer value, but it must exist. */
@@ -1334,7 +1334,7 @@ static bool TableIsRefered(Table *table, Table *ref_table) {
         MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
         if (meta_column->sys_reserved)
             continue;
-        if (meta_column->column_type == T_REFERENCE && 
+        if (meta_column->column_type == T_RID && 
             meta_column->type_oid == GET_TABLE_OID(ref_table)
         ) {
             db_log(ERROR , "Table '%s' is refered by column '%s' in table '%s', so can`t drop it.", 

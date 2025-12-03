@@ -11,7 +11,7 @@
 #include "log.h"
 
 /* Rid create. */
-static bool CreateRidTableInner(Oid roid) {
+bool CreateRidTableInner(Oid roid) {
     char *file_path;
     int descr;
     void *root_node;

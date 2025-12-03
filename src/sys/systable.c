@@ -24,6 +24,7 @@
 #include "tuple.h"
 #include "sysstate.h"
 #include "heaptable.h"
+#include "ridcreate.h"
 #include "optimizer.h"
 
 
@@ -103,8 +104,10 @@ void InitSysTable() {
     if (SysTableFileExists()) return;
 
     MetaTable *sysMetaTable = CreateSysMetaTable();
-    if (!create_table(SYS_ROOT_OID, sysMetaTable) || !CreateHeapTableInner(SYS_ROOT_HEAP_OID))
-        panic("Create system table fail");
+    if (!create_table(SYS_ROOT_OID, sysMetaTable) || 
+        !CreateHeapTableInner(SYS_ROOT_HEAP_OID) ||
+        !CreateRidTableInner(SYS_ROOT_RID_OID)
+    ) panic("Create system table fail");
 }
 
 
@@ -339,12 +342,19 @@ Object OidFindObject(Oid oid) {
 
     if (IS_SYS_ROOT(oid)) {
         entity.oid = oid;
+        entity.toid = SYS_ROOT_OID;
         memcpy(entity.relname, SYS_TABLE_NAME, strlen(SYS_TABLE_NAME));
         entity.reltype = OTABLE;
     } else if (IS_SYS_ROOT_HEAP(oid)) {
         entity.oid = oid;
+        entity.toid = SYS_ROOT_OID;
         memcpy(entity.relname, SYS_TABLE_NAME, strlen(SYS_TABLE_NAME));
         entity.reltype = OHEAP_TABLE;
+    } else if (IS_SYS_ROOT_RID(oid)) {
+        entity.oid = oid;
+        entity.toid = SYS_ROOT_OID;
+        memcpy(entity.relname, SYS_TABLE_NAME, strlen(SYS_TABLE_NAME));
+        entity.reltype = ORID_TABLE;
     } else
         entity = OidFindObjectInner(oid);
    
@@ -469,7 +479,7 @@ Oid ToidFindStoid(Oid toid) {
  * Return OID_ZERO if missing.
  * */
 Oid ToidFindRoid(Oid toid) {
-    if (toid == SYS_ROOT_OID) return OID_ZERO;
+    if (toid == SYS_ROOT_OID) return SYS_ROOT_RID_OID;
     return ToidAndRelTypeFindOid(toid, ORID_TABLE);
 }
 
@@ -489,7 +499,7 @@ Oid TableNameFindHeapOid(char *tableName) {
  * Return OID_ZERO if missing.
  * */
 Oid ToidFindHoid(Oid toid) {
-    if (toid == SYS_ROOT_OID) return OID_ZERO;
+    if (toid == SYS_ROOT_OID) return SYS_ROOT_HEAP_OID;
     return ToidAndRelTypeFindOid(toid, OHEAP_TABLE);
 }
 
@@ -648,7 +658,8 @@ static Row *ObjectConvertRow(Object entity) {
         KeyValue *key_value = new_key_value(meta_column.column_name, 
                                             ObjectConvertKeyValue(entity, i), 
                                             meta_column.column_type, 
-                                            meta_column.tid);
+                                            meta_column.tid, 
+                                            meta_column.type_oid);
         append_list(row->data, key_value);
     }
     

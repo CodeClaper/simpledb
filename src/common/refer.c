@@ -161,7 +161,7 @@ static bool TableRelatedRefer(MetaTable *meta_table, Oid refer_oid) {
     ListCell *lc;
     foreach (lc, meta_table->meta_columns) {
         MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
-        if (meta_column->column_type == T_REFERENCE && 
+        if (meta_column->column_type == T_RID && 
             meta_column->type_oid == refer_oid
         ) return true;
     }
@@ -246,7 +246,7 @@ static void UpdateTupleReferValue(void *tuple, SelectResult *select_result, ROW_
     ListCell *lc;
     foreach (lc, table->meta_table->meta_columns) {
         MetaColumn *meta_column = (MetaColumn *) lfirst(lc);
-        if (meta_column->column_type == T_REFERENCE && 
+        if (meta_column->column_type == T_RID && 
             meta_column->type_oid == refer_oid
         ) UpdateTupleReferValueExtend(oid, tuple, (Refer *) index, meta_column, refer_update_entity);
     }

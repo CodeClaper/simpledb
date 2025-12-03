@@ -63,8 +63,11 @@ void *copy_value(void *value, DataType data_type) {
             return dstrdup((char *)value);
         case T_STRING: 
             return copy_strrefer((StrRefer *) value);
-        case T_REFERENCE: 
-            return copy_refer(value);
+        case T_RID: {
+            Rid *new_val = instance(Rid);
+            memcpy(new_val, value, sizeof(Rid));
+            return new_val;
+        }
         case T_OBJECT:
             return copy_row(value);
         default: {
@@ -113,8 +116,6 @@ void *copy_value2(void *value, MetaColumn *meta_column) {
         }
         case T_STRING: 
             return copy_strrefer((StrRefer *) value);
-        case T_REFERENCE: 
-            return copy_refer(value);
         case T_RID:
             memcpy(new_val, value, sizeof(Rid));
             return new_val;
@@ -267,11 +268,13 @@ Table *copy_table(Table *table) {
     duplica->oid = table->oid;
     duplica->hoid = table->hoid;
     duplica->stid = table->stid;
+    duplica->roid = table->roid;
     duplica->root_page_num = table->root_page_num;
     duplica->meta_table = copy_meta_table(table->meta_table);
     duplica->meta_indexs = list_copy_deep(table->meta_indexs);
     duplica->creator = table->creator;
     duplica->page_size = table->page_size;
+    duplica->rid_page_size = table->rid_page_size;
     duplica->key_len = table->key_len;
     duplica->index_value_len = table->index_value_len;
     duplica->heap_value_len = table->heap_value_len;

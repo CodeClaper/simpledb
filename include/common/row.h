@@ -1,4 +1,5 @@
 #include "data.h"
+#include "refer.h"
 
 /* New a row. */
 Row *NewRow();
@@ -8,6 +9,9 @@ Row *GenerateRowInner(void *tuple, List *meta_columns);
 
 /* Generate row by tuple. */
 Row *GenerateRow(void *tuple, MetaTable *meta_table);
+
+/* Fetch subrow. */
+Row *FetchSubRow(Oid toid, Rid ref_id);
 
 /* Seriable row to tuple. */
 void *RowSeriableTuple(Row *row, Table *table);

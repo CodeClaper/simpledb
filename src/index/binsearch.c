@@ -87,8 +87,8 @@ static void *MergeTuple(SelectResult *head) {
 static KeyValue *QueryTupleValueItem(ValueItemNode *value_item) {
     void *value = ValueItemNodeFindValue(value_item);
     return value == NULL 
-        ? new_key_value(NULL, value, T_UNKNOWN, OID_ZERO)
-        : new_key_value(NULL, value, AtomTypeConvertDataType(value_item->value.atom->type), OID_ZERO);
+        ? new_key_value(NULL, value, T_UNKNOWN, OID_ZERO, OID_ZERO)
+        : new_key_value(NULL, value, AtomTypeConvertDataType(value_item->value.atom->type), OID_ZERO, OID_ZERO);
 }
 
 
@@ -122,7 +122,8 @@ static KeyValue *KeyValueFromIndexKey(MetaIndex *meta_index, void *key, char *co
             return new_key_value(column_name, 
                                  key + offset, 
                                  meta_column->column_type, 
-                                 meta_column->tid);
+                                 meta_column->tid, 
+                                 meta_column->type_oid);
         offset += meta_column->column_length;
     }
     return NULL;

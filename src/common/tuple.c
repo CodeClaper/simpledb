@@ -7,6 +7,9 @@
 #include "instance.h"
 #include "mmgr.h"
 #include "refer.h"
+#include "table.h"
+#include "ridsearch.h"
+#include "heaptable.h"
 
 /* Get array number. */
 static uint32_t GetArrayNumber(void *destination) {
@@ -131,5 +134,17 @@ void TupleSetRefId(void *tuple, MetaTable *meta_table, int64_t sys_id) {
     MetaColumn *ref_id_meta_column = NameFindAllMetaColumn(meta_table, SYS_RESERVED_ID_COLUMN_NAME);
     Assert(ref_id_meta_column != NULL);
     TupleSetValue(tuple, ref_id_meta_column, &sys_id);
+}
+
+/* Fetch tuple via rid. */
+void *FetchTupleViaRid(Oid toid, Rid ref_id) {
+    Table *table;
+    Refer *refer;
+
+    table = open_table_inner(toid);
+    Assert(table != NULL);
+    refer = RidSearch(table->roid, ref_id);
+
+    return HeapTableLookupTuple(toid, refer);
 }
 

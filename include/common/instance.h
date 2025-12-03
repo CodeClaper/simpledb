@@ -4,7 +4,7 @@
 DBResult *new_db_result();
 
 /* New KeyValue instance. */
-KeyValue *new_key_value(char *key, void *value, DataType data_type, Oid tid);
+KeyValue *new_key_value(char *key, void *value, DataType data_type, Oid tid, Oid type_oid);
 
 /* New ArrayValue instance. */
 ArrayValue *new_array_value(DataType data_type, uint32_t size);
