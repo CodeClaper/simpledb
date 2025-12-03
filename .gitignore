@@ -109,14 +109,8 @@ m4/lt~obsolete.m4
 # (which is called by configure script))
 core
 
-src/cli/__pycache__
-test/pytest/support/__pycache__
-test/pytest/unit/__pycache__
-test/pytest/bigData/__pycache__
-test/pytest/concurrency/__pycache__
-.pytest_cache/
+**/__pycache__
 .cache/
-*.pyc
 compile_commands.json
 
 src/simpledb
