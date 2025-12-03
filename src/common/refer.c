@@ -302,8 +302,5 @@ void UpdateRefer(Oid oid, int32_t old_page_num, int32_t old_cell_num, int32_t ne
     /* Update related tables. */
     UpdateRelatedTablesRefer(ruEntity);
 
-    /* Update Xlog. */
-    UpdateXlogEntryRefer(ruEntity);
-
     free_refer_update_entity(ruEntity);
 }

@@ -382,7 +382,7 @@ Rid InsertForTuple(Oid oid, void *key, void *tuple) {
         IndexInsert(meta_index, tuple, refer);
     }
 
-    return TupleGetRefId(tuple, table->meta_table);
+    return ref_id;
 }
 
 

@@ -131,7 +131,7 @@ Rid TupleGetRefId(void *tuple, MetaTable *meta_table) {
 
 /* Set ref id in tuple. */
 void TupleSetRefId(void *tuple, MetaTable *meta_table, int64_t sys_id) {
-    MetaColumn *ref_id_meta_column = NameFindAllMetaColumn(meta_table, SYS_RESERVED_ID_COLUMN_NAME);
+    MetaColumn *ref_id_meta_column = NameFindAllMetaColumn(meta_table, SYS_REF_ID_COLUMN_NAME);
     Assert(ref_id_meta_column != NULL);
     TupleSetValue(tuple, ref_id_meta_column, &sys_id);
 }

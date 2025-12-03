@@ -77,8 +77,13 @@ static void DeleteRowForUpdate(Oid oid, void *key) {
     heap_refer = (Refer *) BtreeSearchValue(oid, key);
     ref_id = BtreeSearchRefId(oid, key);
 
+    /* Make heap expired. */
     HeapTableUpdateRowExpiredXid(table, heap_refer, current_xid);
+    
+    /* Make main index expired. */
     BtreeModifyExpiredXid(oid, key, current_xid);
+
+    /* Record xlog. */
     RecordXlog(oid, ref_id, HEAP_UPDATE_DELETE);
 }
 
@@ -91,7 +96,7 @@ static void DeleteRowForUpdate(Oid oid, void *key) {
 static void ReinsertRowForUpdate(Oid oid, void *key, void *tuple) {
     Table *table;
     Xid created_xid, expired_xid;
-    int64_t ref_id;
+    Rid ref_id;
 
     table = open_table_inner(oid);
     created_xid = GetCurrentXid();
@@ -100,7 +105,7 @@ static void ReinsertRowForUpdate(Oid oid, void *key, void *tuple) {
 
     TupleSetCreatedXid(tuple, table->meta_table, created_xid);
     TupleSetExpiredXid(tuple, table->meta_table, expired_xid);
-    TupleSetSysId(tuple, table->meta_table, ref_id);
+    TupleSetRefId(tuple, table->meta_table, ref_id);
     
     /* Reinsert. */
     InsertForTuple(oid, key, tuple);

@@ -24,9 +24,6 @@ typedef struct XLogEntry {
 /* Record Xlog. */
 void RecordXlog(Oid oid, Rid rid, XLogHeapType type);
 
-/* Update xlog entry refer. */
-void UpdateXlogEntryRefer(ReferUpdateEntity *refer_update_entity);
-
 /* Commit Xlog. */
 void CommitXlog();
 
