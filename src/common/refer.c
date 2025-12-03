@@ -19,6 +19,7 @@
 #include "copy.h"
 #include "free.h"
 #include "select.h"
+#include "insert.h"
 #include "meta.h"
 #include "row.h"
 #include "tuple.h"
@@ -33,6 +34,7 @@
 #include "optimizer.h"
 #include "table.h"
 #include "heaptable.h"
+#include "refer.h"
 
 /**
  * UpdateReferLockContent.
@@ -86,40 +88,50 @@ static bool ReferUpdateLockHas(Refer *refer) {
     return false;
 }
 
-/* Fetch Refer. 
- * If found no one or many one, return NULL.  */
-Refer *FetchRefer(MetaColumn *meta_column, SearchConditionNode *condition) {
-    Oid oid;
+/* Fetch ref id under condition. 
+ * If not found return RID_ZERO.  */
+Rid FetchRefIdUnderCondition(Oid oid, SearchConditionNode *condition) {
     Table *table;
     SelectResult *select_result;
-    uint32_t row_size;
-    Row *row;
-    void *key;
-    Refer *refer = NULL;
+    uint32_t size;
+    void *tuple;
     
-    table = open_table_inner(meta_column->type_oid);
-    oid = GET_TABLE_OID(table);
+    table = open_table_inner(oid);
     select_result = new_select_result(UNKONWN_STMT, GET_TABLE_NAME(table), true);
 
     QueryUnderSearchCondition(
         select_result, 
-        SimpleSelectPlan(SelectRow, ARG_NULL, NULL, condition)
+        SimpleSelectPlan(SelectTuple, ARG_NULL, NULL, condition)
     );
 
-    row_size = QueueSize(select_result->rows);
-    if (row_size > 1) 
+    size = QueueSize(select_result->tuples);
+    if (size > 1) 
         db_log(ERROR, 
                "Expected to one reference, but found %d, maybe you can use 'in' as for array.", 
                select_result->row_size);
-    else if (row_size == 1) {
+    else if (size == 1) {
         /* Take the first row as refered. Maybe row size should be one, 
          * but now there is no check. */
-        row = qfirst(QueueHead(select_result->rows));
-        key = RowFindKey(row, table);
-        refer = BtreeSearchRefer(oid, key);
+        tuple = qfirst(QueueHead(select_result->tuples));
+        return TupleGetRefId(tuple, table->meta_table);
     }
 
-    return refer;
+    return RID_ZERO;
+}
+
+
+/* Append new tuple and return ref id. */
+Rid AppendAndReturnRefId(Oid oid, List *value_list) {
+    Table *table;
+    InsertNode *insert_node;
+    List *ref_ids;
+
+    table = open_table_inner(oid);
+    insert_node = GenerateInsertNode(GET_TABLE_NAME(table), value_list);
+    ref_ids = InsertForValues(insert_node);
+    Assert(len_list(ref_ids) == 1);
+
+    return (Rid) lfirst_long(first_cell(ref_ids));
 }
 
 /* Check if refer empty. 
@@ -278,7 +290,7 @@ void UpdateRelatedTablesRefer(ReferUpdateEntity *refer_update_entity) {
 
 /* Update Refer 
  * When referenct target be changed (updated or deleted), 
- * must to update row reference value which pointer to it. */
+ * must to update row reference val which pointer to it. */
 void UpdateRefer(Oid oid, int32_t old_page_num, int32_t old_cell_num, int32_t new_page_num, int32_t new_cell_num) {
     Refer *oldRefer, *newRefer;
     ReferUpdateEntity *ruEntity;

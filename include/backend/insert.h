@@ -1,10 +1,11 @@
 #include "data.h"
+#include "refer.h"
 
 /* Insert for tuple. */
-Refer *InsertForTuple(Oid oid, void *key, void *tuple);
+Rid InsertForTuple(Oid oid, void *key, void *tuple);
 
 /* Insert one row. */
-Refer *InsertForRow(Table *table, Row *row);
+Rid InsertForRow(Table *table, Row *row);
 
 /* Makeup the system reserved column. */
 void MakeupReservedColumns(Oid tid, Row *row);

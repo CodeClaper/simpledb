@@ -37,8 +37,11 @@ static inline int CompareRefer(Refer srefer, Refer trefer) {
 }
 
 
-/* Fetch Refer. */
-Refer *FetchRefer(MetaColumn *meta_column, SearchConditionNode *condition);
+/* Fetch ref id under condition. */
+Rid FetchRefIdUnderCondition(Oid oid, SearchConditionNode *condition);
+
+/* Append new tuple and return ref id. */
+Rid AppendAndReturnRefId(Oid oid, List *value_list);
 
 /* Check if refer equals. */
 bool ReferIsEqual(Refer *refer1, Refer *refer2);

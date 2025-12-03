@@ -6,6 +6,7 @@
 #include "copy.h"
 #include "instance.h"
 #include "mmgr.h"
+#include "refer.h"
 
 /* Get array number. */
 static uint32_t GetArrayNumber(void *destination) {
@@ -119,7 +120,7 @@ void TupleSetSysId(void *tuple, MetaTable *meta_table, int64_t sys_id) {
 }
 
 /* Get ref id in tuple. */
-int64_t TupleGetRefId(void *tuple, MetaTable *meta_table) {
+Rid TupleGetRefId(void *tuple, MetaTable *meta_table) {
     MetaColumn *ref_id_meta_column = NameFindAllMetaColumn(meta_table, SYS_REF_ID_COLUMN_NAME);
     Assert(ref_id_meta_column != NULL);
     return *(Xid *)TupleFindValue(tuple, ref_id_meta_column);

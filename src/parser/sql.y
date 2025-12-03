@@ -884,7 +884,7 @@ data_type:
     | table 
         {
             DataTypeNode *node = instance(DataTypeNode);                
-            node->type = T_REFERENCE;
+            node->type = T_RID;
             node->table_name = $1;
             $$ = node;
         }

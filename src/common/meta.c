@@ -158,22 +158,19 @@ static void *AtomNodeAssignValue(AtomNode *atom_node, MetaColumn *meta_column) {
             AssertFalse(ZERO_OID(meta_column->type_oid));
             return InsertStringValue(meta_column->type_oid, atom_node->value.strval);
         } 
-        /* Note: for REFERENCE type, it will insert into the referd target table 
-         * and return the refer. */
-        case T_REFERENCE: {
+        /* Note: for RID type, it will insert into the referd target table 
+         * and return the ref id. */
+        case T_RID: {
+            Oid oid = meta_column->type_oid;
             ReferValue *refer_value = atom_node->value.referval;
             switch (refer_value->type) {
                 case DIRECTLY: {
-                    Table *table = open_table_inner(meta_column->type_oid);
-                    Assert(table != NULL);
-                    InsertNode *insert_node = GenerateInsertNode(GET_TABLE_NAME(table), refer_value->nest_value_list);
-                    List *refer_list = InsertForValues(insert_node);
-                    AssertFalse(list_empty(refer_list));
-                    free_insert_node(insert_node);
-                    return lfirst(first_cell(refer_list));
+                    Rid ref_id = AppendAndReturnRefId(oid, refer_value->nest_value_list);
+                    return copy_value(&ref_id, T_RID);
                 }
                 case INDIRECTLY: {
-                    return FetchRefer(meta_column, refer_value->condition);
+                    Rid ref_id = FetchRefIdUnderCondition(oid, refer_value->condition);
+                    return copy_value(&ref_id, T_RID);
                 }
                 default:
                     UNEXPECTED_VALUE(refer_value->type);

@@ -143,6 +143,9 @@ List *create_list_init(NodeTag type, List *init_list);
 /* Append int item to list. */
 void append_list_int(List *list, int item);
 
+/* Append long item to list. */
+void append_list_long(List *list, int64_t item);
+
 /* Append item to list. */
 void append_list(List *list, void *item);
 

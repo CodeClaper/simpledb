@@ -7,7 +7,6 @@
  * (1) Plain insert values statment, includes all column or special part column.
  * (2) Insert with subselect statment.
  *********************************************************************************************/
-#include "bufpool.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -39,6 +38,7 @@
 #include "log.h"
 #include "utils.h"
 #include "row.h"
+#include "tuple.h"
 #include "rowlock.h"
 #include "jsonwriter.h"
 #include "instance.h"
@@ -47,6 +47,7 @@
 #include "heaptable.h"
 #include "ltinsert.h"
 #include "index.h"
+#include "bufpool.h"
 
 /* Get value in insert node to assign column at index. */
 static void *GetInsertValue(List *value_item_list, uint32_t index, MetaColumn *meta_column) {
@@ -346,15 +347,15 @@ retry:
  * (2) Insert index to main index table.
  * (3) Insert index to other index table.
  * */
-Refer *InsertForTuple(Oid oid, void *key, void *tuple) {
+Rid InsertForTuple(Oid oid, void *key, void *tuple) {
     Table *table;
-    Refer *heapRefer, *refer;
+    Refer *heapRefer;
     void *value;
 
     table = open_table_inner(oid);
     heapRefer = HeapTableInsertTuple(oid, tuple);
     value = GenerateIndex(oid, tuple, heapRefer);
-    refer = BtreeInsert(oid, key, value);
+    BtreeInsert(oid, key, value);
 
     ListCell *lc;
     foreach (lc, table->meta_indexs) {
@@ -364,7 +365,7 @@ Refer *InsertForTuple(Oid oid, void *key, void *tuple) {
         IndexInsert(meta_index, tuple, heapRefer);
     }
 
-    return refer;
+    return TupleGetRefId(tuple, table->meta_table);
 }
 
 
@@ -372,11 +373,12 @@ Refer *InsertForTuple(Oid oid, void *key, void *tuple) {
  * ---------------
  * Return the row refer, 
  * Throw error by log if fail. */
-Refer *InsertForRow(Table *table, Row *row) {
+Rid InsertForRow(Table *table, Row *row) {
     Oid oid;
     DataType ptype;
     void *key, *tuple;
-    Refer *preRefer, *refer;
+    Refer *preRefer;
+    Rid ref_id;
 
     oid = GET_TABLE_OID(table);
     ptype = MetaTableFindPrimaryDataType(table->meta_table);
@@ -396,20 +398,20 @@ Refer *InsertForRow(Table *table, Row *row) {
     }
 
     tuple = RowSeriableTuple(row, table);
-    refer = InsertForTuple(oid, key, tuple);
+    ref_id = InsertForTuple(oid, key, tuple);
 
     /* Record xlog for insert operation. */
-    RecordXlog(refer, HEAP_INSERT);
+    RecordXlog(oid, ref_id, HEAP_INSERT);
 
-    return refer;    
+    return ref_id;    
 }
 
 /* Insert for values case. 
  * ----------------------
- * Return list of Refer. */
+ * Return list of RID. */
 List *InsertForValues(InsertNode *insert_node) {
     Table *table;
-    List *row_list, *refer_list;
+    List *row_list, *ref_ids;
 
     table = open_table(insert_node->table_name);
     Assert(table);
@@ -418,21 +420,21 @@ List *InsertForValues(InsertNode *insert_node) {
     row_list = GenerateInsertRow(insert_node);
     AssertFalse(list_empty(row_list));
 
-    /* Create refer list. */
-    refer_list = create_list(NODE_REFER);
+    /* Create rid list. */
+    ref_ids = create_list(NODE_LONG);
 
     /* Insert to page. */
     ListCell *lc;
     foreach (lc, row_list) {
         Row *row = lfirst(lc);
-        Refer *refer = InsertForRow(table, row);
-        append_list(refer_list, refer);
+        Rid ref_id = InsertForRow(table, row);
+        append_list_long(ref_ids, ref_id);
     }
 
     /* Free refer list. */
     free_list_deep(row_list);
 
-    return refer_list;
+    return ref_ids;
 }
 
 /* Insert for query spec case. */
@@ -444,7 +446,7 @@ static List *InsertForQuerySpec(InsertNode *insert_node) {
         return NULL;
     }
     
-    List *list = create_list(NODE_REFER);
+    List *list = create_list(NODE_LONG);
 
     ValuesOrQuerySpecNode *values_or_query_spec = insert_node->values_or_query_spec;
 
@@ -464,8 +466,8 @@ static List *InsertForQuerySpec(InsertNode *insert_node) {
         QueueCell *qc;
         qforeach (qc, select_result->rows) {
             Row *insert_row = SelectRowToInsertRow((Row *)qfirst(qc), table);
-            Refer *refer = InsertForRow(table, insert_row);
-            append_list(list, refer);
+            Rid ref_id = InsertForRow(table, insert_row);
+            append_list_long(list, ref_id);
             free_row(insert_row);
         }
     }

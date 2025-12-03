@@ -363,3 +363,13 @@ void *BtreeSearchValueViaRefer(Refer *refer) {
     return value;
 }
 
+/* Btree search key vai ref id. */
+void *BtreeSearchKeyViaRefId(Oid oid, Rid ref_id) {
+    return NULL;
+}
+
+/* Btree search value via ref id. */
+void *BtreeSearchValueViaRefId(Oid oid, Rid ref_id) {
+    return NULL;
+}
+

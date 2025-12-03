@@ -115,6 +115,9 @@ void *copy_value2(void *value, MetaColumn *meta_column) {
             return copy_strrefer((StrRefer *) value);
         case T_REFERENCE: 
             return copy_refer(value);
+        case T_RID:
+            memcpy(new_val, value, sizeof(Rid));
+            return new_val;
         default: {
             UNEXPECTED_VALUE("Not supported data type occurs at <copy_value>.");
             return NULL;

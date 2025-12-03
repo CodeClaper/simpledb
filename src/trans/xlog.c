@@ -47,17 +47,18 @@
 static XLogEntry *XLHeader = NULL;
 
 /* Genrate new XLogEntry. */
-static XLogEntry *NewXLogEntry(Xid xid, Refer *refer, XLogHeapType type) {
+static XLogEntry *NewXLogEntry(Xid xid, Oid oid, Rid rid, XLogHeapType type) {
     XLogEntry *entry = instance(XLogEntry);
     entry->type = type;
-    entry->next = NULL;
-    entry->refer = copy_refer(refer);
     entry->xid = xid;
+    entry->oid = oid;
+    entry->rid = rid;
+    entry->next = NULL;
     return entry;
 }
 
 /* Record Xlog. */
-void RecordXlog(Refer *refer, XLogHeapType type) {
+void RecordXlog(Oid oid, Rid rid, XLogHeapType type) {
     /* First, find current transaction and it should exist.*/
     TransEntry *trans = FindTransaction();
     Assert(trans != NULL);
@@ -70,7 +71,7 @@ void RecordXlog(Refer *refer, XLogHeapType type) {
     MemoryContext oldcontext = CURRENT_MEMORY_CONTEXT;
     MemoryContextSwitchTo(CACHE_MEMORY_CONTEXT);
 
-    XLogEntry *entry = NewXLogEntry(trans->xid, refer, type);
+    XLogEntry *entry = NewXLogEntry(trans->xid, oid, rid, type);
     entry->next = XLHeader;
     XLHeader = entry;
     
@@ -80,22 +81,7 @@ void RecordXlog(Refer *refer, XLogHeapType type) {
 
 /* Update xlog entry refer. */
 void UpdateXlogEntryRefer(ReferUpdateEntity *refer_update_entity) {
-    if (XLHeader == NULL) return;
-
-    for (XLogEntry *current = XLHeader; current != NULL; current = current->next) {
-        Refer *current_refer = current->refer;
-        if (ReferIsEqual(current_refer, refer_update_entity->old_refer)) {
-            /* Switch to CACHE_MEMORY_CONTEXT. */
-            MemoryContext oldcontext = CURRENT_MEMORY_CONTEXT;
-            MemoryContextSwitchTo(CACHE_MEMORY_CONTEXT);
-
-            current->refer = copy_refer(refer_update_entity->new_refer);
-            free_refer(current_refer);
-
-            /* Recover the MemoryContext. */
-            MemoryContextSwitchTo(oldcontext);
-        }
-    }  
+    // Not used.
 }
 
 /* Commit XLog . */
@@ -114,21 +100,21 @@ void CommitXlog() {
 
 
 /* Reverse insert operation. */
-static void HeapInsertXLog(Refer *refer, TransEntry *transaction) {
+static void HeapInsertXLog(Oid oid, Rid rid, TransEntry *transaction) {
     Table *table;
     void *key, *index;
 
-    table = open_table_inner(refer->oid);
+    table = open_table_inner(oid);
 
     /* Get btree key and value. */
-    key = BtreeSearchKeyViaRefer(refer);
-    index = BtreeSearchValueViaRefer(refer);
+    key = BtreeSearchKeyViaRefId(oid, rid);
+    index = BtreeSearchValueViaRefId(oid, rid);
 
     /* Update heap table exipred xid. */
     HeapTableUpdateRowExpiredXid(table, (Refer *) index, transaction->xid);
 
     /* Update btree expired xid. */
-    BtreeModifyExpiredXid(refer->oid, key, transaction->xid);
+    BtreeModifyExpiredXid(oid, key, transaction->xid);
 }
 
 /* Reverse delete operation. 
@@ -137,24 +123,27 @@ static void HeapInsertXLog(Refer *refer, TransEntry *transaction) {
  * rather than re-insert the row to keep the principle that visible row always 
  * lies in the forefront of the same key cells.
  * */
-static void HeapDeleteXLog(Refer *refer, TransEntry *transaction) {
+static void HeapDeleteXLog(Oid oid, Rid rid, TransEntry *transaction) {
     Table *table;
-    void *key, *tuple, *new_tuple;
+    void *key, *value, *tuple, *new_tuple;
     Xid created_xid, expired_xid;
 
-    table = open_table_inner(refer->oid);
-    tuple = DefineTuple(refer);
+    table = open_table_inner(oid);
+    key = BtreeSearchKeyViaRefId(oid, rid);
+    value = BtreeSearchValueViaRefId(oid, rid);
+    tuple = HeapTableLookupTuple(oid, (Refer *)value);
+
     created_xid = TupleFindCreatedXid(tuple, table->meta_table);
     expired_xid = TupleFindExpiredXid(tuple, table->meta_table);
     Assert(expired_xid == transaction->xid); 
     AssertFalse(IsVisibleInner(created_xid, expired_xid, transaction));
-
-    key = TupleFindKey(tuple, table);
+    
+    /* Use new tuple. */
     new_tuple = copy_block(tuple, table->heap_value_len);
     TupleSetExpiredXid(new_tuple, table->meta_table, 0);
     
     /* Reinsert. */
-    InsertForTuple(refer->oid, key, new_tuple);
+    InsertForTuple(oid, key, new_tuple);
 }
 
 
@@ -165,23 +154,22 @@ void ExecuteRollback() {
     Assert(trans != NULL);
 
     /* XLHeader might be NULL, when there is no XLogs. */
-    if (XLHeader == NULL) 
-        return;
+    if (XLHeader == NULL) return;
     
     /* Loop to rollback. */
     for (XLogEntry *current = XLHeader; current != NULL; current = current->next) {
         switch (current->type) {
             case HEAP_INSERT:
-                HeapInsertXLog(current->refer, trans);
+                HeapInsertXLog(current->oid, current->rid, trans);
                 break;
             case HEAP_DELETE:
-                HeapDeleteXLog(current->refer, trans);
+                HeapDeleteXLog(current->oid, current->rid, trans);
                 break;
             case HEAP_UPDATE_INSERT:
-                HeapInsertXLog(current->refer, trans);
+                HeapInsertXLog(current->oid, current->rid, trans);
                 break;
             case HEAP_UPDATE_DELETE:
-                HeapDeleteXLog(current->refer, trans);
+                HeapDeleteXLog(current->oid, current->rid, trans);
                 break;
             default:
                 db_log(PANIC, "Unknown XLogHeapType.");
