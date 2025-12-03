@@ -50,6 +50,18 @@ Oid TableNameFindHeapOid(char *tableName);
 /* Find relname by oid. */
 char *OidFindRelName(Oid oid);
 
+/* Find string table riod by toid. */
+Oid ToidFindStoid(Oid toid);
+
+/* Find rid table riod by toid. */
+Oid ToidFindRoid(Oid toid);
+
+/* Find heap table hiod by toid. */
+Oid ToidFindHoid(Oid toid);
+
+/* Find oid of heap table by table name. */
+Oid TableNameFindHeapOid(char *tableName);
+
 /* Find indexs by toid. */
 List *ToidFindIndexs(Oid toid);
 

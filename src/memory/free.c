@@ -798,7 +798,6 @@ void free_db_result(DBResult *result) {
 /* Free XLogEntry. */
 void free_xlog_entry(XLogEntry *xlog_entry) {
     if (xlog_entry) {
-        free_refer(xlog_entry->refer);
         free_xlog_entry(xlog_entry->next);
         dfree(xlog_entry);
     }

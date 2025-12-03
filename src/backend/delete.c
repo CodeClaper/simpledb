@@ -28,17 +28,18 @@ void delete_row(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE t
     Oid oid;
     Table *table;
     Xid created_xid, expired_xid, current_xid;
+    Rid ref_id;
     
     oid = select_result->oid;
     table = open_table_inner(select_result->oid);
     created_xid = TupleFindCreatedXid(tuple, table->meta_table);
     expired_xid = TupleFindExpiredXid(tuple, table->meta_table);
     current_xid = GetCurrentXid();
+    ref_id = TupleGetRefId(tuple, table->meta_table);
 
     /* Only deal with row that is visible for current transaction. */
     if (IsVisible(created_xid, expired_xid)) {
         void *key, *index;
-        Refer *refer;
 
         /* Decrease row size. */
         select_result->row_size++;
@@ -47,16 +48,13 @@ void delete_row(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE t
         index = BtreeSearchValue(oid, key);
 
         /* Delete from index table. */
-        refer = BtreeModifyExpiredXid(oid, key, current_xid);
+        BtreeModifyExpiredXid(oid, key, current_xid);
 
         /* Delete tuple in heap table. */
         HeapTableUpdateRowExpiredXid(table, (Refer *) index, current_xid);
         
         /* Record xlog for delete. */
-        RecordXlog(refer, HEAP_DELETE);
-
-        /* Free memeory. */
-        free_refer(refer);
+        RecordXlog(oid, ref_id, HEAP_DELETE);
     }
 }
 

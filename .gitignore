@@ -116,6 +116,7 @@ test/pytest/bigData/__pycache__
 test/pytest/concurrency/__pycache__
 .pytest_cache/
 .cache/
+*.pyc
 compile_commands.json
 
 src/simpledb

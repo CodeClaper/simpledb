@@ -298,13 +298,15 @@ MetaTable *LoadMetaTable(Oid oid) {
 Table *load_table(Oid oid) {
     Table *table = instance(Table);
     table->oid = oid;
+    table->hoid = ToidFindHoid(oid);
+    table->stid = ToidFindStoid(oid);
+    table->roid = ToidFindRoid(oid);
     table->root_page_num = ROOT_PAGE_NUM; 
     table->creator = getpid();
     table->meta_table = LoadMetaTable(oid);
     table->meta_indexs = LoadMetaIndex(oid, table);
     table->page_size = GetPageSize(oid);
-    table->hoid = TableNameFindHeapOid(GET_TABLE_NAME(table));
-    table->stid = StrTableNameFindOid(GET_TABLE_NAME(table));
+    table->rid_page_size = GetPageSize(table->roid);
     table->key_len = TableCalcPrimaryKeyLength(table);
     table->index_value_len = TableCalcIndexLength(table);
     table->heap_value_len = TableCalcRowLength(table);

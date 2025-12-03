@@ -66,22 +66,20 @@ static void UpdateTupleForAssignment(void *tuple, List *assignment_list, MetaTab
  * (2) Delete index.
  * (3) Record xlog for HEAP_UPDATE_DELETE.
  * */
-static Refer *DeleteRowForUpdate(Oid oid, void *key) {
+static void DeleteRowForUpdate(Oid oid, void *key) {
     Table *table;
     Xid current_xid;
-    Refer *heap_refer, *refer;
+    Refer *heap_refer;
+    Rid ref_id;
 
     table = open_table_inner(oid);
     current_xid = GetCurrentXid();
     heap_refer = (Refer *) BtreeSearchValue(oid, key);
+    ref_id = BtreeSearchRefId(oid, key);
 
     HeapTableUpdateRowExpiredXid(table, heap_refer, current_xid);
-    refer = BtreeModifyExpiredXid(oid, key, current_xid);
-    RecordXlog(refer, HEAP_UPDATE_DELETE);
-
-    dfree(heap_refer);
-
-    return refer;
+    BtreeModifyExpiredXid(oid, key, current_xid);
+    RecordXlog(oid, ref_id, HEAP_UPDATE_DELETE);
 }
 
 /* Insert row for update.
@@ -90,9 +88,8 @@ static Refer *DeleteRowForUpdate(Oid oid, void *key) {
  * (1) Reinsert the tuple with new ref id.
  * (2) Record xlog for HEAP_UPDATE_INSERT.
  * */
-static Refer *ReinsertRowForUpdate(Oid oid, void *key, void *tuple) {
+static void ReinsertRowForUpdate(Oid oid, void *key, void *tuple) {
     Table *table;
-    Refer *refer;
     Xid created_xid, expired_xid;
     int64_t ref_id;
 
@@ -106,12 +103,10 @@ static Refer *ReinsertRowForUpdate(Oid oid, void *key, void *tuple) {
     TupleSetSysId(tuple, table->meta_table, ref_id);
     
     /* Reinsert. */
-    refer = InsertForTuple(oid, key, tuple);
+    InsertForTuple(oid, key, tuple);
 
     /* Record xlog for insert. */
-    RecordXlog(refer, HEAP_UPDATE_INSERT);
-
-    return refer;
+    RecordXlog(oid, ref_id, HEAP_UPDATE_INSERT);
 }
 
 
@@ -122,7 +117,6 @@ static Refer *ReinsertRowForUpdate(Oid oid, void *key, void *tuple) {
 static void UpdateTuple(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg) {
     Oid oid;
     Table *table;
-    Refer *oldRefer, *newRefer, *lockRefer;
     void *old_key, *new_key, *new_tuple;
     Xid created_xid, expired_xid;
         
@@ -142,10 +136,7 @@ static void UpdateTuple(void *tuple, SelectResult *select_result, ROW_HANDLER_AR
     old_key = TupleFindKey(tuple, table);
 
     /* Delete row for update. */
-    oldRefer = DeleteRowForUpdate(oid, old_key);
-
-    /* Lock refer. */
-    lockRefer = ReferUpdateLockAdd(oldRefer);
+    DeleteRowForUpdate(oid, old_key);
 
     /* Update tuple for assignment. */
     Assert(type == ARG_ASSIGNMENT_LIST);
@@ -155,20 +146,7 @@ static void UpdateTuple(void *tuple, SelectResult *select_result, ROW_HANDLER_AR
     new_key = TupleFindKey(new_tuple, table);
 
     /* Reinsert row for update. */
-    newRefer = ReinsertRowForUpdate(oid, new_key, new_tuple);
-
-    /* Free Update refer lock. */
-    ReferUpdateLockFree(lockRefer);
-    
-    /* If Refer changed, update refer. */
-    if (!ReferIsEqual(oldRefer, newRefer))
-        UpdateRefer(oid, 
-                    oldRefer->page_num, oldRefer->cell_num, 
-                    newRefer->page_num, newRefer->cell_num);
-
-    /* Free memory. */
-    free_refer(oldRefer);
-    free_refer(newRefer);
+    ReinsertRowForUpdate(oid, new_key, new_tuple);
 }
 
 /* Get SearchConditionNode form WhereClause.. */

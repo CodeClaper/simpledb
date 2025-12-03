@@ -32,6 +32,7 @@
 #include "tablecache.h"
 #include "heaptable.h"
 #include "systable.h"
+#include "ridcreate.h"
 
 /* Calculate meta column length. 
  * -----------------------------
@@ -225,7 +226,7 @@ static void GenerateSystemPrimaryKey(MetaTable *meta_table) {
 }
 
 /* Combine meta table by create table node. */
-static MetaTable *CreateTableNodeGenerateMetaTable(Oid tid, Oid stid, CreateTableNode *create_table_node) {
+static MetaTable *CreateTableNodeGenerateMetaTable(Oid toid, Oid stoid, CreateTableNode *create_table_node) {
     MetaTable *meta_table = instance(MetaTable);
     meta_table->table_name = dstrdup(create_table_node->table_name);
     meta_table->column_size = CreateTableNodeColumnSize(create_table_node); 
@@ -239,7 +240,7 @@ static MetaTable *CreateTableNodeGenerateMetaTable(Oid tid, Oid stid, CreateTabl
         BaseTableElementNode *base_table_element = lfirst(lc);
         switch (base_table_element->type) {
             case TELE_COLUMN_DEF: {
-                MetaColumn *current = ColumnDefNodeGenerateMetaColumn(tid, stid, base_table_element->column_def);
+                MetaColumn *current = ColumnDefNodeGenerateMetaColumn(toid, stoid, base_table_element->column_def);
                 current->offset = offset;
                 append_list(meta_table->meta_columns, current);
                 offset += current->column_length;
@@ -341,33 +342,36 @@ static void AfterReleaseTable(Oid oid) {
 
 /* Execute create table statement. */
 void ExecuteCreateTableStatement(CreateTableNode *create_table_node, DBResult *result) {
-    Oid tid = FindNextOid();
-    Oid hid = FindNextOid();
-    Oid stid = FindNextOid();
+    Oid toid = FindNextOid();
+    Oid roid = FindNextOid();
+    Oid hoid = FindNextOid();
+    Oid stoid = FindNextOid();
 
-    Assert(tid != hid && hid != stid && tid != stid);
+    Assert(toid != hoid && hoid != stoid && toid != stoid);
 
     /* Check valid. */
     if (!CheckForCreateTable(create_table_node)) return;
 
     /* Combine MetaTable. */
-    MetaTable *meta_table = CreateTableNodeGenerateMetaTable(tid, stid, create_table_node);
+    MetaTable *meta_table = CreateTableNodeGenerateMetaTable(toid, stoid, create_table_node);
     if (meta_table == NULL) return;
 
     /* Will do these: 
      * (1) Create table.
      * (2) Save table object.
+     * (3) Create rid table. 
      * (3) Create heap table.
      * (4) Create string heap table.
      * Besides the normal table itself, we alse create its string heap table.
      * Although the table maybe not have any string column, just in case.
      * */
     if (
-        create_table(tid, meta_table) && 
-        SaveTableObject(tid, GET_METATABLE_NAME(meta_table)) &&
-        CreateHeapTable(hid, tid, meta_table->table_name) &&
-        CreateStrHeapTable(stid, tid, meta_table->table_name) &&
-        PrepareSaveTableCache(tid, hid, stid, meta_table)
+        create_table(toid, meta_table) && 
+        SaveTableObject(toid, GET_METATABLE_NAME(meta_table)) &&
+        CreateRidTable(roid, toid, GET_METATABLE_NAME(meta_table)) &&
+        CreateHeapTable(hoid, toid, meta_table->table_name) &&
+        CreateStrHeapTable(stoid, toid, meta_table->table_name) &&
+        PrepareSaveTableCache(toid, hoid, stoid, meta_table)
     ) {
         result->success = true;
         result->rows = 0;

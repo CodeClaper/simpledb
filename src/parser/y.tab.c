@@ -3084,7 +3084,7 @@ yyreduce:
 #line 885 "sql.y"
         {
             DataTypeNode *node = instance(DataTypeNode);                
-            node->type = T_REFERENCE;
+            node->type = T_RID;
             node->table_name = (yyvsp[0].strVal);
             (yyval.data_type_node) = node;
         }

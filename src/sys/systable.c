@@ -352,7 +352,7 @@ Object OidFindObject(Oid oid) {
 }
 
 /* Find refId by relname and reltype. 
- * ------------------------
+ * ---------------------------------
  * Return the oid of the found object.
  * Return OID_ZERO if missing.
  * */
@@ -387,6 +387,42 @@ static Oid RelnameAndReltypeFindOid(char *relname, ObjectType reltype) {
     return entity.oid;
 }
 
+/* Find oid by toid and reltype. 
+ * ----------------------------------
+ * Return the oid of the found object.
+ * Return OID_ZERO if missing.
+ * */
+static Oid ToidAndRelTypeFindOid(Oid toid, ObjectType reltype) {
+    Object entity;
+    SearchConditionNode *condition;
+    SelectResult *result;
+    void *tuple;
+
+    condition = ToidTypeConvertCondition(toid, reltype);
+    result = new_select_result(SELECT_STMT, SYS_TABLE_NAME, true);
+
+    /* Query. */
+    QueryUnderSearchConditionInner(
+        SYS_ROOT_OID, result, 
+        SimpleSelectPlan(SelectTuple, ARG_NULL, NULL, condition)
+    );
+
+    /* The rows number maybe zero, which means the table not exists. 
+     * But rows number can`t be more than one. */
+    if (result->row_size == 0)
+        return OID_ZERO;
+    if (result->row_size > 1)
+        db_log(PANIC,
+               "Logic error, found more than one object by toid '%ld' and reltype '%d' in system table.", 
+               toid, reltype);
+    
+    tuple = (void *) qfirst(QueueHead(result->tuples));
+
+    entity = TupleConvertObject(tuple);
+
+    return entity.oid;
+}
+
 /* Find oid of normal table by table name. 
  * ------------------------
  * Return the oid of the found object.
@@ -413,9 +449,28 @@ Oid IndexNameFindOid(char *indexName) {
  * Return OID_ZERO if missing.
  * */
 Oid StrTableNameFindOid(char *tableName) {
-    if (StrEq(tableName, SYS_TABLE_NAME))
-        return OID_ZERO;
+    if (StrEq(tableName, SYS_TABLE_NAME)) return OID_ZERO;
     return RelnameAndReltypeFindOid(tableName, OSTRING_HEAP_TABLE);
+}
+
+/* Find string table riod by toid.
+ * ------------------------------
+ * Return the oid of the found object.
+ * Return OID_ZERO if missing.
+ * */
+Oid ToidFindStoid(Oid toid) {
+    if (toid == SYS_ROOT_OID) return OID_ZERO;
+    return ToidAndRelTypeFindOid(toid, OSTRING_HEAP_TABLE);
+}
+
+/* Find rid table riod by toid.
+ * ---------------------------
+ * Return the oid of the found object.
+ * Return OID_ZERO if missing.
+ * */
+Oid ToidFindRoid(Oid toid) {
+    if (toid == SYS_ROOT_OID) return OID_ZERO;
+    return ToidAndRelTypeFindOid(toid, ORID_TABLE);
 }
 
 /* Find oid of heap table by table name. 
@@ -424,9 +479,18 @@ Oid StrTableNameFindOid(char *tableName) {
  * Return OID_ZERO if missing.
  * */
 Oid TableNameFindHeapOid(char *tableName) {
-    if (StrEq(tableName, SYS_TABLE_NAME))
-        return SYS_ROOT_HEAP_OID;
+    if (StrEq(tableName, SYS_TABLE_NAME)) return SYS_ROOT_HEAP_OID;
     return RelnameAndReltypeFindOid(tableName, OHEAP_TABLE);
+}
+
+/* Find heap table hiod by toid.
+ * ---------------------------
+ * Return the oid of the found object.
+ * Return OID_ZERO if missing.
+ * */
+Oid ToidFindHoid(Oid toid) {
+    if (toid == SYS_ROOT_OID) return OID_ZERO;
+    return ToidAndRelTypeFindOid(toid, OHEAP_TABLE);
 }
 
 /* Find relname by oid. 
@@ -444,7 +508,6 @@ char *OidFindRelName(Oid oid) {
  * Return list of index oid.
  * */
 List *ToidFindIndexs(Oid toid) {
-
     SearchConditionNode *condition;
     SelectResult *result;
     List *indexs;
@@ -598,16 +661,16 @@ static Row *ObjectConvertRow(Object entity) {
 /* Save Object. */
 bool SaveObject(Object entity) {
     Row *row;
-    Refer *refer;
+    Rid rid;
     Table *sysTable;
 
     row = ObjectConvertRow(entity);
     sysTable = open_table_inner(SYS_ROOT_OID); 
     Assert(sysTable);
-    refer = InsertForRow(sysTable, row);
+    rid = InsertForRow(sysTable, row);
 
     dfree(row);
-    return refer != NULL;
+    return NON_ZERO_RID(rid);
 }
 
 /* Remove the object. */

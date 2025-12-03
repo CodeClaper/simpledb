@@ -46,6 +46,7 @@
 #include "strheaptable.h"
 #include "heaptable.h"
 #include "ltinsert.h"
+#include "ridinsert.h"
 #include "index.h"
 #include "bufpool.h"
 
@@ -345,24 +346,35 @@ retry:
  * As follow, we will do those:
  * (1) Insert tuple to heap table.
  * (2) Insert index to main index table.
- * (3) Insert index to other index table.
+ * (3) Insert index to rid index table.
+ * (4) Insert index to other index table.
  * */
 Rid InsertForTuple(Oid oid, void *key, void *tuple) {
     Table *table;
-    Refer *heapRefer;
+    Refer *refer;
     void *value;
+    Rid ref_id;
 
     table = open_table_inner(oid);
-    heapRefer = HeapTableInsertTuple(oid, tuple);
-    value = GenerateIndex(oid, tuple, heapRefer);
+
+    /* Insert tuple to heap table.*/
+    refer = HeapTableInsertTuple(oid, tuple);
+
+    /* Insert index to main index table. */
+    value = GenerateIndex(oid, tuple, refer);
     BtreeInsert(oid, key, value);
 
+    /* Insert index to rid index table. */
+    ref_id = TupleGetRefId(tuple, table->meta_table);
+    RidInsert(table->roid, ref_id, refer);
+
+    /* Insert index to other index table. */
     ListCell *lc;
     foreach (lc, table->meta_indexs) {
         MetaIndex *meta_index = (MetaIndex *) lfirst(lc);
         /* Skip primary index. */
         if (meta_index->is_pri) continue;
-        IndexInsert(meta_index, tuple, heapRefer);
+        IndexInsert(meta_index, tuple, refer);
     }
 
     return TupleGetRefId(tuple, table->meta_table);
@@ -394,7 +406,7 @@ Rid InsertForRow(Table *table, Row *row) {
     ) {
         db_log(ERROR, "key '%s' in table '%s' already exists, not allow duplicate key.", 
                KeyGetSysStrValue(key, ptype), GET_TABLE_NAME(table));
-        return NULL;
+        return RID_ZERO;
     }
 
     tuple = RowSeriableTuple(row, table);

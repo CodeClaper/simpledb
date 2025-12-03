@@ -236,25 +236,27 @@ static KeyValue *QueryTupleValue(SelectPlan *select_plan, List *meta_columns, Sc
     }
 }
 
-static inline Refer *ReferValueFindRefer(ReferValue *refer_value, MetaColumn *meta_column) {
+static inline Rid *ReferValueFindRid(ReferValue *refer_value, MetaColumn *meta_column) {
     switch (refer_value->type) {
         case DIRECTLY:
             panic("Logic error");
             break;
-        case INDIRECTLY:
-            return FetchRefer(meta_column, refer_value->condition);
+        case INDIRECTLY: {
+            Rid rid = FetchRefIdUnderCondition(meta_column->type_oid, refer_value->condition); 
+            return copy_value(&rid, T_RID);
+        }
         default:
             UNEXPECTED_VALUE(refer_value->type);
     }
     return NULL;
 }
 
-static inline Refer *ScalarExpFindRefer(ScalarExpNode *scalar_exp, MetaColumn *meta_column) {
+static inline Rid *ScalarExpFindRid(ScalarExpNode *scalar_exp, MetaColumn *meta_column) {
     ReferValue *refer_value = scalar_exp->value->value.atom->value.referval;
-    return ReferValueFindRefer(refer_value, meta_column);
+    return ReferValueFindRid(refer_value, meta_column);
 }
 
-static bool ValueItemIsReferValue(ValueItemNode *value_item) {
+static bool ValueItemIsRidValue(ValueItemNode *value_item) {
     switch (value_item->type) {
         case V_ATOM: {
             AtomNode *atom_node = value_item->value.atom;
@@ -265,7 +267,7 @@ static bool ValueItemIsReferValue(ValueItemNode *value_item) {
             foreach(lc, value_item->value.value_list) {
                 ValueItemNode *value_item = (ValueItemNode *)lfirst(lc);
                 /* Any of it is ReferValue is true. */
-                if (ValueItemIsReferValue(value_item))
+                if (ValueItemIsRidValue(value_item))
                     return true;
             }
         }
@@ -275,22 +277,22 @@ static bool ValueItemIsReferValue(ValueItemNode *value_item) {
     return false;
 } 
 
-static bool ScalarExpIsReferValue(ScalarExpNode *scalar_exp) {
+static bool ScalarExpIsRidValue(ScalarExpNode *scalar_exp) {
     if (scalar_exp->type == SCALAR_VALUE) {
         ValueItemNode *value_item = scalar_exp->value;
-        return ValueItemIsReferValue(value_item);
+        return ValueItemIsRidValue(value_item);
     }
     return false;
 }
 
 /* If satisfy columnn and refer value in comparison. */
 static bool SatisfyColumnAndReferValueCompparison(ScalarExpNode *left, ScalarExpNode *right) {
-    if (ScalarExpIsReferValue(left)) {
+    if (ScalarExpIsRidValue(left)) {
         if (right->type == SCALAR_COLUMN)
             return true;
         else
             db_log(ERROR, "Refer value must compare with column.");
-    } else if (ScalarExpIsReferValue(right)) {
+    } else if (ScalarExpIsRidValue(right)) {
         if (left->type == SCALAR_COLUMN)
             return true;
         else
@@ -305,17 +307,17 @@ static bool ColumnAndReferValueCompparison(SelectPlan *select_plan, List *meta_c
     MetaColumn *target_meta_column;
     void *source, *target;
 
-    if (ScalarExpIsReferValue(right)) {
+    if (ScalarExpIsRidValue(right)) {
         target_meta_column = ColumnNodeFindMetaColumn(select_plan, meta_columns, left->column);
-        target = ScalarExpFindRefer(right, target_meta_column);
+        target = ScalarExpFindRid(right, target_meta_column);
         source = TupleFindValue(tuple, target_meta_column);
     } else {
         target_meta_column = ColumnNodeFindMetaColumn(select_plan, meta_columns, right->column);
-        source = ScalarExpFindRefer(left, target_meta_column);
+        source = ScalarExpFindRid(left, target_meta_column);
         target = TupleFindValue(tuple, target_meta_column);
     }
 
-    return eval(compare_type, source, target, T_REFERENCE);
+    return eval(compare_type, &source, &target, T_RID);
 }
 
 /* Check if include leaf node satisfy comparison predicate. */
@@ -347,7 +349,7 @@ static bool LeafNodeForInPredicate(SelectPlan *select_plan, List *meta_columns, 
         target = QueryTupleValueItem((ValueItemNode *) lfirst(lc));
         /* For referenct type, convert ReferValue to Refer value.  */
         if (meta_column->column_type == T_REFERENCE && target->data_type == T_REFERENCE)
-            target->value = ReferValueFindRefer(target->value, meta_column);
+            target->value = ReferValueFindRid(target->value, meta_column);
         if (KeyValueEval(O_EQ, value, target))
             return true;
     }
@@ -1318,6 +1320,7 @@ static AtomNode *GenerateAtomNode(MetaColumn *meta_column, void *value) {
             atom_node->value.floatval = *(double *) value;  
             break;
         }
+        case T_RID:
         case T_REFERENCE:
         case T_OBJECT:
         case T_UNKNOWN:

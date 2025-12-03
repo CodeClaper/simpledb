@@ -33,6 +33,7 @@
 #include "free.h"
 #include "ltsearch.h"
 #include "ltmodify.h"
+#include "ridsearch.h"
 #include "select.h"
 #include "insert.h"
 #include "utils.h"
@@ -102,16 +103,18 @@ void CommitXlog() {
 /* Reverse insert operation. */
 static void HeapInsertXLog(Oid oid, Rid rid, TransEntry *transaction) {
     Table *table;
-    void *key, *index;
+    void *key, *tuple;
+    Refer *refer;
 
     table = open_table_inner(oid);
 
     /* Get btree key and value. */
-    key = BtreeSearchKeyViaRefId(oid, rid);
-    index = BtreeSearchValueViaRefId(oid, rid);
+    refer = RidSearch(oid, rid);
+    tuple = HeapTableLookupTuple(oid, refer);
+    key = TupleFindKey(tuple, table);
 
     /* Update heap table exipred xid. */
-    HeapTableUpdateRowExpiredXid(table, (Refer *) index, transaction->xid);
+    HeapTableUpdateRowExpiredXid(table, refer, transaction->xid);
 
     /* Update btree expired xid. */
     BtreeModifyExpiredXid(oid, key, transaction->xid);
@@ -125,13 +128,14 @@ static void HeapInsertXLog(Oid oid, Rid rid, TransEntry *transaction) {
  * */
 static void HeapDeleteXLog(Oid oid, Rid rid, TransEntry *transaction) {
     Table *table;
-    void *key, *value, *tuple, *new_tuple;
+    Refer *refer;
+    void *key, *tuple, *new_tuple;
     Xid created_xid, expired_xid;
 
     table = open_table_inner(oid);
-    key = BtreeSearchKeyViaRefId(oid, rid);
-    value = BtreeSearchValueViaRefId(oid, rid);
-    tuple = HeapTableLookupTuple(oid, (Refer *)value);
+    refer = RidSearch(oid, rid);
+    tuple = HeapTableLookupTuple(oid, refer);
+    key = TupleFindKey(tuple, table);
 
     created_xid = TupleFindCreatedXid(tuple, table->meta_table);
     expired_xid = TupleFindExpiredXid(tuple, table->meta_table);

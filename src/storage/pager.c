@@ -44,3 +44,13 @@ uint32_t GetNextUnusedPageNum(Table *table) {
     return page_num;
 }
 
+/* Get next rid page num. */
+uint32_t GetNextUnusedRidPageNum(Table *table) {
+    uint32_t page_num = table->rid_page_size;
+    while (!__sync_bool_compare_and_swap(&table->rid_page_size, page_num, page_num + 1)) {
+        page_num = table->rid_page_size;
+    }
+    return page_num;
+}
+
+

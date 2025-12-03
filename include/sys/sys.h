@@ -31,6 +31,7 @@ typedef enum ObjectType {
     OVIEW,
     OINDEX,
     OSCHEMA,
+    ORID_TABLE,
     OHEAP_TABLE,
     OSTRING_HEAP_TABLE
 } ObjectType;
@@ -44,6 +45,7 @@ static char *ObjectTypeNameList[] = {
     "VIEW",
     "INDEX",
     "SCHEMA",
+    "RID_TABLE",
     "HEAP_TABLE",
     "STRING_HEAP_TABLE"
 };

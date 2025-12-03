@@ -101,7 +101,7 @@ static void BinInsertForInternalNodeUpdateCellKey(MetaIndex *meta_index, uint32_
     MakeBufferDirty(buffer);
     
     /* Update current internal node parent. */
-    if (!NodeIsRoot(internal_node) && CompareKey(meta_index, new_key, high_key)) {
+    if (!NodeIsRoot(internal_node) && CompareKey(meta_index, new_key, high_key) == 0) {
         uint32_t parent_num;
         parent_num = NodeGetParentNum(internal_node);
         BinInsertForInternalNodeUpdateCellKey(meta_index, parent_num, old_key, new_key);
@@ -251,7 +251,7 @@ static void BinInsertForInternalNodeSplit(MetaIndex *meta_index, void *internal_
         uint32_t old_target_index;
 
         old_target_index = BinInternalNodeFindCellNum(meta_index, internal_node, old_child_key);
-        Assert(CompareKey(meta_index, old_child_key, BinInternalNodeGetCellKey(internal_node, meta_index->key_len, old_target_index))); 
+        Assert(CompareKey(meta_index, old_child_key, BinInternalNodeGetCellKey(internal_node, meta_index->key_len, old_target_index)) == 0); 
         BinInternalNodeSetCellKey(internal_node, meta_index->key_len, old_target_index, old_new_key);
         /* Get target index. */
         target_index = BinInternalNodeFindCellNum(meta_index, internal_node, new_child_key);
