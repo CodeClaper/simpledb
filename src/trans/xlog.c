@@ -109,7 +109,7 @@ static void HeapInsertXLog(Oid oid, Rid rid, TransEntry *transaction) {
     table = open_table_inner(oid);
 
     /* Get btree key and value. */
-    refer = RidSearch(oid, rid);
+    refer = RidSearch(table->roid, rid);
     tuple = HeapTableLookupTuple(oid, refer);
     key = TupleFindKey(tuple, table);
 
@@ -133,7 +133,7 @@ static void HeapDeleteXLog(Oid oid, Rid rid, TransEntry *transaction) {
     Xid created_xid, expired_xid;
 
     table = open_table_inner(oid);
-    refer = RidSearch(oid, rid);
+    refer = RidSearch(table->roid, rid);
     tuple = HeapTableLookupTuple(oid, refer);
     key = TupleFindKey(tuple, table);
 
