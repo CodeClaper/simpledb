@@ -87,6 +87,11 @@ void IndexSetSysId(void *index, int64_t sys_id) {
     *(int64_t *) (index + REFER_SIZE + LEAF_NODE_CELL_NULL_FLAG_SIZE) = sys_id;
 }
 
+/* Get index ref id. */
+Rid IndexGetRefId(void *index) {
+    return *(Rid *) (index + REFER_SIZE + (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)) * 1 + LEAF_NODE_CELL_NULL_FLAG_SIZE);
+}
+
 /* Get index refer. */
 Refer *IndexGetRefer(void *index) {
     return (Refer *) index;

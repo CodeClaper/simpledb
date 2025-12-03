@@ -1,4 +1,5 @@
 #include "data.h"
+#include "refer.h"
 
 /* Check if key already exists. */
  bool IndexDuplicateKeyCheck(void *key, Refer *refer);
@@ -20,6 +21,9 @@ int64_t IndexGetSysId(void *index);
 
 /* Get index sys id. */
 void IndexSetSysId(void *index, int64_t sys_id);
+
+/* Get index ref id. */
+Rid IndexGetRefId(void *index);
 
 /* Get index refer. */
 Refer *IndexGetRefer(void *index);

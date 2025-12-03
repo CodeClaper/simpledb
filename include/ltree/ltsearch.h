@@ -12,6 +12,3 @@ void *BtreeSearchKeyViaRefer(Refer *refer);
 
 /* Btree seach value via refer.*/
 void *BtreeSearchValueViaRefer(Refer *refer);
-
-/* Btree search ref id. */
-Rid BtreeSearchRefId(Oid oid, void *key);

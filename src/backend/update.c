@@ -38,6 +38,7 @@
 #include "tuple.h"
 #include "systable.h"
 #include "heaptable.h"
+#include "ridsearch.h"
 
 /* Update tuple for assignment. */
 static void UpdateTupleForAssignment(void *tuple, List *assignment_list, MetaTable *meta_table) {
@@ -69,16 +70,16 @@ static void UpdateTupleForAssignment(void *tuple, List *assignment_list, MetaTab
 static void DeleteRowForUpdate(Oid oid, void *key) {
     Table *table;
     Xid current_xid;
-    Refer *heap_refer;
+    void *value;
     Rid ref_id;
 
     table = open_table_inner(oid);
     current_xid = GetCurrentXid();
-    heap_refer = (Refer *) BtreeSearchValue(oid, key);
-    ref_id = BtreeSearchRefId(oid, key);
+    value = BtreeSearchValue(oid, key);
+    ref_id = IndexGetRefId(value);
 
     /* Make heap expired. */
-    HeapTableUpdateRowExpiredXid(table, heap_refer, current_xid);
+    HeapTableUpdateRowExpiredXid(table, (Refer *)value, current_xid);
     
     /* Make main index expired. */
     BtreeModifyExpiredXid(oid, key, current_xid);
