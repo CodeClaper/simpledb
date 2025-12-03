@@ -11,6 +11,7 @@
  */
 
 #include <fcntl.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
 #include <unistd.h>
@@ -19,6 +20,7 @@
 #include "spinlock.h"
 #include "fdesc.h"
 #include "mmgr.h"
+#include "bufmgr.h"
 
 /* Get the page size. */
 Size GetPageSize(Oid oid) {
@@ -53,4 +55,18 @@ uint32_t GetNextUnusedRidPageNum(Table *table) {
     return page_num;
 }
 
+/* Reset Page. */
+void ResetPage(Oid oid, uint32_t page_num) {
+    Buffer buffer;
+    void *node;
 
+    buffer = ReadBuffer(oid, page_num);
+    LockBuffer(buffer, RW_WRITER);
+    node = GetBufferPage(buffer);
+
+    memset(node, 0, PAGE_SIZE);
+
+    MakeBufferDirty(buffer);
+    UnlockBuffer(buffer);
+    ReleaseBuffer(buffer);
+}

@@ -93,7 +93,8 @@ static void ColumnDefOptListForMetaColumn(MetaColumn *meta_column, List *column_
                 meta_column->default_value = ValueItemNodeAssignValue(column_def_opt->value, meta_column);
                 /* You can use indirect refer value as default value, but is must exist. */
                 if (meta_column->column_type == T_RID) {
-                    if (meta_column->default_value == NULL)
+                    Rid rid = *(Rid *) meta_column->default_value;
+                    if (ZERO_RID(rid))
                         db_log(ERROR, "Try to use refer value as default value, but it does not exist.");
                 }
                 break;

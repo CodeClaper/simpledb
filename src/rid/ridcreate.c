@@ -9,6 +9,7 @@
 #include "table.h"
 #include "mmgr.h"
 #include "log.h"
+#include "bufmgr.h"
 
 /* Rid create. */
 bool CreateRidTableInner(Oid roid) {
@@ -55,3 +56,24 @@ bool CreateRidTable(Oid roid, Oid toid, char *table_name) {
     Object entity = GenerateObjectInner(roid, toid, table_name, ORID_TABLE);
     return CreateRidTableInner(roid) && SaveObject(entity);
 }
+
+
+/* Shrink rid table. */
+bool ShrnikRidTable(Oid roid) {
+    Buffer root_buffer;
+    void *root_node;
+
+    root_buffer = ReadBuffer(roid, ROOT_PAGE_NUM);
+    LockBuffer(root_buffer, RW_WRITER);
+    root_node = GetBufferPage(root_buffer);
+
+    RidLeafNodeInitialize(root_node, true);
+
+    /* Unlock and release buffer. */
+    MakeBufferDirty(root_buffer);
+    UnlockBuffer(root_buffer);
+    ReleaseBuffer(root_buffer);
+
+    return true;
+}
+

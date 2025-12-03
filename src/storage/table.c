@@ -32,6 +32,7 @@
 #include "fdesc.h"
 #include "compres.h"
 #include "heaptable.h"
+#include "ridcreate.h"
 
 /* Get table file path. */
 char *table_file_path(Oid oid) {
@@ -139,8 +140,8 @@ bool create_table(Oid oid, MetaTable *meta_table) {
     return true;
 }
 
-/* Create a new table. */
-bool shrink_table(Oid oid, MetaTable *meta_table) {
+/* Shrink the main table. */
+static bool ShinkMainTable(Oid oid, MetaTable *meta_table) {
     Buffer root_buffer;
     void *root_node, *default_value_dest;
     uint32_t default_value_len;
@@ -187,6 +188,21 @@ bool shrink_table(Oid oid, MetaTable *meta_table) {
     ReleaseBuffer(root_buffer);
 
     return true;
+}
+
+/* Create a new table. 
+ * Will do these:
+ * (1) Reset main table page.
+ * (2) Reset rid table page.
+ * (3) Shrink main table.
+ * (4) Shrink rid table.
+ * */
+bool ShrinkTable(Table *table) {
+    uint32_t page_num;
+    for (page_num = ROOT_PAGE_NUM;  page_num < table->page_size; page_num++) ResetPage(table->oid, page_num);
+    for (page_num = ROOT_PAGE_NUM;  page_num < table->rid_page_size; page_num++) ResetPage(table->roid, page_num);
+    table->page_size = 1; table->rid_page_size = 1;
+    return ShinkMainTable(table->oid, table->meta_table) && ShrnikRidTable(table->roid);
 }
 
 /* Load primary meta index info. */

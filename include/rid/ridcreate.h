@@ -6,3 +6,6 @@ bool CreateRidTableInner(Oid roid);
 
 /* Rid create. */
 bool CreateRidTable(Oid roid, Oid toid, char *table_name);
+
+/* Shrink rid table. */
+bool ShrnikRidTable(Oid roid);

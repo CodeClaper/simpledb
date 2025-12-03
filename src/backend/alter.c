@@ -30,6 +30,7 @@
 #include "log.h"
 #include "tablereg.h"
 #include "systable.h"
+#include "ridinsert.h"
 #include "heaptable.h"
 #include "ltinsert.h"
 #include "instance.h"
@@ -140,13 +141,15 @@ static void TableModifyForDropColumn(Table *table, MetaColumn *meta_column, int 
 
 /* Loop heap table and reinsert into btree. */
 static void LoopHeapTableAndReinsert(Table *table) {
-    Oid oid, hoid;
+    Oid oid, hoid, roid;
     Refer *refer;
     MetaColumn *primary_meta_column;
     void *tuple, *key, *value;
+    Rid ref_id;
 
     oid = table->oid;
     hoid = table->hoid;
+    roid = table->roid;
     refer = new_refer(hoid, 0, 0);
     primary_meta_column = MetaTableFindPrimaryKey(table->meta_table);
 
@@ -154,9 +157,15 @@ static void LoopHeapTableAndReinsert(Table *table) {
     while ((tuple = HeapTableLookupTuple(oid, refer)) != NULL) {
         key = TupleFindValue(tuple, primary_meta_column);
         value = GenerateIndex(oid, tuple, refer);
+        ref_id = TupleGetRefId(tuple, table->meta_table);
     
-        /* Reinsert into btree and iterator refer. */
+        /* Reinsert into main index table. */
         BtreeInsert(oid, key, value);
+
+        /* Reinsert into rid index table. */
+        RidInsert(roid, ref_id, refer);
+
+        /* Iterate refer. */
         HeapTableIteratorRefer(refer);
 
         dfree(value);
@@ -180,7 +189,7 @@ static bool AlterAddNewColumnInner(Oid oid, MetaColumn *new_meta_column, ColumnP
     TableModifyForAppendColumn(table, new_meta_column, pos);
 
     /* Shrink the table. */
-    shrink_table(oid, table->meta_table);
+    ShrinkTable(table);
 
     /* Loop heap table and reinsert. */
     LoopHeapTableAndReinsert(table);
@@ -205,8 +214,8 @@ static bool AlterDropColumnInnder(Oid oid, DropColumnDef *drop_column_def) {
     TableModifyForDropColumn(table, meta_column, pos);
 
     /* Shrink the table. */
-    shrink_table(oid, table->meta_table);
-
+    ShrinkTable(table);
+    
     /* Loop heap table and reinsert. */
     LoopHeapTableAndReinsert(table);
 

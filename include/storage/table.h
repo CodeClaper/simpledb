@@ -43,7 +43,7 @@ Table *open_table(char *table_name);
 bool create_table(Oid oid, MetaTable *meta_table);
 
 /* Create a new table. */
-bool shrink_table(Oid oid, MetaTable *meta_table);
+bool ShrinkTable(Table *table);
 
 /*Delete an existed table. */
 bool drop_table(char *table_name);
