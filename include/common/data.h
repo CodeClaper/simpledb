@@ -688,14 +688,16 @@ typedef struct MetaIndex {
 /* Table */
 typedef struct Table {
     Oid oid;                                    /* Oid. */
+    Oid soid;                                   /* Sid table oid. */
+    Oid roid;                                   /* Rid table oid. */
     Oid hoid;                                   /* Heap table oid. */
     Oid stid;                                   /* String heap table oid. */
-    Oid roid;                                   /* Rid table oid. */
     uint32_t root_page_num;                     /* Root page num. */
     MetaTable *meta_table;                      /* Meta table info. */
     List *meta_indexs;                          /* Meta index info. */   
     Pid creator;                                /* The creator pid. */
     volatile uint32_t page_size;                /* Page size. */
+    volatile uint32_t sid_page_size;            /* SID page size. */
     volatile uint32_t rid_page_size;            /* RID page size. */
     uint32_t key_len;                           /* Primay key length. */
     uint32_t index_value_len;                   /* Index table value length. */

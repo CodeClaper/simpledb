@@ -1,5 +1,5 @@
-#include "data.h"
 #include <stdbool.h>
+#include "data.h"
 
 /* Rid create for system. */
 bool CreateRidTableInner(Oid roid);
@@ -8,4 +8,4 @@ bool CreateRidTableInner(Oid roid);
 bool CreateRidTable(Oid roid, Oid toid, char *table_name);
 
 /* Shrink rid table. */
-bool ShrnikRidTable(Oid roid);
+bool ShrinkRidTable(Oid roid);

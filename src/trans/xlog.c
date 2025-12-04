@@ -134,8 +134,7 @@ static void HeapDeleteXLog(Oid oid, Rid rid, TransEntry *transaction) {
 
     created_xid = TupleFindCreatedXid(tuple, table->meta_table);
     expired_xid = TupleFindExpiredXid(tuple, table->meta_table);
-    if (expired_xid != transaction->xid)
-        Assert(expired_xid == transaction->xid); 
+    Assert(expired_xid == transaction->xid); 
     AssertFalse(IsVisibleInner(created_xid, expired_xid, transaction));
     
     /* Use new tuple. */

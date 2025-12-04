@@ -1,4 +1,6 @@
 #include <stdbool.h>
+#include <stdint.h>
+#include "data.h"
 #include "refer.h"
 
 #define RID_KEY_LENGTH                      sizeof(Rid)
