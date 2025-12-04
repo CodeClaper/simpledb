@@ -303,6 +303,7 @@ static bool SatisfyColumnAndReferValueCompparison(ScalarExpNode *left, ScalarExp
     return false;
 }
 
+/* Column And ReferValue comparison. */
 static bool ColumnAndReferValueCompparison(SelectPlan *select_plan, List *meta_columns, 
                                            CompareType compare_type, ScalarExpNode *left, 
                                            ScalarExpNode *right, void *tuple) {
@@ -319,7 +320,7 @@ static bool ColumnAndReferValueCompparison(SelectPlan *select_plan, List *meta_c
         target = TupleFindValue(tuple, target_meta_column);
     }
 
-    return eval(compare_type, &source, &target, T_RID);
+    return eval(compare_type, source, target, T_RID);
 }
 
 /* Check if include leaf node satisfy comparison predicate. */
