@@ -5,76 +5,76 @@
 #include "const.h"
 #include "ltbase.h"
 
-/* Get rid internal node cell num. */
+/* Get sid internal node cell num. */
 uint32_t SidInternalNodeGetKeysNum(void *internal_node) {
     return *(uint32_t *)(internal_node + KEYS_NUM_OFFSET);
 }
 
-/* Set rid internal node cell num. */
+/* Set sid internal node cell num. */
 void SidInternalNodeSetKeysNum(void *internal_node, uint32_t keys_num) {
     *(uint32_t *)(internal_node + KEYS_NUM_OFFSET) = keys_num;
 }
 
-/* Set rid internal node cell num. */
+/* Set sid internal node cell num. */
 void SidInternalNodeIncreaseKeysNum(void *internal_node) {
     (*(uint32_t *)(internal_node + KEYS_NUM_OFFSET))++;
 }
 
-/* Get rid internal node next sibling. */
+/* Get sid internal node next sibling. */
 uint32_t SidInternalNodeGetNextSibling(void *internal_node) {
     return *(uint32_t *)(internal_node + INTERNAL_NODE_NEXT_SIBLING_OFFSET);
 }
 
-/* Set rid internal node next sibling. */
+/* Set sid internal node next sibling. */
 void SidInternalNodeSetNextSibling(void *internal_node, uint32_t sibling) {
     *(uint32_t *)(internal_node + INTERNAL_NODE_NEXT_SIBLING_OFFSET) = sibling;
 }
 
-/* Get rid internal node right key. */
+/* Get sid internal node right key. */
 Sid SidInternalNodeGetRightKey(void *internal_node) {
     return *(Sid *)(internal_node + RIGHT_CHILD_OFFSET + RIGHT_CHILD_SIZE);
 }
 
-/* Set rid internal node right key. */
+/* Set sid internal node right key. */
 void SidInternalNodeSetRightKey(void *internal_node, Sid key) {
     *(Sid *)(internal_node + RIGHT_CHILD_OFFSET + RIGHT_CHILD_SIZE) = key;
 }
 
-/* Get rid internal node right page num. */
+/* Get sid internal node right page num. */
 uint32_t SidInternalNodeGetRightNum(void *internal_node) { 
     return *(uint32_t *)(internal_node + RIGHT_CHILD_OFFSET);
 }
 
-/* Get rid internal node right page num. */
+/* Get sid internal node right page num. */
 void SidInternalNodeSetRightNum(void *internal_node, uint32_t right_num) { 
      *(uint32_t *)(internal_node + RIGHT_CHILD_OFFSET) = right_num;
 }
 
-/* Get rid internal node cell key. */
+/* Get sid internal node cell key. */
 Sid SidInternalNodeGetCellKey(void *internal_node, uint32_t index) {
     return *(Sid *)(internal_node + COMMON_NODE_HEADER_SIZE + KEYS_NUM_SIZE + INTERNAL_NODE_NEXT_SIBLING_SIZE + \
             RIGHT_CHILD_SIZE + SID_KEY_LENGTH + SID_INTERNAL_NODE_CELL_LENGTH * index + SID_INTERNAL_NODE_VALUE_LENGTH);
 }
 
-/* Set rid internal node cell key. */
+/* Set sid internal node cell key. */
 void SidInternalNodeSetCellKey(void *internal_node, uint32_t index, Sid key) {
     *(Sid *)(internal_node + COMMON_NODE_HEADER_SIZE + KEYS_NUM_SIZE + INTERNAL_NODE_NEXT_SIBLING_SIZE + \
             RIGHT_CHILD_SIZE + SID_KEY_LENGTH + SID_INTERNAL_NODE_CELL_LENGTH * index + SID_INTERNAL_NODE_VALUE_LENGTH) = key;
 }
 
-/* Get rid internal node cell value. */
+/* Get sid internal node cell value. */
 uint32_t SidInternalNodeGetCellValue(void *internal_node, uint32_t index) {
     return *(uint32_t *)(internal_node + COMMON_NODE_HEADER_SIZE + KEYS_NUM_SIZE + INTERNAL_NODE_NEXT_SIBLING_SIZE + \
                          RIGHT_CHILD_SIZE + SID_KEY_LENGTH + SID_INTERNAL_NODE_CELL_LENGTH * index);
 }
 
-/* Get rid internal node cell value. */
+/* Get sid internal node cell value. */
 void SidInternalNodeSetCellValue(void *internal_node, uint32_t index, uint32_t cell_value) {
     *(uint32_t *)(internal_node + COMMON_NODE_HEADER_SIZE + KEYS_NUM_SIZE + INTERNAL_NODE_NEXT_SIBLING_SIZE + RIGHT_CHILD_SIZE + \
                   SID_KEY_LENGTH + SID_INTERNAL_NODE_CELL_LENGTH * index) = cell_value;
 }
 
-/* Initialize rid internal node. */
+/* Initialize sid internal node. */
 void SidInternalNodeInitialize(void *internal_node, bool is_root) {
     SetNodeType(internal_node, INTERNAL_NODE);
     NodeSetRoot(internal_node, is_root);
@@ -110,52 +110,52 @@ uint32_t SidInternalNodeFindCellNum(void *internal_node, Sid key) {
     return min_index;
 }
 
-/* Get rid leaf node cell num. */
+/* Get sid leaf node cell num. */
 uint32_t SidLeafNodeGetCellNum(void *leaf_node) {
     return *(uint32_t *) (leaf_node + CELL_NUM_OFFSET);
 }
 
-/* Set rid leaf node cell num. */
+/* Set sid leaf node cell num. */
 void SidLeafNodeSetCellNum(void *leaf_node, uint32_t cell_num) {
     *(uint32_t *)(leaf_node + CELL_NUM_OFFSET) = cell_num;
 }
 
-/* Increase rid leaf node cell num. */
+/* Increase sid leaf node cell num. */
 void SidLeafNodeIncreaseCellNum(void *leaf_node) {
     (*(uint32_t *)(leaf_node + CELL_NUM_OFFSET))++;
 }
 
-/* Get rid leaf node sibling. */
+/* Get sid leaf node sibling. */
 uint32_t SidLeafNodeGetNextSibling(void *leaf_node) {
     return *(uint32_t *)(leaf_node + LEAF_NODE_NEXT_SIBLING_OFFSET);
 }
 
-/* Set rid leaf node sibling. */
+/* Set sid leaf node sibling. */
 void SidLeafNodeSetNextSibling(void *leaf_node, uint32_t sibling) {
     *(uint32_t *)(leaf_node + LEAF_NODE_NEXT_SIBLING_OFFSET) = sibling;
 }
 
-/* Get rid leaf node cell key. */
+/* Get sid leaf node cell key. */
 Sid SidLeafNodeGetCellKey(void *leaf_node, uint32_t index) {
     return *(Sid *)(leaf_node + LEAF_NODE_HEAD_SIZE + SID_LEAF_NODE_CELL_LENGTH * index + SID_LEAF_NODE_VALUE_LENGTH);
 }
 
-/* Set rid leaf node cell key. */
+/* Set sid leaf node cell key. */
 void SidLeafNodeSetCellKey(void *leaf_node, uint32_t index, Sid key) {
     *(Sid *)(leaf_node + LEAF_NODE_HEAD_SIZE + SID_LEAF_NODE_CELL_LENGTH * index + SID_LEAF_NODE_VALUE_LENGTH) = key;
 }
 
-/* Get rid leaf node cell value. */
+/* Get sid leaf node cell value. */
 Refer *SidLeafNodeGetCellValue(void *leaf_node, uint32_t index) {
     return (Refer *)(leaf_node + LEAF_NODE_HEAD_SIZE + SID_LEAF_NODE_CELL_LENGTH * index);
 }
 
-/* Set rid leaf node cell value. */
+/* Set sid leaf node cell value. */
 void SidLeafNodeSetCellValue(void *leaf_node, uint32_t index, Refer *refer) {
     memcpy(leaf_node + LEAF_NODE_HEAD_SIZE + SID_LEAF_NODE_CELL_LENGTH * index, refer, SID_LEAF_NODE_VALUE_LENGTH);
 }
 
-/* Initialize rid leaf node. */
+/* Initialize sid leaf node. */
 void SidLeafNodeInitialize(void *leaf_node, bool is_root) {
     SetNodeType(leaf_node, LEAF_NODE);
     NodeSetRoot(leaf_node, is_root);
