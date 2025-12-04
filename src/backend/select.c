@@ -1293,6 +1293,11 @@ static AtomNode *GenerateAtomNode(MetaColumn *meta_column, void *value) {
             atom_node->value.floatval = *(double *) value;  
             break;
         }
+        case T_REFER: {
+            atom_node->type = A_REFERENCE;
+            atom_node->value.referval = copy_refer_value(value);  
+            break;
+        }
         case T_RID:
         case T_OBJECT:
         case T_UNKNOWN:
