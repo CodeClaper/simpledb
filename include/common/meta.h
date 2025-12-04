@@ -11,7 +11,7 @@ static inline char *GET_FUNCTION_TYPE_NAME(FunctionType function_type) {
 }
 
 /* DataTypeNames */
-static char *DATA_TYPE_NAMES[] =  { "unknown", "bool",  "char", "varchar", "int", "long", "double", "float", "string", "date", "timestamp",  "reference", "object" };
+static char *DATA_TYPE_NAMES[] =  { "unknown", "bool",  "char", "varchar", "int", "long", "double", "float", "string", "date", "timestamp",  "rid", "referValue", "object" };
 static inline char *GET_DATA_TYPE_NAME(DataType data_type) {
     return DATA_TYPE_NAMES[data_type];
 }

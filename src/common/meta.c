@@ -78,7 +78,7 @@ DataType AtomTypeConvertDataType(AtomType atom_type) {
         case A_STRING:
             return T_VARCHAR;
         case A_REFERENCE:
-            return T_RID;
+            return T_REFER;
         default:
             UNEXPECTED_VALUE(atom_type);
     }
@@ -240,7 +240,6 @@ static void *AtomNodeFindValue(AtomNode *atom_node) {
             return atom_node->value.referval;
         default:
             UNEXPECTED_VALUE(atom_node->type);
-            return NULL;
     }
     return NULL;
 }

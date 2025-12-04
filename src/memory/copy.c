@@ -68,6 +68,8 @@ void *copy_value(void *value, DataType data_type) {
             memcpy(new_val, value, sizeof(Rid));
             return new_val;
         }
+        case T_REFER: 
+            return copy_refer_value(value);
         case T_OBJECT:
             return copy_row(value);
         default: {

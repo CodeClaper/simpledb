@@ -237,7 +237,8 @@ static KeyValue *QueryTupleValue(SelectPlan *select_plan, List *meta_columns, Sc
     }
 }
 
-static inline Rid *ReferValueFindRid(ReferValue *refer_value, MetaColumn *meta_column) {
+/* Find rid by refer value. */
+static Rid *ReferValueFindRid(ReferValue *refer_value, MetaColumn *meta_column) {
     switch (refer_value->type) {
         case DIRECTLY:
             panic("Logic error");
@@ -348,9 +349,11 @@ static bool LeafNodeForInPredicate(SelectPlan *select_plan, List *meta_columns, 
     ListCell *lc;
     foreach (lc, in_node->value_list) {
         target = QueryTupleValueItem((ValueItemNode *) lfirst(lc));
-        /* For referenct type, convert ReferValue to Refer value.  */
-        if (meta_column->column_type == T_RID && target->data_type == T_RID)
+        /* For referenct typew convert ReferValue to rid value.  */
+        if (meta_column->column_type == T_RID && target->data_type == T_REFER) {
             target->value = ReferValueFindRid(target->value, meta_column);
+            target->data_type = T_RID;
+        }
         if (KeyValueEval(O_EQ, value, target))
             return true;
     }

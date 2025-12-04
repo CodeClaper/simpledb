@@ -59,7 +59,7 @@
 typedef enum { O_EQ, O_NE, O_GT, O_GE, O_LT, O_LE } CompareType;
 
 /* DataType */
-typedef enum DataType {T_UNKNOWN, T_BOOL, T_CHAR, T_VARCHAR, T_INT, T_LONG, T_DOUBLE, T_FLOAT, T_STRING, T_DATE, T_TIMESTAMP, T_RID, T_OBJECT } DataType;
+typedef enum DataType {T_UNKNOWN, T_BOOL, T_CHAR, T_VARCHAR, T_INT, T_LONG, T_DOUBLE, T_FLOAT, T_STRING, T_DATE, T_TIMESTAMP, T_RID, T_REFER, T_OBJECT } DataType;
 
 /* FunctionType */
 typedef enum { F_COUNT, F_MAX, F_MIN, F_SUM, F_AVG } FunctionType;

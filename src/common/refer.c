@@ -106,8 +106,7 @@ Rid FetchRefIdUnderCondition(Oid oid, SearchConditionNode *condition) {
 
     size = QueueSize(select_result->tuples);
     if (size > 1) 
-        db_log(ERROR, 
-               "Expected to one reference, but found %d, maybe you can use 'in' as for array.", 
+        db_log(ERROR, "Expected to one reference, but found %d.", 
                select_result->row_size);
     else if (size == 1) {
         /* Take the first row as refered. Maybe row size should be one, 
