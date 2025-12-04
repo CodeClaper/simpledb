@@ -19,6 +19,32 @@ typedef uint64_t Oid;
 #define ZERO_OID(oid) (oid == OID_ZERO)
 #define NON_ZERO_OID(oid) (oid != OID_ZERO)
 
+/* Define Rid. 
+ * Rid is the global relative identifier for tuple.
+ * */
+typedef int64_t Rid;
+
+/* RID_ZERO. 
+ * RID_ZERO means the Rid not found.
+ * */
+#define RID_ZERO 0
+
+#define ZERO_RID(rid) (rid == RID_ZERO)
+#define NON_ZERO_RID(rid) (rid != RID_ZERO)
+
+/* Define Sid. 
+ * Sid is the global unique identifier for tuple.
+ * */
+typedef int64_t Sid;
+
+/* SID_ZERO. 
+ * SID_ZERO means the Sid not found.
+ * */
+#define SID_ZERO 0
+
+#define ZERO_SID(sid) (sid == SID_ZERO)
+#define NON_ZERO_SID(sid) (sid != SID_ZERO)
+
 /* Max object relname length. */
 #define MAX_RELNAME_LEN 30
 
@@ -31,6 +57,7 @@ typedef enum ObjectType {
     OVIEW,
     OINDEX,
     OSCHEMA,
+    OSID_TABLE,
     ORID_TABLE,
     OHEAP_TABLE,
     OSTRING_HEAP_TABLE
@@ -45,6 +72,7 @@ static char *ObjectTypeNameList[] = {
     "VIEW",
     "INDEX",
     "SCHEMA",
+    "SID_TABLE",
     "RID_TABLE",
     "HEAP_TABLE",
     "STRING_HEAP_TABLE"

@@ -268,9 +268,10 @@ Table *copy_table(Table *table) {
 
     Table *duplica = instance(Table);
     duplica->oid = table->oid;
+    duplica->roid = table->roid;
+    duplica->soid = table->soid;
     duplica->hoid = table->hoid;
     duplica->stid = table->stid;
-    duplica->roid = table->roid;
     duplica->root_page_num = table->root_page_num;
     duplica->meta_table = copy_meta_table(table->meta_table);
     duplica->meta_indexs = list_copy_deep(table->meta_indexs);

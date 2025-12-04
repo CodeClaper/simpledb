@@ -33,7 +33,7 @@
 #include "free.h"
 #include "ltsearch.h"
 #include "ltmodify.h"
-#include "ridsearch.h"
+#include "sidsearch.h"
 #include "select.h"
 #include "insert.h"
 #include "utils.h"
@@ -48,18 +48,18 @@
 static XLogEntry *XLHeader = NULL;
 
 /* Genrate new XLogEntry. */
-static XLogEntry *NewXLogEntry(Xid xid, Oid oid, Rid rid, XLogHeapType type) {
+static XLogEntry *NewXLogEntry(Xid xid, Oid oid, Sid sid, XLogHeapType type) {
     XLogEntry *entry = instance(XLogEntry);
     entry->type = type;
     entry->xid = xid;
     entry->oid = oid;
-    entry->rid = rid;
+    entry->sid = sid;
     entry->next = NULL;
     return entry;
 }
 
 /* Record Xlog. */
-void RecordXlog(Oid oid, Rid rid, XLogHeapType type) {
+void RecordXlog(Oid oid, Sid sid, XLogHeapType type) {
     /* First, find current transaction and it should exist.*/
     TransEntry *trans = FindTransaction();
     Assert(trans != NULL);
@@ -72,7 +72,7 @@ void RecordXlog(Oid oid, Rid rid, XLogHeapType type) {
     MemoryContext oldcontext = CURRENT_MEMORY_CONTEXT;
     MemoryContextSwitchTo(CACHE_MEMORY_CONTEXT);
 
-    XLogEntry *entry = NewXLogEntry(trans->xid, oid, rid, type);
+    XLogEntry *entry = NewXLogEntry(trans->xid, oid, sid, type);
     entry->next = XLHeader;
     XLHeader = entry;
     
@@ -96,7 +96,7 @@ void CommitXlog() {
 
 
 /* Reverse insert operation. */
-static void HeapInsertXLog(Oid oid, Rid rid, TransEntry *transaction) {
+static void HeapInsertXLog(Oid oid, Sid sid, TransEntry *transaction) {
     Table *table;
     void *key, *tuple;
     Refer *refer;
@@ -104,7 +104,7 @@ static void HeapInsertXLog(Oid oid, Rid rid, TransEntry *transaction) {
     table = open_table_inner(oid);
 
     /* Get btree key and value. */
-    refer = RidSearch(table->roid, rid);
+    refer = SidSearch(table->soid, sid);
     tuple = HeapTableLookupTuple(oid, refer);
     key = TupleFindKey(tuple, table);
 
@@ -121,14 +121,14 @@ static void HeapInsertXLog(Oid oid, Rid rid, TransEntry *transaction) {
  * rather than re-insert the row to keep the principle that visible row always 
  * lies in the forefront of the same key cells.
  * */
-static void HeapDeleteXLog(Oid oid, Rid rid, TransEntry *transaction) {
+static void HeapDeleteXLog(Oid oid, Sid sid, TransEntry *transaction) {
     Table *table;
     Refer *refer;
     void *key, *tuple, *new_tuple;
     Xid created_xid, expired_xid;
 
     table = open_table_inner(oid);
-    refer = RidSearch(table->roid, rid);
+    refer = SidSearch(table->soid, sid);
     tuple = HeapTableLookupTuple(oid, refer);
     key = TupleFindKey(tuple, table);
 
@@ -159,16 +159,16 @@ void ExecuteRollback() {
     for (XLogEntry *current = XLHeader; current != NULL; current = current->next) {
         switch (current->type) {
             case HEAP_INSERT:
-                HeapInsertXLog(current->oid, current->rid, trans);
+                HeapInsertXLog(current->oid, current->sid, trans);
                 break;
             case HEAP_DELETE:
-                HeapDeleteXLog(current->oid, current->rid, trans);
+                HeapDeleteXLog(current->oid, current->sid, trans);
                 break;
             case HEAP_UPDATE_INSERT:
-                HeapInsertXLog(current->oid, current->rid, trans);
+                HeapInsertXLog(current->oid, current->sid, trans);
                 break;
             case HEAP_UPDATE_DELETE:
-                HeapDeleteXLog(current->oid, current->rid, trans);
+                HeapDeleteXLog(current->oid, current->sid, trans);
                 break;
             default:
                 db_log(PANIC, "Unknown XLogHeapType.");

@@ -71,12 +71,12 @@ static void DeleteRowForUpdate(Oid oid, void *key) {
     Table *table;
     Xid current_xid;
     void *value;
-    Rid ref_id;
+    Sid sid;
 
     table = open_table_inner(oid);
     current_xid = GetCurrentXid();
     value = BtreeSearchValue(oid, key);
-    ref_id = IndexGetRefId(value);
+    sid = IndexGetSysId(value);
 
     /* Make heap expired. */
     HeapTableUpdateRowExpiredXid(table, (Refer *)value, current_xid);
@@ -85,7 +85,7 @@ static void DeleteRowForUpdate(Oid oid, void *key) {
     BtreeModifyExpiredXid(oid, key, current_xid);
 
     /* Record xlog. */
-    RecordXlog(oid, ref_id, HEAP_UPDATE_DELETE);
+    RecordXlog(oid, sid, HEAP_UPDATE_DELETE);
 }
 
 /* Insert row for update.
@@ -97,22 +97,22 @@ static void DeleteRowForUpdate(Oid oid, void *key) {
 static void ReinsertRowForUpdate(Oid oid, void *key, void *tuple) {
     Table *table;
     Xid created_xid, expired_xid;
-    Rid ref_id;
+    Sid sid;
 
     table = open_table_inner(oid);
     created_xid = GetCurrentXid();
     expired_xid = 0;
-    ref_id = FindNextOid();
+    sid = FindNextOid();
 
     TupleSetCreatedXid(tuple, table->meta_table, created_xid);
     TupleSetExpiredXid(tuple, table->meta_table, expired_xid);
-    TupleSetRefId(tuple, table->meta_table, ref_id);
+    TupleSetSysId(tuple, table->meta_table, sid);
     
     /* Reinsert. */
     InsertForTuple(oid, key, tuple);
 
     /* Record xlog for insert. */
-    RecordXlog(oid, ref_id, HEAP_UPDATE_INSERT);
+    RecordXlog(oid, sid, HEAP_UPDATE_INSERT);
 }
 
 

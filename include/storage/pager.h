@@ -10,5 +10,8 @@ uint32_t GetNextUnusedPageNum(Table *table);
 /* Get next rid page num. */
 uint32_t GetNextUnusedRidPageNum(Table *table);
 
+/* Get next sid page num. */
+uint32_t GetNextUnusedSidPageNum(Table *table);
+
 /* Reset Page. */
 void ResetPage(Oid oid, uint32_t page_num);

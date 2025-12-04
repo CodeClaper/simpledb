@@ -24,6 +24,7 @@
 #include "tuple.h"
 #include "sysstate.h"
 #include "heaptable.h"
+#include "sidcreate.h"
 #include "ridcreate.h"
 #include "optimizer.h"
 
@@ -106,6 +107,7 @@ void InitSysTable() {
     MetaTable *sysMetaTable = CreateSysMetaTable();
     if (!create_table(SYS_ROOT_OID, sysMetaTable) || 
         !CreateHeapTableInner(SYS_ROOT_HEAP_OID) ||
+        !CreateSidTableInner(SYS_ROOT_SID_OID) ||
         !CreateRidTableInner(SYS_ROOT_RID_OID)
     ) panic("Create system table fail");
 }
@@ -355,7 +357,12 @@ Object OidFindObject(Oid oid) {
         entity.toid = SYS_ROOT_OID;
         memcpy(entity.relname, SYS_TABLE_NAME, strlen(SYS_TABLE_NAME));
         entity.reltype = ORID_TABLE;
-    } else
+    } else if (IS_SYS_ROOT_SID(oid)) {
+        entity.oid = oid;
+        entity.toid = SYS_ROOT_OID;
+        memcpy(entity.relname, SYS_TABLE_NAME, strlen(SYS_TABLE_NAME));
+        entity.reltype = OSID_TABLE;
+    }  else
         entity = OidFindObjectInner(oid);
    
     return entity;
@@ -481,6 +488,16 @@ Oid ToidFindStoid(Oid toid) {
 Oid ToidFindRoid(Oid toid) {
     if (toid == SYS_ROOT_OID) return SYS_ROOT_RID_OID;
     return ToidAndRelTypeFindOid(toid, ORID_TABLE);
+}
+
+/* Find sid table siod by toid.
+ * ---------------------------
+ * Return the oid of the found object.
+ * Return OID_ZERO if missing.
+ * */
+Oid ToidFindSoid(Oid toid) {
+    if (toid == SYS_ROOT_OID) return SYS_ROOT_SID_OID;
+    return ToidAndRelTypeFindOid(toid, OSID_TABLE);
 }
 
 /* Find oid of heap table by table name. 

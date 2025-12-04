@@ -55,6 +55,15 @@ uint32_t GetNextUnusedRidPageNum(Table *table) {
     return page_num;
 }
 
+/* Get next sid page num. */
+uint32_t GetNextUnusedSidPageNum(Table *table) {
+    uint32_t page_num = table->sid_page_size;
+    while (!__sync_bool_compare_and_swap(&table->sid_page_size, page_num, page_num + 1)) {
+        page_num = table->sid_page_size;
+    }
+    return page_num;
+}
+
 /* Reset Page. */
 void ResetPage(Oid oid, uint32_t page_num) {
     Buffer buffer;

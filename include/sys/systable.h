@@ -5,9 +5,10 @@
 #ifndef SYS_TABLE_H
 #define SYS_TABLE_H
 
-#define SYS_ROOT_OID 1235
-#define SYS_ROOT_HEAP_OID 12356
-#define SYS_ROOT_RID_OID 123567
+#define SYS_ROOT_OID        12356
+#define SYS_ROOT_HEAP_OID   12357
+#define SYS_ROOT_RID_OID    12358
+#define SYS_ROOT_SID_OID    12359
 #define SYS_TABLE_NAME "sys_table"
 #define SYS_TABLE_OID_NAME "oid"
 #define SYS_TABLE_TOID_NAME "toid"
@@ -25,6 +26,7 @@ extern MetaColumn SYS_RESERVED_COLUMNS[];
 #define SYS_RESERVED_COLUMNS_LENGTH 4
 
 #define IS_SYS_ROOT(oid) (oid == SYS_ROOT_OID)
+#define IS_SYS_ROOT_SID(oid) (oid == SYS_ROOT_SID_OID)
 #define IS_SYS_ROOT_RID(oid) (oid == SYS_ROOT_RID_OID)
 #define IS_SYS_ROOT_HEAP(oid) (oid == SYS_ROOT_HEAP_OID)
 
@@ -57,6 +59,9 @@ Oid ToidFindStoid(Oid toid);
 
 /* Find rid table riod by toid. */
 Oid ToidFindRoid(Oid toid);
+
+/* Find sid table siod by toid. */
+Oid ToidFindSoid(Oid toid);
 
 /* Find heap table hiod by toid. */
 Oid ToidFindHoid(Oid toid);

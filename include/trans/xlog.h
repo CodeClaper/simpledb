@@ -1,5 +1,4 @@
 #include "data.h"
-#include "refer.h"
 
 #ifndef XLOG_H
 #define XLOG_H
@@ -16,13 +15,13 @@ typedef enum XLogHeapType {
 typedef struct XLogEntry {
     Xid xid;                    /* Transaction Id */
     Oid oid;                    /* Oid. */
-    Rid rid;                    /* Rid. */
+    Sid sid;                    /* Sid. */
     XLogHeapType type;          /* XLog Head type. */
     struct XLogEntry *next;     /* Next XLogEntry */
 } XLogEntry;
 
 /* Record Xlog. */
-void RecordXlog(Oid oid, Rid rid, XLogHeapType type);
+void RecordXlog(Oid oid, Sid sid, XLogHeapType type);
 
 /* Commit Xlog. */
 void CommitXlog();

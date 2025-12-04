@@ -32,6 +32,7 @@
 #include "fdesc.h"
 #include "compres.h"
 #include "heaptable.h"
+#include "sidcreate.h"
 #include "ridcreate.h"
 
 /* Get table file path. */
@@ -200,9 +201,10 @@ static bool ShinkMainTable(Oid oid, MetaTable *meta_table) {
 bool ShrinkTable(Table *table) {
     uint32_t page_num;
     for (page_num = ROOT_PAGE_NUM;  page_num < table->page_size; page_num++) ResetPage(table->oid, page_num);
+    for (page_num = ROOT_PAGE_NUM;  page_num < table->sid_page_size; page_num++) ResetPage(table->soid, page_num);
     for (page_num = ROOT_PAGE_NUM;  page_num < table->rid_page_size; page_num++) ResetPage(table->roid, page_num);
-    table->page_size = 1; table->rid_page_size = 1;
-    return ShinkMainTable(table->oid, table->meta_table) && ShrnikRidTable(table->roid);
+    table->page_size = 1; table->sid_page_size = 1; table->rid_page_size = 1;
+    return ShinkMainTable(table->oid, table->meta_table) && ShrinkSidTable(table->soid) && ShrinkRidTable(table->roid);
 }
 
 /* Load primary meta index info. */
@@ -315,13 +317,15 @@ Table *load_table(Oid oid) {
     Table *table = instance(Table);
     table->oid = oid;
     table->hoid = ToidFindHoid(oid);
-    table->stid = ToidFindStoid(oid);
+    table->soid = ToidFindSoid(oid);
     table->roid = ToidFindRoid(oid);
+    table->stid = ToidFindStoid(oid);
     table->root_page_num = ROOT_PAGE_NUM; 
     table->creator = getpid();
     table->meta_table = LoadMetaTable(oid);
     table->meta_indexs = LoadMetaIndex(oid, table);
     table->page_size = GetPageSize(oid);
+    table->sid_page_size = GetPageSize(table->soid);
     table->rid_page_size = GetPageSize(table->roid);
     table->key_len = TableCalcPrimaryKeyLength(table);
     table->index_value_len = TableCalcIndexLength(table);

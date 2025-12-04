@@ -109,17 +109,17 @@ void TupleSetExpiredXid(void *tuple, MetaTable *meta_table, Xid expired_xid) {
 }
 
 /* Get sys id in tuple. */
-int64_t TupleGetSysId(void *tuple, MetaTable *meta_table) {
+Sid TupleGetSysId(void *tuple, MetaTable *meta_table) {
     MetaColumn *sys_id_meta_column = NameFindAllMetaColumn(meta_table, SYS_RESERVED_ID_COLUMN_NAME);
     Assert(sys_id_meta_column != NULL);
     return *(Xid *)TupleFindValue(tuple, sys_id_meta_column);
 }
 
 /* Set sys id in tuple. */
-void TupleSetSysId(void *tuple, MetaTable *meta_table, int64_t sys_id) {
+void TupleSetSysId(void *tuple, MetaTable *meta_table, Sid sid) {
     MetaColumn *sys_id_meta_column = NameFindAllMetaColumn(meta_table, SYS_RESERVED_ID_COLUMN_NAME);
     Assert(sys_id_meta_column != NULL);
-    TupleSetValue(tuple, sys_id_meta_column, &sys_id);
+    TupleSetValue(tuple, sys_id_meta_column, &sid);
 }
 
 /* Get ref id in tuple. */
@@ -130,10 +130,10 @@ Rid TupleGetRefId(void *tuple, MetaTable *meta_table) {
 }
 
 /* Set ref id in tuple. */
-void TupleSetRefId(void *tuple, MetaTable *meta_table, int64_t sys_id) {
+void TupleSetRefId(void *tuple, MetaTable *meta_table, Rid rid) {
     MetaColumn *ref_id_meta_column = NameFindAllMetaColumn(meta_table, SYS_REF_ID_COLUMN_NAME);
     Assert(ref_id_meta_column != NULL);
-    TupleSetValue(tuple, ref_id_meta_column, &sys_id);
+    TupleSetValue(tuple, ref_id_meta_column, &rid);
 }
 
 /* Fetch tuple via rid. */

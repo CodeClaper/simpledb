@@ -46,6 +46,7 @@
 #include "strheaptable.h"
 #include "heaptable.h"
 #include "ltinsert.h"
+#include "sidinsert.h"
 #include "ridinsert.h"
 #include "index.h"
 #include "bufpool.h"
@@ -351,14 +352,15 @@ retry:
  * As follow, we will do those:
  * (1) Insert tuple to heap table.
  * (2) Insert index to main index table.
- * (3) Insert index to rid index table.
+ * (3) Insert index to sid index table.
+ * (4) Insert index to rid index table.
  * (4) Insert index to other index table.
  * */
 Rid InsertForTuple(Oid oid, void *key, void *tuple) {
     Table *table;
     Refer *refer;
     void *value;
-    Rid ref_id;
+    Rid rid; Sid sid;
 
     table = open_table_inner(oid);
 
@@ -369,9 +371,13 @@ Rid InsertForTuple(Oid oid, void *key, void *tuple) {
     value = GenerateIndex(oid, tuple, refer);
     BtreeInsert(oid, key, value);
 
+    /* Insert index to sid index table. */
+    sid = TupleGetSysId(tuple, table->meta_table);
+    SidInsert(table->soid, sid, refer);
+
     /* Insert index to rid index table. */
-    ref_id = TupleGetRefId(tuple, table->meta_table);
-    RidInsert(table->roid, ref_id, refer);
+    rid = TupleGetRefId(tuple, table->meta_table);
+    RidInsert(table->roid, rid, refer);
 
     /* Insert index to other index table. */
     ListCell *lc;
@@ -382,7 +388,7 @@ Rid InsertForTuple(Oid oid, void *key, void *tuple) {
         IndexInsert(meta_index, tuple, refer);
     }
 
-    return ref_id;
+    return rid;
 }
 
 
@@ -395,7 +401,7 @@ Rid InsertForRow(Table *table, Row *row) {
     DataType ptype;
     void *key, *tuple;
     Refer *preRefer;
-    Rid ref_id;
+    Rid rid; Sid sid;
 
     oid = GET_TABLE_OID(table);
     ptype = MetaTableFindPrimaryDataType(table->meta_table);
@@ -415,12 +421,13 @@ Rid InsertForRow(Table *table, Row *row) {
     }
 
     tuple = RowSeriableTuple(row, table);
-    ref_id = InsertForTuple(oid, key, tuple);
+    rid = InsertForTuple(oid, key, tuple);
+    sid = TupleGetSysId(tuple, table->meta_table);
 
     /* Record xlog for insert operation. */
-    RecordXlog(oid, ref_id, HEAP_INSERT);
+    RecordXlog(oid, sid, HEAP_INSERT);
 
-    return ref_id;    
+    return rid;    
 }
 
 /* Insert for values case. 

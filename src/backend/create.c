@@ -32,6 +32,7 @@
 #include "tablecache.h"
 #include "heaptable.h"
 #include "systable.h"
+#include "sidcreate.h"
 #include "ridcreate.h"
 
 /* Calculate meta column length. 
@@ -291,10 +292,11 @@ static MetaIndex *GenerateMetaIndexForCreateIndex(Oid oid, Table *table,  Create
 }
 
 /* Save to table cache. */
-static bool PrepareSaveTableCache(Oid oid, Oid roid, Oid hid, Oid stid, MetaTable *meta_table) {
+static bool PrepareSaveTableCache(Oid oid, Oid soid, Oid roid, Oid hid, Oid stid, MetaTable *meta_table) {
     /* Combine table. */
     Table *table = instance(Table);
     table->oid = oid;
+    table->soid = soid;
     table->roid = roid;
     table->hoid = hid;
     table->stid = stid;
@@ -346,6 +348,7 @@ static void AfterReleaseTable(Oid oid) {
 /* Execute create table statement. */
 void ExecuteCreateTableStatement(CreateTableNode *create_table_node, DBResult *result) {
     Oid toid = FindNextOid();
+    Oid soid = FindNextOid();
     Oid roid = FindNextOid();
     Oid hoid = FindNextOid();
     Oid stoid = FindNextOid();
@@ -363,18 +366,20 @@ void ExecuteCreateTableStatement(CreateTableNode *create_table_node, DBResult *r
      * (1) Create table.
      * (2) Save table object.
      * (3) Create rid table. 
-     * (3) Create heap table.
-     * (4) Create string heap table.
+     * (4) Create sid table. 
+     * (5) Create heap table.
+     * (6) Create string heap table.
      * Besides the normal table itself, we alse create its string heap table.
      * Although the table maybe not have any string column, just in case.
      * */
     if (
         create_table(toid, meta_table) && 
         SaveTableObject(toid, GET_METATABLE_NAME(meta_table)) &&
+        CreateSidTable(soid, toid, GET_METATABLE_NAME(meta_table)) &&
         CreateRidTable(roid, toid, GET_METATABLE_NAME(meta_table)) &&
         CreateHeapTable(hoid, toid, meta_table->table_name) &&
         CreateStrHeapTable(stoid, toid, meta_table->table_name) &&
-        PrepareSaveTableCache(toid, roid, hoid, stoid, meta_table)
+        PrepareSaveTableCache(toid, soid, roid, hoid, stoid, meta_table)
     ) {
         result->success = true;
         result->rows = 0;

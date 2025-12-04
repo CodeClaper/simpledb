@@ -1,6 +1,6 @@
 
 includedir = ../../include
-headerdirs = $(includedir)/trans $(includedir)/common $(includedir)/memory $(includedir)/sys $(includedir)/ltree $(includedir)/rid\
+headerdirs = $(includedir)/trans $(includedir)/common $(includedir)/memory $(includedir)/sys $(includedir)/ltree $(includedir)/sid \
 			 $(includedir)/utils $(includedir)/storage $(includedir)/backend $(includedir)/lock $(includedir)/heap
 
 headers := $(shell find $(headerdirs) -name "*.h")
