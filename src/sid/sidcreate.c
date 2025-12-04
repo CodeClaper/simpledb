@@ -3,23 +3,23 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
-#include "ridcreate.h"
-#include "ridbase.h"
+#include "sidcreate.h"
+#include "sidbase.h"
 #include "systable.h"
 #include "table.h"
 #include "mmgr.h"
 #include "log.h"
 #include "bufmgr.h"
 
-/* Rid create. */
-bool CreateRidTableInner(Oid roid) {
+/* Sid create. */
+bool CreateSidTableInner(Oid soid) {
     char *file_path;
     int descr;
     void *root_node;
 
-    file_path = table_file_path(roid);
+    file_path = table_file_path(soid);
     if (table_file_exist(file_path)) {
-        db_log(ERROR, "Rid file '%ld' already exists.", roid);
+        db_log(ERROR, "Sid file '%ld' already exists.", soid);
         return false;
     }
 
@@ -31,7 +31,7 @@ bool CreateRidTableInner(Oid roid) {
 
     root_node = dalloc(PAGE_SIZE);
 
-    RidLeafNodeInitialize(root_node, true);
+    SidLeafNodeInitialize(root_node, true);
     
     /* Flush to disk. */
     lseek(descr, 0, SEEK_SET);
@@ -51,23 +51,23 @@ bool CreateRidTableInner(Oid roid) {
     return true;
 }
 
-/* Rid create. */
-bool CreateRidTable(Oid roid, Oid toid, char *table_name) {
-    Object entity = GenerateObjectInner(roid, toid, table_name, ORID_TABLE);
-    return CreateRidTableInner(roid) && SaveObject(entity);
+/* Sid create. */
+bool CreateSidTable(Oid soid, Oid toid, char *table_name) {
+    Object entity = GenerateObjectInner(soid, toid, table_name, OSID_TABLE);
+    return CreateSidTableInner(soid) && SaveObject(entity);
 }
 
 
-/* Shrink rid table. */
-bool ShrinkRidTable(Oid roid) {
+/* Shrink Sid table. */
+bool ShrinkSidTable(Oid soid) {
     Buffer root_buffer;
     void *root_node;
 
-    root_buffer = ReadBuffer(roid, ROOT_PAGE_NUM);
+    root_buffer = ReadBuffer(soid, ROOT_PAGE_NUM);
     LockBuffer(root_buffer, RW_WRITER);
     root_node = GetBufferPage(root_buffer);
 
-    RidLeafNodeInitialize(root_node, true);
+    SidLeafNodeInitialize(root_node, true);
 
     /* Unlock and release buffer. */
     MakeBufferDirty(root_buffer);
