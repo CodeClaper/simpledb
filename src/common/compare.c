@@ -389,7 +389,7 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
         case T_RID: {
             switch (right->data_type) {
                 case T_RID:
-                    return ReferIsEqual(left->value, right->value);
+                    return *(Rid *)left->value == *(Rid *)right->value;
                 default:
                     goto ERR_TYPE;
             }
