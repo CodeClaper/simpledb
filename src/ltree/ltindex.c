@@ -78,13 +78,13 @@ void IndexSetExpiredXid(void *index, Xid expired_xid) {
 }
 
 /* Get index sys id. */
-int64_t IndexGetSysId(void *index) {
-    return *(int64_t *) (index + REFER_SIZE + LEAF_NODE_CELL_NULL_FLAG_SIZE);
+Sid IndexGetSysId(void *index) {
+    return *(Sid *) (index + REFER_SIZE + LEAF_NODE_CELL_NULL_FLAG_SIZE);
 }
 
 /* Get index sys id. */
-void IndexSetSysId(void *index, int64_t sys_id) {
-    *(int64_t *) (index + REFER_SIZE + LEAF_NODE_CELL_NULL_FLAG_SIZE) = sys_id;
+void IndexSetSysId(void *index, Sid sid) {
+    *(Sid *) (index + REFER_SIZE + LEAF_NODE_CELL_NULL_FLAG_SIZE) = sid;
 }
 
 /* Get index ref id. */

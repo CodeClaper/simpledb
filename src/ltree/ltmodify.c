@@ -1,7 +1,8 @@
 #include <string.h>
 #include "ltmodify.h"
-#include "const.h"
 #include "ltbase.h"
+#include "ltindex.h"
+#include "const.h"
 #include "bufmgr.h"
 #include "refer.h"
 #include "table.h"
@@ -201,7 +202,7 @@ static void BtreeModifyExpiredXidForLeafNodeCell(Oid oid, void *key, Xid expired
 
     refer->cell_num = target_index;
     value = LeafNodeGetCellValue(leaf_node, table->key_len, table->index_value_len, table->heap_value_len, target_index);
-    *(Xid *) (value + REFER_SIZE + (LEAF_NODE_CELL_NULL_FLAG_SIZE + sizeof(int64_t)) * 3 + LEAF_NODE_CELL_NULL_FLAG_SIZE) = expired_xid;
+    IndexSetExpiredXid(value, expired_xid);
 
     MakeBufferDirty(buffer);
     UnlockBuffer(buffer);

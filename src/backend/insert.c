@@ -90,15 +90,15 @@ static SelectNode *QuerySpceToSelection(QuerySpecNode *query_spec) {
 /* Generate new sys_id column.*/
 static KeyValue *NewKeyValueForSysId(Oid tid) {
     /* Automatically insert sys_id using current sys time. */
-    int64_t sys_id = FindNextOid();
-    return new_key_value(SYS_RESERVED_ID_COLUMN_NAME, &sys_id, T_LONG, tid, OID_ZERO);
+    Sid sid = FindNextOid();
+    return new_key_value(SYS_RESERVED_ID_COLUMN_NAME, &sid, T_LONG, tid, OID_ZERO);
 }
 
 /* Generate new ref_id column. */
 static KeyValue *NewKeyValueForRefId(Oid tid) {
     /* Automatically insert sys_id using current sys time. */
-    int64_t ref_id = FindNextOid();
-    return new_key_value(SYS_REF_ID_COLUMN_NAME, &ref_id, T_LONG, tid, OID_ZERO);
+    Rid rid = FindNextOid();
+    return new_key_value(SYS_REF_ID_COLUMN_NAME, &rid, T_LONG, tid, OID_ZERO);
 }
 
 /* Generate new created_xid column.*/
