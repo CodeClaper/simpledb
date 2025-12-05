@@ -47,6 +47,8 @@ void delete_row(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE t
         key = TupleFindKey(tuple, table);
         index = BtreeSearchValue(oid, key);
 
+        Assert(IndexGetSysId(index) == sid);
+
         /* Delete from index table. */
         BtreeModifyExpiredXid(oid, key, current_xid);
 

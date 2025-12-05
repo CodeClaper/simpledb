@@ -47,6 +47,9 @@
  */
 static XLogEntry *XLHeader = NULL;
 
+static int CountXlog(Oid oid, Sid sid);
+static int PosXlog(Oid oid, Sid sid);
+
 /* Genrate new XLogEntry. */
 static XLogEntry *NewXLogEntry(Xid xid, Oid oid, Sid sid, XLogHeapType type) {
     XLogEntry *entry = instance(XLogEntry);
@@ -65,8 +68,10 @@ void RecordXlog(Oid oid, Sid sid, XLogHeapType type) {
     Assert(trans != NULL);
 
     /* Auto-commit transaction not need to record. */
-    if (!conf->auto_rollback && trans->auto_commit)
-        return;
+    if (!conf->auto_rollback && trans->auto_commit) return;
+    
+    /* Just keep unique. */
+    Assert(CountXlog(oid, sid) == 0);
 
     /* Switch to CACHE_MEMORY_CONTEXT. */
     MemoryContext oldcontext = CURRENT_MEMORY_CONTEXT;
@@ -134,7 +139,8 @@ static void HeapDeleteXLog(Oid oid, Sid sid, TransEntry *transaction) {
 
     created_xid = TupleFindCreatedXid(tuple, table->meta_table);
     expired_xid = TupleFindExpiredXid(tuple, table->meta_table);
-    Assert(expired_xid == transaction->xid); 
+    if (expired_xid != transaction->xid)
+        Assert(expired_xid == transaction->xid); 
     AssertFalse(IsVisibleInner(created_xid, expired_xid, transaction));
     
     /* Use new tuple. */
@@ -174,4 +180,23 @@ void ExecuteRollback() {
                 db_log(PANIC, "Unknown XLogHeapType.");
         }        
     }
+}
+
+static int CountXlog(Oid oid, Sid sid) {
+    if (XLHeader == NULL) return 0;
+    int ret = 0;
+    for (XLogEntry *current = XLHeader; current != NULL; current = current->next) {
+        if (current->oid == oid && current->sid == sid) ret++;
+    }
+    return ret;
+}
+
+static int PosXlog(Oid oid, Sid sid) {
+    if (XLHeader == NULL) return 0;
+    int ret = 0;
+    for (XLogEntry *current = XLHeader; current != NULL; current = current->next) {
+        if (current->oid == oid && current->sid == sid) break;
+        ret++;
+    }
+    return ret;
 }

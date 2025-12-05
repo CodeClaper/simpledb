@@ -30,6 +30,7 @@
 #include "log.h"
 #include "tablereg.h"
 #include "systable.h"
+#include "sidinsert.h"
 #include "ridinsert.h"
 #include "heaptable.h"
 #include "ltinsert.h"
@@ -141,14 +142,15 @@ static void TableModifyForDropColumn(Table *table, MetaColumn *meta_column, int 
 
 /* Loop heap table and reinsert into btree. */
 static void LoopHeapTableAndReinsert(Table *table) {
-    Oid oid, hoid, roid;
+    Oid oid, hoid, soid, roid;
     Refer *refer;
     MetaColumn *primary_meta_column;
     void *tuple, *key, *value;
-    Rid ref_id;
+    Rid rid; Sid sid;
 
     oid = table->oid;
     hoid = table->hoid;
+    soid = table->soid;
     roid = table->roid;
     refer = new_refer(hoid, 0, 0);
     primary_meta_column = MetaTableFindPrimaryKey(table->meta_table);
@@ -157,13 +159,17 @@ static void LoopHeapTableAndReinsert(Table *table) {
     while ((tuple = HeapTableLookupTuple(oid, refer)) != NULL) {
         key = TupleFindValue(tuple, primary_meta_column);
         value = GenerateIndex(oid, tuple, refer);
-        ref_id = TupleGetRefId(tuple, table->meta_table);
+        sid = TupleGetSysId(tuple, table->meta_table);
+        rid = TupleGetRefId(tuple, table->meta_table);
     
         /* Reinsert into main index table. */
         BtreeInsert(oid, key, value);
 
+        /* Reinsert into sid index table. */
+        SidInsert(soid, sid, refer);
+
         /* Reinsert into rid index table. */
-        RidInsert(roid, ref_id, refer);
+        RidInsert(roid, rid, refer);
 
         /* Iterate refer. */
         HeapTableIteratorRefer(refer);
