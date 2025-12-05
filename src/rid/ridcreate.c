@@ -10,6 +10,7 @@
 #include "mmgr.h"
 #include "log.h"
 #include "bufmgr.h"
+#include "fdesc.h"
 
 /* Rid create. */
 bool CreateRidTableInner(Oid roid) {
@@ -51,10 +52,37 @@ bool CreateRidTableInner(Oid roid) {
     return true;
 }
 
-/* Rid create. */
+/* Create rid table. */
 bool CreateRidTable(Oid roid, Oid toid, char *table_name) {
     Object entity = GenerateObjectInner(roid, toid, table_name, ORID_TABLE);
     return CreateRidTableInner(roid) && SaveObject(entity);
+}
+
+/* Drop the rid table. */
+bool DropRidTable(Oid roid) {
+    char *heap_table_file;
+
+    AssertFalse(ZERO_OID(roid));
+    heap_table_file = table_file_path(roid);
+
+    if (!check_table_exist_direct(roid)) {
+        db_log(ERROR, "Heap table file '%s' not exists, error : %s", 
+               heap_table_file, strerror(errno));
+        return false;
+    }
+
+    /* Delete physically. */
+    if (remove(heap_table_file) == 0 && RemoveObject(roid)) {
+        /* Unregister fdesc. */
+        unregister_fdesc(roid);
+        return true;
+    }
+
+    /* Not reach here logically. */
+    db_log(ERROR, "Try to drop rid file '%ld' fail, error : %s", 
+           roid, strerror(errno));
+
+    return false;
 }
 
 

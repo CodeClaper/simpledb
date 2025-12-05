@@ -10,6 +10,7 @@
 #include "mmgr.h"
 #include "log.h"
 #include "bufmgr.h"
+#include "fdesc.h"
 
 /* Sid create. */
 bool CreateSidTableInner(Oid soid) {
@@ -57,6 +58,32 @@ bool CreateSidTable(Oid soid, Oid toid, char *table_name) {
     return CreateSidTableInner(soid) && SaveObject(entity);
 }
 
+/* Drop the sid table. */
+bool DropSidTable(Oid soid) {
+    char *heap_table_file;
+
+    AssertFalse(ZERO_OID(soid));
+    heap_table_file = table_file_path(soid);
+
+    if (!check_table_exist_direct(soid)) {
+        db_log(ERROR, "Heap table file '%s' not exists, error : %s", 
+               heap_table_file, strerror(errno));
+        return false;
+    }
+
+    /* Delete physically. */
+    if (remove(heap_table_file) == 0 && RemoveObject(soid)) {
+        /* Unregister fdesc. */
+        unregister_fdesc(soid);
+        return true;
+    }
+
+    /* Not reach here logically. */
+    db_log(ERROR, "Try to drop sid file '%ld' fail, error : %s", 
+           soid, strerror(errno));
+
+    return false;
+}
 
 /* Shrink Sid table. */
 bool ShrinkSidTable(Oid soid) {

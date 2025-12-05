@@ -20,6 +20,8 @@
 #include "tablereg.h"
 #include "spinlock.h"
 #include "tablecache.h"
+#include "sidcreate.h"
+#include "ridcreate.h"
 
 /* Try to catpture table.
  * If these other session on the table, wait and test. 
@@ -54,13 +56,17 @@ void ExecuteDropTableStatement(char *table_name, DBResult *result) {
     /**
      * It will do:
      * (1) Remove related indexs.
-     * (2) Remove heap table.
-     * (3) Remove str heap table.
-     * (4) Remove table itself.
+     * (2) Remove Sid index table.
+     * (3) Remove Rid index table.
+     * (4) Remove heap table.
+     * (5) Remove str heap table.
+     * (6) Remove table itself.
      */
     if (
         IndexDropByTableName(table_name) &&
-        DropHeapTable(table_name) && 
+        DropSidTable(table->soid) &&
+        DropRidTable(table->roid) &&
+        DropHeapTable(table->hoid) && 
         DropStrHeapTable(table_name) &&
         drop_table(table_name)  
     ) {

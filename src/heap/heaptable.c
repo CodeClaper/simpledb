@@ -304,30 +304,28 @@ void HeapTableUpdateRowExpiredXid(Table *table, Refer *refer, Xid expiredXid) {
 }
 
 /* Drop the heap table. */
-bool DropHeapTable(char *tableName) {
-    Oid oid;
+bool DropHeapTable(Oid hoid) {
     char *heap_table_file;
 
-    oid = TableNameFindHeapOid(tableName);
-    AssertFalse(ZERO_OID(oid));
-    heap_table_file = table_file_path(oid);
+    AssertFalse(ZERO_OID(hoid));
+    heap_table_file = table_file_path(hoid);
 
-    if (!check_table_exist_direct(oid)) {
+    if (!check_table_exist_direct(hoid)) {
         db_log(ERROR, "Heap table file '%s' not exists, error : %s", 
                heap_table_file, strerror(errno));
         return false;
     }
 
     /* Delete physically. */
-    if (remove(heap_table_file) == 0 && RemoveObject(oid)) {
+    if (remove(heap_table_file) == 0 && RemoveObject(hoid)) {
         /* Unregister fdesc. */
-        unregister_fdesc(oid);
+        unregister_fdesc(hoid);
         return true;
     }
 
     /* Not reach here logically. */
-    db_log(ERROR, "Try to drop heap table '%s' fail, error : %s", 
-           tableName, strerror(errno));
+    db_log(ERROR, "Try to drop heap file '%ld' fail, error : %s", 
+           hoid, strerror(errno));
 
     return false;
 }

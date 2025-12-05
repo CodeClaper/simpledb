@@ -32,7 +32,7 @@ void HeapTableUpdateRowCreatedXid(Table *table, Refer *refer, Xid createdXid);
 void HeapTableUpdateRowExpiredXid(Table *table, Refer *refer, Xid expiredXid);
 
 /* Drop the heap table. */
-bool DropHeapTable(char *tableName);
+bool DropHeapTable(Oid hoid);
 
 /* Heap table append new column. */
 void HeapTableAppendColumn(Oid oid, MetaColumn *newColumn, int pos);
