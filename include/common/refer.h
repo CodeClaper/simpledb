@@ -6,9 +6,6 @@
 
 #define REFER_SIZE sizeof(Refer)
 
-/* Init Refer. */
-void InitRefer();
-
 /* Compare two Refers. 
  * ---------------------
  * It`s meanless to compare two different-oid refers.
@@ -39,14 +36,5 @@ bool ReferIsEmpty(Refer *refer);
 
 /* Make a empty Refer. */
 Refer *MakeEmptyRefer();
-
-/* Add Refer to UpdateReferLockContent. */
-Refer *ReferUpdateLockAdd(Refer *refer);
-
-/* Free refer in UpdateReferLockContent. */
-void ReferUpdateLockFree(Refer *refer);
-
-/* Update Refer. */
-void UpdateRefer(Oid oid, int32_t old_page_num, int32_t old_cell_num, int32_t new_page_num, int32_t new_cell_num);
 
 #endif

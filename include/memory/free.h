@@ -55,9 +55,6 @@ void free_refer_value(ReferValue *refer_value);
 /* Free ArrayValue. */
 void free_array_value(ArrayValue *array_value);
 
-/* Free ReferUpdateEntity. */
-void free_refer_update_entity(ReferUpdateEntity *refer_update_entity);
-
 /* Free value item node. */
 void free_value_item_node(ValueItemNode *value_item_node);
 

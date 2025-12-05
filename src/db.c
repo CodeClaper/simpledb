@@ -96,9 +96,6 @@ static void init_db() {
     /* Initialise bufmgr. */
     InitBufMgr();
 
-    /* Initialise refer. */
-    InitRefer();
-
     /* Initialise table lock. */
     init_table_lock();
 

@@ -1,6 +1,4 @@
 #include <stdint.h>
-#include <stdlib.h>
-#include <stdio.h>
 #include "free.h"
 #include "mmgr.h"
 #include "refer.h"
@@ -60,15 +58,6 @@ void free_data_type_node(DataTypeNode *data_type_node) {
 void free_refer(Refer *refer) {
     if (refer) {
         dfree(refer);
-    }
-}
-
-/* Free ReferUpdateEntity. */
-void free_refer_update_entity(ReferUpdateEntity *refer_update_entity) {
-    if (refer_update_entity) {
-        free_refer(refer_update_entity->old_refer);
-        free_refer(refer_update_entity->new_refer);
-        dfree(refer_update_entity);
     }
 }
 

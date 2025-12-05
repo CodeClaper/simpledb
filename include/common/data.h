@@ -786,12 +786,6 @@ typedef struct Refer {
     int32_t cell_num;
 } Refer;
 
-/* ReferUpdateEntity */
-typedef struct ReferUpdateEntity {
-    Refer *old_refer;
-    Refer *new_refer;
-} ReferUpdateEntity;
-
 /* Db execute result. */
 typedef struct {
     StatementType stmt_type;
