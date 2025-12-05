@@ -291,15 +291,15 @@ void UpdateRelatedTablesRefer(ReferUpdateEntity *refer_update_entity) {
  * When referenct target be changed (updated or deleted), 
  * must to update row reference val which pointer to it. */
 void UpdateRefer(Oid oid, int32_t old_page_num, int32_t old_cell_num, int32_t new_page_num, int32_t new_cell_num) {
-    Refer *oldRefer, *newRefer;
-    ReferUpdateEntity *ruEntity;
-
-    oldRefer = new_refer(oid, old_page_num, old_cell_num);
-    newRefer = new_refer(oid, new_page_num, new_cell_num);
-    ruEntity = NewReferUpdateEntity(oldRefer, newRefer);
-
-    /* Update related tables. */
-    UpdateRelatedTablesRefer(ruEntity);
-
-    free_refer_update_entity(ruEntity);
+    // Refer *oldRefer, *newRefer;
+    // ReferUpdateEntity *ruEntity;
+    //
+    // oldRefer = new_refer(oid, old_page_num, old_cell_num);
+    // newRefer = new_refer(oid, new_page_num, new_cell_num);
+    // ruEntity = NewReferUpdateEntity(oldRefer, newRefer);
+    //
+    // /* Update related tables. */
+    // UpdateRelatedTablesRefer(ruEntity);
+    //
+    // free_refer_update_entity(ruEntity);
 }
