@@ -36,6 +36,14 @@
 #include "refer.h"
 
 
+/* Make a NULL Refer. */
+Refer *MakeEmptyRefer() {
+    Refer *refer = instance(Refer);
+    refer->page_num = -1;
+    refer->cell_num = -1;
+    return refer;
+}
+
 /* Fetch ref id under condition. 
  * If not found return RID_ZERO.  */
 Rid FetchRefIdUnderCondition(Oid oid, SearchConditionNode *condition) {
@@ -81,24 +89,4 @@ Rid AppendAndReturnRefId(Oid oid, List *value_list) {
     return (Rid) lfirst_long(first_cell(ref_ids));
 }
 
-/* Check if refer empty. 
- * If page number is -1 and cell number is -1, it means refer empty. */
-bool ReferIsEmpty(Refer *refer) {
-    return refer->page_num == -1 && refer->cell_num == -1;
-}
-
-/* Make a NULL Refer. */
-Refer *MakeEmptyRefer() {
-    Refer *refer = instance(Refer);
-    refer->page_num = -1;
-    refer->cell_num = -1;
-    return refer;
-}
-
-/* Check if refer equals. */
-bool ReferIsEqual(Refer *refer1, Refer *refer2) {
-    return refer1->oid == refer2->oid && 
-                refer1->page_num == refer2->page_num && 
-                    refer1->cell_num == refer2->cell_num;
-}
 
