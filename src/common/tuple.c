@@ -112,7 +112,7 @@ void TupleSetExpiredXid(void *tuple, MetaTable *meta_table, Xid expired_xid) {
 Sid TupleGetSysId(void *tuple, MetaTable *meta_table) {
     MetaColumn *sys_id_meta_column = NameFindAllMetaColumn(meta_table, SYS_RESERVED_ID_COLUMN_NAME);
     Assert(sys_id_meta_column != NULL);
-    return *(Xid *)TupleFindValue(tuple, sys_id_meta_column);
+    return *(Sid *)TupleFindValue(tuple, sys_id_meta_column);
 }
 
 /* Set sys id in tuple. */
@@ -126,7 +126,7 @@ void TupleSetSysId(void *tuple, MetaTable *meta_table, Sid sid) {
 Rid TupleGetRefId(void *tuple, MetaTable *meta_table) {
     MetaColumn *ref_id_meta_column = NameFindAllMetaColumn(meta_table, SYS_REF_ID_COLUMN_NAME);
     Assert(ref_id_meta_column != NULL);
-    return *(Xid *)TupleFindValue(tuple, ref_id_meta_column);
+    return *(Rid *)TupleFindValue(tuple, ref_id_meta_column);
 }
 
 /* Set ref id in tuple. */
