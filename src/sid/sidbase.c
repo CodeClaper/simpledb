@@ -142,6 +142,7 @@ Sid SidLeafNodeGetCellKey(void *leaf_node, uint32_t index) {
 
 /* Set sid leaf node cell key. */
 void SidLeafNodeSetCellKey(void *leaf_node, uint32_t index, Sid key) {
+    AssertFalse(ZERO_SID(key));
     *(Sid *)(leaf_node + LEAF_NODE_HEAD_SIZE + SID_LEAF_NODE_CELL_LENGTH * index + SID_LEAF_NODE_VALUE_LENGTH) = key;
 }
 

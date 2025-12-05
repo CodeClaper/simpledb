@@ -631,7 +631,7 @@ static void RidInsertForLeafNodeSplit(Table *table, Buffer buffer, Rid key, Refe
             /* Define new position. */
             memcpy(destination, 
                    RidLeafNodeGetCellValue(leaf_node, i), 
-                   RID_LEAF_NODE_VALUE_LENGTH);
+                   RID_LEAF_NODE_CELL_LENGTH);
     }
 
     /* Reset cell num. */

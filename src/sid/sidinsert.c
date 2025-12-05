@@ -631,7 +631,7 @@ static void SidInsertForLeafNodeSplit(Table *table, Buffer buffer, Sid key, Refe
             /* Define new position. */
             memcpy(destination, 
                    SidLeafNodeGetCellValue(leaf_node, i), 
-                   SID_LEAF_NODE_VALUE_LENGTH);
+                   SID_LEAF_NODE_CELL_LENGTH);
     }
 
     /* Reset cell num. */
