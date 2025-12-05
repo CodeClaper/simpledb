@@ -25,14 +25,17 @@ def test_query_from_systable():
         {'relname': 'Book', 'reltype': 4}, 
         {'relname': 'Book', 'reltype': 5}, 
         {'relname': 'Book', 'reltype': 6}, 
+        {'relname': 'Book', 'reltype': 7}, 
         {'relname': 'Student', 'reltype': 0}, 
         {'relname': 'Student', 'reltype': 4}, 
         {'relname': 'Student', 'reltype': 5}, 
         {'relname': 'Student', 'reltype': 6}, 
+        {'relname': 'Student', 'reltype': 7}, 
         {'relname': 'Class', 'reltype': 0}, 
         {'relname': 'Class', 'reltype': 4},
         {'relname': 'Class', 'reltype': 5},
         {'relname': 'Class', 'reltype': 6}, 
+        {'relname': 'Class', 'reltype': 7} 
     ]
 
 ## test query from systable.
