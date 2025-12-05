@@ -278,6 +278,7 @@ Table *copy_table(Table *table) {
     duplica->creator = table->creator;
     duplica->page_size = table->page_size;
     duplica->rid_page_size = table->rid_page_size;
+    duplica->sid_page_size = table->sid_page_size;
     duplica->key_len = table->key_len;
     duplica->index_value_len = table->index_value_len;
     duplica->heap_value_len = table->heap_value_len;

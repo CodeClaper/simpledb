@@ -304,6 +304,7 @@ static bool PrepareSaveTableCache(Oid oid, Oid soid, Oid roid, Oid hid, Oid stid
     table->root_page_num = ROOT_PAGE_NUM;
     table->page_size = 1;
     table->rid_page_size = 1;
+    table->sid_page_size = 1;
     table->creator = getpid();
     table->key_len = TableCalcPrimaryKeyLength(table);
     table->index_value_len = TableCalcIndexLength(table);
