@@ -23,7 +23,6 @@
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <string.h>
 #include <strings.h>
 #include "xlog.h"
 #include "log.h"
@@ -47,8 +46,6 @@
  */
 static XLogEntry *XLHeader = NULL;
 
-static int CountXlog(Oid oid, Sid sid);
-static int PosXlog(Oid oid, Sid sid);
 
 /* Genrate new XLogEntry. */
 static XLogEntry *NewXLogEntry(Xid xid, Oid oid, Sid sid, XLogHeapType type) {
@@ -61,6 +58,15 @@ static XLogEntry *NewXLogEntry(Xid xid, Oid oid, Sid sid, XLogHeapType type) {
     return entry;
 }
 
+/* Check if the xlog has alreay exists. */
+static int XlogHasExists(Oid oid, Sid sid) {
+    if (XLHeader == NULL) return false;
+    for (XLogEntry *current = XLHeader; current != NULL; current = current->next) {
+        if (current->oid == oid && current->sid == sid) return true;
+    }
+    return false;
+}
+
 /* Record Xlog. */
 void RecordXlog(Oid oid, Sid sid, XLogHeapType type) {
     /* First, find current transaction and it should exist.*/
@@ -71,7 +77,7 @@ void RecordXlog(Oid oid, Sid sid, XLogHeapType type) {
     if (!conf->auto_rollback && trans->auto_commit) return;
     
     /* Just keep unique. */
-    Assert(CountXlog(oid, sid) == 0);
+    AssertFalse(XlogHasExists(oid, sid));
 
     /* Switch to CACHE_MEMORY_CONTEXT. */
     MemoryContext oldcontext = CURRENT_MEMORY_CONTEXT;
@@ -182,21 +188,3 @@ void ExecuteRollback() {
     }
 }
 
-static int CountXlog(Oid oid, Sid sid) {
-    if (XLHeader == NULL) return 0;
-    int ret = 0;
-    for (XLogEntry *current = XLHeader; current != NULL; current = current->next) {
-        if (current->oid == oid && current->sid == sid) ret++;
-    }
-    return ret;
-}
-
-static int PosXlog(Oid oid, Sid sid) {
-    if (XLHeader == NULL) return 0;
-    int ret = 0;
-    for (XLogEntry *current = XLHeader; current != NULL; current = current->next) {
-        if (current->oid == oid && current->sid == sid) break;
-        ret++;
-    }
-    return ret;
-}

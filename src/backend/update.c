@@ -38,7 +38,6 @@
 #include "tuple.h"
 #include "systable.h"
 #include "heaptable.h"
-#include "ridsearch.h"
 
 /* Update tuple for assignment. */
 static void UpdateTupleForAssignment(void *tuple, List *assignment_list, MetaTable *meta_table) {
@@ -169,7 +168,8 @@ void ExecuteUpdateStatement(UpdateNode *update_node, DBResult *result) {
     table = open_table(update_node->table_name);
     /* Check table exists. */
     if (table == NULL)
-        db_log(ERROR, "Try to open table '%s' fail.", update_node->table_name);
+        db_log(ERROR, "Try to open table '%s' fail.", 
+               update_node->table_name);
 
     /* Check out update node. */
     if (!CheckForUpdate(update_node)) return;
