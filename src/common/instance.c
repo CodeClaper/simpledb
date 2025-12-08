@@ -19,6 +19,11 @@ KeyValue *new_key_value(char *key, void *value, DataType data_type, Oid tid, Oid
     return key_value;
 }
 
+/* Genrate new simple KeyValue instance. */
+KeyValue *new_simple_key_value(char *key, void *value, DataType data_type) {
+    return new_key_value(key, value, data_type, OID_ZERO, OID_ZERO);
+}
+
 /* Generate new ArrayValue instance. */
 ArrayValue *new_array_value(DataType data_type, uint32_t size) {
     ArrayValue *array_value = instance(ArrayValue);
