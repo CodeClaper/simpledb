@@ -62,8 +62,7 @@ bool BufferWriteBlock(Buffer buffer) {
     block = GetBufferBlock(buffer);
 
     /* Only flush dirty page. */
-    if (NodeIsDirty(block))
-        return false;
+    if (!NodeIsDirty(block)) return false;
 
     /* Maybe table has dropped before calling the function, 
      * so necessary to check if table still exists. */
