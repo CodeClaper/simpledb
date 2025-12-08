@@ -550,7 +550,7 @@ static void RidInsertForLeafNodeSplit(Table *table, Buffer buffer, Rid key, Refe
     cell_key = RidLeafNodeGetCellKey(leaf_node, target_index);
 
     /* Avoid duplicate key. */
-    if (key == cell_key) {
+    if (target_index < cell_num && key == cell_key) {
         Refer *target;
         void *tuple;
         int predicate;
@@ -675,7 +675,7 @@ static void RidInsertForLeafNodeNoSplit(Table *table, Buffer buffer, Rid key, Re
     cell_key = RidLeafNodeGetCellKey(leaf_node, target_index);
 
     /* Avoid duplicate key. */
-    if (key == cell_key) {
+    if (target_index < cell_num && key == cell_key) {
         Refer *target;
         void *tuple;
         int predicate;

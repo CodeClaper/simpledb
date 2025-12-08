@@ -550,7 +550,7 @@ static void SidInsertForLeafNodeSplit(Table *table, Buffer buffer, Sid key, Refe
     cell_key = SidLeafNodeGetCellKey(leaf_node, target_index);
 
     /* Avoid duplicate key. */
-    if (key == cell_key) {
+    if (target_index < cell_num && key == cell_key) {
         Refer *target;
         void *tuple;
         int predicate;
@@ -675,7 +675,7 @@ static void SidInsertForLeafNodeNoSplit(Table *table, Buffer buffer, Sid key, Re
     cell_key = SidLeafNodeGetCellKey(leaf_node, target_index);
 
     /* Avoid duplicate key. */
-    if (key == cell_key) {
+    if (target_index < cell_num && key == cell_key) {
         Refer *target;
         void *tuple;
         int predicate;
