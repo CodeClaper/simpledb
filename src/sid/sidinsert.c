@@ -551,13 +551,13 @@ static void SidInsertForLeafNodeSplit(Table *table, Buffer buffer, Sid key, Refe
 
     /* Avoid duplicate key. */
     if (key == cell_key) {
-        Refer *refer;
+        Refer *target;
         void *tuple;
         int predicate;
         Xid current_xid, created_xid, expired_xid;
 
-        refer = SidLeafNodeGetCellValue(leaf_node, target_index);
-        tuple = HeapTableLookupTuple(table->oid, refer);
+        target = SidLeafNodeGetCellValue(leaf_node, target_index);
+        tuple = HeapTableLookupTuple(table->oid, target);
 
         current_xid = GetCurrentXid();
         created_xid = TupleFindCreatedXid(tuple, table->meta_table);
@@ -676,13 +676,13 @@ static void SidInsertForLeafNodeNoSplit(Table *table, Buffer buffer, Sid key, Re
 
     /* Avoid duplicate key. */
     if (key == cell_key) {
-        Refer *refer;
+        Refer *target;
         void *tuple;
         int predicate;
         Xid current_xid, created_xid, expired_xid;
 
-        refer = SidLeafNodeGetCellValue(leaf_node, target_index);
-        tuple = HeapTableLookupTuple(table->oid, refer);
+        target = SidLeafNodeGetCellValue(leaf_node, target_index);
+        tuple = HeapTableLookupTuple(table->oid, target);
 
         current_xid = GetCurrentXid();
         created_xid = TupleFindCreatedXid(tuple, table->meta_table);
