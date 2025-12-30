@@ -647,7 +647,7 @@ typedef struct MetaColumn {
     char column_name[MAX_COLUMN_NAME_LEN];      /* Column Name. */
     DataType column_type;                       /* Column data type. */
     Oid type_oid;                               /* Type oid. Note: for REFERENCE type, the type oid is refered table oid, 
-                                                   for STRING type, the type oid is the strheaptable name. */
+                                                   for STRING type, the type oid is the strheaptable oid. */
     uint32_t column_length;                     /* Column data length. Not allowed exceed the length limit. */
     uint32_t offset;                            /* Offset from the beginning. */
     bool is_primary;                            /* Primary-key column. */

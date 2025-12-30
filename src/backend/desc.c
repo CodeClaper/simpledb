@@ -46,7 +46,7 @@ static List *MetaTableGenerateDescribeResult(Oid tid, MetaTable *meta_table) {
         child_list = create_list(NODE_KEY_VALUE);
         column_length = CalcUserMetaColumnLen(meta_column);
         is_array = meta_column->array_dim > 0;
-        subTable = meta_column->column_type == T_RID || meta_column->column_type == T_STRING 
+        subTable = meta_column->column_type == T_RID 
                  ? open_table_inner(meta_column->type_oid) 
                  : NULL;
 
