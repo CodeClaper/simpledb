@@ -24,20 +24,21 @@ typedef struct SelectTable {
 
 /* Select Plan. */
 typedef struct SelectPlan {
-    StatementType stmt_type;        /* StatementType. */
-    bool onlyAll;                   /* Only select all. */
-    bool onlyCount;                 /* Only count int select statement. */
-    bool onlyScanIndex;             /* Only scan index. */
-    bool indexValid;                /* Index if valid. */
-    MetaIndex *meta_index;          /* The meta index if using index. */
-    SearchConditionNode *condition; /* The search condition. */
-    List *selectTableList;          /* List of SelectTable. */
-    volatile int32_t offset;        /* Current offset. Need volatile in parall calculating.*/
-    LimitClauseNode *limitClause;   /* LimitClauseNode. */
-    ROW_HANDLER rowHanler;          /* Row Handler implements.*/
-    ROW_HANDLER_ARG_TYPE type;      /* Arguement type. */
-    void *arg;                      /* Arguement. */
-    s_lock slock;                   /* Sync lock.*/
+    StatementType stmt_type;            /* StatementType. */
+    bool onlyAll;                       /* Only select all. */
+    bool onlyCount;                     /* Only count int select statement. */
+    bool onlyScanIndex;                 /* Only scan index. */
+    bool indexValid;                    /* Index if valid. */
+    bool hit_index;                     /* If hit index. */
+    MetaIndex *meta_index;              /* The meta index if using index. */
+    SearchConditionNode *condition;     /* The search condition. */
+    List *selectTableList;              /* List of SelectTable. */
+    volatile int32_t offset;            /* Current offset. Need volatile in parall calculating.*/
+    LimitClauseNode *limitClause;       /* LimitClauseNode. */
+    ROW_HANDLER rowHanler;              /* Row Handler implements.*/
+    ROW_HANDLER_ARG_TYPE type;          /* Arguement type. */
+    void *arg;                          /* Arguement. */
+    s_lock slock;                       /* Sync lock.*/
 } SelectPlan;
 
 /* SelectFromInternalChildTaskArgs. */
