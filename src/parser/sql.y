@@ -71,6 +71,7 @@ extern char *current_token;
    DeleteNode                   *delete_node;
    DescribeNode                 *describe_node;
    ShowNode                     *show_node;
+   ExplainNode                  *explain_node;
    AlterTableNode               *alter_table_node;
    Statement                    *statement;
    List                         *list;
@@ -85,7 +86,7 @@ extern char *current_token;
 
 %token NL
 %token <keyword> BEGINN COMMIT ROLLBACK
-%token <keyword> CREATE DROP SELECT INSERT UPDATE DELETE DESCRIBE
+%token <keyword> CREATE DROP SELECT INSERT UPDATE DELETE DESCRIBE SHOW EXPLAIN
 %token <keyword> FROM
 %token <keyword> WHERE
 %token <keyword> INTO
@@ -93,7 +94,6 @@ extern char *current_token;
 %token <keyword> VALUES
 %token <keyword> TABLE INDEX
 %token <keyword> LIMIT OFFSET
-%token <keyword> SHOW
 %token <keyword> TABLES
 %token <keyword> PRIMARY KEY
 %token <keyword> UNIQUE DEFAULT CHECK REFERENCES FOREIGN
@@ -177,6 +177,7 @@ extern char *current_token;
 %type <drop_index_node> drop_index_statement
 %type <describe_node> describe_statement
 %type <show_node> show_statement
+%type <explain_node> explain_statement;
 %type <alter_table_node> alter_table_statement 
 %type <statement> statement;
 %type <list> statements;
@@ -285,6 +286,13 @@ statement:
             Statement *statement = instance(Statement);
             statement->statement_type = SHOW_STMT;
             statement->show_node = $1;
+            $$ = statement;
+        }
+    | explain_statement
+        {
+            Statement *statement = instance(Statement);
+            statement->statement_type = EXPLAIN_STMT;
+            statement->explain_node = $1;
             $$ = statement;
         }
     | alter_table_statement
@@ -434,6 +442,15 @@ show_statement:
             ShowNode *node = instance(ShowNode);   
             node->type = SHOW_IDNEXS;
             node->table_name = $4;
+            $$ = node;
+        }
+    ;
+/* Explain Statement. */
+explain_statement:
+    EXPLAIN select_statement
+        {
+            ExplainNode *node = instance(ExplainNode);
+            node->select_node = $2;
             $$ = node;
         }
     ;

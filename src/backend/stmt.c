@@ -13,9 +13,10 @@
  * (6)  DEROP TABLE
  * (6)  SHOW TABLES AND SHOW MEMORY
  * (7)  DESCRIBE TABLE
- * (8)  BEGIN TRANSACTION
- * (9)  COMMIT TRANSACTION
- * (10) ALTER TABLE ADD or DROP COLUMN.
+ * (8)  EXPLAIN
+ * (9)  BEGIN TRANSACTION
+ * (10)  COMMIT TRANSACTION
+ * (11) ALTER TABLE ADD or DROP COLUMN.
  *********************************************************************************
  */
 #include <bits/types/struct_timeval.h>
@@ -40,6 +41,7 @@
 #include "drop.h"
 #include "desc.h"
 #include "show.h"
+#include "explain.h"
 #include "alter.h"
 #include "trans.h"
 #include "utils.h"
@@ -173,6 +175,13 @@ static void ExecuteShowStmt(Statement *statement, DBResult *result) {
     ExecuteShowStatement(statement->show_node, result);
 }
 
+/* Explain statement. */
+static void ExecuteExplainStmt(Statement *statement, DBResult *result) {
+    Assert(statement->statement_type == EXPLAIN_STMT);
+    AutoBeginTransaction();
+    ExecuteExplainStatement(statement->explain_node, result);
+}
+
 /* Execute statment. */
 static void ExecuteStatement(Statement *statement, DBResult *result) {
     /* Execute statment */
@@ -211,6 +220,9 @@ static void ExecuteStatement(Statement *statement, DBResult *result) {
                 break;
             case SHOW_STMT:
                 ExecuteShowStmt(statement, result);
+                break;
+            case EXPLAIN_STMT:
+                ExecuteExplainStmt(statement, result);
                 break;
             case DROP_TABLE_STMT:
                 ExecuteDropTableStmt(statement, result);

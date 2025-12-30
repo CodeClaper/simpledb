@@ -703,6 +703,14 @@ void free_show_tables_node(ShowNode *show_node) {
         dfree(show_node);
 }
 
+/* Free ExplainNode. */
+void free_explain_node(ExplainNode *explain_node) {
+    if (explain_node) {
+        free_select_node(explain_node->select_node);
+        dfree(explain_node);
+    }
+}
+
 /* Free AlterTableNode. */
 void free_alter_table_node(AlterTableNode *alter_table_node) {
     if (alter_table_node) {
@@ -748,6 +756,9 @@ void free_statement(Statement *statement) {
             break;
         case SHOW_STMT:
             free_show_tables_node(statement->show_node);
+            break;
+        case EXPLAIN_STMT:
+            free_explain_node(statement->explain_node);
             break;
         case ALTER_TABLE_STMT:
             free_alter_table_node(statement->alter_table_node);

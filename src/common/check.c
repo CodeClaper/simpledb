@@ -1473,3 +1473,8 @@ bool CheckForShow(ShowNode *show_node) {
             return NULL;
     }
 }
+
+/* Check for ExplainNode. */
+bool CheckForExplain(ExplainNode *explain_node) {
+    return CheckForSelect(explain_node->select_node);
+}

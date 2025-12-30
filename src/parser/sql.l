@@ -34,6 +34,7 @@ UPDATE                  return UPDATE;
 DELETE                  return DELETE;
 DESC                    return DESCRIBE;
 DESCRIBE                return DESCRIBE;
+EXPLAIN                 return EXPLAIN;
 FROM                    return FROM;
 TABLE                   return TABLE;
 INDEX                   return INDEX;

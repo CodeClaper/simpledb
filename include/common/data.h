@@ -94,6 +94,7 @@ typedef enum {
     DELETE_STMT, 
     DESCRIBE_STMT, 
     SHOW_STMT, 
+    EXPLAIN_STMT,
     DROP_TABLE_STMT,
     DROP_INDEX_STMT,
     ALTER_TABLE_STMT,
@@ -556,6 +557,12 @@ typedef struct DescribeNode {
     char *table_name;
 } DescribeNode;
 
+/* ExplainNode. */
+typedef struct ExplainNode {
+    /* By now, explain only support for select statement. */
+    SelectNode *select_node;
+} ExplainNode;
+
 /* ShowNode */
 typedef struct ShowNode {
     ShowNodeType type;
@@ -622,6 +629,7 @@ typedef struct Statement {
         DeleteNode *delete_node;
         DescribeNode *describe_node;
         ShowNode *show_node;
+        ExplainNode *explain_node;
         AlterTableNode *alter_table_node;
   };
 } Statement;

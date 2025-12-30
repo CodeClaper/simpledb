@@ -479,6 +479,7 @@ void json_db_result(DBResult *result) {
             break;
         case SHOW_STMT:
         case DESCRIBE_STMT:
+        case EXPLAIN_STMT:
             json_result_list(result);
             break;
         case LOGIN_STMT:

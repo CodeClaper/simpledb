@@ -34,3 +34,6 @@ bool CheckForAlterTable(AlterTableNode *alter_table);
 
 /* Check for ShowNode. */
 bool CheckForShow(ShowNode *show_node); 
+
+/* Check for ExplainNode. */
+bool CheckForExplain(ExplainNode *explain_node);
