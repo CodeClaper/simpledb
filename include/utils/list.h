@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stdint.h>
 #include <time.h>
 #include "asserts.h"
@@ -130,6 +131,11 @@ static inline uint32_t len_list(List *list) {
 /* List is empty. */
 static inline bool list_empty(List *list) {
     return list->size == 0;
+}
+
+/* List is null or empty. */
+static inline bool list_null_or_empty(List *list) {
+    return list == NIL || list->size == 0;
 }
 
 /* Create List and initialization. 
