@@ -103,7 +103,7 @@ static void SidInsertForInternalNodeUpdateCellKey(Oid soid, uint32_t page_num, S
     MakeBufferDirty(buffer);
     
     /* Update current internal node parent. */
-    if (!NodeIsRoot(internal_node) && new_key == high_key) {
+    if (!NodeIsRoot(internal_node) && old_key == high_key) {
         uint32_t parent_num;
         parent_num = NodeGetParentNum(internal_node);
         SidInsertForInternalNodeUpdateCellKey(soid, parent_num, old_key, new_key);

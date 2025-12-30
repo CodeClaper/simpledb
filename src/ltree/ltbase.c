@@ -7,6 +7,7 @@
 #include "meta.h"
 #include "table.h"
 #include "refer.h"
+#include "copy.h"
 
 /* If obsolute node. */
 bool NodeIsObsolute(void *node) {
@@ -462,14 +463,15 @@ void LeafNodeInitialize(void *leaf_node, uint32_t default_value_len, bool is_roo
 
 /* Get high key in the node. */
 void *NodeGetHighKey(Table *table, void *node) {
+    DataType ptype = MetaTableFindPrimaryDataType(table->meta_table);
     switch (GetNodeType(node)) {
         case INTERNAL_NODE:
-            return InternalNodeGetRightKey(node, table->heap_value_len);
+            return copy_value(InternalNodeGetRightKey(node, table->heap_value_len), ptype);
         case LEAF_NODE: {
             uint32_t cell_num = LeafNodeGetCellNum(node, table->heap_value_len);
             return cell_num == 0 
                 ? NULL 
-                : LeafNodeGetCellKey(node, table->key_len, table->index_value_len, table->heap_value_len, cell_num - 1);
+                : copy_value(LeafNodeGetCellKey(node, table->key_len, table->index_value_len, table->heap_value_len, cell_num - 1), ptype);
         }
         default:
             UNEXPECTED_VALUE(GetNodeType(node));

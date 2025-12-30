@@ -74,6 +74,9 @@ static void BtreeInsertForInternalNodeUpdateCellKey(Oid oid, uint32_t page_num, 
     Buffer buffer;
     void *internal_node, *high_key;
 
+    if (StrEq(old_key, "03a241ae-28d6-4569-8421-9b58e016dacd"))
+        db_log(DEBUGER, "BIGNOD");
+
     table = open_table_inner(oid);
     ptype = MetaTableFindPrimaryDataType(table->meta_table);
     buffer = ReadBuffer(oid, page_num);
@@ -107,7 +110,7 @@ static void BtreeInsertForInternalNodeUpdateCellKey(Oid oid, uint32_t page_num, 
     
     /* Update current internal node parent. */
     if (!NodeIsRoot(internal_node) &&
-        EQ(GetComparableValue(new_key, ptype), GetComparableValue(high_key, ptype), ptype)
+        EQ(GetComparableValue(old_key, ptype), GetComparableValue(high_key, ptype), ptype)
     ) {
         uint32_t parent_num;
         parent_num = NodeGetParentNum(internal_node);
@@ -237,7 +240,7 @@ static void BtreeInsertForInternalNodeSplit(Oid oid, void *internal_node,
 
     table = open_table_inner(oid);
     ptype = MetaTableFindPrimaryDataType(table->meta_table);
-    high_key = copy_value(NodeGetHighKey(table, internal_node), ptype);
+    high_key = NodeGetHighKey(table, internal_node);
     right_page = InternalNodeGetRightNum(internal_node, table->heap_value_len);
     keys_num = InternalNodeGetKeysNum(internal_node, table->heap_value_len);
 
@@ -641,7 +644,7 @@ static void BtreeInsertForLeafNodeSplit(Oid oid, void *key, void *value, Buffer 
     leaf_node = GetBufferPage(buffer);
     cell_num = LeafNodeGetCellNum(leaf_node, table->heap_value_len);
     cell_len = table->key_len + table->index_value_len;
-    high_key = copy_value(NodeGetHighKey(table, leaf_node), ptype);
+    high_key = NodeGetHighKey(table, leaf_node);
     target_index = LeafNodeFindCellNum(oid, key, leaf_node);
     cell_key = LeafNodeGetCellKey(leaf_node, table->key_len, table->index_value_len, table->heap_value_len, target_index);
 
