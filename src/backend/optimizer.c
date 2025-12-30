@@ -11,6 +11,8 @@ static bool OnlyCountInSelection(SelectNode *selectNode);
 static bool OnlyScanIndex(SelectNode *selectNode);
 static bool IndexValidForSelectNode(List *select_table_list, SelectNode *selectNode);
 static bool IndexValidForSearchCondition(List *select_table_list, SearchConditionNode *search_condition);
+static bool HitIndexForSelectNode(SelectPlan *select_plan, SelectNode *selectNode);
+static bool HitIndexForSearchCondition(SelectPlan *select_plan, SearchConditionNode *search_condition);
 static LimitClauseNode *SelectNodeFindLimitClause(SelectNode *selectNode);
 static SearchConditionNode *SelectNodeFindCondition(SelectNode *selectNode);
 static List *SelectNodeFindTables(SelectNode *selectNode);
@@ -26,6 +28,7 @@ SelectPlan *OptimizeSelect(SelectNode *selectNode, StatementType stmt_type) {
     select_plan->onlyCount = OnlyCountInSelection(selectNode);
     select_plan->onlyScanIndex = OnlyScanIndex(selectNode);
     select_plan->indexValid = IndexValidForSelectNode(select_plan->selectTableList, selectNode);
+    select_plan->hit_index = HitIndexForSelectNode(select_plan, selectNode);
     select_plan->limitClause = SelectNodeFindLimitClause(selectNode);
     select_plan->offset = 0;
     select_plan->rowHanler = DefineRowHandler(select_plan);
@@ -126,6 +129,31 @@ static MetaColumn *ColumnNodeFindMetaColumn(List *select_table_list, ColumnNode 
     return NULL;
 }
 
+static bool *ColumnNodeMatchMetaIndex(MetaIndex *meta_index, ColumnNode *column) {
+    ListCell *lc;
+    foreach (lc, meta_index->meta_columns) {
+        MetaColumn *current = (MetaColumn *) lfirst(lc);
+        if (StrEq(current->column_name, column->column_name))
+            return true;
+    }
+
+    return false;
+}
+
+static MetaIndex *ColumnNodeFindMetaIndex(List *meta_indexs, ColumnNode *column) {
+    if (list_null_or_empty(meta_indexs)) 
+        return NULL;
+
+    ListCell *lc;
+    foreach (lc, meta_indexs) {
+        MetaIndex *current = (MetaIndex*) lfirst(lc);
+        if (ColumnNodeMatchMetaIndex(current, column))
+            return current;
+    }
+
+    return NULL;
+}
+
 static Table *ColumnNodeFindTable(List *select_table_list, ColumnNode *column) {
     if (StrIsEmpty(column->range_variable))
         return NULL;
@@ -133,8 +161,9 @@ static Table *ColumnNodeFindTable(List *select_table_list, ColumnNode *column) {
     ListCell *lc;
     foreach (lc, select_table_list) {
         SelectTable *select_table = (SelectTable *)lfirst(lc);
-        if (StrEq(select_table->alias_name, column->range_variable) || StrEq(GET_TABLE_NAME(select_table->table), column->range_variable))
-            return select_table->table;
+        if (StrEq(select_table->alias_name, column->range_variable) || 
+            StrEq(GET_TABLE_NAME(select_table->table), column->range_variable)
+        ) return select_table->table;
     }
     
     return NULL;
@@ -263,6 +292,112 @@ static bool IndexValidForSelectNode(List *select_table_list, SelectNode *selectN
         return false;
     SearchConditionNode *search_condition = selectNode->table_exp->where_clause->condition;
     return IndexValidForSearchCondition(select_table_list, search_condition);
+}
+
+
+static bool HitIndexForColumn(SelectPlan *select_plan, ColumnNode *column) {
+    Table *table;
+    List *select_table_list;
+
+    select_table_list = select_plan->selectTableList;
+    table = ColumnNodeFindTable(select_table_list, column);
+    if (table == NULL) {
+        Assert(len_list(select_table_list) == 1);
+        SelectTable *first = (SelectTable *)lfirst(first_cell(select_plan->selectTableList));
+        table = first->table;
+    }
+
+    select_plan->meta_index = ColumnNodeFindMetaIndex(table->meta_indexs, column);
+    return NonNull(select_plan->meta_index);
+}
+
+
+static bool HitIndexForScalarExp(SelectPlan *select_plan, ScalarExpNode *scalar_exp) {
+    switch (scalar_exp->type) {
+        case SCALAR_COLUMN:
+            return HitIndexForColumn(select_plan, scalar_exp->column);
+        case SCALAR_VALUE:
+            return true;
+        case SCALAR_CALCULATE:
+        case SCALAR_FUNCTION:
+            return false;
+        default:
+            UNEXPECTED_VALUE(scalar_exp->type);     
+    }
+}
+
+/* If index valid for ComparisonNode. */
+static bool HitIndexForComparison(SelectPlan *select_plan, ComparisonNode *comparison) {
+    return HitIndexForScalarExp(select_plan, comparison->left) && 
+            HitIndexForScalarExp(select_plan, comparison->right);
+}
+
+static bool HitIndexForLike(SelectPlan *select_plan, LikeNode *like) {
+    return HitIndexForColumn(select_plan, like->column) &&
+            NoneLeftWildcard(like->value->value.atom->value.strval);
+}
+
+static bool HitIndexForIn(SelectPlan *select_plan, InNode *in) {
+    return HitIndexForColumn(select_plan, in->column);
+}
+
+static bool HitIndexForPredicate(SelectPlan *select_plan, PredicateNode *predicate) {
+    switch (predicate->type) {
+        case PRE_COMPARISON:
+            return HitIndexForComparison(select_plan, predicate->comparison);
+        case PRE_LIKE:
+            return HitIndexForLike(select_plan, predicate->like);
+        case PRE_IN:
+            return HitIndexForIn(select_plan, predicate->in);
+        default:
+            UNEXPECTED_VALUE(predicate->type);     
+    }
+}
+
+
+static bool HitIndexForBooleanPrimary(SelectPlan *select_plan, BooleanPrimaryNode *boolean_primary) {
+    switch (boolean_primary->type) {
+        case PREDICATE_BOOLEAN_PRIMAYR:
+            return HitIndexForPredicate(select_plan, boolean_primary->predicate);
+        case SEARCH_CONDITION_BOOLEAN_PRIMAYR:
+            return HitIndexForSearchCondition(select_plan, boolean_primary->search_condition);
+        default:
+            UNEXPECTED_VALUE(boolean_primary->type);     
+    }
+}
+
+static bool HitIndexForBooleanTest(SelectPlan *select_plan, BooleanTestNode *boolean_test) {
+    return HitIndexForBooleanPrimary(select_plan, boolean_test->boolean_primary);
+}
+
+/* If index valid for BooleanFactorNode. */
+static bool HitIndexForBooleanFactor(SelectPlan *select_plan, BooleanFactorNode *boolean_factor) {
+    return HitIndexForBooleanTest(select_plan, boolean_factor->boolean_test);
+}
+
+/* If index valid for BooleanTermNode. */
+static bool HitIndexForBooleanTerm(SelectPlan *select_plan, BooleanTermNode *boolean_term) {
+    return HitIndexForBooleanFactor(select_plan, boolean_term->boolean_factor) && 
+            (boolean_term->and_boolean_term == NULL || HitIndexForBooleanTerm(select_plan, boolean_term->and_boolean_term));
+}
+
+static bool HitIndexForSearchCondition(SelectPlan *select_plan, SearchConditionNode *search_condition) {
+    return HitIndexForBooleanTerm(select_plan, search_condition->boolean_term) && 
+            (search_condition->or_search_condition == NULL || HitIndexForSearchCondition(select_plan, search_condition->or_search_condition));
+}
+
+
+/* Find the hit index if main invalid. */
+static bool HitIndexForSelectNode(SelectPlan *select_plan, SelectNode *selectNode) {
+    /* If main index hit, go main index. */
+    if (select_plan->indexValid) return false;
+    
+    if (selectNode->table_exp == NULL || 
+            selectNode->table_exp->where_clause == NULL || 
+                selectNode->table_exp->where_clause->condition == NULL)
+        return false;
+    SearchConditionNode *search_condition = selectNode->table_exp->where_clause->condition;
+    return HitIndexForSearchCondition(select_plan, search_condition);
 }
 
 /* Get LimitClauseNode for the SelectionNode. */
