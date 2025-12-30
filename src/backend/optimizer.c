@@ -129,7 +129,7 @@ static MetaColumn *ColumnNodeFindMetaColumn(List *select_table_list, ColumnNode 
     return NULL;
 }
 
-static bool *ColumnNodeMatchMetaIndex(MetaIndex *meta_index, ColumnNode *column) {
+static bool ColumnNodeMatchMetaIndex(MetaIndex *meta_index, ColumnNode *column) {
     ListCell *lc;
     foreach (lc, meta_index->meta_columns) {
         MetaColumn *current = (MetaColumn *) lfirst(lc);
