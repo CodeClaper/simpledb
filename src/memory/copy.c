@@ -241,6 +241,7 @@ MetaIndex *copy_meta_index(MetaIndex *meta_index) {
     duplica->type = meta_index->type;
     duplica->is_unique = meta_index->is_unique;
     duplica->is_pri = meta_index->is_pri;
+    duplica->is_user = meta_index->is_user;
     duplica->index_name = dstrdup(meta_index->index_name);
     duplica->key_len = meta_index->key_len;
     duplica->value_len = meta_index->value_len;

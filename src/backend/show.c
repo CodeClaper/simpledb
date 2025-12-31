@@ -90,6 +90,8 @@ static List *ShowForIndexs(char *table_name) {
     ListCell *lc;
     foreach(lc, table->meta_indexs) {
         MetaIndex *meta_index = (MetaIndex *) lfirst(lc);
+        /* Only display user level index. */
+        if (!meta_index->is_user) continue;
         List *child_list = create_list(NODE_KEY_VALUE);
 
         /* Index name */

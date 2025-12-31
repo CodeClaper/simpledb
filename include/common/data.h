@@ -686,6 +686,7 @@ typedef struct MetaIndex {
     IndexType type;                             /* Index type. */
     bool is_unique;                             /* Is unique. */
     bool is_pri;                                /* Is primary. */
+    bool is_user;                               /* Is user level. */
     List *meta_columns;                         /* Columns. */
     uint32_t column_size;                       /* Column size. */
     uint32_t key_len;                           /* Key length. */

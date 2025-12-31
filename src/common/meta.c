@@ -550,8 +550,8 @@ bool UserPrimaryKeyExists(MetaTable *meta_table) {
     ListCell *lc;
     foreach (lc, meta_table->meta_columns) {
         MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
-        if (meta_column->is_primary)
-            return true;
+        if (meta_column->sys_reserved) continue;
+        if (meta_column->is_primary) return true;
     }
     return false;
 }

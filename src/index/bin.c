@@ -462,6 +462,7 @@ MetaIndex *BinLoad(Oid oid, Table *table) {
     meta_index->type = BinRootNodeGetIndexType(root);
     meta_index->is_unique = BinRootNodeIsUnique(root);
     meta_index->is_pri = false;
+    meta_index->is_user = true;
     meta_index->column_size = BinRootNodeGetColumnSize(root);
     meta_index->meta_columns = create_list(NODE_META_COLUMN);
     meta_index->page_num = GetPageSize(oid);

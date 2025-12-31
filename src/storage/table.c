@@ -216,6 +216,7 @@ static MetaIndex *LoadPrimaryMetaIndex(Table *table) {
     meta_index->index_name = FormatStr("%s_pri_index", GET_TABLE_NAME(table));
     meta_index->type = BTREE_INDEX;
     meta_index->is_pri = true;
+    meta_index->is_user = UserPrimaryKeyExists(table->meta_table);
     meta_index->is_unique = true;
     meta_index->page_num = GetPageSize(table->oid);
     meta_index->value_len = table->index_value_len;
