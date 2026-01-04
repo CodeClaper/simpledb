@@ -20,7 +20,7 @@ def test_insert_mock_data():
 
 ## test create name index.
 def test_create_name_index():
-    sql = "create index name_index on Student (name);"
+    sql = "create index i_name on Student (name);"
     ret = client.execute(sql)
     assert ret["success"] == True
 
@@ -34,6 +34,21 @@ def test_query_by_index():
     ret = client.execute(sql)
     assert ret["success"] == True
     assert ret["rows"] >= 1
+
+## test create unique index.
+def test_create_unique_index():
+    sql = "create unique index i_unique_name on Student (name);"
+    ret = client.execute(sql)
+    assert ret["success"] == False
+
+def test_query_index():
+    sql = "show index from Student;"
+    ret = client.execute(sql)
+    assert ret["success"] == True
+    assert ret["data"] == [
+            {'index_name': 'Student_pri_index', 'table_name': 'Student', 'is_unique': True, 'index_type': 'BTREE', 'columns': 'id'}, 
+            {'index_name': 'i_name', 'table_name': 'Student', 'is_unique': False, 'index_type': 'BTREE', 'columns': 'name'}
+            ]
 
 ## test drop table.
 def test_drop_table():
