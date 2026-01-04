@@ -270,7 +270,7 @@ static MetaTable *CreateTableNodeGenerateMetaTable(Oid toid, Oid stoid, CreateTa
     return meta_table;
 }
 
-static MetaIndex *GenerateMetaIndexForCreateIndex(Oid oid, Table *table,  CreateIndexNode *create_index_node) {
+static MetaIndex *GenerateMetaIndexForCreateIndex(Oid oid, Table *table, CreateIndexNode *create_index_node) {
     MetaIndex *meta_index = instance(MetaIndex);
     meta_index->oid = oid;
     meta_index->tid = GET_TABLE_OID(table);
@@ -280,12 +280,16 @@ static MetaIndex *GenerateMetaIndexForCreateIndex(Oid oid, Table *table,  Create
     meta_index->column_size = create_index_node->columns->size;
     meta_index->meta_columns = create_list(NODE_META_COLUMN);
     meta_index->page_num = 1;
+    meta_index->key_len = 0;
+    meta_index->value_len = REFER_SIZE;
+    
 
     ListCell *lc;
     foreach (lc, create_index_node->columns) {
         ColumnNode *column_node = (ColumnNode *) lfirst(lc);
         MetaColumn *meta_column = NameFindMetaColumn(table->meta_table, column_node->column_name);
         append_list(meta_index->meta_columns, meta_column);
+        meta_index->key_len += meta_column->column_length;
     }
 
     return meta_index;
