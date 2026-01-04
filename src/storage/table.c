@@ -231,6 +231,7 @@ static MetaIndex *LoadPrimaryMetaIndex(Table *table) {
             append_list(meta_index->meta_columns, meta_column);
             meta_index->key_len += meta_column->column_length;
             meta_index->column_size++;
+            meta_index->key_len += meta_column->column_length;
         }
     }
 

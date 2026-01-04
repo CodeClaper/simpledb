@@ -50,6 +50,7 @@
 #include "systable.h"
 #include "strheaptable.h"
 #include "heaptable.h"
+#include "index.h"
 
 /* Maximum number of rows fetched at once.*/
 #define MAX_FETCH_ROWS 100 
@@ -74,7 +75,6 @@ static char *SearchTableNameViaAlias(SelectPlan *select_plan, char *alias_name);
 static Row *QueryColumnsSelectOneRow(SelectPlan *select_plan, List *scalar_exp_set, Row *row);
 static KeyValue *QueryRowColumnValue(SelectPlan *select_plan, ColumnNode *column, Row *row);
 static bool InternalNodeForSearchCondition(SelectPlan *select_plan, KeyValue *min_key_value, KeyValue *max_key_value, SearchConditionNode *search_condition);
-static bool LeafNodeForSearchCondition(SelectPlan *select_plan, List *meta_columns, void *tuple, SearchConditionNode *search_condition);
 static KeyValue *CalcAddition(KeyValue *left, KeyValue *right);
 static KeyValue *CalcSubstraction(KeyValue *left, KeyValue *right);
 static KeyValue *CalcMultplication(KeyValue *left, KeyValue *right);
@@ -429,7 +429,7 @@ static bool LeafNodeForBooleanTerm(SelectPlan *select_plan, List *meta_columns, 
 }
 
 /* Check if the leaf node meets search condition. */
-static bool LeafNodeForSearchCondition(SelectPlan *select_plan, List *meta_columns, void *tuple, SearchConditionNode *search_condition) {
+bool LeafNodeForSearchCondition(SelectPlan *select_plan, List *meta_columns, void *tuple, SearchConditionNode *search_condition) {
     /* If there is no condition, of course meets, so just return true. */
     if (search_condition == NULL) 
           return true;
@@ -2473,7 +2473,10 @@ static SelectResult *QueryMultiTableUnderSearchCondition(SelectNode *select_node
     DoBeforeQuerySeachCondition(select_plan);
 
     /* Do query condition. */
-    QueryUnderSearchCondition(head, select_plan);
+    if (!select_plan->indexValid && select_plan->hit_index)
+        IndexSearchUnderCondition(head, select_plan);
+    else
+        QueryUnderSearchCondition(head, select_plan);
 
     /* Do after query condition. */
     DoAfterQuerySearchCondition(select_plan, head, dbresult);

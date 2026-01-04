@@ -561,8 +561,8 @@ static void BinSearchUnderConditionForLeafNode(MetaIndex *meta_index, uint32_t p
         Assert(ntuple != NULL);
         
         /* Filt the leaf node. */
-        /*if (BinSearchLeafNodeForSearchCondition(select_plan, columns, ntuple, select_plan->condition)) */
-        /*    select_plan->rowHanler(ntuple, head, select_plan->type, select_plan->arg);*/
+        if (LeafNodeForSearchCondition(select_plan, columns, ntuple, select_plan->condition))
+            select_plan->rowHanler(ntuple, head, select_plan->type, select_plan->arg);
         
         /* When nested not null, means ntuple dalloc new memory. */
         if (head->nested != NULL)
@@ -602,5 +602,6 @@ static void BinSearchUnderConditionInner(MetaIndex *meta_index, uint32_t page_nu
 
 /* Bin search under conditon. */
 void BinSearchUnderCondition(SelectResult *select_result, SelectPlan *select_plan) {
-    
+    Assert(select_plan->hit_index);
+    BinSearchUnderConditionInner(select_plan->meta_index, ROOT_PAGE_NUM, NULL, select_result, select_plan);
 }
