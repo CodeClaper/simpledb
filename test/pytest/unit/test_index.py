@@ -1,4 +1,4 @@
-# test_index_pri.py
+# test_index.py
 from support.db_cli import DbClient
 from support.data_mock import generate_students
 
