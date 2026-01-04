@@ -1,4 +1,4 @@
-# test_index2.py
+# test_index_unique.py
 from support.db_cli import DbClient
 from support.data_mock import generate_students
 
