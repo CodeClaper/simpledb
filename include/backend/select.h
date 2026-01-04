@@ -51,36 +51,16 @@ typedef struct SelectFromInternalChildTaskArgs {
 } SelectFromInternalChildTaskArgs;
 
 
-/* Count number of row, used in the sql function count() */
 void CountRow(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg);
-
-/* Select tuple data. */
 void SelectTuple(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg);
-
-/* Select row data. */
 void SelectRow(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg);
-
-/* Output tuple data. */
 void OutputTuple(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg);
-
-/* Define the tuple by refer. 
- * Return the tuple not matter if it is deleted and caller checks if deleted. */
 void *DefineTuple(Refer *refer);
-
-/* Define row by refer. 
- * Return undelted row, return NULL if deleted. */
 Row *DefineVisibleRow(Oid toid, Rid ref_id);
-
-/* Query with column and value. */
+bool LeafNodeForSearchCondition(SelectPlan *select_plan, List *meta_columns, void *tuple, SearchConditionNode *search_condition);
 SelectResult *SelectWithColumnValue(Oid oid, MetaColumn *meta_column, void *value);
-
-/* Query with condition inner. */
 void QueryUnderSearchConditionInner(Oid oid, SelectResult *select_result, SelectPlan *select_plan);
-
-/* Query with condition. */
 void QueryUnderSearchCondition(SelectResult *select_result, SelectPlan *select_plan);
-
-/* Execute select statement. */
 void exec_select_statement(SelectNode *select_node, DBResult *result);
 
 #endif
