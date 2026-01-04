@@ -538,7 +538,7 @@ static void BinSearchUnderConditionForLeafNode(MetaIndex *meta_index, uint32_t p
         /* If not visible, skip it. */
         if (!IsVisible(created_xid, expired_xid)) continue;
         
-        select_result->current_tuple = table;
+        select_result->current_tuple = tuple;
         
         /* If has nested, deep seek nested. */
         if (nested != NULL) {

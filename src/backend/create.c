@@ -283,7 +283,6 @@ static MetaIndex *GenerateMetaIndexForCreateIndex(Oid oid, Table *table, CreateI
     meta_index->key_len = 0;
     meta_index->value_len = REFER_SIZE;
     
-
     ListCell *lc;
     foreach (lc, create_index_node->columns) {
         ColumnNode *column_node = (ColumnNode *) lfirst(lc);
