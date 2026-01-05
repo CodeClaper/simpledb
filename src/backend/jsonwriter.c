@@ -419,12 +419,14 @@ static void json_key_value_list(List *list) {
 static void json_list_list(List *list) {
     db_send("[");
 
-    ListCell *lc;
-    foreach (lc, list) {
-        List *child_list = lfirst(lc);
-        json_list(child_list);
-        if (last_cell(list) != lc)
-            db_send(", ");
+    if (!list_null_or_empty(list)) {
+        ListCell *lc;
+        foreach (lc, list) {
+            List *child_list = lfirst(lc);
+            json_list(child_list);
+            if (last_cell(list) != lc)
+                db_send(", ");
+        }
     }
 
     db_send("]");
