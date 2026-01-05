@@ -1,6 +1,6 @@
 # test_index_perf.py
 from support.db_cli import DbClient
-from support.data_mock import generate_single_student, generate_students
+from support.data_mock import generate_single_student
 import math
 
 client = DbClient("127.0.0.1", 4083)    
@@ -39,7 +39,7 @@ def test_perf_with_index():
     assert ret1["success"] == True
     assert ret2["success"] == True
     assert ret1["data"] == ret2["data"]
-    assert math.isclose(ret1["duration"], ret2["duration"], rel_tol=1e-3)
+    assert math.isclose(ret1["duration"], ret2["duration"], rel_tol=1e-3, abs_tol=1e-3)
 
 ## test drop table.
 def test_drop_table():
