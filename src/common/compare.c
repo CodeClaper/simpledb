@@ -732,11 +732,8 @@ bool KeyValueEval(CompareType compare_type, KeyValue *left, KeyValue *right) {
 
 /* Compare. */
 int compare(void *source, void *taget, DataType data_type) {
-    if (EQ(source, taget, data_type))
-        return 0;
-    else if (GT(source, taget, data_type))
-        return 1;
-    else 
-        return -1;
+    if (EQ(source, taget, data_type)) return 0;
+    else if (GT(source, taget, data_type)) return 1;
+    else return -1;
 }
 
