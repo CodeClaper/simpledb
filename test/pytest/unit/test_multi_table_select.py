@@ -1,4 +1,4 @@
-# test_alter.py
+# test_multi_tables_select.py
 from support.db_cli import DbClient
 from support.asserts import assert_all
 
