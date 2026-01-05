@@ -180,7 +180,6 @@ static bool BinSearchInternalNodeForComparisonPredicate(SelectPlan *select_plan,
                 KeyValue *max_key_value = KeyValueFromIndexKey(meta_index, max_key, column->column_name);
                 KeyValue *min_key_value = KeyValueFromIndexKey(meta_index, min_key, column->column_name);
                 if (StrEq(column->column_name, min_key_value->key) && StrEq(column->column_name, max_key_value->key))
-                if (StrEq(column->column_name, min_key_value->key) && StrEq(column->column_name, max_key_value->key))
                     return !negation 
                             ? KeyValueEval(O_LT, min_key_value, value) && KeyValueEval(O_GE, max_key_value, value) 
                             : true;
@@ -193,7 +192,6 @@ static bool BinSearchInternalNodeForComparisonPredicate(SelectPlan *select_plan,
                 KeyValue *value = QueryTupleValueItem(right->value);
                 KeyValue *max_key_value = KeyValueFromIndexKey(meta_index, max_key, column->column_name);
                 KeyValue *min_key_value = KeyValueFromIndexKey(meta_index, min_key, column->column_name);
-                if (StrEq(column->column_name, min_key_value->key) && StrEq(column->column_name, max_key_value->key))
                 if (StrEq(column->column_name, min_key_value->key) && StrEq(column->column_name, max_key_value->key))
                     return !negation 
                             ? true
