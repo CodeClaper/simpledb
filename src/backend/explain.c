@@ -38,8 +38,8 @@ static List *ExplainStatement(ExplainNode *explain_node) {
 void ExecuteExplainStatement(ExplainNode *explain_node, DBResult *result) {
     Assert(explain_node != NULL);
     if (!CheckForExplain(explain_node)) return;
-    result->success = true;
     result->data = ExplainStatement(explain_node);
     result->message = dstrdup("Explain excuted successfully.");
+    result->success = true;
     db_log(SUCCESS, "Explain excuted successfully.");
 }

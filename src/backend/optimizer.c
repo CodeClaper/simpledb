@@ -189,9 +189,10 @@ static bool IndexValidForColumn(List *select_table_list, ColumnNode *column) {
         : ColumnNodeFindMetaColumn(select_table_list, column);
 
     if (target_meta_column == NULL) {
-        db_log(ERROR, "Unknown column '%s.%s' in where clause. ", 
-               column->range_variable, 
-               column->column_name);
+        if (StrIsEmpty(column->range_variable))
+            db_log(ERROR, "Unknown column '%s' in where clause. ", column->column_name);
+        else
+            db_log(ERROR, "Unknown column '%s.%s' in where clause. ", column->range_variable, column->column_name);
     }
     return target_meta_column->is_primary;
 }
