@@ -41,6 +41,25 @@ def test_perf_with_index():
     assert ret1["data"] == ret2["data"]
     assert math.isclose(ret1["duration"], ret2["duration"], rel_tol=1e-3, abs_tol=1e-3)
 
+def test_create_phone_index():
+    sql = "create index i_phone on Student(phone);"
+    ret = client.execute(sql)
+    assert ret["success"] == True
+
+def test_plain_phone_index():
+    sql = "explain select * from Student where phone = '18378299110';"
+    ret = client.execute(sql)
+    assert ret["success"] == True
+    assert ret["data"] ==  {'stmt_type': 'select', 'index': 'i_phone', 'only_count': False, 'only_scan': False }
+    
+def test_perf_i_phone():
+    ret1 = client.execute("select * from Student where id = '99999';")
+    assert ret1["success"] == True
+    ret2 = client.execute(f"select * from Student where phone = '{ret1["data"][0]["phone"]}';")
+    assert ret2["success"] == True
+    assert ret1["data"] == ret2["data"]
+    assert math.isclose(ret1["duration"], ret2["duration"], rel_tol=1e-3, abs_tol=1e-3)
+
 ## test drop table.
 def test_drop_table():
     sql = "drop table Student;"
