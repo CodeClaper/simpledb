@@ -439,9 +439,7 @@ static bool BinSearchInternalNodeForBooleanTerm(SelectPlan *select_plan, void *m
 
 static bool BinSearchInternalNodeForSearchCondition(SelectPlan *select_plan, void *min_key, void *max_key, SearchConditionNode *condition) {
     /* If index is invalid, just return true. */
-    if (!select_plan->indexValid) 
-        return true;
-
+    if (!select_plan->hit_index) return true;
     return condition->or_search_condition == NULL 
         ? BinSearchInternalNodeForBooleanTerm(select_plan, min_key, max_key, condition->boolean_term)
         : BinSearchInternalNodeForBooleanTerm(select_plan, min_key, max_key, condition->boolean_term) || 

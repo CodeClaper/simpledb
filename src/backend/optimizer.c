@@ -294,7 +294,6 @@ static bool IndexValidForSelectNode(List *select_table_list, SelectNode *selectN
     return IndexValidForSearchCondition(select_table_list, search_condition);
 }
 
-
 static bool HitIndexForColumn(SelectPlan *select_plan, ColumnNode *column) {
     Table *table;
     List *select_table_list;
