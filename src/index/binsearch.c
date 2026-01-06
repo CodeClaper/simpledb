@@ -493,6 +493,14 @@ static bool BinSearchInternalNodeForSearchCondition(SelectPlan *select_plan, voi
             BinSearchInternalNodeForSearchCondition(select_plan, min_key, max_key, condition->or_search_condition);
 }
 
+void *mockData(char *s1, char *s2, char *s3) {
+    void *data = dalloc(48 + 2 + 13 + 2 + 100 + 2);
+    memcpy(data, s1, strlen(s1));
+    memcpy(data + 48 + 2, s2, strlen(s2));
+    memcpy(data + 48 + 2 + 13 + 2, s3, strlen(s3));
+    return data;
+}
+
 /* Bin search under conditon for internal node. */
 static void BinSearchUnderConditionForInternalNode(MetaIndex *meta_index, uint32_t page_num, void *boundary_key, SelectResult *select_result, SelectPlan *select_plan) {
     Buffer buffer;
@@ -510,6 +518,9 @@ static void BinSearchUnderConditionForInternalNode(MetaIndex *meta_index, uint32
     
     keys_num = BinInternalNodeGetKeysNum(internal_node);
     high_key = BinNodeGetHighKey(internal_node, meta_index->key_len, meta_index->value_len);
+
+    void *mock = mockData("胡刚", "15691709944", "京市福田区新华路957号");
+    int idx = BinInternalNodeFindCellNum(meta_index, internal_node, mock);
     
     for (i = 0; i < keys_num; i++) {
         /* Check if index column, use index to avoid full text scanning. */
@@ -517,6 +528,9 @@ static void BinSearchUnderConditionForInternalNode(MetaIndex *meta_index, uint32
 
         uint32_t child_page_num;
         void *max_key, *min_key;
+
+        if (i == idx)
+            db_log(DEBUGER, "HIT");
 
         max_key = BinInternalNodeGetCellKey(internal_node, meta_index->key_len, i);
         min_key = (i == 0) ? NULL : BinInternalNodeGetCellKey(internal_node, meta_index->key_len, i - 1);
