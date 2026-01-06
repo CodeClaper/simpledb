@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
+#include <time.h>
 #include "binsearch.h"
 #include "bin.h"
 #include "bufmgr.h"
@@ -19,7 +20,7 @@
 #include "compare.h"
 
 static void BinSearchUnderConditionInner(MetaIndex *meta_index, uint32_t page_num, void *boundary_key, SelectResult *select_result, SelectPlan *select_plan);
-static bool BinSearchInternalNodeForSearchCondition(SelectPlan *select_plan, void *min_key, void *max_key, SearchConditionNode *condition);
+static bool BinSearchInternalNodeForSearchConditionExtend(SelectPlan *select_plan, void *min_key, void *max_key, SearchConditionNode *condition, MetaColumn *meta_column);
 
 /* Check if LimitClauseNode is full. 
  * LimitClauseNode full means the poffset >= the offset.
@@ -91,7 +92,7 @@ static KeyValue *QueryTupleValueItem(ValueItemNode *value_item) {
         : new_key_value(NULL, value, AtomTypeConvertDataType(value_item->value.atom->type), OID_ZERO, OID_ZERO);
 }
 
-
+/* Check if value item is a refer value. */
 static bool ValueItemIsReferValue(ValueItemNode *value_item) {
     switch (value_item->type) {
         case V_ATOM: {
@@ -113,22 +114,49 @@ static bool ValueItemIsReferValue(ValueItemNode *value_item) {
     return false;
 } 
 
-static KeyValue *KeyValueFromIndexKey(MetaIndex *meta_index, void *key, char *column_name) {
-    uint32_t offset = 0;
+/* Index key to generate key value. */
+static KeyValue *IndexKeyGenerateKeyValue(MetaIndex *meta_index, void *key, MetaColumn *meta_column) {
+    int offset = 0;
+
     ListCell *lc;
-    foreach (lc, meta_index->meta_columns) {
-        MetaColumn *meta_column = (MetaColumn *) lfirst(lc);
-        if (StrEq(meta_column->column_name, column_name))
-            return new_key_value(column_name, 
-                                 key + offset, 
-                                 meta_column->column_type, 
-                                 meta_column->tid, 
-                                 meta_column->type_oid);
+    foreach(lc, meta_index->meta_columns) {
+        if (meta_column == lfirst(lc)) break;
         offset += meta_column->column_length;
+    }
+
+    return new_key_value(
+        meta_column->column_name, 
+        key == NULL ? NULL : key + offset,
+        meta_column->column_type, 
+        meta_column->tid, 
+        meta_column->type_oid
+    );
+}
+
+
+/* Search table via alias name in SelectResult. 
+ * Note: range variable may be table name or table alias name. */
+static Table *SearchTableViaAlias(SelectPlan *select_plan, char *alias_name) {
+    if (select_plan->selectTableList != NIL) {
+        ListCell *lc;
+        foreach (lc, select_plan->selectTableList) {
+            SelectTable *select_table = (SelectTable *)lfirst(lc);
+            if (StrEq(select_table->alias_name, alias_name) || StrEq(GET_TABLE_NAME(select_table->table), alias_name))
+                return select_table->table;
+        }
     }
     return NULL;
 }
 
+
+static bool ColumnNodeHitMetaColumn(ColumnNode *column, SelectPlan *select_plan, MetaColumn *meta_column) {
+    if (StrIsEmpty(column->range_variable))
+        return StrEq(column->column_name, meta_column->column_name);
+    Table *table = SearchTableViaAlias(select_plan, column->range_variable);
+    if (table == NULL)
+        db_log(ERROR, "Unknown column name %s.%s", column->range_variable, column->column_name);
+    return meta_column->tid == GET_TABLE_OID(table) && StrEq(column->column_name, meta_column->column_name);
+}
 
 static bool ScalarExpIsReferValue(ScalarExpNode *scalar_exp) {
     if (scalar_exp->type == SCALAR_VALUE) {
@@ -155,144 +183,155 @@ static bool SatisfyColumnAndReferValueCompparison(ScalarExpNode *left, ScalarExp
 }
 
 /* Check if the internal comparison meets comparison. */
-static bool BinSearchInternalNodeForComparisonPredicate(SelectPlan *select_plan, void *min_key, void *max_key, ComparisonNode *comparison, bool negation) {
+static bool BinSearchInternalNodeForComparisonPredicate(SelectPlan *select_plan, void *min_key, void *max_key, ComparisonNode *comparison, bool negation, MetaColumn *meta_column) {
     /* Refer value will cause index invalid */
     if (SatisfyColumnAndReferValueCompparison(comparison->left, comparison->right))
         return true;
-
-    MetaIndex *meta_index = select_plan->meta_index;
+    
     ScalarExpNode *left = comparison->left;
     ScalarExpNode *right = comparison->right;
     switch (comparison->type) {
         case O_EQ: {
             if (left->type == SCALAR_COLUMN && right->type == SCALAR_VALUE) {
                 ColumnNode *column = left->column;
+                if (!ColumnNodeHitMetaColumn(column, select_plan, meta_column)) 
+                    return true;
                 KeyValue *value = QueryTupleValueItem(right->value);
-                KeyValue *max_key_value = KeyValueFromIndexKey(meta_index, max_key, column->column_name);
-                KeyValue *min_key_value = KeyValueFromIndexKey(meta_index, min_key, column->column_name);
-                if (StrEq(column->column_name, min_key_value->key) && StrEq(column->column_name, max_key_value->key))
-                    return !negation 
-                            ? KeyValueEval(O_LT, min_key_value, value) && KeyValueEval(O_GE, max_key_value, value) 
-                            : true; 
+                KeyValue *max_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, max_key, meta_column);
+                KeyValue *min_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, min_key, meta_column);
+                return !negation 
+                        ? KeyValueEval(O_LT, min_key_value, value) && KeyValueEval(O_GE, max_key_value, value) 
+                        : true; 
             } else if (left->type == SCALAR_VALUE && right->type == SCALAR_COLUMN) {
                 ColumnNode *column = right->column;
+                if (!ColumnNodeHitMetaColumn(column, select_plan, meta_column)) 
+                    return true;
                 KeyValue *value = QueryTupleValueItem(left->value);
-                KeyValue *max_key_value = KeyValueFromIndexKey(meta_index, max_key, column->column_name);
-                KeyValue *min_key_value = KeyValueFromIndexKey(meta_index, min_key, column->column_name);
-                if (StrEq(column->column_name, min_key_value->key) && StrEq(column->column_name, max_key_value->key))
-                    return !negation 
-                            ? KeyValueEval(O_LT, min_key_value, value) && KeyValueEval(O_GE, max_key_value, value) 
-                            : true;
+                KeyValue *max_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, max_key, meta_column);
+                KeyValue *min_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, min_key, meta_column);
+                return !negation 
+                        ? KeyValueEval(O_LT, min_key_value, value) && KeyValueEval(O_GE, max_key_value, value) 
+                        : true;
             }
             break;
         }
         case O_NE: {
             if (left->type == SCALAR_COLUMN && right->type == SCALAR_VALUE) {
                 ColumnNode *column = left->column;
+                if (!ColumnNodeHitMetaColumn(column, select_plan, meta_column)) 
+                    return true;
                 KeyValue *value = QueryTupleValueItem(right->value);
-                KeyValue *max_key_value = KeyValueFromIndexKey(meta_index, max_key, column->column_name);
-                KeyValue *min_key_value = KeyValueFromIndexKey(meta_index, min_key, column->column_name);
-                if (StrEq(column->column_name, min_key_value->key) && StrEq(column->column_name, max_key_value->key))
-                    return !negation 
-                            ? true
-                            : KeyValueEval(O_LT, min_key_value, value) && KeyValueEval(O_GE, max_key_value, value);
+                KeyValue *max_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, max_key, meta_column);
+                KeyValue *min_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, min_key, meta_column);
+                return !negation 
+                        ? true
+                        : KeyValueEval(O_LT, min_key_value, value) && KeyValueEval(O_GE, max_key_value, value);
             } else if (left->type == SCALAR_VALUE && right->type == SCALAR_COLUMN) {
                 ColumnNode *column = right->column;
+                if (!ColumnNodeHitMetaColumn(column, select_plan, meta_column)) 
+                    return true;
                 KeyValue *value = QueryTupleValueItem(left->value);
-                KeyValue *max_key_value = KeyValueFromIndexKey(meta_index, max_key, column->column_name);
-                KeyValue *min_key_value = KeyValueFromIndexKey(meta_index, min_key, column->column_name);
-                if (StrEq(column->column_name, min_key_value->key) && StrEq(column->column_name, max_key_value->key))
-                    return !negation 
-                            ? true
-                            : KeyValueEval(O_LT, min_key_value, value) && KeyValueEval(O_GE, max_key_value, value); 
+                KeyValue *max_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, max_key, meta_column);
+                KeyValue *min_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, min_key, meta_column);
+                return !negation 
+                        ? true
+                        : KeyValueEval(O_LT, min_key_value, value) && KeyValueEval(O_GE, max_key_value, value); 
             }
             break;
         }
         case O_GT: {
             if (left->type == SCALAR_COLUMN && right->type == SCALAR_VALUE) {
                 ColumnNode *column = left->column;
+                if (!ColumnNodeHitMetaColumn(column, select_plan, meta_column)) 
+                    return true;
                 KeyValue *value = QueryTupleValueItem(right->value);
-                KeyValue *max_key_value = KeyValueFromIndexKey(meta_index, max_key, column->column_name);
-                KeyValue *min_key_value = KeyValueFromIndexKey(meta_index, min_key, column->column_name);
-                if (StrEq(column->column_name, min_key_value->key) && StrEq(column->column_name, max_key_value->key))
-                    return !negation 
-                            ? KeyValueEval(O_GT, max_key_value, value) 
-                            : KeyValueEval(O_LT, min_key_value, value); 
+                KeyValue *max_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, max_key, meta_column);
+                KeyValue *min_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, min_key, meta_column);
+                return !negation 
+                        ? KeyValueEval(O_GT, max_key_value, value) 
+                        : KeyValueEval(O_LT, min_key_value, value); 
             } else if (left->type == SCALAR_VALUE && right->type == SCALAR_COLUMN) {
                 ColumnNode *column = right->column;
+                if (!ColumnNodeHitMetaColumn(column, select_plan, meta_column)) 
+                    return true;
                 KeyValue *value = QueryTupleValueItem(left->value);
-                KeyValue *max_key_value = KeyValueFromIndexKey(meta_index, max_key, column->column_name);
-                KeyValue *min_key_value = KeyValueFromIndexKey(meta_index, min_key, column->column_name);
-                if (StrEq(column->column_name, min_key_value->key) && StrEq(column->column_name, max_key_value->key))
-                    return !negation 
-                            ? KeyValueEval(O_LT, min_key_value, value) 
-                            : KeyValueEval(O_GT, max_key_value, value);
+                KeyValue *max_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, max_key, meta_column);
+                KeyValue *min_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, min_key, meta_column);
+                return !negation 
+                        ? KeyValueEval(O_LT, min_key_value, value) 
+                        : KeyValueEval(O_GT, max_key_value, value);
             }
             break;
         }
         case O_GE: {
             if (left->type == SCALAR_COLUMN && right->type == SCALAR_VALUE) {
                 ColumnNode *column = left->column;
+                if (!ColumnNodeHitMetaColumn(column, select_plan, meta_column)) 
+                    return true;
                 KeyValue *value = QueryTupleValueItem(right->value);
-                KeyValue *max_key_value = KeyValueFromIndexKey(meta_index, max_key, column->column_name);
-                KeyValue *min_key_value = KeyValueFromIndexKey(meta_index, min_key, column->column_name);
-                if (StrEq(column->column_name, min_key_value->key) && StrEq(column->column_name, max_key_value->key))
-                    return !negation 
-                            ? KeyValueEval(O_GE, max_key_value, value) 
-                            : KeyValueEval(O_LE, min_key_value, value); 
+                KeyValue *max_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, max_key, meta_column);
+                KeyValue *min_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, min_key, meta_column);
+                return !negation 
+                        ? KeyValueEval(O_GE, max_key_value, value) 
+                        : KeyValueEval(O_LE, min_key_value, value); 
             } else if (left->type == SCALAR_VALUE && right->type == SCALAR_COLUMN) {
                 ColumnNode *column = right->column;
+                if (!ColumnNodeHitMetaColumn(column, select_plan, meta_column)) 
+                    return true;
                 KeyValue *value = QueryTupleValueItem(left->value);
-                KeyValue *max_key_value = KeyValueFromIndexKey(meta_index, max_key, column->column_name);
-                KeyValue *min_key_value = KeyValueFromIndexKey(meta_index, min_key, column->column_name);
-                if (StrEq(column->column_name, min_key_value->key) && StrEq(column->column_name, max_key_value->key))
-                    return !negation 
-                            ? KeyValueEval(O_LE, min_key_value, value) 
-                            : KeyValueEval(O_GE, max_key_value, value);
+                KeyValue *max_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, max_key, meta_column);
+                KeyValue *min_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, min_key, meta_column);
+                return !negation 
+                        ? KeyValueEval(O_LE, min_key_value, value) 
+                        : KeyValueEval(O_GE, max_key_value, value);
             }
             break;
         }
         case O_LT: {
             if (left->type == SCALAR_COLUMN && right->type == SCALAR_VALUE) {
                 ColumnNode *column = left->column;
+                if (!ColumnNodeHitMetaColumn(column, select_plan, meta_column)) 
+                    return true;
                 KeyValue *value = QueryTupleValueItem(right->value);
-                KeyValue *max_key_value = KeyValueFromIndexKey(meta_index, max_key, column->column_name);
-                KeyValue *min_key_value = KeyValueFromIndexKey(meta_index, min_key, column->column_name);
-                if (StrEq(column->column_name, min_key_value->key) && StrEq(column->column_name, max_key_value->key))
-                    return !negation 
-                            ? KeyValueEval(O_LT, min_key_value, value) 
-                            : KeyValueEval(O_GT, max_key_value, value); 
+                KeyValue *max_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, max_key, meta_column);
+                KeyValue *min_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index,min_key, meta_column);
+                return !negation 
+                        ? KeyValueEval(O_LT, min_key_value, value) 
+                        : KeyValueEval(O_GT, max_key_value, value); 
             } else if (left->type == SCALAR_VALUE && right->type == SCALAR_COLUMN) {
                 ColumnNode *column = right->column;
+                if (!ColumnNodeHitMetaColumn(column, select_plan, meta_column)) 
+                    return true;
                 KeyValue *value = QueryTupleValueItem(left->value);
-                KeyValue *max_key_value = KeyValueFromIndexKey(meta_index, max_key, column->column_name);
-                KeyValue *min_key_value = KeyValueFromIndexKey(meta_index, min_key, column->column_name);
-                if (StrEq(column->column_name, min_key_value->key) && StrEq(column->column_name, max_key_value->key))
-                    return !negation 
-                            ? KeyValueEval(O_GT, max_key_value, value) 
-                            : KeyValueEval(O_LT, min_key_value, value); 
+                KeyValue *max_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, max_key, meta_column);
+                KeyValue *min_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, min_key, meta_column);
+                return !negation 
+                        ? KeyValueEval(O_GT, max_key_value, value) 
+                        : KeyValueEval(O_LT, min_key_value, value); 
             }
             break;
         }
         case O_LE: {
             if (left->type == SCALAR_COLUMN && right->type == SCALAR_VALUE) {
                 ColumnNode *column = left->column;
+                if (!ColumnNodeHitMetaColumn(column, select_plan, meta_column)) 
+                    return true;
                 KeyValue *value = QueryTupleValueItem(right->value);
-                KeyValue *max_key_value = KeyValueFromIndexKey(meta_index, max_key, column->column_name);
-                KeyValue *min_key_value = KeyValueFromIndexKey(meta_index, min_key, column->column_name);
-                if (StrEq(column->column_name, min_key_value->key) && StrEq(column->column_name, max_key_value->key))
-                    return !negation 
-                            ? KeyValueEval(O_LE, min_key_value, value) 
-                            : KeyValueEval(O_GE, max_key_value, value); 
+                KeyValue *max_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, max_key, meta_column);
+                KeyValue *min_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, min_key, meta_column);
+                return !negation 
+                        ? KeyValueEval(O_LE, min_key_value, value) 
+                        : KeyValueEval(O_GE, max_key_value, value); 
             } else if (left->type == SCALAR_VALUE && right->type == SCALAR_COLUMN) {
                 ColumnNode *column = right->column;
+                if (!ColumnNodeHitMetaColumn(column, select_plan, meta_column)) 
+                    return true;
                 KeyValue *value = QueryTupleValueItem(left->value);
-                KeyValue *max_key_value = KeyValueFromIndexKey(meta_index, max_key, column->column_name);
-                KeyValue *min_key_value = KeyValueFromIndexKey(meta_index, min_key, column->column_name);
-                if (StrEq(column->column_name, min_key_value->key) && StrEq(column->column_name, max_key_value->key))
-                    return !negation 
-                            ? KeyValueEval(O_GE, max_key_value, value) 
-                            : KeyValueEval(O_LE, min_key_value, value); 
+                KeyValue *max_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, max_key, meta_column);
+                KeyValue *min_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, min_key, meta_column);
+                return !negation 
+                        ? KeyValueEval(O_GE, max_key_value, value) 
+                        : KeyValueEval(O_LE, min_key_value, value); 
             }
             break;
         }
@@ -304,7 +343,7 @@ static bool BinSearchInternalNodeForComparisonPredicate(SelectPlan *select_plan,
 }
 
 /* Check if the internal node meets like predicate. */
-static bool BinSearchInternalNodeForLikePredicate(SelectPlan *select_plan, void *min_key, KeyValue *max_key, LikeNode *like, bool negation) { 
+static bool BinSearchInternalNodeForLikePredicate(SelectPlan *select_plan, void *min_key, KeyValue *max_key, LikeNode *like, bool negation, MetaColumn *meta_column) { 
     /* For not like operation, it`s realy hard not to fall into the scope of internal node, 
      * which means everyone in the scope of internal node is like to the target value. 
      * Absolutely, it`s not possible so just return true. */
@@ -317,8 +356,8 @@ static bool BinSearchInternalNodeForLikePredicate(SelectPlan *select_plan, void 
 
     column = like->column;
     value = QueryTupleValueItem(like->value);
-    max_key_value = KeyValueFromIndexKey(select_plan->meta_index, max_key, column->column_name);
-    min_key_value = KeyValueFromIndexKey(select_plan->meta_index, min_key, column->column_name);
+    max_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, max_key, meta_column);
+    min_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, min_key, meta_column);
     strVal = value->value;
     len = strlen(strVal);
     AssertFalse(strVal[0] == '%');
@@ -339,14 +378,14 @@ static bool BinSearchInternalNodeForLikePredicate(SelectPlan *select_plan, void 
 
 
 /* Check if the internal node meets in predicate. */
-static bool BinSearchInternalNodeForInPredicate(SelectPlan *select_plan, void *min_key, void *max_key, InNode *in, bool negation) {
+static bool BinSearchInternalNodeForInPredicate(SelectPlan *select_plan, void *min_key, void *max_key, InNode *in, bool negation, MetaColumn *meta_column) {
     /* For not in operation, it`s realy hard not to fall into the scope of internal node. 
      * Because it`s the whole world escape the in operation target values, so just return true. */
     if (negation) return true;
 
     ColumnNode *column = in->column;
-    KeyValue *max_key_value = KeyValueFromIndexKey(select_plan->meta_index, max_key, column->column_name);
-    KeyValue *min_key_value = KeyValueFromIndexKey(select_plan->meta_index, min_key, column->column_name);
+    KeyValue *max_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, max_key, meta_column);
+    KeyValue *min_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, min_key, meta_column);
     if (StrEq(column->column_name, min_key_value->key) && StrEq(column->column_name, max_key_value->key)) {
         ListCell *lc;
         foreach (lc, in->value_list) {
@@ -361,22 +400,22 @@ static bool BinSearchInternalNodeForInPredicate(SelectPlan *select_plan, void *m
 
 
 /* Check if the internal node meets predicate. */
-static bool BinSearchInternalNodeForPredicate(SelectPlan *select_plan, void *min_key, void *max_key, PredicateNode *predicate, bool negation) {
+static bool BinSearchInternalNodeForPredicate(SelectPlan *select_plan, void *min_key, void *max_key, PredicateNode *predicate, bool negation, MetaColumn *meta_column) {
     switch (predicate->type) {
         case PRE_COMPARISON:
             return BinSearchInternalNodeForComparisonPredicate(
                 select_plan, min_key, max_key, 
-                predicate->comparison, negation
+                predicate->comparison, negation, meta_column
             );
         case PRE_LIKE:
             return BinSearchInternalNodeForLikePredicate(
                 select_plan, min_key, max_key, 
-                predicate->like, negation
+                predicate->like, negation, meta_column
             );
         case PRE_IN:
             return BinSearchInternalNodeForInPredicate(
                 select_plan, min_key, max_key, 
-                predicate->in, negation
+                predicate->in, negation, meta_column
             );
         default:
             UNEXPECTED_VALUE(predicate->type);
@@ -385,13 +424,13 @@ static bool BinSearchInternalNodeForPredicate(SelectPlan *select_plan, void *min
 }
 
 /* Check if the internal node meets the boolean primary. */
-static bool BinSearchInternalNodeForBooleanPrimary(SelectPlan *select_plan, void *min_key, void *max_key, BooleanPrimaryNode *boolean_primary, bool negation) {
+static bool BinSearchInternalNodeForBooleanPrimary(SelectPlan *select_plan, void *min_key, void *max_key, BooleanPrimaryNode *boolean_primary, bool negation, MetaColumn *meta_column) {
     switch (boolean_primary->type) {
         case PREDICATE_BOOLEAN_PRIMAYR:
-            return BinSearchInternalNodeForPredicate(select_plan, min_key, max_key, boolean_primary->predicate, negation);
+            return BinSearchInternalNodeForPredicate(select_plan, min_key, max_key, boolean_primary->predicate, negation, meta_column);
         case SEARCH_CONDITION_BOOLEAN_PRIMAYR:
             return !negation 
-                    ? BinSearchInternalNodeForSearchCondition(select_plan, min_key, max_key, boolean_primary->search_condition) 
+                    ? BinSearchInternalNodeForSearchConditionExtend(select_plan, min_key, max_key, boolean_primary->search_condition, meta_column) 
                     : true;
         default:
             UNEXPECTED_VALUE(boolean_primary->type);
@@ -400,21 +439,23 @@ static bool BinSearchInternalNodeForBooleanPrimary(SelectPlan *select_plan, void
 }
 
 /* Check if the internal node meets the boolean test. */
-static bool BinSearchInternalNodeForBooleanTest(SelectPlan *select_plan, void *min_key, void *max_key, BooleanTestNode *boolean_test, bool negation) {
+static bool BinSearchInternalNodeForBooleanTest(SelectPlan *select_plan, void *min_key, void *max_key, BooleanTestNode *boolean_test, bool negation, MetaColumn *meta_column) {
     switch (boolean_test->type) {
         case NONE_TRUE_VALUE: 
-            return BinSearchInternalNodeForBooleanPrimary(select_plan, min_key, max_key, boolean_test->boolean_primary, negation);
+            return BinSearchInternalNodeForBooleanPrimary(select_plan, min_key, max_key, boolean_test->boolean_primary, negation, meta_column);
         case IS_TRUTH_VALUE: 
             return BinSearchInternalNodeForBooleanPrimary(
                 select_plan, min_key, max_key, boolean_test->boolean_primary, 
                 /* The following is XOR. */
-                negation == boolean_test->truth_value
+                negation == boolean_test->truth_value, 
+                meta_column
             );
         case IS_NOT_TRUTH_VALUE: 
             return BinSearchInternalNodeForBooleanPrimary(
                 select_plan, min_key, max_key, boolean_test->boolean_primary, 
                 /* The following is XOR. */
-                negation != boolean_test->truth_value
+                negation != boolean_test->truth_value,
+                meta_column
             );
         default:
             UNEXPECTED_VALUE(boolean_test->type);
@@ -423,25 +464,41 @@ static bool BinSearchInternalNodeForBooleanTest(SelectPlan *select_plan, void *m
 }
 
 /* Check if the internal node meets the boolean fator. */
-static bool BinSearchInternalNodeForBooleanFactor(SelectPlan *select_plan, void *min_key, void *max_key, BooleanFactorNode *boolean_factor) {
-    return BinSearchInternalNodeForBooleanTest(select_plan, min_key, max_key, boolean_factor->boolean_test, boolean_factor->is_not);
+static bool BinSearchInternalNodeForBooleanFactor(SelectPlan *select_plan, void *min_key, void *max_key, BooleanFactorNode *boolean_factor, MetaColumn *meta_column) {
+    return BinSearchInternalNodeForBooleanTest(select_plan, min_key, max_key, boolean_factor->boolean_test, boolean_factor->is_not, meta_column);
 }
 
 /* Check if the internal node meets the boolean term. */
-static bool BinSearchInternalNodeForBooleanTerm(SelectPlan *select_plan, void *min_key, void *max_key, BooleanTermNode *boolean_term) {
+static bool BinSearchInternalNodeForBooleanTerm(SelectPlan *select_plan, void *min_key, void *max_key, BooleanTermNode *boolean_term, MetaColumn *meta_column) {
     return boolean_term->and_boolean_term == NULL 
-        ? BinSearchInternalNodeForBooleanFactor(select_plan, min_key,  max_key, boolean_term->boolean_factor)
-        : BinSearchInternalNodeForBooleanFactor(select_plan, min_key,  max_key, boolean_term->boolean_factor) && 
-            BinSearchInternalNodeForBooleanTerm(select_plan, min_key, max_key, boolean_term->and_boolean_term);
+        ? BinSearchInternalNodeForBooleanFactor(select_plan, min_key,  max_key, boolean_term->boolean_factor, meta_column)
+        : BinSearchInternalNodeForBooleanFactor(select_plan, min_key,  max_key, boolean_term->boolean_factor, meta_column) && 
+            BinSearchInternalNodeForBooleanTerm(select_plan, min_key, max_key, boolean_term->and_boolean_term, meta_column);
 }
+
+
+static bool BinSearchInternalNodeForSearchConditionExtend(SelectPlan *select_plan, void *min_key, void *max_key, SearchConditionNode *condition, MetaColumn *meta_column) {
+    return condition->or_search_condition == NULL 
+        ? BinSearchInternalNodeForBooleanTerm(select_plan, min_key, max_key, condition->boolean_term, meta_column)
+        : BinSearchInternalNodeForBooleanTerm(select_plan, min_key, max_key, condition->boolean_term, meta_column) || 
+            BinSearchInternalNodeForSearchConditionExtend(select_plan, min_key, max_key, condition->or_search_condition, meta_column);
+}
+
 
 static bool BinSearchInternalNodeForSearchCondition(SelectPlan *select_plan, void *min_key, void *max_key, SearchConditionNode *condition) {
     /* If index is invalid, just return true. */
     if (!select_plan->hit_index) return true;
-    return condition->or_search_condition == NULL 
-        ? BinSearchInternalNodeForBooleanTerm(select_plan, min_key, max_key, condition->boolean_term)
-        : BinSearchInternalNodeForBooleanTerm(select_plan, min_key, max_key, condition->boolean_term) || 
-            BinSearchInternalNodeForSearchCondition(select_plan, min_key, max_key, condition->or_search_condition);
+
+    bool ret = false;
+    MetaIndex *meta_index = select_plan->meta_index;
+
+    ListCell *lc;
+    foreach(lc, meta_index->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
+        ret = ret || BinSearchInternalNodeForSearchConditionExtend(select_plan, min_key, max_key, condition, meta_column);
+    }
+
+    return ret;
 }
 
 /* Bin search under conditon for internal node. */
