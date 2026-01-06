@@ -153,12 +153,9 @@ bool eval(CompareType compare_type, void *source, void *target, DataType data_ty
 /* Compare key values for EQ. */
 static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
     /* Deal with NULL case. */
-    if (left->value == NULL && right->value == NULL) 
-        return true;
-    else if (left->value != NULL && right->value == NULL) 
-        return false;
-    else if (left->value == NULL && right->value != NULL)
-        return false;
+    if (left->value == NULL && right->value == NULL) return true;
+    else if (left->value != NULL && right->value == NULL) return false;
+    else if (left->value == NULL && right->value != NULL) return false;
 
     switch (left->data_type) {
         case T_BOOL: {
