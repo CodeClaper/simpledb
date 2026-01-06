@@ -465,12 +465,12 @@ static bool BinSearchInternalNodeForBooleanTest(SelectPlan *select_plan, void *m
 
 /* Check if the internal node meets the boolean fator. */
 static bool BinSearchInternalNodeForBooleanFactor(SelectPlan *select_plan, void *min_key, void *max_key, BooleanFactorNode *boolean_factor) {
-    bool flag = false;
+    bool flag = true;
     
     ListCell *lc;
     foreach(lc, select_plan->meta_index->meta_columns) {
         MetaColumn *meta_column = (MetaColumn *) lfirst(lc);
-        flag |= BinSearchInternalNodeForBooleanTest(select_plan, min_key, max_key, boolean_factor->boolean_test, boolean_factor->is_not, meta_column);
+        flag &= BinSearchInternalNodeForBooleanTest(select_plan, min_key, max_key, boolean_factor->boolean_test, boolean_factor->is_not, meta_column);
     }
 
     return flag;

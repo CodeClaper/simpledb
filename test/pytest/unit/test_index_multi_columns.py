@@ -48,7 +48,7 @@ def test_primary_index_hit():
     assert ret["data"] ==  {'stmt_type': 'select', 'index': 'primary', 'only_count': False, 'only_scan': False}
 
 def test_perf_my_index():
-    ret1 = client.execute("select * from Student where id = '89898';")
+    ret1 = client.execute("select * from Student where id = '1';")
     assert ret1["success"] == True
     assert ret1["rows"] == 1
     row = ret1["data"][0]
