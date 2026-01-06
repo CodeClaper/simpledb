@@ -283,6 +283,11 @@ void *GetComparableValue(void *value, DataType type) {
     }
 } 
 
+/* Get Comparable type. */
+DataType GetComparableType(DataType type) {
+    return type == T_STRING ? T_VARCHAR : type;
+}
+
 /* Get key string value for user.*/
 char *KeyGetUserStrValue(void *key, DataType ptype) {
     switch(ptype) {
