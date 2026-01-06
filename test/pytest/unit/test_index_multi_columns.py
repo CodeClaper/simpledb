@@ -29,12 +29,23 @@ def test_create_multi_columns_index():
 def test_show_index():
     sql = "show index from Student;"
     ret = client.execute(sql)
-    print(ret)
     assert ret["success"] == True
     assert ret["data"] == [
             {'index_name': 'Student_pri_index', 'table_name': 'Student', 'is_unique': True, 'index_type': 'BTREE', 'columns': 'id'}, 
             {'index_name': 'my_index', 'table_name': 'Student', 'is_unique': False, 'index_type': 'BTREE', 'columns': 'name,phone,address'}
         ]
+
+def test_index_hit():
+    sql = "explain select * from Student where name = 'zhangsan' and phone='13861698001' and address='上海市西湖区科技路78号';"
+    ret = client.execute(sql)
+    assert ret["success"] == True
+    assert ret["data"] ==  {'stmt_type': 'select', 'index': 'my_index', 'only_count': False, 'only_scan': False}
+
+def test_primary_index_hit():
+    sql = "explain select * from Student where id = '98989';"
+    ret = client.execute(sql)
+    assert ret["success"] == True
+    assert ret["data"] ==  {'stmt_type': 'select', 'index': 'primary', 'only_count': False, 'only_scan': False}
 
 
 ## test drop table.
