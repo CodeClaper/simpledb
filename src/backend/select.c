@@ -176,7 +176,9 @@ static KeyValue *QueryTupleColumnValue(SelectPlan *select_plan, List *meta_colum
     void *value = GetComparableValue(TupleFindValue(tuple, target_meta_column), target_meta_column->column_type);
     return column->has_sub_column 
         ? QueryTupleColumnValueForSubColumn(select_plan, target_meta_column, column, value)
-        : new_key_value(target_meta_column->column_name, value, target_meta_column->column_type, target_meta_column->tid, target_meta_column->type_oid);
+        : new_key_value(target_meta_column->column_name, value, 
+                        GetComparableType(target_meta_column->column_type),
+                        target_meta_column->tid, target_meta_column->type_oid);
 }
 
 /* Query tuple calulate value. */
@@ -1059,8 +1061,8 @@ static void SelectForInternalNode(Oid oid, uint32_t page_num, void *boundary_key
         child_boundary_key = InternalNodeGetCellKey(internal_node, key_len, default_value_len, i);
         max_key = GetComparableValue(child_boundary_key, ptype); 
         min_key = (i == 0) ? NULL : GetComparableValue(InternalNodeGetCellKey(internal_node, key_len, default_value_len, i - 1), ptype);
-        max_key_value = new_key_value(primary_meta_column->column_name, max_key, ptype, oid, primary_meta_column->type_oid);
-        min_key_value = new_key_value(primary_meta_column->column_name, min_key, ptype, oid, primary_meta_column->type_oid);
+        max_key_value = new_key_value(primary_meta_column->column_name, max_key, GetComparableType(ptype), oid, primary_meta_column->type_oid);
+        min_key_value = new_key_value(primary_meta_column->column_name, min_key, GetComparableType(ptype), oid, primary_meta_column->type_oid);
         /* Filter the internal node. */
         if (!InternalNodeForSearchCondition(select_plan, min_key_value, max_key_value, select_plan->condition))
             continue;
@@ -1157,8 +1159,8 @@ static void SelectForInternalNodeAsync(Oid oid, uint32_t page_num, SelectResult 
         void *min_key = (i == 0) 
                     ? NULL 
                     : GetComparableValue(InternalNodeGetCellKey(internal_node, key_len, value_len, i - 1), primary_meta_column->column_type);
-        KeyValue *max_key_value = new_key_value(primary_meta_column->column_name, max_key, primary_meta_column->column_type, oid, primary_meta_column->type_oid);
-        KeyValue *min_key_value = new_key_value(primary_meta_column->column_name, min_key, primary_meta_column->column_type, oid, primary_meta_column->type_oid);
+        KeyValue *max_key_value = new_key_value(primary_meta_column->column_name, max_key, GetComparableType(primary_meta_column->column_type), oid, primary_meta_column->type_oid);
+        KeyValue *min_key_value = new_key_value(primary_meta_column->column_name, min_key, GetComparableType(primary_meta_column->column_type), oid, primary_meta_column->type_oid);
         if (!InternalNodeForSearchCondition(select_plan, min_key_value, max_key_value, select_plan->condition))
             continue;
         
@@ -1579,15 +1581,13 @@ static KeyValue *CalcMaxValue(ColumnNode *column, SelectResult *select_result, S
         if (!max_value || GT(
                 GetComparableValue(current_value, data_type), 
                 GetComparableValue(max_value, data_type), 
-                data_type)) 
-        {
-            if (max_value)
-                free_value(max_value, data_type);
-            max_value = copy_value(current_value, data_type);
+                data_type)
+        ) {
+            max_value = current_value;
         }
     }
 
-    return new_key_value(MAX_NAME, max_value, data_type, select_result->oid, OID_ZERO);
+    return new_key_value(MAX_NAME, max_value, GetComparableType(data_type), select_result->oid, OID_ZERO);
 }
 
 /* Calulate column max value.*/
@@ -1606,13 +1606,11 @@ static KeyValue *CalcMinValue(ColumnNode *column, SelectResult *select_result, S
                 GetComparableValue(min_value, data_type), 
                 data_type)
         ) {
-            if (min_value)
-                free_value(min_value, data_type);
-            min_value = copy_value(current_value, data_type);
+            min_value = current_value;
         }
     }
 
-    return new_key_value(MIN_NAME, min_value, data_type, select_result->oid, OID_ZERO);
+    return new_key_value(MIN_NAME, min_value, GetComparableType(data_type), select_result->oid, OID_ZERO);
 }
 
 

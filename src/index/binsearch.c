@@ -20,7 +20,7 @@
 #include "compare.h"
 
 static void BinSearchUnderConditionInner(MetaIndex *meta_index, uint32_t page_num, void *boundary_key, SelectResult *select_result, SelectPlan *select_plan);
-static bool BinSearchInternalNodeForSearchConditionExtend(SelectPlan *select_plan, void *min_key, void *max_key, SearchConditionNode *condition, MetaColumn *meta_column);
+static bool BinSearchInternalNodeForSearchCondition(SelectPlan *select_plan, void *min_key, void *max_key, SearchConditionNode *condition);
 
 /* Check if LimitClauseNode is full. 
  * LimitClauseNode full means the poffset >= the offset.
@@ -120,14 +120,16 @@ static KeyValue *IndexKeyGenerateKeyValue(MetaIndex *meta_index, void *key, Meta
 
     ListCell *lc;
     foreach(lc, meta_index->meta_columns) {
-        if (meta_column == lfirst(lc)) break;
-        offset += meta_column->column_length;
+        MetaColumn *current = (MetaColumn *) lfirst(lc);
+        if (current == meta_column) break;
+        offset += current->column_length;
     }
 
     return new_key_value(
         meta_column->column_name, 
         GetComparableValue(key == NULL ? NULL : key + offset, meta_column->column_type),
-        meta_column->column_type, meta_column->tid, meta_column->type_oid
+        GetComparableType(meta_column->column_type), 
+        meta_column->tid, meta_column->type_oid
     );
 }
 
@@ -428,7 +430,7 @@ static bool BinSearchInternalNodeForBooleanPrimary(SelectPlan *select_plan, void
             return BinSearchInternalNodeForPredicate(select_plan, min_key, max_key, boolean_primary->predicate, negation, meta_column);
         case SEARCH_CONDITION_BOOLEAN_PRIMAYR:
             return !negation 
-                    ? BinSearchInternalNodeForSearchConditionExtend(select_plan, min_key, max_key, boolean_primary->search_condition, meta_column) 
+                    ? BinSearchInternalNodeForSearchCondition(select_plan, min_key, max_key, boolean_primary->search_condition) 
                     : true;
         default:
             UNEXPECTED_VALUE(boolean_primary->type);
@@ -462,41 +464,34 @@ static bool BinSearchInternalNodeForBooleanTest(SelectPlan *select_plan, void *m
 }
 
 /* Check if the internal node meets the boolean fator. */
-static bool BinSearchInternalNodeForBooleanFactor(SelectPlan *select_plan, void *min_key, void *max_key, BooleanFactorNode *boolean_factor, MetaColumn *meta_column) {
-    return BinSearchInternalNodeForBooleanTest(select_plan, min_key, max_key, boolean_factor->boolean_test, boolean_factor->is_not, meta_column);
+static bool BinSearchInternalNodeForBooleanFactor(SelectPlan *select_plan, void *min_key, void *max_key, BooleanFactorNode *boolean_factor) {
+    bool flag = false;
+    
+    ListCell *lc;
+    foreach(lc, select_plan->meta_index->meta_columns) {
+        MetaColumn *meta_column = (MetaColumn *) lfirst(lc);
+        flag |= BinSearchInternalNodeForBooleanTest(select_plan, min_key, max_key, boolean_factor->boolean_test, boolean_factor->is_not, meta_column);
+    }
+
+    return flag;
 }
 
 /* Check if the internal node meets the boolean term. */
-static bool BinSearchInternalNodeForBooleanTerm(SelectPlan *select_plan, void *min_key, void *max_key, BooleanTermNode *boolean_term, MetaColumn *meta_column) {
+static bool BinSearchInternalNodeForBooleanTerm(SelectPlan *select_plan, void *min_key, void *max_key, BooleanTermNode *boolean_term) {
     return boolean_term->and_boolean_term == NULL 
-        ? BinSearchInternalNodeForBooleanFactor(select_plan, min_key,  max_key, boolean_term->boolean_factor, meta_column)
-        : BinSearchInternalNodeForBooleanFactor(select_plan, min_key,  max_key, boolean_term->boolean_factor, meta_column) && 
-            BinSearchInternalNodeForBooleanTerm(select_plan, min_key, max_key, boolean_term->and_boolean_term, meta_column);
-}
-
-
-static bool BinSearchInternalNodeForSearchConditionExtend(SelectPlan *select_plan, void *min_key, void *max_key, SearchConditionNode *condition, MetaColumn *meta_column) {
-    return condition->or_search_condition == NULL 
-        ? BinSearchInternalNodeForBooleanTerm(select_plan, min_key, max_key, condition->boolean_term, meta_column)
-        : BinSearchInternalNodeForBooleanTerm(select_plan, min_key, max_key, condition->boolean_term, meta_column) || 
-            BinSearchInternalNodeForSearchConditionExtend(select_plan, min_key, max_key, condition->or_search_condition, meta_column);
+        ? BinSearchInternalNodeForBooleanFactor(select_plan, min_key,  max_key, boolean_term->boolean_factor)
+        : BinSearchInternalNodeForBooleanFactor(select_plan, min_key,  max_key, boolean_term->boolean_factor) && 
+            BinSearchInternalNodeForBooleanTerm(select_plan, min_key, max_key, boolean_term->and_boolean_term);
 }
 
 
 static bool BinSearchInternalNodeForSearchCondition(SelectPlan *select_plan, void *min_key, void *max_key, SearchConditionNode *condition) {
     /* If index is invalid, just return true. */
     if (!select_plan->hit_index) return true;
-
-    bool ret = false;
-    MetaIndex *meta_index = select_plan->meta_index;
-
-    ListCell *lc;
-    foreach(lc, meta_index->meta_columns) {
-        MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
-        ret = ret || BinSearchInternalNodeForSearchConditionExtend(select_plan, min_key, max_key, condition, meta_column);
-    }
-
-    return ret;
+    return condition->or_search_condition == NULL 
+        ? BinSearchInternalNodeForBooleanTerm(select_plan, min_key, max_key, condition->boolean_term)
+        : BinSearchInternalNodeForBooleanTerm(select_plan, min_key, max_key, condition->boolean_term) || 
+            BinSearchInternalNodeForSearchCondition(select_plan, min_key, max_key, condition->or_search_condition);
 }
 
 /* Bin search under conditon for internal node. */
