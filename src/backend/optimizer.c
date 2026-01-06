@@ -391,11 +391,11 @@ static bool HitIndexForSearchCondition(SelectPlan *select_plan, SearchConditionN
 static bool HitIndexForSelectNode(SelectPlan *select_plan, SelectNode *selectNode) {
     /* If main index hit, go main index. */
     if (select_plan->indexValid) return false;
-    
     if (selectNode->table_exp == NULL || 
             selectNode->table_exp->where_clause == NULL || 
-                selectNode->table_exp->where_clause->condition == NULL)
-        return false;
+                selectNode->table_exp->where_clause->condition == NULL
+    ) return false;
+
     SearchConditionNode *search_condition = selectNode->table_exp->where_clause->condition;
     return HitIndexForSearchCondition(select_plan, search_condition);
 }
