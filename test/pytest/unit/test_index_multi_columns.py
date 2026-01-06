@@ -47,6 +47,15 @@ def test_primary_index_hit():
     assert ret["success"] == True
     assert ret["data"] ==  {'stmt_type': 'select', 'index': 'primary', 'only_count': False, 'only_scan': False}
 
+def test_perf_my_index():
+    ret1 = client.execute("select * from Student where id = '89898';")
+    assert ret1["success"] == True
+    assert ret1["rows"] == 1
+    row = ret1["data"][0]
+    ret2 = client.execute(f"select * from Student where name = '{row["name"]}' and phone='{row["phone"]}' and address='{row["address"]}';")
+    assert ret2["success"] == True
+    assert ret2["rows"] >= 1
+    assert math.isclose(ret1["duration"], ret2["duration"], rel_tol=1e-2, abs_tol=1e-2)
 
 ## test drop table.
 def test_drop_table():
