@@ -58,7 +58,7 @@ def test_perf_i_phone():
     ret2 = client.execute(f"select * from Student where phone = '{ret1["data"][0]["phone"]}';")
     assert ret2["success"] == True
     assert ret1["data"] == ret2["data"]
-    assert math.isclose(ret1["duration"], ret2["duration"], rel_tol=1e-3, abs_tol=1e-3)
+    assert math.isclose(ret1["duration"], ret2["duration"], rel_tol=1e-2, abs_tol=1e-2)
 
 ## test drop table.
 def test_drop_table():

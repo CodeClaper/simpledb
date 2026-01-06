@@ -126,10 +126,8 @@ static KeyValue *IndexKeyGenerateKeyValue(MetaIndex *meta_index, void *key, Meta
 
     return new_key_value(
         meta_column->column_name, 
-        key == NULL ? NULL : key + offset,
-        meta_column->column_type, 
-        meta_column->tid, 
-        meta_column->type_oid
+        GetComparableValue(key == NULL ? NULL : key + offset, meta_column->column_type),
+        meta_column->column_type, meta_column->tid, meta_column->type_oid
     );
 }
 
