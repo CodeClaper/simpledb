@@ -92,10 +92,11 @@ static int CompareKeyInner(MetaIndex *meta_index, void *key1, void *key2) {
         MetaColumn *meta_column = (MetaColumn *) lfirst(lc);
         void *v1 = GetComparableValue(key1 + offset, meta_column->column_type);
         void *v2 = GetComparableValue(key2 + offset, meta_column->column_type);
+        offset += meta_column->column_length;
+
         if (EQ(v1, v2, meta_column->column_type)) continue;
         else if (GT(v1, v2, meta_column->column_type)) return 1;
         else return -1;
-        offset += meta_column->column_length;
     }
     return 0;
 }
