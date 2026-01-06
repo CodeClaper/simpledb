@@ -1,7 +1,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
-#include <time.h>
 #include "binsearch.h"
 #include "bin.h"
 #include "bufmgr.h"
@@ -470,7 +469,7 @@ static bool BinSearchInternalNodeForBooleanFactor(SelectPlan *select_plan, void 
     ListCell *lc;
     foreach(lc, select_plan->meta_index->meta_columns) {
         MetaColumn *meta_column = (MetaColumn *) lfirst(lc);
-        flag &= BinSearchInternalNodeForBooleanTest(select_plan, min_key, max_key, boolean_factor->boolean_test, boolean_factor->is_not, meta_column);
+        flag = flag && BinSearchInternalNodeForBooleanTest(select_plan, min_key, max_key, boolean_factor->boolean_test, boolean_factor->is_not, meta_column);
     }
 
     return flag;
