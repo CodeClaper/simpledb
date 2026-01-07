@@ -402,7 +402,11 @@ typedef struct BooleanTermNode {
     struct BooleanTermNode *and_boolean_term;
 } BooleanTermNode;
 
-/* BooleanFactorNode */
+/* BooleanFactorNode 
+ * The WHERE tree is considered to be in conjunctive normal form,
+ * and every conjunct is called a BooleanFactor. 
+ * From <Access Path selection in a Relational Database Management System>
+ * */
 typedef struct BooleanFactorNode {
     struct BooleanTestNode *boolean_test;
     bool is_not;
