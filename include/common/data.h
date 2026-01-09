@@ -1,3 +1,5 @@
+#ifndef DATA_H
+#define DATA_H
 #include <bits/types/struct_timeval.h>
 #include <pthread.h>
 #include <sched.h>
@@ -10,8 +12,6 @@
 #include "queue.h"
 #include "sys.h"
 
-#ifndef DATA_H
-#define DATA_H
 
 #define PAGE_SIZE 16384
 #define ACTUAL_PAGE_SIZE 8192
@@ -780,7 +780,7 @@ typedef struct {
 /* Abount configuration. */
 typedef struct {
     char *data_dir;                         /* Database file directory. */
-    ushort port;                            /* Server listening port. */
+    uint16_t port;                          /* Server listening port. */
     int share_memory_size;                  /* Size for share memory. */
     char *log_dir;                          /* Log directory */
     LogLevel log_level;                     /* Log level */
