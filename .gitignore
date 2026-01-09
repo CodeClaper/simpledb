@@ -117,3 +117,4 @@ src/simpledb
 src/simpledb_cli
 src/bench/bench
 test/gtest/gtest
+test/minunit/test
