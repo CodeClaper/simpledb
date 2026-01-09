@@ -1,4 +1,3 @@
-
 topdir = ../../
 includedir = $(topdir)include
 srcdir = $(topdir)src
