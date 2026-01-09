@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include "minunit.h"
 #include "data.h"
+#include "mmgr.h"
 #include "./test_flatten.c"
 
 /* 
@@ -34,6 +35,7 @@ MU_TEST_SUITE(simpledb) {
 }
 
 int main(int argc, char *argv[]) {
+    conf = instance(Conf);
     MU_RUN_SUITE(simpledb);
 	MU_REPORT();
 	return MU_EXIT_CODE;
