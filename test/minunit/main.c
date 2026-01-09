@@ -1,4 +1,24 @@
+#include <setjmp.h>
+#include <stdint.h>
 #include "minunit.h"
+#include "data.h"
+#include "./test_flatten.c"
+
+/* 
+ * Conf 
+ */
+Conf *conf; 
+
+/* 
+ * jmp_buf for error. 
+ */
+jmp_buf errEnv; 
+
+/* 
+ * program name
+ */
+const char *program_name;  
+
 
 void test_setup(void) {
 	/* Nothing */
@@ -10,6 +30,7 @@ void test_teardown(void) {
 
 MU_TEST_SUITE(simpledb) {
 	MU_SUITE_CONFIGURE(&test_setup, &test_teardown);
+    MU_RUN_TEST(test_flatten);
 }
 
 int main(int argc, char *argv[]) {
