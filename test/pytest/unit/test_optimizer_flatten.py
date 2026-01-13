@@ -1,4 +1,5 @@
 # insert_test.py
+import json
 from support.db_cli import DbClient
 
 client = DbClient("127.0.0.1", 4083)    
@@ -14,11 +15,13 @@ def test_create_table():
     assert ret["success"] == True
 
 def test_complex_sql():
-    ret = client.execute("select * from Student s, Teacher t where (s.name = 'zhangsan' or t.name = 'Benj') and (s.sex = 'M' or t.sex = 'M') or t.createTime < '2025-10-10';")
+    ret = client.execute("express select * from Student s, Teacher t where (s.name = 'zhangsan' or t.name = 'Benj') and (s.sex = 'M' or t.sex = 'M') or t.createTime < '2025-10-10';")
+    print(json.dumps(ret))
     assert ret["success"] == True
 
 def test_complex_sql2():
-    ret = client.execute("select * from Student s, Teacher t where (s.name = 'zhangsan' or t.name = 'Benj' and t.id = 'T001') and (s.sex = 'M' or t.sex = 'M') or t.createTime < '2025-10-10' or t.createTime >= '2020-01-01';")
+    ret = client.execute("express select * from Student s, Teacher t where (s.name = 'zhangsan' or t.name = 'Benj' and t.id = 'T001') and (s.sex = 'M' or t.sex = 'M') or t.createTime < '2025-10-10' or t.createTime >= '2020-01-01';")
+    print(json.dumps(ret))
     assert ret["success"] == True
 
 ## test drop table.
