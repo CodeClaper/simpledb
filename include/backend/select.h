@@ -1,10 +1,11 @@
-#include <stdbool.h>
-#include "data.h"
-#include "spinlock.h"
-#include "refer.h"
-
 #ifndef SELECT_H
 #define SELECT_H
+
+#include <stdbool.h>
+#include "data.h"
+#include "flatten.h"
+#include "spinlock.h"
+#include "refer.h"
 
 typedef enum ROW_HANDLER_ARG_TYPE {
     ARG_NULL = 1,
@@ -32,6 +33,7 @@ typedef struct SelectPlan {
     bool hit_index;                     /* If hit index. */
     MetaIndex *meta_index;              /* The meta index if using index. */
     SearchConditionNode *condition;     /* The search condition. */
+    ExprNode *condition_expr;           /* The condition expr. */                    
     List *selectTableList;              /* List of SelectTable. */
     volatile int32_t offset;            /* Current offset. Need volatile in parall calculating.*/
     LimitClauseNode *limitClause;       /* LimitClauseNode. */

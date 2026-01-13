@@ -18,7 +18,6 @@
 #include "refer.h"
 #include "meta.h"
 #include "bufmgr.h"
-#include "select.h"
 #include "fdesc.h"
 #include "instance.h"
 

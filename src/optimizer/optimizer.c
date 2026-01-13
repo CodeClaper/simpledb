@@ -1,10 +1,11 @@
 #include <stdbool.h>
 #include <string.h>
-#include "select.h"
+#include "optimizer.h"
 #include "mmgr.h"
 #include "table.h"
 #include "log.h"
 #include "instance.h"
+#include "flatten.h"
 
 static bool OnlySelectAllInSelection(SelectNode *selectNode);
 static bool OnlyCountInSelection(SelectNode *selectNode);
@@ -23,6 +24,7 @@ SelectPlan *OptimizeSelect(SelectNode *selectNode, StatementType stmt_type) {
     SelectPlan *select_plan = instance(SelectPlan);
     select_plan->stmt_type = stmt_type;
     select_plan->condition = SelectNodeFindCondition(selectNode);
+    select_plan->condition_expr = ExprParse(select_plan->condition);
     select_plan->selectTableList = SelectNodeFindTables(selectNode);
     select_plan->onlyAll = OnlySelectAllInSelection(selectNode);
     select_plan->onlyCount = OnlyCountInSelection(selectNode);

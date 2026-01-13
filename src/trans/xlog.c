@@ -33,7 +33,6 @@
 #include "ltsearch.h"
 #include "ltmodify.h"
 #include "sidsearch.h"
-#include "select.h"
 #include "insert.h"
 #include "utils.h"
 #include "meta.h"
