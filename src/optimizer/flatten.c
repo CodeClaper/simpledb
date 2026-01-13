@@ -186,7 +186,7 @@ ExprNode *Flatten(ExprNode *root) {
         case EXPR_AND: {
             ExprNode *node = MakeAndSetExprNode();
             FlattenForLogicNode(node, root->leftChild, EXPR_AND);
-            FlattenForLogicNode(node, root->rightChild, EXPR_OR);
+            FlattenForLogicNode(node, root->rightChild, EXPR_AND);
             return node;
         }
         case EXPR_OR: {
