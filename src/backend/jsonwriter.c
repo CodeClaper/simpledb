@@ -17,6 +17,7 @@
 #include <unistd.h>
 #include <inttypes.h>
 #include "data.h"
+#include "flatten.h"
 #include "mmgr.h"
 #include "jsonwriter.h"
 #include "log.h"
@@ -34,6 +35,7 @@
 
 /* Handle duplicate Key. */
 static void handle_dulicate_key(Row *row);
+static void json_expr_node_list(List *node_list);
 
 static void json_key_value_inner(Oid oid, char *key, void *value, DataType type) {
     switch(type) {
@@ -352,6 +354,92 @@ void json_row(Row *row) {
         }
         db_send(" }");
     }
+}
+
+static void json_and_expr_node(ExprNode *node) {
+    db_send("{");
+    db_send("\"type\": \"AND\", ");
+    db_send("\"left\": ");
+    json_expr_node(node->leftChild);
+    db_send(", ");
+    db_send("\"right\": ");
+    json_expr_node(node->rightChild);
+    db_send(" }");
+}
+
+
+static void json_or_expr_node(ExprNode *node) {
+    db_send("{");
+    db_send("\"type\": \"OR\", ");
+    db_send("\"left\": ");
+    json_expr_node(node->leftChild);
+    db_send(", ");
+    db_send("\"right\": ");
+    json_expr_node(node->rightChild);
+    db_send(" }");
+}
+
+static void json_var_expr_node(ExprNode *node) {
+    db_send("VAR");
+}
+
+static void json_and_set_expr_node(ExprNode *node) {
+    db_send("{");
+    db_send("\"type\": \"AND_SET\", ");
+    db_send("\"children\": ");
+    json_expr_node_list(node->children);
+    db_send(" }");
+}
+
+static void json_or_set_expr_node(ExprNode *node) {
+    db_send("{");
+    db_send("\"type\": \"OR_SET\", ");
+    db_send("\"children\": ");
+    json_expr_node_list(node->children);
+    db_send(" }");
+}
+
+
+void json_expr_node(ExprNode *node) {
+    if (!node) 
+        db_send("null");
+    else {
+        switch (node->type) {
+            case EXPR_AND:
+                json_and_expr_node(node);
+                break;
+            case EXPR_OR:
+                json_or_expr_node(node);
+                break;
+            case EXPRE_VAR:
+                json_var_expr_node(node);
+                break;
+            case EXPR_AND_SET:
+                json_and_set_expr_node(node);
+                break;
+            case EXPR_OR_SET:
+                json_or_set_expr_node(node);
+                break;
+            case EXPR_NOT:
+                break;
+        }
+    }
+}
+
+static void json_expr_node_list(List *node_list) {
+    db_send("[");
+
+    if (!list_null_or_empty(node_list)) {
+        ListCell *lc;
+        foreach (lc, node_list) {
+            ExprNode *node = lfirst(lc);
+            json_expr_node(node);
+            if (last_cell(node_list) != lc)
+                db_send(", ");
+        }
+    }
+
+    db_send("]");
 }
 
 /* Json select result. */

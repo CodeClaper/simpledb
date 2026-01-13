@@ -27,6 +27,7 @@ typedef enum NodeTag {
     NODE_META_COLUMN,
     NODE_META_INDEX,
     NODE_TABLE,
+    NODE_EXPR_NODE,
     NODE_STATEMENT,
     NODE_DB_RESULT,
     NODE_COLUMN_DEF,

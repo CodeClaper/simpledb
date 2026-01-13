@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include "free.h"
+#include "flatten.h"
 #include "mmgr.h"
 #include "refer.h"
 #include "asserts.h"
@@ -595,6 +596,15 @@ void free_table_exp_node(TableExpNode *table_exp_node) {
         free_where_clause_node(table_exp_node->where_clause);
         dfree(table_exp_node);
     }
+}
+
+/* Free ExprNode. */
+void free_expr_node(ExprNode *expr_node) {
+    if (!expr_node) return;
+    if (expr_node->leftChild) free_expr_node(expr_node->leftChild);
+    if (expr_node->rightChild) free_expr_node(expr_node->rightChild);
+    if (expr_node->children) free_list_deep(expr_node->children);
+    if (expr_node) dfree(expr_node);
 }
 
 /* Free SelectionNode. */

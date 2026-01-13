@@ -764,6 +764,13 @@ void free_list_deep(List *list) {
                 }
                 break;
             }
+            case NODE_EXPR_NODE: {
+                ListCell *lc;
+                foreach (lc, list) {
+                    free_expr_node(lfirst(lc));
+                }
+                break;
+            }
             case NODE_STATEMENT: {
                 ListCell *lc;
                 foreach (lc, list) {

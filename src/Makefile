@@ -4,7 +4,7 @@ CC = gcc
 OBJS := $(patsubst %.c, %.o, $(shell find $(SUBDIRS) -name "*.c"))
 
 headerdirs = $(includedir)/common $(includedir)/json $(includedir)/lock $(includedir)/memory $(includedir)/ltree $(includedir)/parser \
-			 $(includedir)/sys $(includedir)/backend $(includedir)/storage $(includedir)/trans $(includedir)/utils
+			 $(includedir)/sys $(includedir)/backend $(includedir)/storage $(includedir)/trans $(includedir)/utils $(includedir)/optimizer
 
 headers := $(shell find $(headerdirs) -name "*.h")
 

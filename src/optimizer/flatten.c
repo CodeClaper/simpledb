@@ -201,7 +201,7 @@ ExprNode *Flatten(ExprNode *node) {
     return node;
 }
 
-static char* GetNodeName(ExprNode *node) {
+char* GetExprNodeName(ExprNode *node) {
     switch (node->type) {
         case EXPR_AND:
             return dstrdup("AND");
@@ -221,10 +221,11 @@ static char* GetNodeName(ExprNode *node) {
     }
 }
 
-static void DrawExprNode(ExprNode *node, char canvas[CANVAS_MAX_HEIGHT][CANVAS_MAX_WIDTH], int row, int col, int distance) {
+/* Draw canvas. */
+static void DrawCanvas(ExprNode *node, char canvas[CANVAS_MAX_HEIGHT][CANVAS_MAX_WIDTH], int row, int col, int distance) {
     if (node == NULL) return;
 
-    char *name = GetNodeName(node);
+    char *name = GetExprNodeName(node);
     int len = strlen(name);
     for (int i = 0; i < len && (col + i) < CANVAS_MAX_WIDTH; i++) {
         canvas[row][col + i] = name[i];
@@ -232,12 +233,12 @@ static void DrawExprNode(ExprNode *node, char canvas[CANVAS_MAX_HEIGHT][CANVAS_M
 
     if (node->leftChild) {
         canvas[row + 1][col - distance / 2] = '/';
-        DrawExprNode(node->leftChild, canvas, row + 2, col - distance, distance / 2);
+        DrawCanvas(node->leftChild, canvas, row + 2, col - distance, distance / 2);
     }
 
     if (node->rightChild) {
         canvas[row + 1][col + len + distance / 2] = '\\';
-        DrawExprNode(node->rightChild, canvas, row + 2, col + distance, distance / 2);
+        DrawCanvas(node->rightChild, canvas, row + 2, col + distance, distance / 2);
     }
 
     if (node->children) {
@@ -245,18 +246,19 @@ static void DrawExprNode(ExprNode *node, char canvas[CANVAS_MAX_HEIGHT][CANVAS_M
         ListCell *lc;
         foreach (lc, node->children) {
             canvas[row + 1][col - distance + avg * __i] = '|';
-            DrawExprNode((ExprNode *)lfirst(lc), canvas, row + 2, col - distance + avg * __i, avg);
+            DrawCanvas((ExprNode *)lfirst(lc), canvas, row + 2, col - distance + avg * __i, avg);
         }
     }
 }
 
+/* Print the expr node tree. */
 void ExprPrint(ExprNode *node) {
     char canvas[CANVAS_MAX_HEIGHT][CANVAS_MAX_WIDTH];
     for (int i = 0; i < CANVAS_MAX_HEIGHT; i++) {
         memset(canvas[i], ' ', CANVAS_MAX_WIDTH);
     }
 
-    DrawExprNode(node, canvas, 0, CANVAS_MAX_WIDTH / 2, 64);
+    DrawCanvas(node, canvas, 0, CANVAS_MAX_WIDTH / 2, 64);
 
     for (int i = 0; i < CANVAS_MAX_HEIGHT; i++) {
         int last = CANVAS_MAX_WIDTH - 1;

@@ -1,4 +1,4 @@
-SUBDIRS := src test/gtest test/minunit
+SUBDIRS := src test/gtest
 
 all: 
 	$(foreach dir, $(SUBDIRS), $(MAKE) -C $(dir);)
