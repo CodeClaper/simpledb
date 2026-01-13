@@ -1478,3 +1478,8 @@ bool CheckForShow(ShowNode *show_node) {
 bool CheckForExplain(ExplainNode *explain_node) {
     return CheckForSelect(explain_node->select_node);
 }
+
+/* Check for ExpressNode. */
+bool CheckForExpress(ExpressNode *express_node) {
+    return CheckForSelect(express_node->select_node);
+}

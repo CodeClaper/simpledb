@@ -26,6 +26,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include "stmt.h"
+#include "data.h"
 #include "list.h"
 #include "defs.h"
 #include "mmgr.h"
@@ -182,6 +183,13 @@ static void ExecuteExplainStmt(Statement *statement, DBResult *result) {
     ExecuteExplainStatement(statement->explain_node, result);
 }
 
+/* Express statement. */
+static void ExecuteExpressStmt(Statement *statement, DBResult *result) {
+    Assert(statement->statement_type == EXPRESS_STMT);
+    AutoBeginTransaction();
+    ExecuteExpressStatement(statement->express_node, result);
+}
+
 /* Execute statment. */
 static void ExecuteStatement(Statement *statement, DBResult *result) {
     /* Execute statment */
@@ -223,6 +231,9 @@ static void ExecuteStatement(Statement *statement, DBResult *result) {
                 break;
             case EXPLAIN_STMT:
                 ExecuteExplainStmt(statement, result);
+                break;
+            case EXPRESS_STMT:
+                ExecuteExpressStmt(statement, result);
                 break;
             case DROP_TABLE_STMT:
                 ExecuteDropTableStmt(statement, result);

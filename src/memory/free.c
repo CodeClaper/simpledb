@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include "free.h"
+#include "data.h"
 #include "flatten.h"
 #include "mmgr.h"
 #include "refer.h"
@@ -721,6 +722,14 @@ void free_explain_node(ExplainNode *explain_node) {
     }
 }
 
+/* Free ExpressNode. */
+void free_express_node(ExpressNode *express_node) {
+    if (express_node) {
+        free_select_node(express_node->select_node);
+        dfree(express_node);
+    }
+}
+
 /* Free AlterTableNode. */
 void free_alter_table_node(AlterTableNode *alter_table_node) {
     if (alter_table_node) {
@@ -769,6 +778,9 @@ void free_statement(Statement *statement) {
             break;
         case EXPLAIN_STMT:
             free_explain_node(statement->explain_node);
+            break;
+        case EXPRESS_STMT:
+            free_express_node(statement->express_node);
             break;
         case ALTER_TABLE_STMT:
             free_alter_table_node(statement->alter_table_node);

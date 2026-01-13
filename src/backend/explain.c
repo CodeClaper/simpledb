@@ -1,8 +1,11 @@
 #include "explain.h"
 #include "check.h"
+#include "data.h"
 #include "optimizer.h"
 #include "log.h"
 #include "instance.h"
+#include "jsonwriter.h"
+#include <stdbool.h>
 
 /* Define index name. 
  * Three cases:
@@ -34,6 +37,11 @@ static List *ExplainStatement(ExplainNode *explain_node) {
     return list;
 }
 
+static void ExpressStatement(ExpressNode *express_node) {
+    SelectPlan *select_plan = OptimizeSelect(express_node->select_node, SELECT_STMT);
+    json_expr_node(select_plan->condition_expr);
+}
+
 /* Execute explain statement. */
 void ExecuteExplainStatement(ExplainNode *explain_node, DBResult *result) {
     Assert(explain_node != NULL);
@@ -42,4 +50,14 @@ void ExecuteExplainStatement(ExplainNode *explain_node, DBResult *result) {
     result->message = dstrdup("Explain excuted successfully.");
     result->success = true;
     db_log(SUCCESS, "Explain excuted successfully.");
+}
+
+/* Execute explain statement. */
+void ExecuteExpressStatement(ExpressNode *express_node, DBResult *result) {
+    Assert(express_node != NULL);
+    if (!CheckForExpress(express_node)) return;
+    ExpressStatement(express_node);
+    result->hasOutput = true;
+    result->success = true;
+    db_log(SUCCESS, "Express excuted successfully.");
 }

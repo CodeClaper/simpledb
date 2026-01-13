@@ -72,6 +72,7 @@ extern char *current_token;
    DescribeNode                 *describe_node;
    ShowNode                     *show_node;
    ExplainNode                  *explain_node;
+   ExpressNode                  *express_node;
    AlterTableNode               *alter_table_node;
    Statement                    *statement;
    List                         *list;
@@ -86,7 +87,7 @@ extern char *current_token;
 
 %token NL
 %token <keyword> BEGINN COMMIT ROLLBACK
-%token <keyword> CREATE DROP SELECT INSERT UPDATE DELETE DESCRIBE SHOW EXPLAIN
+%token <keyword> CREATE DROP SELECT INSERT UPDATE DELETE DESCRIBE SHOW EXPLAIN EXPRESS
 %token <keyword> FROM
 %token <keyword> WHERE
 %token <keyword> INTO
@@ -178,6 +179,7 @@ extern char *current_token;
 %type <describe_node> describe_statement
 %type <show_node> show_statement
 %type <explain_node> explain_statement;
+%type <express_node> express_statement;
 %type <alter_table_node> alter_table_statement 
 %type <statement> statement;
 %type <list> statements;
@@ -293,6 +295,13 @@ statement:
             Statement *statement = instance(Statement);
             statement->statement_type = EXPLAIN_STMT;
             statement->explain_node = $1;
+            $$ = statement;
+        }
+    | express_statement
+        {
+            Statement *statement = instance(Statement);
+            statement->statement_type = EXPRESS_STMT;
+            statement->express_node = $1;
             $$ = statement;
         }
     | alter_table_statement
@@ -450,6 +459,15 @@ explain_statement:
     EXPLAIN select_statement
         {
             ExplainNode *node = instance(ExplainNode);
+            node->select_node = $2;
+            $$ = node;
+        }
+    ;
+/* Express Statement. */
+express_statement:
+    EXPRESS select_statement
+        {
+            ExpressNode *node = instance(ExpressNode);
             node->select_node = $2;
             $$ = node;
         }

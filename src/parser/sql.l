@@ -35,6 +35,7 @@ DELETE                  return DELETE;
 DESC                    return DESCRIBE;
 DESCRIBE                return DESCRIBE;
 EXPLAIN                 return EXPLAIN;
+EXPRESS                 return EXPRESS;  
 FROM                    return FROM;
 TABLE                   return TABLE;
 INDEX                   return INDEX;

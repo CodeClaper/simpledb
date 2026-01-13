@@ -95,6 +95,7 @@ typedef enum {
     DESCRIBE_STMT, 
     SHOW_STMT, 
     EXPLAIN_STMT,
+    EXPRESS_STMT,
     DROP_TABLE_STMT,
     DROP_INDEX_STMT,
     ALTER_TABLE_STMT,
@@ -567,6 +568,11 @@ typedef struct ExplainNode {
     SelectNode *select_node;
 } ExplainNode;
 
+typedef struct ExpressNode {
+    /* By now, express only support for select statement. */
+    SelectNode *select_node;
+} ExpressNode;
+
 /* ShowNode */
 typedef struct ShowNode {
     ShowNodeType type;
@@ -634,6 +640,7 @@ typedef struct Statement {
         DescribeNode *describe_node;
         ShowNode *show_node;
         ExplainNode *explain_node;
+        ExpressNode *express_node;
         AlterTableNode *alter_table_node;
   };
 } Statement;
