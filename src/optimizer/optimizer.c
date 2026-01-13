@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include "optimizer.h"
+#include "data.h"
 #include "mmgr.h"
 #include "table.h"
 #include "log.h"
@@ -18,13 +19,14 @@ static LimitClauseNode *SelectNodeFindLimitClause(SelectNode *selectNode);
 static SearchConditionNode *SelectNodeFindCondition(SelectNode *selectNode);
 static List *SelectNodeFindTables(SelectNode *selectNode);
 static ROW_HANDLER DefineRowHandler(SelectPlan *select_plan);
+static ExprNode *ConvertSearchConditionExpr(SearchConditionNode *search_condition);
 
 /* Optimize Select Statment. */
 SelectPlan *OptimizeSelect(SelectNode *selectNode, StatementType stmt_type) {
     SelectPlan *select_plan = instance(SelectPlan);
     select_plan->stmt_type = stmt_type;
     select_plan->condition = SelectNodeFindCondition(selectNode);
-    select_plan->condition_expr = ExprParse(select_plan->condition);
+    select_plan->condition_expr = ConvertSearchConditionExpr(select_plan->condition);
     select_plan->selectTableList = SelectNodeFindTables(selectNode);
     select_plan->onlyAll = OnlySelectAllInSelection(selectNode);
     select_plan->onlyCount = OnlyCountInSelection(selectNode);
@@ -449,4 +451,13 @@ static ROW_HANDLER DefineRowHandler(SelectPlan *select_plan) {
    return select_plan->onlyAll && select_plan->stmt_type == SELECT_STMT
             ? OutputTuple
             : select_plan->onlyCount ? CountRow : SelectRow;
+}
+
+/* Convert search condtion to expr node. 
+ * The basic routine:
+ * Parse ==> BNF transfor ==> flatten.
+ * */
+static ExprNode *ConvertSearchConditionExpr(SearchConditionNode *search_condition) {
+    ExprNode *node = ExprParse(search_condition);
+    return Flatten(BNFTransform(node));
 }

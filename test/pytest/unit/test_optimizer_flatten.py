@@ -17,6 +17,9 @@ def test_complex_sql():
     ret = client.execute("select * from Student s, Teacher t where (s.name = 'zhangsan' or t.name = 'Benj') and (s.sex = 'M' or t.sex = 'M') or t.createTime < '2025-10-10';")
     assert ret["success"] == True
 
+def test_complex_sql2():
+    ret = client.execute("select * from Student s, Teacher t where (s.name = 'zhangsan' or t.name = 'Benj' and t.id = 'T001') and (s.sex = 'M' or t.sex = 'M') or t.createTime < '2025-10-10' or t.createTime >= '2020-01-01';")
+    assert ret["success"] == True
 
 ## test drop table.
 def test_drop_table():
