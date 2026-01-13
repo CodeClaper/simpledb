@@ -12,7 +12,6 @@ static ExprNode *MakeAndExprNode(ExprNode *left, ExprNode *right) {
     expr->type = EXPR_AND;
     expr->leftChild = left;
     expr->rightChild = right;
-    expr->children = create_list(NODE_VOID);
     return expr;
 }
 
@@ -21,7 +20,6 @@ static ExprNode *MakeOrExprNode(ExprNode *left, ExprNode *right) {
     expr->type = EXPR_OR;
     expr->leftChild = left;
     expr->rightChild = right;
-    expr->children = create_list(NODE_VOID);
     return expr;
 }
 
@@ -41,18 +39,18 @@ static ExprNode *MakeVarExprNode(OprType opr, void *leftVal, void *rightVal) {
     return expr;
 }
 
-static ExprNode *MakeAndSetExprNode(List *child) {
+static ExprNode *MakeAndSetExprNode() {
     ExprNode *expr = instance(ExprNode);
     expr->type = EXPR_AND_SET;
-    expr->children = child;
+    expr->children = create_list(NODE_EXPR_NODE);
     return expr;
 }
 
 
-static ExprNode *MakeOrSetExprNode(List *child) {
+static ExprNode *MakeOrSetExprNode() {
     ExprNode *expr = instance(ExprNode);
     expr->type = EXPR_OR_SET;
-    expr->children = child;
+    expr->children = create_list(NODE_EXPR_NODE);
     return expr;
 }
 
@@ -169,38 +167,38 @@ ExprNode *BNFTransform(ExprNode *node) {
     return node;
 }
 
-static void FlattenLogicNode(ExprNode *parent, ExprNode *current) {
+static void FlattenForLogicNode(ExprNode *parent, ExprNode *current, ExprType expected) {
     if (current == NULL) return;
-    if (current->type == parent->type) {
-        FlattenLogicNode(parent, current->leftChild);
-        FlattenLogicNode(parent, current->rightChild);
+    if (current->type == expected) {
+        FlattenForLogicNode(parent, current->leftChild, expected);
+        FlattenForLogicNode(parent, current->rightChild, expected);
     } else 
-        append_list(parent->children, current);
+        append_list(parent->children, Flatten(current));
 }
 
 /* Flatten. 
  * This function aims to transform binary tree to multi-path tree 
  * and to reduce the height of the tree.
  * */
-ExprNode *Flatten(ExprNode *node) {
-    if (node == NULL || node->type == EXPRE_VAR) return node;
-    switch (node->type) {
+ExprNode *Flatten(ExprNode *root) {
+    if (root == NULL || root->type == EXPRE_VAR) return root;
+    switch (root->type) {
         case EXPR_AND: {
-            node->type = EXPR_AND_SET;
-            FlattenLogicNode(node, node->leftChild);
-            FlattenLogicNode(node, node->rightChild);
-            break;
+            ExprNode *node = MakeAndSetExprNode();
+            FlattenForLogicNode(node, root->leftChild, EXPR_AND);
+            FlattenForLogicNode(node, root->rightChild, EXPR_OR);
+            return node;
         }
         case EXPR_OR: {
-            node->type = EXPR_OR_SET;
-            FlattenLogicNode(node, node->leftChild);
-            FlattenLogicNode(node, node->rightChild);
-            break;
+            ExprNode *node = MakeOrSetExprNode();
+            FlattenForLogicNode(node, root->leftChild, EXPR_OR);
+            FlattenForLogicNode(node, root->rightChild, EXPR_OR);
+            return node;
         }
         default:
             break;
     }
-    return node;
+    return root;
 }
 
 char* GetExprNodeName(ExprNode *node) {
@@ -255,17 +253,19 @@ static void DrawCanvas(ExprNode *node, char canvas[CANVAS_MAX_HEIGHT][CANVAS_MAX
 
 /* Print the expr node tree. */
 void ExprPrint(ExprNode *node) {
+    int i;
     char canvas[CANVAS_MAX_HEIGHT][CANVAS_MAX_WIDTH];
     
     /* Initial canvas. */
-    for (int i = 0; i < CANVAS_MAX_HEIGHT; i++) {
+    for (i = 0; i < CANVAS_MAX_HEIGHT; i++) {
         memset(canvas[i], ' ', CANVAS_MAX_WIDTH);
     }
 
     /* Draw canvas. */
     DrawCanvas(node, canvas, 0, CANVAS_MAX_WIDTH / 2, 64);
 
-    for (int i = 0; i < CANVAS_MAX_HEIGHT; i++) {
+    /* Print out. */
+    for (i = 0; i < CANVAS_MAX_HEIGHT; i++) {
         int last = CANVAS_MAX_WIDTH - 1;
         while (last > 0 && canvas[i][last] == ' ') last--;
         if (last > 0) {
