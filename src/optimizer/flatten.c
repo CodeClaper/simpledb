@@ -120,7 +120,8 @@ static ExprNode *ExprParseForBooleanFactorNode(BooleanFactorNode *boolean_factor
 static ExprNode *ExprParseForBooleanTermNode(BooleanTermNode *boolean_term) {
     return boolean_term->and_boolean_term == NULL
             ? ExprParseForBooleanFactorNode(boolean_term->boolean_factor)
-            : MakeAndExprNode(ExprParseForBooleanFactorNode(boolean_term->boolean_factor), ExprParseForBooleanTermNode(boolean_term->and_boolean_term));
+            : MakeAndExprNode(ExprParseForBooleanFactorNode(boolean_term->boolean_factor), 
+                              ExprParseForBooleanTermNode(boolean_term->and_boolean_term));
 }
 
 /* Expr paser for search condition. */
@@ -128,7 +129,8 @@ ExprNode *ExprParse(SearchConditionNode *search_condition) {
     if (search_condition == NULL) return NULL;
     return search_condition->or_search_condition == NULL
             ? ExprParseForBooleanTermNode(search_condition->boolean_term)
-            : MakeOrExprNode(ExprParseForBooleanTermNode(search_condition->boolean_term), ExprParse(search_condition->or_search_condition));
+            : MakeOrExprNode(ExprParseForBooleanTermNode(search_condition->boolean_term), 
+                             ExprParse(search_condition->or_search_condition));
 }
 
 /* BNF transform. 
@@ -254,10 +256,13 @@ static void DrawCanvas(ExprNode *node, char canvas[CANVAS_MAX_HEIGHT][CANVAS_MAX
 /* Print the expr node tree. */
 void ExprPrint(ExprNode *node) {
     char canvas[CANVAS_MAX_HEIGHT][CANVAS_MAX_WIDTH];
+    
+    /* Initial canvas. */
     for (int i = 0; i < CANVAS_MAX_HEIGHT; i++) {
         memset(canvas[i], ' ', CANVAS_MAX_WIDTH);
     }
 
+    /* Draw canvas. */
     DrawCanvas(node, canvas, 0, CANVAS_MAX_WIDTH / 2, 64);
 
     for (int i = 0; i < CANVAS_MAX_HEIGHT; i++) {
