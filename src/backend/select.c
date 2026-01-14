@@ -1587,7 +1587,7 @@ static KeyValue *CalcMaxValue(ColumnNode *column, SelectResult *select_result, S
         }
     }
 
-    return new_key_value(MAX_NAME, max_value, GetComparableType(data_type), select_result->oid, OID_ZERO);
+    return new_key_value(MAX_NAME, max_value, (data_type), select_result->oid, OID_ZERO);
 }
 
 /* Calulate column max value.*/
@@ -1610,7 +1610,7 @@ static KeyValue *CalcMinValue(ColumnNode *column, SelectResult *select_result, S
         }
     }
 
-    return new_key_value(MIN_NAME, min_value, GetComparableType(data_type), select_result->oid, OID_ZERO);
+    return new_key_value(MIN_NAME, min_value, (data_type), select_result->oid, OID_ZERO);
 }
 
 
