@@ -230,7 +230,7 @@ ExprNode *Negate(ExprNode *node) {
         switch (child->type) {
             case EXPR_NOT: {
                 /* NOT (NOT A) ==> A. */
-                return Negate(node->leftChild);
+                return Negate(child->leftChild);
             }
             case EXPR_AND: {
                 /* NOT (A AND B) ==> (NOT A) OR (NOT B). */
