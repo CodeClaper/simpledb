@@ -85,6 +85,26 @@ def test_complex_sql7():
             {"type": "VAR", "op": "EQ"}
             ]}
 
+def test_complex_sql8():
+    ret = client.execute("express select * from Student where not not (birth >= '2010-01-01' AND birth <= '2015-12-31' OR sex = 'M');");
+    assert ret["success"] == True
+    print(json.dumps(ret))
+    assert ret["data"] == {"type": "OR_SET", "children": [
+          {"type": "AND_SET", "children": [{"type": "VAR", "op": "GE"}, {"type": "VAR", "op": "LE"}]}, 
+          {"type": "VAR", "op": "EQ"}
+          ]}
+
+def test_complex_sql9():
+    ret = client.execute("express select * from Student s, Teacher t where not (s.name = 'zhangsan' or t.name = 'Benj' and t.id = 'T001') and (s.sex = 'M' or t.sex = 'M') or t.createTime < '2025-10-10' or t.createTime >= '2020-01-01';")
+    assert ret["success"] == True
+    print(json.dumps(ret))
+    assert ret["data"] == {"type": "OR_SET", "children": [
+        {"type": "AND_SET", "children": [{"type": "VAR", "op": "EQ"}, {"type": "OR_SET", "children": [{"type": "VAR", "op": "EQ"}, {"type": "VAR", "op": "EQ"}]}, {"type": "VAR", "op": "EQ"}]}, 
+        {"type": "AND_SET", "children": [{"type": "VAR", "op": "EQ"}, {"type": "OR_SET", "children": [{"type": "VAR", "op": "EQ"}, {"type": "VAR", "op": "EQ"}]}, {"type": "VAR", "op": "EQ"}]}, 
+        {"type": "VAR", "op": "LT"}, 
+        {"type": "VAR", "op": "GE"}
+        ]}
+
 ## test drop table.
 def test_drop_table():
     ret = client.execute("drop table Student;")
