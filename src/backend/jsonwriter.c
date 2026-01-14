@@ -381,7 +381,7 @@ static void json_or_expr_node(ExprNode *node) {
 }
 
 static void json_var_expr_node(ExprNode *node) {
-    db_send("\"VAR\"");
+    db_send("{\"type\": \"VAR\", \"op\": \"%s\"}", GetOprTypeName(node->opr));
 }
 
 static void json_and_set_expr_node(ExprNode *node) {

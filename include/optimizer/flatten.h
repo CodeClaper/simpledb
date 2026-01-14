@@ -17,6 +17,8 @@ typedef struct ExprNode {
 } ExprNode;
 
 
+char *GetExprNodeName(ExprNode *node);
+char *GetOprTypeName(OprType op);
 ExprNode *ExprParse(SearchConditionNode *search_condition);
 ExprNode *BNFTransform(ExprNode *node);
 ExprNode *Negate(ExprNode *node);
