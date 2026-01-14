@@ -154,8 +154,8 @@ static ExprNode *ExprParseForBooleanFactorNode(BooleanFactorNode *boolean_factor
 static ExprNode *ExprParseForBooleanTermNode(BooleanTermNode *boolean_term) {
     return boolean_term->and_boolean_term == NULL
             ? ExprParseForBooleanFactorNode(boolean_term->boolean_factor)
-            : MakeAndExprNode(ExprParseForBooleanFactorNode(boolean_term->boolean_factor), 
-                              ExprParseForBooleanTermNode(boolean_term->and_boolean_term));
+            : MakeAndExprNode(ExprParseForBooleanTermNode(boolean_term->and_boolean_term), 
+                              ExprParseForBooleanFactorNode(boolean_term->boolean_factor));
 }
 
 /* Expr paser for search condition. */
@@ -163,8 +163,8 @@ ExprNode *ExprParse(SearchConditionNode *search_condition) {
     if (search_condition == NULL) return NULL;
     return search_condition->or_search_condition == NULL
             ? ExprParseForBooleanTermNode(search_condition->boolean_term)
-            : MakeOrExprNode(ExprParseForBooleanTermNode(search_condition->boolean_term), 
-                             ExprParse(search_condition->or_search_condition));
+            : MakeOrExprNode(ExprParse(search_condition->or_search_condition), 
+                             ExprParseForBooleanTermNode(search_condition->boolean_term));
 }
 
 /* BNF transform. 

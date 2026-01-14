@@ -19,35 +19,34 @@ def test_complex_sql1():
     assert ret["success"] == True
     print(json.dumps(ret))
     assert ret["data"] == {"type": "OR_SET", "children": [
-        {"type": "VAR", "op": "LT"}, 
-        {"type": "AND_SET", "children": [{"type": "VAR", "op": "EQ"}, {"type": "VAR", "op": "EQ"}]}, 
-        {"type": "AND_SET", "children": [{"type": "VAR", "op": "EQ"}, {"type": "VAR", "op": "EQ"}]}, 
-        {"type": "AND_SET", "children": [{"type": "VAR", "op": "EQ"}, {"type": "VAR", "op": "EQ"}]}, 
-        {"type": "AND_SET", "children": [{"type": "VAR", "op": "EQ"}, {"type": "VAR", "op": "EQ"}]}
-        ]}
+            {"type": "AND_SET", "children": [{"type": "VAR", "op": "EQ"}, {"type": "VAR", "op": "EQ"}]}, 
+            {"type": "AND_SET", "children": [{"type": "VAR", "op": "EQ"}, {"type": "VAR", "op": "EQ"}]}, 
+            {"type": "AND_SET", "children": [{"type": "VAR", "op": "EQ"}, {"type": "VAR", "op": "EQ"}]}, 
+            {"type": "AND_SET", "children": [{"type": "VAR", "op": "EQ"}, {"type": "VAR", "op": "EQ"}]}, 
+            {"type": "VAR", "op": "LT"}
+            ]}
 
 def test_complex_sql2():
     ret = client.execute("express select * from Student s, Teacher t where (s.name = 'zhangsan' or t.name = 'Benj' and t.id = 'T001') and (s.sex = 'M' or t.sex = 'M') or t.createTime < '2025-10-10' or t.createTime >= '2020-01-01';")
     assert ret["success"] == True
     print(json.dumps(ret))
     assert ret["data"] == {"type": "OR_SET", "children": [
-        {"type": "VAR", "op": "GE"}, 
-        {"type": "VAR", "op": "LT"}, 
-        {"type": "AND_SET", "children": [{"type": "VAR", "op": "EQ"}, {"type": "VAR", "op": "EQ"}, {"type": "VAR", "op": "EQ"}]}, 
-        {"type": "AND_SET", "children": [{"type": "VAR", "op": "EQ"}, {"type": "VAR", "op": "EQ"}]}, 
-        {"type": "AND_SET", "children": [{"type": "VAR", "op": "EQ"}, {"type": "VAR", "op": "EQ"}, {"type": "VAR", "op": "EQ"}]}, 
-        {"type": "AND_SET", "children": [{"type": "VAR", "op": "EQ"}, {"type": "VAR", "op": "EQ"}]}
-        ]}
+            {"type": "AND_SET", "children": [{"type": "VAR", "op": "EQ"}, {"type": "VAR", "op": "EQ"}]}, 
+            {"type": "AND_SET", "children": [{"type": "VAR", "op": "EQ"}, {"type": "VAR", "op": "EQ"}]}, 
+            {"type": "AND_SET", "children": [{"type": "VAR", "op": "EQ"}, {"type": "VAR", "op": "EQ"}, {"type": "VAR", "op": "EQ"}]}, 
+            {"type": "AND_SET", "children": [{"type": "VAR", "op": "EQ"}, {"type": "VAR", "op": "EQ"}, {"type": "VAR", "op": "EQ"}]}, 
+            {"type": "VAR", "op": "LT"}, {"type": "VAR", "op": "GE"}
+            ]}
 
 def test_complex_sql3():
     ret = client.execute("express select * from Student s, Teacher t where s.age = 10 or (s.grade = 'G1' or (t.age >= 23 AND t.age <=40 AND (t.sex = 'M' or t.sex = 'F'))) ;")
     assert ret["success"] == True
     print(json.dumps(ret))
     assert ret["data"] == {"type": "OR_SET", "children": [
-        {"type": "AND_SET", "children": [{"type": "VAR", "op": "EQ"}, {"type": "VAR", "op": "LE"}, {"type": "VAR", "op": "GE"}]}, 
-        {"type": "AND_SET", "children": [{"type": "VAR", "op": "EQ"}, {"type": "VAR", "op": "LE"}, {"type": "VAR", "op": "GE"}]}, 
         {"type": "VAR", "op": "EQ"}, 
-        {"type": "VAR", "op": "EQ"}
+        {"type": "VAR", "op": "EQ"}, 
+        {"type": "AND_SET", "children": [{"type": "VAR", "op": "GE"}, {"type": "VAR", "op": "LE"}, {"type": "VAR", "op": "EQ"}]}, 
+        {"type": "AND_SET", "children": [{"type": "VAR", "op": "GE"}, {"type": "VAR", "op": "LE"}, {"type": "VAR", "op": "EQ"}]}
         ]}
 
 def test_complex_sql4():
@@ -55,8 +54,8 @@ def test_complex_sql4():
     assert ret["success"] == True
     print(json.dumps(ret))
     assert ret["data"] == {"type": "AND_SET", "children": [
-        {"type": "VAR", "op": "NE"}, 
-        {"type": "OR_SET", "children": [{"type": "VAR", "op": "GT"}, {"type": "VAR", "op": "LT"}]}
+        {"type": "OR_SET", "children": [{"type": "VAR", "op": "LT"}, {"type": "VAR", "op": "GT"}]}, 
+        {"type": "VAR", "op": "NE"}
         ]}
 
 ## test drop table.
