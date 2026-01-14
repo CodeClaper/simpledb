@@ -455,9 +455,8 @@ static ROW_HANDLER DefineRowHandler(SelectPlan *select_plan) {
 
 /* Convert search condtion to expr node. 
  * The basic routine:
- * Parse ==> BNF transfor ==> flatten.
+ * Parse ==> BNF transfor ==> Negate ==> Flatten.
  * */
 static ExprNode *ConvertSearchConditionExpr(SearchConditionNode *search_condition) {
-    ExprNode *node = ExprParse(search_condition);
-    return Flatten(BNFTransform(node));
+    return Flatten(Negate(BNFTransform(ExprParse(search_condition))));
 }

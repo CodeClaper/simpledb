@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 #include "flatten.h"
 #include "mmgr.h"
 #include "data.h"
@@ -32,7 +33,7 @@ static ExprNode *MakeNotExprNode(ExprNode *left) {
 
 static ExprNode *MakeVarExprNode(OprType opr, void *leftVal, void *rightVal) {
     ExprNode *expr = instance(ExprNode);
-    expr->type = EXPRE_VAR;
+    expr->type = EXPR_VAR;
     expr->opr = opr;
     expr->leftVal = leftVal;
     expr->rightVal = rightVal;
@@ -133,12 +134,12 @@ ExprNode *ExprParse(SearchConditionNode *search_condition) {
 
 /* BNF transform. 
  * This function will do the called BNF transform.
- * For example, it will execute the fllowing expr:
+ * For example, it will execute the fllowing expr transformation:
  * (A OR B) AND (C OR D) ==> (A AND C) OR (B AND C) OR (A AND D) OR (B AND D).
  * This transform is crucial for selection of access path.
  * */
 ExprNode *BNFTransform(ExprNode *node) {
-    if (node == NULL || node->type == EXPRE_VAR) 
+    if (node == NULL || node->type == EXPR_VAR) 
         return node;
 
     node->leftChild = BNFTransform(node->leftChild);
@@ -167,6 +168,62 @@ ExprNode *BNFTransform(ExprNode *node) {
     return node;
 }
 
+/* Get negate op. */
+static OprType NegateOprType(OprType op) {
+    switch (op) {
+        case OP_EQ: return OP_NE;
+        case OP_NE: return OP_EQ;
+        case OP_GT: return OP_LE;
+        case OP_GE: return OP_LT;
+        case OP_LT: return OP_GE;
+        case OP_LE: return OP_GT;
+        case OP_IN: return OP_NOT_IN;
+        case OP_LIKE: return OP_NOT_LIKE;
+        case OP_NOT_IN: return OP_IN;
+        case OP_NOT_LIKE: return OP_LIKE;
+    }
+}
+
+/* Negate.
+ * This function will push <not opr> down to its child to get simple and unified expr.
+ * And it is crucial for selection cheapest path in optimizer.
+ * */
+ExprNode *Negate(ExprNode *node) {
+    if (node == NULL) return node;
+    if (node->type == EXPR_NOT) {
+        ExprNode *child = node->leftChild;
+        switch (child->type) {
+            case EXPR_NOT: {
+                /* NOT (NOT A) ==> A. */
+                return Negate(node->leftChild);
+            }
+            case EXPR_AND: {
+                /* NOT (A AND B) ==> (NOT A) OR (NOT B). */
+                return MakeOrExprNode(Negate(MakeNotExprNode(child->leftChild)),
+                                      Negate(MakeNotExprNode(child->rightChild)));
+            }
+            case EXPR_OR: {
+                /* NOT (A OR B) ==> (NOT A) AND (NOT B). */
+                return MakeAndExprNode(Negate(MakeNotExprNode(child->leftChild)), 
+                                       Negate(MakeNotExprNode(child->rightChild)));
+            }
+            case EXPR_VAR: {
+                /* NOT (Variabile Condiiton) ==> Change the opr. */
+                child->opr = NegateOprType(child->opr);
+                return child;
+            }
+            default:
+                UNEXPECTED_VALUE(node->type);
+                return NULL;
+        }
+    }
+
+    node->leftChild = Negate(node->leftChild);
+    node->rightChild = Negate(node->rightChild);
+    return node;
+}
+
+/* Flatten for logic expr node. */
 static void FlattenForLogicNode(ExprNode *parent, ExprNode *current, ExprType expected) {
     if (current == NULL) return;
     if (current->type == expected) {
@@ -177,11 +234,11 @@ static void FlattenForLogicNode(ExprNode *parent, ExprNode *current, ExprType ex
 }
 
 /* Flatten. 
- * This function aims to transform binary tree to multi-path tree 
- * and to reduce the height of the tree.
+ * This function will pull the same logic children, transform binary tree 
+ * to multi-path tree and to reduce the height of the tree.
  * */
 ExprNode *Flatten(ExprNode *root) {
-    if (root == NULL || root->type == EXPRE_VAR) return root;
+    if (root == NULL || root->type == EXPR_VAR) return root;
     switch (root->type) {
         case EXPR_AND: {
             ExprNode *node = MakeAndSetExprNode();
@@ -201,7 +258,9 @@ ExprNode *Flatten(ExprNode *root) {
     return root;
 }
 
-char* GetExprNodeName(ExprNode *node) {
+
+/* Get expr node name. */
+static char* GetExprNodeName(ExprNode *node) {
     switch (node->type) {
         case EXPR_AND:
             return dstrdup("AND");
@@ -209,7 +268,7 @@ char* GetExprNodeName(ExprNode *node) {
             return dstrdup("OR");
         case EXPR_NOT:
             return dstrdup("NOT");
-        case EXPRE_VAR:
+        case EXPR_VAR:
             return dstrdup("VAR");
         case EXPR_AND_SET:
             return dstrdup("AND_SET");

@@ -29,6 +29,12 @@ def test_complex_sql3():
     assert ret["success"] == True
     assert ret["data"] == {"type": "OR_SET", "children": [{"type": "AND_SET", "children": ["VAR", "VAR", "VAR"]}, {"type": "AND_SET", "children": ["VAR", "VAR", "VAR"]}, "VAR", "VAR"]}
 
+def test_complex_sql4():
+    ret = client.execute("express select * from Student where not (birth >= '2010-01-01' AND birth <= '2015-12-31' OR sex = 'M');");
+    assert ret["success"] == True
+    print(json.dumps(ret))
+    assert ret["data"] == []
+
 ## test drop table.
 def test_drop_table():
     ret = client.execute("drop table Student;")

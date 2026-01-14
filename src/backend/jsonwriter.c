@@ -412,7 +412,7 @@ static void json_expr_node(ExprNode *node) {
             case EXPR_OR:
                 json_or_expr_node(node);
                 break;
-            case EXPRE_VAR:
+            case EXPR_VAR:
                 json_var_expr_node(node);
                 break;
             case EXPR_AND_SET:
