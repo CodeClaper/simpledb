@@ -1,6 +1,7 @@
 #include "explain.h"
 #include "check.h"
 #include "data.h"
+#include "flatten.h"
 #include "optimizer.h"
 #include "log.h"
 #include "instance.h"
@@ -37,9 +38,9 @@ static List *ExplainStatement(ExplainNode *explain_node) {
     return list;
 }
 
-static void ExpressStatement(ExpressNode *express_node) {
+static ExprNode *ExpressStatement(ExpressNode *express_node) {
     SelectPlan *select_plan = OptimizeSelect(express_node->select_node, SELECT_STMT);
-    json_expr_node(select_plan->condition_expr);
+    return select_plan->condition_expr;
 }
 
 /* Execute explain statement. */
@@ -56,8 +57,8 @@ void ExecuteExplainStatement(ExplainNode *explain_node, DBResult *result) {
 void ExecuteExpressStatement(ExpressNode *express_node, DBResult *result) {
     Assert(express_node != NULL);
     if (!CheckForExpress(express_node)) return;
-    ExpressStatement(express_node);
-    result->hasOutput = true;
+    result->data = ExpressStatement(express_node);
+    result->message = dstrdup("Express excuted successfully.");
     result->success = true;
     db_log(SUCCESS, "Express excuted successfully.");
 }

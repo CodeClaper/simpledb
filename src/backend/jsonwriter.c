@@ -36,6 +36,7 @@
 /* Handle duplicate Key. */
 static void handle_dulicate_key(Row *row);
 static void json_expr_node_list(List *node_list);
+static void json_expr_node(ExprNode *node);
 
 static void json_key_value_inner(Oid oid, char *key, void *value, DataType type) {
     switch(type) {
@@ -400,7 +401,7 @@ static void json_or_set_expr_node(ExprNode *node) {
 }
 
 
-void json_expr_node(ExprNode *node) {
+static void json_expr_node(ExprNode *node) {
     if (!node) 
         db_send("null");
     else {
@@ -482,10 +483,20 @@ static void json_nondata_result(DBResult *result) {
             result->duration);
 }
 
+/* Json login result. */
 static void json_login_result(DBResult *result) {
     db_send("{ \"success\": %s,  \"message\":", result->success ? "true" : "false");
     db_send("\"%s\"", result->message);
     db_send(",\"duration\": %lf}", result->duration);
+}
+
+/* Json express result. */
+static void json_express_result(DBResult *result) {
+    db_send("{ \"success\": %s, \"message\": \"%s\", \"data\": ", 
+            result->success ? "true" : "false", 
+            result->success ? result->message : get_stack_message());
+    json_expr_node(result->data);
+    db_send(", \"duration\": %lf }", result->duration);
 }
 
 /* Json list of key value. */
@@ -571,6 +582,9 @@ void json_db_result(DBResult *result) {
         case DESCRIBE_STMT:
         case EXPLAIN_STMT:
             json_result_list(result);
+            break;
+        case EXPRESS_STMT:
+            json_express_result(result);
             break;
         case LOGIN_STMT:
             json_login_result(result);
