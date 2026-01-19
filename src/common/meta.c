@@ -281,8 +281,7 @@ KeyValue *QueryTupleValueItem(ValueItemNode *value_item) {
  * For T_STRING value, we will compare the string value rather than the StrRefer value.
  * */
 void *GetComparableValue(void *value, DataType type) {
-    if (value == NULL)
-        return NULL;
+    if (value == NULL) return NULL;
     switch (type) {
         /* For STRING, convert to real string value instead of refer value. */
         case T_STRING:
