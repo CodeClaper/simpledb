@@ -339,8 +339,7 @@ void json_tuple(List *meta_columns, void *tuple) {
 
 /* Json row. */
 void json_row(Row *row) {
-    if (!row) 
-        db_send("null");
+    if (!row) db_send("null");
     else {
         /* Handler duplacate key. */
         handle_dulicate_key(row);

@@ -120,6 +120,7 @@ static bool FinalTrueCaseExprOrSet(ExprNode *node) {
         /* For EXPR_OR_SET node, children just are EXPR_AND_SET or EXPR_VAR.  */
         switch (child->type) {
             case EXPR_AND_SET: {
+                child->final_false = FinalFalseCaseExprAndSet(child);
                 if (FinalTrueForExprAndSetChild(child)) return true;
                 else break;
             }
