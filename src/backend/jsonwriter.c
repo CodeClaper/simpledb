@@ -16,10 +16,9 @@
 #include <time.h>
 #include <unistd.h>
 #include <inttypes.h>
-#include "data.h"
-#include "flatten.h"
-#include "mmgr.h"
 #include "jsonwriter.h"
+#include "data.h"
+#include "mmgr.h"
 #include "log.h"
 #include "utils.h"
 #include "meta.h"
@@ -31,6 +30,7 @@
 #include "select.h"
 #include "asserts.h"
 #include "session.h"
+#include "optimizer.h"
 #include "strheaptable.h"
 
 /* Handle duplicate Key. */

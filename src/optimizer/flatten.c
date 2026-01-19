@@ -9,40 +9,6 @@
 #define CANVAS_MAX_WIDTH 1024
 
 
-/* Get expr node name. */
-char *GetExprNodeName(ExprNode *node) {
-    switch (node->type) {
-        case EXPR_AND: return dstrdup("AND");
-        case EXPR_OR: return dstrdup("OR");
-        case EXPR_NOT: return dstrdup("NOT");
-        case EXPR_VAR: return dstrdup("VAR");
-        case EXPR_AND_SET: return dstrdup("AND_SET");
-        case EXPR_OR_SET: return dstrdup("OR_SET");
-        default:
-            UNEXPECTED_VALUE(node->type);
-            return NULL;
-    }
-}
-
-/* Get op name. */
-char *GetOprTypeName(OprType op) {
-    switch (op) {
-        case OP_EQ: return dstrdup("EQ");
-        case OP_NE: return dstrdup("NE");
-        case OP_GT: return dstrdup("GT");
-        case OP_GE: return dstrdup("GE");
-        case OP_LT: return dstrdup("LT");
-        case OP_LE: return dstrdup("LE");
-        case OP_IN: return dstrdup("IN");
-        case OP_LIKE: return dstrdup("LIKE");
-        case OP_NOT_IN: return dstrdup("NOT IN");
-        case OP_NOT_LIKE: return dstrdup("NOT LIKE");
-        default:
-            UNEXPECTED_VALUE(op);
-            return NULL;
-    }
-}
-
 static ExprNode *MakeAndExprNode(ExprNode *left, ExprNode *right) {
     ExprNode *expr = instance(ExprNode);
     expr->type = EXPR_AND;
@@ -216,6 +182,7 @@ static OprType NegateOprType(OprType op) {
         case OP_LIKE: return OP_NOT_LIKE;
         case OP_NOT_IN: return OP_IN;
         case OP_NOT_LIKE: return OP_LIKE;
+        default: return -1;
     }
 }
 
@@ -245,6 +212,7 @@ ExprNode *Negate(ExprNode *node) {
             case EXPR_VAR: {
                 /* NOT (Variabile Condiiton) ==> Change the opr. */
                 child->opr = NegateOprType(child->opr);
+                Assert(child->opr != -1);
                 return child;
             }
             default:

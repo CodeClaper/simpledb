@@ -1,12 +1,12 @@
+#include <stdbool.h>
 #include "explain.h"
 #include "check.h"
 #include "data.h"
-#include "flatten.h"
 #include "optimizer.h"
 #include "log.h"
 #include "instance.h"
 #include "jsonwriter.h"
-#include <stdbool.h>
+#include "mmgr.h"
 
 /* Define index name. 
  * Three cases:

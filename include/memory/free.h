@@ -1,6 +1,6 @@
 #include "data.h"
 #include "xlog.h"
-#include "flatten.h"
+#include "optimizer.h"
 #include "bufmgr.h"
 
 void free_value(void *value, DataType data_type);
