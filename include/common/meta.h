@@ -26,6 +26,7 @@ uint32_t DataTypeDefaultLength(DataType column_type);
 DataType AtomTypeConvertDataType(AtomType atom_type);
 void *ValueItemNodeAssignValue(ValueItemNode *value_item_node, MetaColumn *meta_column);
 void *ValueItemNodeFindValue(ValueItemNode *value_item_node);
+KeyValue *QueryTupleValueItem(ValueItemNode *value_item);
 void *GetComparableValue(void *value, DataType type);
 DataType GetComparableType(DataType type);
 char *KeyGetUserStrValue(void *key, DataType ptype);

@@ -207,14 +207,6 @@ static KeyValue *QueryTupleCalulateValue(SelectPlan *select_plan, List *meta_col
     return result;
 }
 
-/* Query tuple value item. */
-static KeyValue *QueryTupleValueItem(ValueItemNode *value_item) {
-    void *value = ValueItemNodeFindValue(value_item);
-    return value == NULL 
-        ? new_key_value(NULL, value, T_UNKNOWN, OID_ZERO, OID_ZERO)
-        : new_key_value(NULL, value, AtomTypeConvertDataType(value_item->value.atom->type), OID_ZERO, OID_ZERO);
-}
-
 /* Query tuple function value. */
 static KeyValue *QueryTupleFuncitonValue(SelectPlan *select_plan, List *meta_columns, FunctionNode *function, void *tuple) {
     if (IsAggFuncion(function->type))

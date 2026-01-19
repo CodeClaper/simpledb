@@ -83,14 +83,6 @@ static void *MergeTuple(SelectResult *head) {
     }
 }
 
-/* Query tuple value item. */
-static KeyValue *QueryTupleValueItem(ValueItemNode *value_item) {
-    void *value = ValueItemNodeFindValue(value_item);
-    return value == NULL 
-        ? new_key_value(NULL, value, T_UNKNOWN, OID_ZERO, OID_ZERO)
-        : new_key_value(NULL, value, AtomTypeConvertDataType(value_item->value.atom->type), OID_ZERO, OID_ZERO);
-}
-
 /* Check if value item is a refer value. */
 static bool ValueItemIsReferValue(ValueItemNode *value_item) {
     switch (value_item->type) {

@@ -265,6 +265,15 @@ void *ValueItemNodeFindValue(ValueItemNode *value_item_node) {
     }
 }
 
+/* Query tuple value item. */
+KeyValue *QueryTupleValueItem(ValueItemNode *value_item) {
+    void *value = ValueItemNodeFindValue(value_item);
+    return value == NULL 
+        ? new_key_value(NULL, value, T_UNKNOWN, OID_ZERO, OID_ZERO)
+        : new_key_value(NULL, value, AtomTypeConvertDataType(value_item->value.atom->type), OID_ZERO, OID_ZERO);
+}
+
+
 /* Get Comparable value. 
  * ----------------------
  * This function will convert value to comparable value.
