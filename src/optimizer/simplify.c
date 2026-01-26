@@ -78,6 +78,7 @@ static int SimplifyCaseExprAndSet(ExprNode *node) {
 /* Simplify when case EXPR_OR_SET. */
 static int SimplifyCaseExprOrSet(ExprNode *node) {
     Assert(node->type == EXPR_OR_SET);
+    bool hasNone = false;
     ListCell *lc;
     foreach(lc, node->children) {
         ExprNode *child = (ExprNode *) lfirst(lc);
@@ -86,18 +87,20 @@ static int SimplifyCaseExprOrSet(ExprNode *node) {
             case EXPR_AND_SET: {
                 child->sresult = SimplifyCaseExprAndSet(child);
                 if (child->sresult == S_ALL_SUCCESS) return S_ONE_OF_SUCCESS;
+                else if (child->sresult == S_NONE) { hasNone = true; break; }
                 else break;
             }
             case EXPR_VAR: {
                 int ret = SimplifyCaseVar(child);
-                if (ret == S_SUCCESS) return S_ONE_OF_SUCCESS ;
+                if (ret == S_SUCCESS) return S_ONE_OF_SUCCESS;
+                else if (ret == S_NONE) { hasNone = true; break; }
                 else break;
             }
             default:
                 UNEXPECTED_VALUE(node->type);
         }
     }
-    return S_ALL_FAIL;
+    return hasNone ? S_NONE : S_ALL_FAIL;
 }
 
 /* Simplify. */
