@@ -63,9 +63,9 @@ static int SimplifyCaseExprAndSet(ExprNode *node) {
         /* For EXPR_AND_SET node, children just are EXPR_VAR.  */
         switch (child->type) {
             case EXPR_VAR: {
-                int ret = SimplifyCaseVar(child); 
-                if (ret == S_FAIL) return S_ONE_OF_FAIL;
-                else if (ret == S_NONE) return S_NONE;
+                child->sresult = SimplifyCaseVar(child); 
+                if (child->sresult == S_FAIL) return S_ONE_OF_FAIL;
+                else if (child->sresult == S_NONE) return S_NONE;
                 else break;
             }
             default:
@@ -91,9 +91,9 @@ static int SimplifyCaseExprOrSet(ExprNode *node) {
                 else break;
             }
             case EXPR_VAR: {
-                int ret = SimplifyCaseVar(child);
-                if (ret == S_SUCCESS) return S_ONE_OF_SUCCESS;
-                else if (ret == S_NONE) { hasNone = true; break; }
+                child->sresult = SimplifyCaseVar(child);
+                if (child->sresult == S_SUCCESS) return S_ONE_OF_SUCCESS;
+                else if (child->sresult == S_NONE) { hasNone = true; break; }
                 else break;
             }
             default:
