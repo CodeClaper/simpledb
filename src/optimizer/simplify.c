@@ -1,4 +1,5 @@
 #include <stdbool.h>
+#include <time.h>
 #include "simplify.h"
 #include "data.h"
 #include "optimizer.h"
@@ -106,6 +107,7 @@ static int SimplifyCaseExprOrSet(ExprNode *node) {
 
 /* Simplify. */
 ExprNode *Simplify(ExprNode *node) {
+    if (node == NULL) return NULL;
     switch (node->type) {
         case EXPR_VAR:
             node->sflag = SimplifyCaseVar(node);
