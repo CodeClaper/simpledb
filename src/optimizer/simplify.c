@@ -1,5 +1,4 @@
 #include <stdbool.h>
-#include <time.h>
 #include "simplify.h"
 #include "data.h"
 #include "optimizer.h"
@@ -27,8 +26,8 @@ static inline void *ScalarExpGetValue(ScalarExpNode *scalar_exp) {
     return ValueItemNodeFindValue(scalar_exp->value);
 }
 
-/* For var child, the final_true is true or not. */
-static bool FinalFalseForVarChild(ExprNode *node) {
+/* Simplify When case VAR. */
+static int SimplifyCaseVar(ExprNode *node) {
     switch (node->opr) {
         case OP_EQ: 
         case OP_NE:
@@ -36,10 +35,10 @@ static bool FinalFalseForVarChild(ExprNode *node) {
         case OP_GE:
         case OP_LT:
         case OP_LE: {
-            if (!ScalarExpIsCalculable(node->leftVal) || !ScalarExpIsCalculable(node->rightVal)) return false;
+            if (!ScalarExpIsCalculable(node->leftVal) || !ScalarExpIsCalculable(node->rightVal)) return S_NONE;
             KeyValue *leftKv = new_simple_key_value(NULL, ScalarExpGetValue(node->leftVal), AtomTypeConvertDataType(ScalarExpGetAtomType(node->leftVal)));
             KeyValue *rightKv = new_simple_key_value(NULL, ScalarExpGetValue(node->rightVal), AtomTypeConvertDataType(ScalarExpGetAtomType(node->rightVal)));
-            return KeyValueEval((CompareType)node->opr, leftKv, rightKv);
+            return KeyValueEval((CompareType)node->opr, leftKv, rightKv) ? S_SUCCESS : S_FAIL;
         }
         /* We just think <like> or <in> include column(actually, it`s wrong, for example, 
          * the sql "select * from tb where 'a' in ('a', 'b', 'c')" is executable.), 
@@ -48,14 +47,15 @@ static bool FinalFalseForVarChild(ExprNode *node) {
         case OP_IN:
         case OP_NOT_LIKE:
         case OP_NOT_IN:
-            return false;
+            return S_NONE;
         default:
             UNEXPECTED_VALUE(node->type);
-            return false;
+            return S_NONE;
     }
 }
 
-static bool FinalFalseCaseExprAndSet(ExprNode *node) {
+/* Simplify when case EXPR_AND_SET. */
+static int SimplifyCaseExprAndSet(ExprNode *node) {
     Assert(node->type == EXPR_AND_SET);
     ListCell *lc;
     foreach(lc, node->children) {
@@ -63,56 +63,20 @@ static bool FinalFalseCaseExprAndSet(ExprNode *node) {
         /* For EXPR_AND_SET node, children just are EXPR_VAR.  */
         switch (child->type) {
             case EXPR_VAR: {
-                if (!FinalFalseForVarChild(child)) return false;
+                int ret = SimplifyCaseVar(child); 
+                if (ret == S_FAIL) return S_ONE_OF_FAIL;
+                else if (ret == S_NONE) return S_NONE;
                 else break;
             }
             default:
                 UNEXPECTED_VALUE(node->type);
         }
     }
-    return true;
+    return S_ALL_SUCCESS;
 }
 
-/* For var child, the final_true is true or not. */
-static bool FinalTrueForVarChild(ExprNode *node) {
-    switch (node->opr) {
-        case OP_EQ: 
-        case OP_NE:
-        case OP_GT:
-        case OP_GE:
-        case OP_LT:
-        case OP_LE: {
-            if (!ScalarExpIsCalculable(node->leftVal) || !ScalarExpIsCalculable(node->rightVal)) return false;
-            KeyValue *leftKv = new_simple_key_value(NULL, ScalarExpGetValue(node->leftVal), AtomTypeConvertDataType(ScalarExpGetAtomType(node->leftVal)));
-            KeyValue *rightKv = new_simple_key_value(NULL, ScalarExpGetValue(node->rightVal), AtomTypeConvertDataType(ScalarExpGetAtomType(node->rightVal)));
-            return KeyValueEval((CompareType)node->opr, leftKv, rightKv);
-        }
-        /* We just think <like> or <in> include column(actually, it`s wrong, for example, 
-         * the sql "select * from tb where 'a' in ('a', 'b', 'c')" is executable.), 
-         * so just return fasle.*/
-        case OP_LIKE:
-        case OP_IN:
-        case OP_NOT_LIKE:
-        case OP_NOT_IN:
-            return false;
-        default:
-            UNEXPECTED_VALUE(node->type);
-            return false;
-    }
-}
-
-/* For EXPR_AND_SET child, the final_true is true or not. */
-static bool FinalTrueForExprAndSetChild(ExprNode *node) {
-    ListCell *lc;
-    foreach(lc, node->children) {
-        ExprNode *child = (ExprNode *) lfirst(lc);
-        if (FinalTrueForVarChild(child)) continue;
-        else return false;
-    }
-    return true;
-}
-
-static bool FinalTrueCaseExprOrSet(ExprNode *node) {
+/* Simplify when case EXPR_OR_SET. */
+static int SimplifyCaseExprOrSet(ExprNode *node) {
     Assert(node->type == EXPR_OR_SET);
     ListCell *lc;
     foreach(lc, node->children) {
@@ -120,32 +84,51 @@ static bool FinalTrueCaseExprOrSet(ExprNode *node) {
         /* For EXPR_OR_SET node, children just are EXPR_AND_SET or EXPR_VAR.  */
         switch (child->type) {
             case EXPR_AND_SET: {
-                child->final_false = FinalFalseCaseExprAndSet(child);
-                if (FinalTrueForExprAndSetChild(child)) return true;
+                child->simplifyResult = SimplifyCaseExprAndSet(child);
+                if (child->simplifyResult == S_ALL_SUCCESS) return S_ONE_OF_SUCCESS;
                 else break;
             }
             case EXPR_VAR: {
-                if (FinalTrueForVarChild(child)) return true;
+                int ret = SimplifyCaseVar(child);
+                if (ret == S_SUCCESS) return S_ONE_OF_SUCCESS ;
                 else break;
             }
             default:
                 UNEXPECTED_VALUE(node->type);
         }
     }
-    return false;
+    return S_ALL_FAIL;
 }
 
 /* Simplify. */
 ExprNode *Simplify(ExprNode *node) {
     switch (node->type) {
+        case EXPR_VAR:
+            node->simplifyResult = SimplifyCaseVar(node);
+            break;
         case EXPR_AND_SET:
-            node->final_false = FinalFalseCaseExprAndSet(node); 
+            node->simplifyResult = SimplifyCaseExprAndSet(node); 
             break;
         case EXPR_OR_SET: 
-            node->final_true = FinalTrueCaseExprOrSet(node); 
+            node->simplifyResult = SimplifyCaseExprOrSet(node); 
             break;
         default: break;
     }
     return node;
 }
+
+/* Get simplify reult name. */
+char* GetSimplifyResultName(int result) {
+    switch (result) {
+        case S_NONE: return "none";
+        case S_SUCCESS: return "success";
+        case S_FAIL: return "fail";
+        case S_ONE_OF_SUCCESS: return "one of success";
+        case S_ALL_FAIL: return "all fail";
+        case S_ONE_OF_FAIL: return "one of fail";
+        case S_ALL_SUCCESS: return "all success";
+        default: return "none";
+    }
+}
+
 

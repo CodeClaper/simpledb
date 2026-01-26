@@ -3,6 +3,7 @@
 
 #include "data.h"
 #include "spinlock.h"
+#include <stdbool.h>
 
 typedef enum { EXPR_AND, EXPR_OR, EXPR_NOT, EXPR_VAR, EXPR_AND_SET, EXPR_OR_SET } ExprType;
 typedef enum { OP_EQ, OP_NE, OP_GT, OP_GE, OP_LT, OP_LE, OP_LIKE, OP_IN, OP_NOT_LIKE, OP_NOT_IN } OprType;
@@ -15,8 +16,7 @@ typedef struct ExprNode {
     struct ExprNode *leftChild;         /* For EXPR_AND, EXPR_OR. */
     struct ExprNode *rightChild;        /* For EXPR_AND, EXPR_OR. */
     List *children;                     /* For EXPR_AND_SET, EXPR_OR_SET.  */
-    bool final_true;                    /* For EXPR_OR_SET. */
-    bool final_false;                   /* For EXPR_AND_SET. */
+    int simplifyResult;                 /* Simplify result. */
 } ExprNode;
 
 
