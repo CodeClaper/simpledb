@@ -42,6 +42,34 @@ def test_complex_sql2():
             {"type": "VAR", "op": "GE", "sflag": "none"}], 
        "sflag": "none"}
 
+
+def test_complex_sql3():
+    ret = client.execute("express select * from Student s, Teacher t;")
+    assert ret["success"] == True
+    print(json.dumps(ret))
+    assert ret["data"] == None
+
+def test_complex_sql4():
+    ret = client.execute("express select * from Student s, Teacher t where 1 = 1 and 2 = 2 and 3 != 3;")
+    assert ret["success"] == True
+    print(json.dumps(ret))
+    assert ret["data"] == {"type": "AND_SET", "children": [
+        {"type": "VAR", "op": "EQ", "sflag": "success"}, 
+        {"type": "VAR", "op": "EQ", "sflag": "success"}, 
+        {"type": "VAR", "op": "NE", "sflag": "fail"}],
+    "sflag": "one of fail"}
+
+
+def test_complex_sql5():
+    ret = client.execute("express select * from Student s, Teacher t where 1 = 2 or 2 = 3 or 3 != 3;")
+    assert ret["success"] == True
+    print(json.dumps(ret))
+    assert ret["data"] == {"type": "OR_SET", "children": [
+        {"type": "VAR", "op": "EQ", "sflag": "fail"}, 
+        {"type": "VAR", "op": "EQ", "sflag": "fail"}, 
+        {"type": "VAR", "op": "NE", "sflag": "fail"}],
+    "sflag": "all fail"}
+
 ## test drop table.
 def test_drop_table():
     ret = client.execute("drop table Student;")
