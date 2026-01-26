@@ -31,6 +31,7 @@
 #include "asserts.h"
 #include "session.h"
 #include "optimizer.h"
+#include "simplify.h"
 #include "strheaptable.h"
 
 /* Handle duplicate Key. */
@@ -364,6 +365,8 @@ static void json_and_expr_node(ExprNode *node) {
     db_send(", ");
     db_send("\"right\": ");
     json_expr_node(node->rightChild);
+    db_send(", ");
+    db_send("\"sresult\": \"%s\"", GetSimplifyResultName(node->sresult));
     db_send(" }");
 }
 
@@ -376,11 +379,15 @@ static void json_or_expr_node(ExprNode *node) {
     db_send(", ");
     db_send("\"right\": ");
     json_expr_node(node->rightChild);
+    db_send(", ");
+    db_send("\"sresult\": \"%s\"", GetSimplifyResultName(node->sresult));
     db_send(" }");
 }
 
 static void json_var_expr_node(ExprNode *node) {
-    db_send("{\"type\": \"VAR\", \"op\": \"%s\"}", GetOprTypeName(node->opr));
+    db_send("{\"type\": \"VAR\", \"op\": \"%s\", \"sresult\": \"%s\"}", 
+            GetOprTypeName(node->opr), 
+            GetSimplifyResultName(node->sresult));
 }
 
 static void json_and_set_expr_node(ExprNode *node) {
@@ -388,6 +395,8 @@ static void json_and_set_expr_node(ExprNode *node) {
     db_send("\"type\": \"AND_SET\", ");
     db_send("\"children\": ");
     json_expr_node_list(node->children);
+    db_send(", ");
+    db_send("\"sresult\": \"%s\"", GetSimplifyResultName(node->sresult));
     db_send(" }");
 }
 
@@ -396,6 +405,8 @@ static void json_or_set_expr_node(ExprNode *node) {
     db_send("\"type\": \"OR_SET\", ");
     db_send("\"children\": ");
     json_expr_node_list(node->children);
+    db_send(", ");
+    db_send("\"sresult\": \"%s\"", GetSimplifyResultName(node->sresult));
     db_send(" }");
 }
 
