@@ -8,5 +8,6 @@
 #define S_ONE_OF_FAIL (1<<5)        /* Set for EXPR_AND_SET if one of children fail. */
 #define S_ALL_SUCCESS (1<<6)        /* Set for EXPR_AND_SET if all children success. */
 
-ExprNode *Simplify(ExprNode *node);
+
 char* GetSimplifyResultName(int result);
+ExprNode *Simplify(ExprNode *node);

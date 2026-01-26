@@ -40,9 +40,9 @@ static int SimplifyCaseVar(ExprNode *node) {
             KeyValue *rightKv = new_simple_key_value(NULL, ScalarExpGetValue(node->rightVal), AtomTypeConvertDataType(ScalarExpGetAtomType(node->rightVal)));
             return KeyValueEval((CompareType)node->opr, leftKv, rightKv) ? S_SUCCESS : S_FAIL;
         }
-        /* We just think <like> or <in> include column(actually, it`s wrong, for example, 
-         * the sql "select * from tb where 'a' in ('a', 'b', 'c')" is executable.), 
-         * so just return fasle.*/
+        /* We just think <like> or <in> include column(actually. In fact, it`s wrong. 
+         * For example, the sql "select * from tb where 'a' in ('a', 'b', 'c')" is executable. 
+         * To make it simple, just return fasle. */
         case OP_LIKE:
         case OP_IN:
         case OP_NOT_LIKE:
@@ -133,5 +133,4 @@ char* GetSimplifyResultName(int result) {
         default: return "none";
     }
 }
-
 
