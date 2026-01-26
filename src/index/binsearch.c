@@ -4,6 +4,7 @@
 #include "binsearch.h"
 #include "bin.h"
 #include "bufmgr.h"
+#include "data.h"
 #include "mmgr.h"
 #include "log.h"
 #include "select.h"
@@ -448,6 +449,8 @@ static bool BinSearchInternalNodeForBooleanTest(SelectPlan *select_plan, void *m
                 negation != boolean_test->truth_value,
                 meta_column
             );
+        case DIRECT_TRUE_VALUE:
+            return boolean_test->truth_value;
         default:
             UNEXPECTED_VALUE(boolean_test->type);
             return true;

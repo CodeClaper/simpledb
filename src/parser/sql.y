@@ -1261,6 +1261,13 @@ boolean_test:
             test_node->truth_value = $3;
             $$ = test_node;
         }
+    | BOOLVALUE
+        {
+            BooleanTestNode *test_node = instance(BooleanTestNode);
+            test_node->type = DIRECT_TRUE_VALUE;
+            test_node->truth_value = $1;
+            $$ = test_node;
+        }
     ;
 boolean_primary:
     predicate

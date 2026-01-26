@@ -418,6 +418,7 @@ typedef enum TruthValueType {
     NONE_TRUE_VALUE,
     IS_TRUTH_VALUE,
     IS_NOT_TRUTH_VALUE,
+    DIRECT_TRUE_VALUE
 } TruthValueType;
 
 /* BooleanTestNode */

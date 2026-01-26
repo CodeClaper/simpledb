@@ -7,6 +7,7 @@
  * Besides, Update statement, delete statement also use these module for query under conditon.
  ********************************************************************************************
  */
+#include "data.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -393,14 +394,21 @@ static bool LeafNodeForBooleanPrimary(SelectPlan *select_plan, List *meta_column
 
 /* If the leaf node meets the boolean test. */
 static bool LeafNodeForBooleanTest(SelectPlan *select_plan, List *meta_columns, void *tuple, BooleanTestNode *boolean_test) {
-    bool boolean_primary_value = LeafNodeForBooleanPrimary(select_plan, meta_columns, tuple, boolean_test->boolean_primary);
     switch (boolean_test->type) {
-        case NONE_TRUE_VALUE:
+        case NONE_TRUE_VALUE: {
+            bool boolean_primary_value = LeafNodeForBooleanPrimary(select_plan, meta_columns, tuple, boolean_test->boolean_primary);
             return boolean_primary_value;
-        case IS_TRUTH_VALUE:
+        }
+        case IS_TRUTH_VALUE: {
+            bool boolean_primary_value = LeafNodeForBooleanPrimary(select_plan, meta_columns, tuple, boolean_test->boolean_primary);
             return boolean_primary_value == boolean_test->truth_value;
-        case IS_NOT_TRUTH_VALUE:
+        }
+        case IS_NOT_TRUTH_VALUE: {
+            bool boolean_primary_value = LeafNodeForBooleanPrimary(select_plan, meta_columns, tuple, boolean_test->boolean_primary);
             return boolean_primary_value != boolean_test->truth_value;
+        }
+        case DIRECT_TRUE_VALUE:
+            return boolean_test->truth_value;
         default:
             UNEXPECTED_VALUE(boolean_test->type);
             return false;
@@ -666,6 +674,8 @@ static bool InternalNodeForBooleanTest(SelectPlan *select_plan, KeyValue *min_ke
                 /* The following is XOR. */
                 negation != boolean_test->truth_value
             );
+        case DIRECT_TRUE_VALUE:
+            return boolean_test->truth_value;
         default:
             UNEXPECTED_VALUE(boolean_test->type);
             return true;

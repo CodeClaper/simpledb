@@ -390,6 +390,12 @@ static void json_var_expr_node(ExprNode *node) {
             GetSimplifyResultName(node->sflag));
 }
 
+static void json_truth_value_expr_node(ExprNode *node) {
+    db_send("{\"type\": \"TRUTH_VALUE\", \"truth\": \"%s\", \"sflag\": \"%s\"}", 
+            node->truthVal ? "true" : "fasle", 
+            GetSimplifyResultName(node->sflag));
+}
+
 static void json_and_set_expr_node(ExprNode *node) {
     db_send("{");
     db_send("\"type\": \"AND_SET\", ");
@@ -412,8 +418,7 @@ static void json_or_set_expr_node(ExprNode *node) {
 
 
 static void json_expr_node(ExprNode *node) {
-    if (!node) 
-        db_send("null");
+    if (!node) db_send("null");
     else {
         switch (node->type) {
             case EXPR_AND:
@@ -430,6 +435,9 @@ static void json_expr_node(ExprNode *node) {
                 break;
             case EXPR_OR_SET:
                 json_or_set_expr_node(node);
+                break;
+            case EXPR_TRUTH_VALUE:
+                json_truth_value_expr_node(node);
                 break;
             case EXPR_NOT:
                 break;

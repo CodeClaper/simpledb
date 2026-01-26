@@ -1,9 +1,11 @@
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
 #include "flatten.h"
 #include "mmgr.h"
 #include "data.h"
+#include "optimizer.h"
 
 #define CANVAS_MAX_HEIGHT 1024
 #define CANVAS_MAX_WIDTH 1024
@@ -56,6 +58,13 @@ static ExprNode *MakeOrSetExprNode() {
     return expr;
 }
 
+static ExprNode *MakeTruthValueExprNode(bool truthVal) {
+    ExprNode *expr = instance(ExprNode);
+    expr->type = EXPR_TRUTH_VALUE;
+    expr->truthVal = truthVal;
+    return expr;
+}
+
 /* Expr paser for boolean predicate. */
 static ExprNode *ExprParseForPredicateNode(PredicateNode *predicate) {
     switch (predicate->type) {
@@ -103,6 +112,8 @@ static ExprNode *ExprParseForBooleanTestNode(BooleanTestNode *boolean_test) {
             return boolean_test->truth_value 
                 ? MakeNotExprNode(ExprParseForBooleanPrimaryNode(boolean_test->boolean_primary))
                 : ExprParseForBooleanPrimaryNode(boolean_test->boolean_primary);
+        case DIRECT_TRUE_VALUE:
+            return MakeTruthValueExprNode(boolean_test->truth_value);
         default:
             UNEXPECTED_VALUE(boolean_test->type);
             return NULL;
@@ -140,7 +151,7 @@ ExprNode *ExprParse(SearchConditionNode *search_condition) {
  * This transform is crucial for selection of access path.
  * */
 ExprNode *BNFTransform(ExprNode *node) {
-    if (node == NULL || node->type == EXPR_VAR) 
+    if (node == NULL || node->type == EXPR_VAR || node->type == EXPR_TRUTH_VALUE) 
         return node;
 
     node->leftChild = BNFTransform(node->leftChild);
@@ -213,6 +224,11 @@ ExprNode *Negate(ExprNode *node) {
                 /* NOT (Variabile Condiiton) ==> Change the opr. */
                 child->opr = NegateOprType(child->opr);
                 Assert(child->opr != -1);
+                return child;
+            }
+            case EXPR_TRUTH_VALUE: {
+                /* Not (true | false) ===> (false | true). */
+                child->truthVal = !child->truthVal;
                 return child;
             }
             default:

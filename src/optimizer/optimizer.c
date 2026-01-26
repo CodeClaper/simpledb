@@ -480,6 +480,7 @@ char *GetExprNodeName(ExprNode *node) {
         case EXPR_VAR: return dstrdup("VAR");
         case EXPR_AND_SET: return dstrdup("AND_SET");
         case EXPR_OR_SET: return dstrdup("OR_SET");
+        case EXPR_TRUTH_VALUE: return dstrdup("TRUTH_VALUE");
         default:
             UNEXPECTED_VALUE(node->type);
             return NULL;

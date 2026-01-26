@@ -62,13 +62,17 @@ static int SimplifyCaseExprAndSet(ExprNode *node) {
     ListCell *lc;
     foreach(lc, node->children) {
         ExprNode *child = (ExprNode *) lfirst(lc);
-        /* For EXPR_AND_SET node, children just are EXPR_VAR.  */
+        /* For EXPR_AND_SET node, children are only EXPR_VAR, EXPR_TRUTH_VALUE.  */
         switch (child->type) {
             case EXPR_VAR: {
                 child->sflag = SimplifyCaseVar(child); 
                 if (child->sflag == S_FAIL) hasOneFail = true;
                 else if (child->sflag == S_NONE) hasNone = true;
                 break;
+            }
+            case EXPR_TRUTH_VALUE: {
+                if (!child->truthVal) hasOneFail = true;
+                else break;
             }
             default:
                 UNEXPECTED_VALUE(node->type);
@@ -84,7 +88,7 @@ static int SimplifyCaseExprOrSet(ExprNode *node) {
     ListCell *lc;
     foreach (lc, node->children) {
         ExprNode *child = (ExprNode *) lfirst(lc);
-        /* For EXPR_OR_SET node, children just are EXPR_AND_SET or EXPR_VAR.  */
+        /* For EXPR_OR_SET node, children just are EXPR_AND_SET or EXPR_VAR or EXPR_TRUTH_VALUE.  */
         switch (child->type) {
             case EXPR_AND_SET: {
                 child->sflag = SimplifyCaseExprAndSet(child);
@@ -97,6 +101,10 @@ static int SimplifyCaseExprOrSet(ExprNode *node) {
                 if (child->sflag == S_SUCCESS) hasOneSuccess = true;
                 else if (child->sflag == S_NONE) hasNone = true;
                 break;
+            }
+            case EXPR_TRUTH_VALUE: {
+                if (child->truthVal) hasOneSuccess = true;
+                else break;
             }
             default:
                 UNEXPECTED_VALUE(node->type);
@@ -111,6 +119,9 @@ ExprNode *Simplify(ExprNode *node) {
     switch (node->type) {
         case EXPR_VAR:
             node->sflag = SimplifyCaseVar(node);
+            break;
+        case EXPR_TRUTH_VALUE:
+            node->sflag = node->truthVal ? S_SUCCESS : S_FAIL;
             break;
         case EXPR_AND_SET:
             node->sflag = SimplifyCaseExprAndSet(node); 
