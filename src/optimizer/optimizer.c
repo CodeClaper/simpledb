@@ -7,6 +7,7 @@
 #include "log.h"
 #include "instance.h"
 #include "flatten.h"
+#include "simplify.h"
 #include "select.h"
 
 static bool OnlySelectAllInSelection(SelectNode *selectNode);
@@ -456,10 +457,18 @@ static ROW_HANDLER DefineRowHandler(SelectPlan *select_plan) {
 
 /* Convert search condtion to expr node. 
  * The basic routine:
- * Parse ==> Negate => BNF transfor ==> Flatten.
+ * Parse ==> Negate => BNF transfor ==> Flatten ==> Simplify.
  * */
 static ExprNode *ConvertSearchConditionExpr(SearchConditionNode *search_condition) {
-    return Flatten(BNFTransform(Negate(ExprParse(search_condition))));
+    return Simplify(
+        Flatten(
+            BNFTransform(
+                Negate(
+                    ExprParse(search_condition)
+                )
+            )
+        )
+    );
 }
 
 /* Get expr node name. */
