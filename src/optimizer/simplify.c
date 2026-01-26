@@ -57,6 +57,7 @@ static int SimplifyCaseVar(ExprNode *node) {
 /* Simplify when case EXPR_AND_SET. */
 static int SimplifyCaseExprAndSet(ExprNode *node) {
     Assert(node->type == EXPR_AND_SET);
+    bool hasOneFail = false, hasNone = false;
     ListCell *lc;
     foreach(lc, node->children) {
         ExprNode *child = (ExprNode *) lfirst(lc);
@@ -64,43 +65,43 @@ static int SimplifyCaseExprAndSet(ExprNode *node) {
         switch (child->type) {
             case EXPR_VAR: {
                 child->sflag = SimplifyCaseVar(child); 
-                if (child->sflag == S_FAIL) return S_ONE_OF_FAIL;
-                else if (child->sflag == S_NONE) return S_NONE;
-                else break;
+                if (child->sflag == S_FAIL) hasOneFail = true;
+                else if (child->sflag == S_NONE) hasNone = true;
+                break;
             }
             default:
                 UNEXPECTED_VALUE(node->type);
         }
     }
-    return S_ALL_SUCCESS;
+    return hasOneFail ? S_ONE_OF_FAIL : (hasNone ? S_NONE : S_ALL_SUCCESS);
 }
 
 /* Simplify when case EXPR_OR_SET. */
 static int SimplifyCaseExprOrSet(ExprNode *node) {
     Assert(node->type == EXPR_OR_SET);
-    bool hasNone = false;
+    bool hasOneSuccess = false, hasNone = false;
     ListCell *lc;
-    foreach(lc, node->children) {
+    foreach (lc, node->children) {
         ExprNode *child = (ExprNode *) lfirst(lc);
         /* For EXPR_OR_SET node, children just are EXPR_AND_SET or EXPR_VAR.  */
         switch (child->type) {
             case EXPR_AND_SET: {
                 child->sflag = SimplifyCaseExprAndSet(child);
-                if (child->sflag == S_ALL_SUCCESS) return S_ONE_OF_SUCCESS;
-                else if (child->sflag == S_NONE) { hasNone = true; break; }
-                else break;
+                if (child->sflag == S_ALL_SUCCESS) hasOneSuccess = true;
+                else if (child->sflag == S_NONE) hasNone = true;
+                break;
             }
             case EXPR_VAR: {
                 child->sflag = SimplifyCaseVar(child);
-                if (child->sflag == S_SUCCESS) return S_ONE_OF_SUCCESS;
-                else if (child->sflag == S_NONE) { hasNone = true; break; }
-                else break;
+                if (child->sflag == S_SUCCESS) hasOneSuccess = true;
+                else if (child->sflag == S_NONE) hasNone = true;
+                break;
             }
             default:
                 UNEXPECTED_VALUE(node->type);
         }
     }
-    return hasNone ? S_NONE : S_ALL_FAIL;
+    return hasOneSuccess ? S_ONE_OF_SUCCESS : (hasNone ? S_NONE : S_ALL_FAIL);
 }
 
 /* Simplify. */
