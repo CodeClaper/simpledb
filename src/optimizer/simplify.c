@@ -63,9 +63,9 @@ static int SimplifyCaseExprAndSet(ExprNode *node) {
         /* For EXPR_AND_SET node, children just are EXPR_VAR.  */
         switch (child->type) {
             case EXPR_VAR: {
-                child->sresult = SimplifyCaseVar(child); 
-                if (child->sresult == S_FAIL) return S_ONE_OF_FAIL;
-                else if (child->sresult == S_NONE) return S_NONE;
+                child->sflag = SimplifyCaseVar(child); 
+                if (child->sflag == S_FAIL) return S_ONE_OF_FAIL;
+                else if (child->sflag == S_NONE) return S_NONE;
                 else break;
             }
             default:
@@ -85,15 +85,15 @@ static int SimplifyCaseExprOrSet(ExprNode *node) {
         /* For EXPR_OR_SET node, children just are EXPR_AND_SET or EXPR_VAR.  */
         switch (child->type) {
             case EXPR_AND_SET: {
-                child->sresult = SimplifyCaseExprAndSet(child);
-                if (child->sresult == S_ALL_SUCCESS) return S_ONE_OF_SUCCESS;
-                else if (child->sresult == S_NONE) { hasNone = true; break; }
+                child->sflag = SimplifyCaseExprAndSet(child);
+                if (child->sflag == S_ALL_SUCCESS) return S_ONE_OF_SUCCESS;
+                else if (child->sflag == S_NONE) { hasNone = true; break; }
                 else break;
             }
             case EXPR_VAR: {
-                child->sresult = SimplifyCaseVar(child);
-                if (child->sresult == S_SUCCESS) return S_ONE_OF_SUCCESS;
-                else if (child->sresult == S_NONE) { hasNone = true; break; }
+                child->sflag = SimplifyCaseVar(child);
+                if (child->sflag == S_SUCCESS) return S_ONE_OF_SUCCESS;
+                else if (child->sflag == S_NONE) { hasNone = true; break; }
                 else break;
             }
             default:
@@ -107,13 +107,13 @@ static int SimplifyCaseExprOrSet(ExprNode *node) {
 ExprNode *Simplify(ExprNode *node) {
     switch (node->type) {
         case EXPR_VAR:
-            node->sresult = SimplifyCaseVar(node);
+            node->sflag = SimplifyCaseVar(node);
             break;
         case EXPR_AND_SET:
-            node->sresult = SimplifyCaseExprAndSet(node); 
+            node->sflag = SimplifyCaseExprAndSet(node); 
             break;
         case EXPR_OR_SET: 
-            node->sresult = SimplifyCaseExprOrSet(node); 
+            node->sflag = SimplifyCaseExprOrSet(node); 
             break;
         default: break;
     }

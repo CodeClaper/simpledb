@@ -1,9 +1,9 @@
 #ifndef __OPTIMIZER_H__
 #define __OPTIMIZER_H__
 
+#include <stdbool.h>
 #include "data.h"
 #include "spinlock.h"
-#include <stdbool.h>
 
 typedef enum { EXPR_AND, EXPR_OR, EXPR_NOT, EXPR_VAR, EXPR_AND_SET, EXPR_OR_SET } ExprType;
 typedef enum { OP_EQ, OP_NE, OP_GT, OP_GE, OP_LT, OP_LE, OP_LIKE, OP_IN, OP_NOT_LIKE, OP_NOT_IN } OprType;
@@ -16,7 +16,7 @@ typedef struct ExprNode {
     struct ExprNode *leftChild;         /* For EXPR_AND, EXPR_OR. */
     struct ExprNode *rightChild;        /* For EXPR_AND, EXPR_OR. */
     List *children;                     /* For EXPR_AND_SET, EXPR_OR_SET.  */
-    int sresult;                        /* Simplify result. */
+    int sflag;                          /* Simplify flag. */
 } ExprNode;
 
 

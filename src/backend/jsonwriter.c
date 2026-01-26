@@ -366,7 +366,7 @@ static void json_and_expr_node(ExprNode *node) {
     db_send("\"right\": ");
     json_expr_node(node->rightChild);
     db_send(", ");
-    db_send("\"sresult\": \"%s\"", GetSimplifyResultName(node->sresult));
+    db_send("\"sflag\": \"%s\"", GetSimplifyResultName(node->sflag));
     db_send(" }");
 }
 
@@ -380,14 +380,14 @@ static void json_or_expr_node(ExprNode *node) {
     db_send("\"right\": ");
     json_expr_node(node->rightChild);
     db_send(", ");
-    db_send("\"sresult\": \"%s\"", GetSimplifyResultName(node->sresult));
+    db_send("\"sflag\": \"%s\"", GetSimplifyResultName(node->sflag));
     db_send(" }");
 }
 
 static void json_var_expr_node(ExprNode *node) {
-    db_send("{\"type\": \"VAR\", \"op\": \"%s\", \"sresult\": \"%s\"}", 
+    db_send("{\"type\": \"VAR\", \"op\": \"%s\", \"sflag\": \"%s\"}", 
             GetOprTypeName(node->opr), 
-            GetSimplifyResultName(node->sresult));
+            GetSimplifyResultName(node->sflag));
 }
 
 static void json_and_set_expr_node(ExprNode *node) {
@@ -396,7 +396,7 @@ static void json_and_set_expr_node(ExprNode *node) {
     db_send("\"children\": ");
     json_expr_node_list(node->children);
     db_send(", ");
-    db_send("\"sresult\": \"%s\"", GetSimplifyResultName(node->sresult));
+    db_send("\"sflag\": \"%s\"", GetSimplifyResultName(node->sflag));
     db_send(" }");
 }
 
@@ -406,7 +406,7 @@ static void json_or_set_expr_node(ExprNode *node) {
     db_send("\"children\": ");
     json_expr_node_list(node->children);
     db_send(", ");
-    db_send("\"sresult\": \"%s\"", GetSimplifyResultName(node->sresult));
+    db_send("\"sflag\": \"%s\"", GetSimplifyResultName(node->sflag));
     db_send(" }");
 }
 
