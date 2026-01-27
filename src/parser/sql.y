@@ -1258,7 +1258,7 @@ boolean_test:
             BooleanTestNode *test_node = instance(BooleanTestNode);
             test_node->boolean_primary = $1;
             test_node->type = IS_NOT_TRUTH_VALUE;
-            test_node->truth_value = $3;
+            test_node->truth_value = $4;
             $$ = test_node;
         }
     | BOOLVALUE
@@ -1286,6 +1286,7 @@ boolean_primary:
             primary_node->predicate = NULL;
             $$ = primary_node;
         }
+    ;
 predicate:
     comparison_predicate
         {

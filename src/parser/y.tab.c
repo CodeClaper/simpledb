@@ -972,9 +972,9 @@ static const yytype_int16 yyrline[] =
     1050,  1058,  1066,  1073,  1079,  1086,  1093,  1099,  1108,  1115,
     1122,  1129,  1136,  1146,  1154,  1163,  1167,  1173,  1179,  1186,
     1195,  1201,  1210,  1216,  1225,  1232,  1241,  1248,  1256,  1264,
-    1273,  1281,  1290,  1297,  1304,  1313,  1323,  1332,  1342,  1345,
-    1352,  1359,  1368,  1369,  1370,  1371,  1372,  1373,  1376,  1383,
-    1390,  1397,  1404,  1413,  1420,  1427,  1435,  1442,  1451,  1452
+    1273,  1281,  1291,  1298,  1305,  1314,  1324,  1333,  1343,  1346,
+    1353,  1360,  1369,  1370,  1371,  1372,  1373,  1374,  1377,  1384,
+    1391,  1398,  1405,  1414,  1421,  1428,  1436,  1443,  1452,  1453
 };
 #endif
 
@@ -3642,7 +3642,7 @@ yyreduce:
             BooleanTestNode *test_node = instance(BooleanTestNode);
             test_node->boolean_primary = (yyvsp[-3].boolean_primary_node);
             test_node->type = IS_NOT_TRUTH_VALUE;
-            test_node->truth_value = (yyvsp[-1].keyword);
+            test_node->truth_value = (yyvsp[0].boolVal);
             (yyval.boolean_test_node) = test_node;
         }
 #line 3649 "y.tab.c"
@@ -3684,7 +3684,7 @@ yyreduce:
     break;
 
   case 152: /* predicate: comparison_predicate  */
-#line 1291 "sql.y"
+#line 1292 "sql.y"
         {
             PredicateNode *predicate = instance(PredicateNode);
             predicate->type = PRE_COMPARISON;
@@ -3695,7 +3695,7 @@ yyreduce:
     break;
 
   case 153: /* predicate: like_predicate  */
-#line 1298 "sql.y"
+#line 1299 "sql.y"
         {
             PredicateNode *predicate = instance(PredicateNode);
             predicate->type = PRE_LIKE;
@@ -3706,7 +3706,7 @@ yyreduce:
     break;
 
   case 154: /* predicate: in_predicate  */
-#line 1305 "sql.y"
+#line 1306 "sql.y"
         {
             PredicateNode *predicate = instance(PredicateNode);
             predicate->type = PRE_IN;
@@ -3717,7 +3717,7 @@ yyreduce:
     break;
 
   case 155: /* comparison_predicate: scalar_exp compare scalar_exp  */
-#line 1314 "sql.y"
+#line 1315 "sql.y"
         {
             ComparisonNode *comparison_node = instance(ComparisonNode);
             comparison_node->left = (yyvsp[-2].scalar_exp_node);
@@ -3729,7 +3729,7 @@ yyreduce:
     break;
 
   case 156: /* like_predicate: column LIKE value_item  */
-#line 1324 "sql.y"
+#line 1325 "sql.y"
         {
             LikeNode *like_node = instance(LikeNode);
             like_node->column = (yyvsp[-2].column_node);
@@ -3740,7 +3740,7 @@ yyreduce:
     break;
 
   case 157: /* in_predicate: column IN '(' value_items ')'  */
-#line 1333 "sql.y"
+#line 1334 "sql.y"
         {
             InNode *in_node = instance(InNode);
             in_node->column = (yyvsp[-4].column_node);
@@ -3751,7 +3751,7 @@ yyreduce:
     break;
 
   case 158: /* limit_clause: %empty  */
-#line 1342 "sql.y"
+#line 1343 "sql.y"
         {
             (yyval.limit_clause_node) = NULL;
         }
@@ -3759,7 +3759,7 @@ yyreduce:
     break;
 
   case 159: /* limit_clause: LIMIT INTVALUE  */
-#line 1346 "sql.y"
+#line 1347 "sql.y"
         {
             LimitClauseNode *node = instance(LimitClauseNode);
             node->offset = 0;
@@ -3770,7 +3770,7 @@ yyreduce:
     break;
 
   case 160: /* limit_clause: LIMIT INTVALUE ',' INTVALUE  */
-#line 1353 "sql.y"
+#line 1354 "sql.y"
         {
             LimitClauseNode *node = instance(LimitClauseNode);
             node->offset = (yyvsp[-2].intVal);
@@ -3781,7 +3781,7 @@ yyreduce:
     break;
 
   case 161: /* limit_clause: LIMIT INTVALUE OFFSET INTVALUE  */
-#line 1360 "sql.y"
+#line 1361 "sql.y"
         {
             LimitClauseNode *node = instance(LimitClauseNode);
             node->rows = (yyvsp[-2].intVal);
@@ -3792,43 +3792,43 @@ yyreduce:
     break;
 
   case 162: /* compare: EQ  */
-#line 1368 "sql.y"
+#line 1369 "sql.y"
             { (yyval.compare_type) = O_EQ; }
 #line 3798 "y.tab.c"
     break;
 
   case 163: /* compare: NE  */
-#line 1369 "sql.y"
+#line 1370 "sql.y"
             { (yyval.compare_type) = O_NE; }
 #line 3804 "y.tab.c"
     break;
 
   case 164: /* compare: GT  */
-#line 1370 "sql.y"
+#line 1371 "sql.y"
             { (yyval.compare_type) = O_GT; }
 #line 3810 "y.tab.c"
     break;
 
   case 165: /* compare: GE  */
-#line 1371 "sql.y"
+#line 1372 "sql.y"
             { (yyval.compare_type) = O_GE; }
 #line 3816 "y.tab.c"
     break;
 
   case 166: /* compare: LT  */
-#line 1372 "sql.y"
+#line 1373 "sql.y"
             { (yyval.compare_type) = O_LT; }
 #line 3822 "y.tab.c"
     break;
 
   case 167: /* compare: LE  */
-#line 1373 "sql.y"
+#line 1374 "sql.y"
             { (yyval.compare_type) = O_LE; }
 #line 3828 "y.tab.c"
     break;
 
   case 168: /* function: MAX '(' non_all_function_value ')'  */
-#line 1377 "sql.y"
+#line 1378 "sql.y"
         {
             FunctionNode *function_node = instance(FunctionNode);        
             function_node->type = F_MAX;
@@ -3839,7 +3839,7 @@ yyreduce:
     break;
 
   case 169: /* function: MIN '(' non_all_function_value ')'  */
-#line 1384 "sql.y"
+#line 1385 "sql.y"
         {
             FunctionNode *function_node = instance(FunctionNode);        
             function_node->type = F_MIN;
@@ -3850,7 +3850,7 @@ yyreduce:
     break;
 
   case 170: /* function: COUNT '(' function_value ')'  */
-#line 1391 "sql.y"
+#line 1392 "sql.y"
         {
             FunctionNode *function_node = instance(FunctionNode);        
             function_node->type = F_COUNT;
@@ -3861,7 +3861,7 @@ yyreduce:
     break;
 
   case 171: /* function: SUM '(' function_value ')'  */
-#line 1398 "sql.y"
+#line 1399 "sql.y"
         {
             FunctionNode *function_node = instance(FunctionNode);        
             function_node->type = F_SUM;
@@ -3872,7 +3872,7 @@ yyreduce:
     break;
 
   case 172: /* function: AVG '(' function_value ')'  */
-#line 1405 "sql.y"
+#line 1406 "sql.y"
         {
             FunctionNode *function_node = instance(FunctionNode);        
             function_node->type = F_AVG;
@@ -3883,7 +3883,7 @@ yyreduce:
     break;
 
   case 173: /* function_value: INTVALUE  */
-#line 1414 "sql.y"
+#line 1415 "sql.y"
         {
             FunctionValueNode *node = instance(FunctionValueNode);
             node->i_value = (yyvsp[0].intVal);
@@ -3894,7 +3894,7 @@ yyreduce:
     break;
 
   case 174: /* function_value: column  */
-#line 1421 "sql.y"
+#line 1422 "sql.y"
         {
             FunctionValueNode *node = instance(FunctionValueNode);
             node->column = (yyvsp[0].column_node);
@@ -3905,7 +3905,7 @@ yyreduce:
     break;
 
   case 175: /* function_value: '*'  */
-#line 1428 "sql.y"
+#line 1429 "sql.y"
         {
             FunctionValueNode *node = instance(FunctionValueNode);
             node->value_type = V_ALL;
@@ -3915,7 +3915,7 @@ yyreduce:
     break;
 
   case 176: /* non_all_function_value: INTVALUE  */
-#line 1436 "sql.y"
+#line 1437 "sql.y"
         {
             FunctionValueNode *node = instance(FunctionValueNode);
             node->i_value = (yyvsp[0].intVal);
@@ -3926,7 +3926,7 @@ yyreduce:
     break;
 
   case 177: /* non_all_function_value: column  */
-#line 1443 "sql.y"
+#line 1444 "sql.y"
         {
             FunctionValueNode *node = instance(FunctionValueNode);
             node->column = (yyvsp[0].column_node);
@@ -4166,7 +4166,7 @@ yyreturnlab:
   return yyresult;
 }
 
-#line 1454 "sql.y"
+#line 1455 "sql.y"
 
 
 int yyerror(List *states, const char *s) {
