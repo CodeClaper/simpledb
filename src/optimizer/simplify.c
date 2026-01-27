@@ -55,6 +55,11 @@ static int SimplifyCaseVar(ExprNode *node) {
     }
 }
 
+/* Simplify when case EXPR_TRUTH_VALUE. */
+static inline int SimplifyCaseTruthVal(ExprNode *node) {
+    return node->truthVal ? S_SUCCESS : S_FAIL;
+}
+
 /* Simplify when case EXPR_AND_SET. */
 static int SimplifyCaseExprAndSet(ExprNode *node) {
     Assert(node->type == EXPR_AND_SET);
@@ -71,6 +76,7 @@ static int SimplifyCaseExprAndSet(ExprNode *node) {
                 break;
             }
             case EXPR_TRUTH_VALUE: {
+                child->sflag = SimplifyCaseTruthVal(node);
                 if (!child->truthVal) hasOneFail = true;
                 else break;
             }
@@ -103,6 +109,7 @@ static int SimplifyCaseExprOrSet(ExprNode *node) {
                 break;
             }
             case EXPR_TRUTH_VALUE: {
+                child->sflag = SimplifyCaseTruthVal(child);
                 if (child->truthVal) hasOneSuccess = true;
                 else break;
             }
@@ -121,7 +128,7 @@ ExprNode *Simplify(ExprNode *node) {
             node->sflag = SimplifyCaseVar(node);
             break;
         case EXPR_TRUTH_VALUE:
-            node->sflag = node->truthVal ? S_SUCCESS : S_FAIL;
+            node->sflag = SimplifyCaseTruthVal(node);
             break;
         case EXPR_AND_SET:
             node->sflag = SimplifyCaseExprAndSet(node); 

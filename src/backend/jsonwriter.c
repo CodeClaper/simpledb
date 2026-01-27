@@ -392,7 +392,7 @@ static void json_var_expr_node(ExprNode *node) {
 
 static void json_truth_value_expr_node(ExprNode *node) {
     db_send("{\"type\": \"TRUTH_VALUE\", \"truth\": \"%s\", \"sflag\": \"%s\"}", 
-            node->truthVal ? "true" : "fasle", 
+            node->truthVal ? "true" : "false", 
             GetSimplifyResultName(node->sflag));
 }
 

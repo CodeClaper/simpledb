@@ -271,7 +271,9 @@ static bool IndexValidForBooleanPrimary(List *select_table_list, BooleanPrimaryN
 
 /* If index valid for BooleanTestNode. */
 static bool IndexValidForBooleanTest(List *select_table_list, BooleanTestNode *boolean_test) {
-    return IndexValidForBooleanPrimary(select_table_list, boolean_test->boolean_primary);
+    return boolean_test->type != DIRECT_TRUE_VALUE 
+                ? IndexValidForBooleanPrimary(select_table_list, boolean_test->boolean_primary)
+                : false;
 }
 
 /* If index valid for BooleanFactorNode. */
@@ -373,7 +375,9 @@ static bool HitIndexForBooleanPrimary(SelectPlan *select_plan, BooleanPrimaryNod
 }
 
 static bool HitIndexForBooleanTest(SelectPlan *select_plan, BooleanTestNode *boolean_test) {
-    return HitIndexForBooleanPrimary(select_plan, boolean_test->boolean_primary);
+    return boolean_test->type != DIRECT_TRUE_VALUE 
+            ? HitIndexForBooleanPrimary(select_plan, boolean_test->boolean_primary)
+            : false;
 }
 
 /* If index valid for BooleanFactorNode. */

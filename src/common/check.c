@@ -690,7 +690,8 @@ static bool CheckForBooleanPrimary(BooleanPrimaryNode *boolean_primary, AliasMap
 
 /* Check boolean test. */
 static bool CheckForBooleanTest(BooleanTestNode *boolean_test, AliasMap alias_map) {
-    return CheckForBooleanPrimary(boolean_test->boolean_primary, alias_map);
+    return boolean_test->type == DIRECT_TRUE_VALUE 
+               ? true : CheckForBooleanPrimary(boolean_test->boolean_primary, alias_map);
 }
 
 /* Check boolean factor. */
