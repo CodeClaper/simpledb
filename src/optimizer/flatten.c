@@ -1,7 +1,6 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-#include <time.h>
 #include "flatten.h"
 #include "mmgr.h"
 #include "data.h"
@@ -10,7 +9,7 @@
 #define CANVAS_MAX_HEIGHT 1024
 #define CANVAS_MAX_WIDTH 1024
 
-
+/************* Make all type ExprNode **************/
 static ExprNode *MakeAndExprNode(ExprNode *left, ExprNode *right) {
     ExprNode *expr = instance(ExprNode);
     expr->type = EXPR_AND;

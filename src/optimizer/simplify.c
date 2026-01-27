@@ -1,5 +1,4 @@
 #include <stdbool.h>
-#include <time.h>
 #include "simplify.h"
 #include "data.h"
 #include "optimizer.h"
