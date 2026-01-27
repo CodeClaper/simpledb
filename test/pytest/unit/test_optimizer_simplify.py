@@ -59,7 +59,6 @@ def test_complex_sql4():
         {"type": "VAR", "op": "NE", "sflag": "fail"}],
     "sflag": "one of fail"}
 
-
 def test_complex_sql5():
     ret = client.execute("express select * from Student s, Teacher t where 1 = 2 or 2 = 3 or 3 != 3;")
     assert ret["success"] == True
@@ -69,6 +68,31 @@ def test_complex_sql5():
         {"type": "VAR", "op": "EQ", "sflag": "fail"}, 
         {"type": "VAR", "op": "NE", "sflag": "fail"}],
     "sflag": "all fail"}
+
+def test_complex_sql6():
+    ret = client.execute("express select * from Student s, Teacher t where s.name = 'zhangsan' or t.name = 'Benj' and t.id = 'T001' or true;")
+    assert ret["success"] == True
+    print(json.dumps(ret))
+    assert ret["data"] == {"type": "OR_SET", "children": [
+            {"type": "VAR", "op": "EQ", "sflag": "none"}, 
+            {"type": "AND_SET", "children": [{"type": "VAR", "op": "EQ", "sflag": "none"}, {"type": "VAR", "op": "EQ", "sflag": "none"}], "sflag": "none"}, 
+            {"type": "TRUTH_VALUE", "truth": "true", "sflag": "success"}], 
+         "sflag": "one of success"}
+
+def test_complex_sql7():
+    ret = client.execute("express select * from Student where (false);")
+    assert ret["success"] == True
+    print(json.dumps(ret))
+    assert ret["data"] == {"type": "TRUTH_VALUE", "truth": "false", "sflag": "fail"}
+
+def test_complex_sql8():
+    ret = client.execute("express select * from Student s, Teacher t where (true and true);")
+    assert ret["success"] == True
+    print(json.dumps(ret))
+    assert ret["data"] == {"type": "AND_SET", "children": [
+        {"type": "TRUTH_VALUE", "truth": "true", "sflag": "fail"}, 
+        {"type": "TRUTH_VALUE", "truth": "true", "sflag": "fail"}], 
+    "sflag": "all success"}
 
 ## test drop table.
 def test_drop_table():

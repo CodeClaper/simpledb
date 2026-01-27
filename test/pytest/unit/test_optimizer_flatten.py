@@ -107,6 +107,18 @@ def test_complex_sql9():
         {"type": "VAR", "op": "GE", "sflag": "none"}], 
      "sflag": "none"}
 
+
+def test_complex_sql10():
+    ret = client.execute("express select * from Student s, Teacher t where ((s.name = 'zhangsan' or t.name = 'Benj' and t.id = 'T001' and true) or t.id != 'T002');")
+    assert ret["success"] == True
+    print(json.dumps(ret))
+    assert ret["data"] == {"type": "OR_SET", "children": [
+        {"type": "VAR", "op": "EQ", "sflag": "none"}, 
+        {"type": "AND_SET", "children": [{"type": "VAR", "op": "EQ", "sflag": "none"}, {"type": "VAR", "op": "EQ", "sflag": "none"}, {"type": "TRUTH_VALUE", "truth": "true", "sflag": "fail"}], "sflag": "none"}, 
+        {"type": "VAR", "op": "NE", "sflag": "none"}], 
+    "sflag": "none"}
+
+
 ## test drop table.
 def test_drop_table():
     ret = client.execute("drop table Student;")
