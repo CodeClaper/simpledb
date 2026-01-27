@@ -78,7 +78,7 @@ static int SimplifyCaseExprAndSet(ExprNode *node) {
             case EXPR_TRUTH_VALUE: {
                 child->sflag = SimplifyCaseTruthVal(node);
                 if (!child->truthVal) hasOneFail = true;
-                else break;
+                break;
             }
             default:
                 UNEXPECTED_VALUE(node->type);
@@ -111,7 +111,7 @@ static int SimplifyCaseExprOrSet(ExprNode *node) {
             case EXPR_TRUTH_VALUE: {
                 child->sflag = SimplifyCaseTruthVal(child);
                 if (child->truthVal) hasOneSuccess = true;
-                else break;
+                break;
             }
             default:
                 UNEXPECTED_VALUE(node->type);
