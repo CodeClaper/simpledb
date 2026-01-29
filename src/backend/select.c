@@ -2473,7 +2473,7 @@ static SelectResult *QueryMultiTableUnderSearchCondition(SelectNode *select_node
     DoBeforeQuerySeachCondition(select_plan);
 
     /* Do query condition. */
-    if (!select_plan->indexValid && select_plan->hit_index)
+    if (select_plan->indexValid && !select_plan->hitIndex->is_pri)
         IndexSearchUnderCondition(head, select_plan);
     else
         QueryUnderSearchCondition(head, select_plan);

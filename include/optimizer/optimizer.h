@@ -44,8 +44,7 @@ typedef struct SelectPlan {
     bool onlyCount;                     /* Only count int select statement. */
     bool onlyScanIndex;                 /* Only scan index. */
     bool indexValid;                    /* Index if valid. */
-    bool hit_index;                     /* If hit index. */
-    MetaIndex *meta_index;              /* The meta index if using index. */
+    MetaIndex *hitIndex;                 /* The hit index. */
     SearchConditionNode *condition;     /* The search condition. */
     ExprNode *condition_expr;           /* The condition expr. */                    
     List *selectTableList;              /* List of SelectTable. */

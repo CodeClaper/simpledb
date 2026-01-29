@@ -14,8 +14,8 @@
  * (2) If hit user index, return index name.
  * (3) If not hit any, return "none". */
 static char *DefineSelectPlanIndexName(SelectPlan *select_plan) {
-    if (select_plan->indexValid) return "primary";
-    else if (select_plan->hit_index) return select_plan->meta_index->index_name;
+    if (select_plan->indexValid && select_plan->hitIndex->is_pri) return "primary";
+    else if (select_plan->indexValid && select_plan->hitIndex->is_user) return select_plan->hitIndex->index_name;
     else return "none";
 }
 

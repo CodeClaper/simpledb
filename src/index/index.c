@@ -173,7 +173,7 @@ bool IndexInsert(MetaIndex *meta_index, void *tuple, Refer *value) {
 
 /* Index search. */
 void IndexSearchUnderCondition(SelectResult *result, SelectPlan *plan) {
-    Assert(plan->hit_index);
-    return methods[plan->meta_index->type].searchUnderCondition(result, plan);
+    Assert(plan->hitIndex);
+    return methods[plan->hitIndex->type].searchUnderCondition(result, plan);
 }
 

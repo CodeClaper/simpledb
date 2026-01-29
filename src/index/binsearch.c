@@ -189,8 +189,8 @@ static bool BinSearchInternalNodeForComparisonPredicate(SelectPlan *select_plan,
                 if (!ColumnNodeHitMetaColumn(column, select_plan, meta_column)) 
                     return true;
                 KeyValue *value = QueryTupleValueItem(right->value);
-                KeyValue *max_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, max_key, meta_column);
-                KeyValue *min_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, min_key, meta_column);
+                KeyValue *max_key_value = IndexKeyGenerateKeyValue(select_plan->hitIndex, max_key, meta_column);
+                KeyValue *min_key_value = IndexKeyGenerateKeyValue(select_plan->hitIndex, min_key, meta_column);
                 return !negation 
                         ? KeyValueEval(O_LT, min_key_value, value) && KeyValueEval(O_GE, max_key_value, value) 
                         : true; 
@@ -199,8 +199,8 @@ static bool BinSearchInternalNodeForComparisonPredicate(SelectPlan *select_plan,
                 if (!ColumnNodeHitMetaColumn(column, select_plan, meta_column)) 
                     return true;
                 KeyValue *value = QueryTupleValueItem(left->value);
-                KeyValue *max_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, max_key, meta_column);
-                KeyValue *min_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, min_key, meta_column);
+                KeyValue *max_key_value = IndexKeyGenerateKeyValue(select_plan->hitIndex, max_key, meta_column);
+                KeyValue *min_key_value = IndexKeyGenerateKeyValue(select_plan->hitIndex, min_key, meta_column);
                 return !negation 
                         ? KeyValueEval(O_LT, min_key_value, value) && KeyValueEval(O_GE, max_key_value, value) 
                         : true;
@@ -213,8 +213,8 @@ static bool BinSearchInternalNodeForComparisonPredicate(SelectPlan *select_plan,
                 if (!ColumnNodeHitMetaColumn(column, select_plan, meta_column)) 
                     return true;
                 KeyValue *value = QueryTupleValueItem(right->value);
-                KeyValue *max_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, max_key, meta_column);
-                KeyValue *min_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, min_key, meta_column);
+                KeyValue *max_key_value = IndexKeyGenerateKeyValue(select_plan->hitIndex, max_key, meta_column);
+                KeyValue *min_key_value = IndexKeyGenerateKeyValue(select_plan->hitIndex, min_key, meta_column);
                 return !negation 
                         ? true
                         : KeyValueEval(O_LT, min_key_value, value) && KeyValueEval(O_GE, max_key_value, value);
@@ -223,8 +223,8 @@ static bool BinSearchInternalNodeForComparisonPredicate(SelectPlan *select_plan,
                 if (!ColumnNodeHitMetaColumn(column, select_plan, meta_column)) 
                     return true;
                 KeyValue *value = QueryTupleValueItem(left->value);
-                KeyValue *max_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, max_key, meta_column);
-                KeyValue *min_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, min_key, meta_column);
+                KeyValue *max_key_value = IndexKeyGenerateKeyValue(select_plan->hitIndex, max_key, meta_column);
+                KeyValue *min_key_value = IndexKeyGenerateKeyValue(select_plan->hitIndex, min_key, meta_column);
                 return !negation 
                         ? true
                         : KeyValueEval(O_LT, min_key_value, value) && KeyValueEval(O_GE, max_key_value, value); 
@@ -237,8 +237,8 @@ static bool BinSearchInternalNodeForComparisonPredicate(SelectPlan *select_plan,
                 if (!ColumnNodeHitMetaColumn(column, select_plan, meta_column)) 
                     return true;
                 KeyValue *value = QueryTupleValueItem(right->value);
-                KeyValue *max_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, max_key, meta_column);
-                KeyValue *min_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, min_key, meta_column);
+                KeyValue *max_key_value = IndexKeyGenerateKeyValue(select_plan->hitIndex, max_key, meta_column);
+                KeyValue *min_key_value = IndexKeyGenerateKeyValue(select_plan->hitIndex, min_key, meta_column);
                 return !negation 
                         ? KeyValueEval(O_GT, max_key_value, value) 
                         : KeyValueEval(O_LT, min_key_value, value); 
@@ -247,8 +247,8 @@ static bool BinSearchInternalNodeForComparisonPredicate(SelectPlan *select_plan,
                 if (!ColumnNodeHitMetaColumn(column, select_plan, meta_column)) 
                     return true;
                 KeyValue *value = QueryTupleValueItem(left->value);
-                KeyValue *max_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, max_key, meta_column);
-                KeyValue *min_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, min_key, meta_column);
+                KeyValue *max_key_value = IndexKeyGenerateKeyValue(select_plan->hitIndex, max_key, meta_column);
+                KeyValue *min_key_value = IndexKeyGenerateKeyValue(select_plan->hitIndex, min_key, meta_column);
                 return !negation 
                         ? KeyValueEval(O_LT, min_key_value, value) 
                         : KeyValueEval(O_GT, max_key_value, value);
@@ -261,8 +261,8 @@ static bool BinSearchInternalNodeForComparisonPredicate(SelectPlan *select_plan,
                 if (!ColumnNodeHitMetaColumn(column, select_plan, meta_column)) 
                     return true;
                 KeyValue *value = QueryTupleValueItem(right->value);
-                KeyValue *max_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, max_key, meta_column);
-                KeyValue *min_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, min_key, meta_column);
+                KeyValue *max_key_value = IndexKeyGenerateKeyValue(select_plan->hitIndex, max_key, meta_column);
+                KeyValue *min_key_value = IndexKeyGenerateKeyValue(select_plan->hitIndex, min_key, meta_column);
                 return !negation 
                         ? KeyValueEval(O_GE, max_key_value, value) 
                         : KeyValueEval(O_LE, min_key_value, value); 
@@ -271,8 +271,8 @@ static bool BinSearchInternalNodeForComparisonPredicate(SelectPlan *select_plan,
                 if (!ColumnNodeHitMetaColumn(column, select_plan, meta_column)) 
                     return true;
                 KeyValue *value = QueryTupleValueItem(left->value);
-                KeyValue *max_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, max_key, meta_column);
-                KeyValue *min_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, min_key, meta_column);
+                KeyValue *max_key_value = IndexKeyGenerateKeyValue(select_plan->hitIndex, max_key, meta_column);
+                KeyValue *min_key_value = IndexKeyGenerateKeyValue(select_plan->hitIndex, min_key, meta_column);
                 return !negation 
                         ? KeyValueEval(O_LE, min_key_value, value) 
                         : KeyValueEval(O_GE, max_key_value, value);
@@ -285,8 +285,8 @@ static bool BinSearchInternalNodeForComparisonPredicate(SelectPlan *select_plan,
                 if (!ColumnNodeHitMetaColumn(column, select_plan, meta_column)) 
                     return true;
                 KeyValue *value = QueryTupleValueItem(right->value);
-                KeyValue *max_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, max_key, meta_column);
-                KeyValue *min_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index,min_key, meta_column);
+                KeyValue *max_key_value = IndexKeyGenerateKeyValue(select_plan->hitIndex, max_key, meta_column);
+                KeyValue *min_key_value = IndexKeyGenerateKeyValue(select_plan->hitIndex,min_key, meta_column);
                 return !negation 
                         ? KeyValueEval(O_LT, min_key_value, value) 
                         : KeyValueEval(O_GT, max_key_value, value); 
@@ -295,8 +295,8 @@ static bool BinSearchInternalNodeForComparisonPredicate(SelectPlan *select_plan,
                 if (!ColumnNodeHitMetaColumn(column, select_plan, meta_column)) 
                     return true;
                 KeyValue *value = QueryTupleValueItem(left->value);
-                KeyValue *max_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, max_key, meta_column);
-                KeyValue *min_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, min_key, meta_column);
+                KeyValue *max_key_value = IndexKeyGenerateKeyValue(select_plan->hitIndex, max_key, meta_column);
+                KeyValue *min_key_value = IndexKeyGenerateKeyValue(select_plan->hitIndex, min_key, meta_column);
                 return !negation 
                         ? KeyValueEval(O_GT, max_key_value, value) 
                         : KeyValueEval(O_LT, min_key_value, value); 
@@ -309,8 +309,8 @@ static bool BinSearchInternalNodeForComparisonPredicate(SelectPlan *select_plan,
                 if (!ColumnNodeHitMetaColumn(column, select_plan, meta_column)) 
                     return true;
                 KeyValue *value = QueryTupleValueItem(right->value);
-                KeyValue *max_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, max_key, meta_column);
-                KeyValue *min_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, min_key, meta_column);
+                KeyValue *max_key_value = IndexKeyGenerateKeyValue(select_plan->hitIndex, max_key, meta_column);
+                KeyValue *min_key_value = IndexKeyGenerateKeyValue(select_plan->hitIndex, min_key, meta_column);
                 return !negation 
                         ? KeyValueEval(O_LE, min_key_value, value) 
                         : KeyValueEval(O_GE, max_key_value, value); 
@@ -319,8 +319,8 @@ static bool BinSearchInternalNodeForComparisonPredicate(SelectPlan *select_plan,
                 if (!ColumnNodeHitMetaColumn(column, select_plan, meta_column)) 
                     return true;
                 KeyValue *value = QueryTupleValueItem(left->value);
-                KeyValue *max_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, max_key, meta_column);
-                KeyValue *min_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, min_key, meta_column);
+                KeyValue *max_key_value = IndexKeyGenerateKeyValue(select_plan->hitIndex, max_key, meta_column);
+                KeyValue *min_key_value = IndexKeyGenerateKeyValue(select_plan->hitIndex, min_key, meta_column);
                 return !negation 
                         ? KeyValueEval(O_GE, max_key_value, value) 
                         : KeyValueEval(O_LE, min_key_value, value); 
@@ -348,8 +348,8 @@ static bool BinSearchInternalNodeForLikePredicate(SelectPlan *select_plan, void 
 
     column = like->column;
     value = QueryTupleValueItem(like->value);
-    max_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, max_key, meta_column);
-    min_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, min_key, meta_column);
+    max_key_value = IndexKeyGenerateKeyValue(select_plan->hitIndex, max_key, meta_column);
+    min_key_value = IndexKeyGenerateKeyValue(select_plan->hitIndex, min_key, meta_column);
     strVal = value->value;
     len = strlen(strVal);
     AssertFalse(strVal[0] == '%');
@@ -376,8 +376,8 @@ static bool BinSearchInternalNodeForInPredicate(SelectPlan *select_plan, void *m
     if (negation) return true;
 
     ColumnNode *column = in->column;
-    KeyValue *max_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, max_key, meta_column);
-    KeyValue *min_key_value = IndexKeyGenerateKeyValue(select_plan->meta_index, min_key, meta_column);
+    KeyValue *max_key_value = IndexKeyGenerateKeyValue(select_plan->hitIndex, max_key, meta_column);
+    KeyValue *min_key_value = IndexKeyGenerateKeyValue(select_plan->hitIndex, min_key, meta_column);
     if (StrEq(column->column_name, min_key_value->key) && StrEq(column->column_name, max_key_value->key)) {
         ListCell *lc;
         foreach (lc, in->value_list) {
@@ -462,7 +462,7 @@ static bool BinSearchInternalNodeForBooleanFactor(SelectPlan *select_plan, void 
     bool flag = true;
     
     ListCell *lc;
-    foreach(lc, select_plan->meta_index->meta_columns) {
+    foreach(lc, select_plan->hitIndex->meta_columns) {
         MetaColumn *meta_column = (MetaColumn *) lfirst(lc);
         flag = flag && BinSearchInternalNodeForBooleanTest(select_plan, min_key, max_key, boolean_factor->boolean_test, boolean_factor->is_not, meta_column);
     }
@@ -480,7 +480,7 @@ static bool BinSearchInternalNodeForBooleanTerm(SelectPlan *select_plan, void *m
 
 static bool BinSearchInternalNodeForSearchCondition(SelectPlan *select_plan, void *min_key, void *max_key, SearchConditionNode *condition) {
     /* If index is invalid, just return true. */
-    if (!select_plan->hit_index) return true;
+    if (!select_plan->indexValid) return true;
     return condition->or_search_condition == NULL 
         ? BinSearchInternalNodeForBooleanTerm(select_plan, min_key, max_key, condition->boolean_term)
         : BinSearchInternalNodeForBooleanTerm(select_plan, min_key, max_key, condition->boolean_term) || 
@@ -641,6 +641,6 @@ static void BinSearchUnderConditionInner(MetaIndex *meta_index, uint32_t page_nu
 
 /* Bin search under conditon. */
 void BinSearchUnderCondition(SelectResult *select_result, SelectPlan *select_plan) {
-    Assert(select_plan->hit_index);
-    BinSearchUnderConditionInner(select_plan->meta_index, ROOT_PAGE_NUM, NULL, select_result, select_plan);
+    Assert(select_plan->hitIndex);
+    BinSearchUnderConditionInner(select_plan->hitIndex, ROOT_PAGE_NUM, NULL, select_result, select_plan);
 }
