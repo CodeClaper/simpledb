@@ -1,6 +1,4 @@
 #include <stdbool.h>
-#include <string.h>
-#include <time.h>
 #include "optimizer.h"
 #include "data.h"
 #include "mmgr.h"
