@@ -9,6 +9,8 @@
 #include "simplify.h"
 #include "select.h"
 
+#define LOWEST_SOCRE 0
+
 static bool OnlySelectAllInSelection(SelectNode *selectNode);
 static bool OnlyCountInSelection(SelectNode *selectNode);
 static bool OnlyScanIndex(SelectNode *selectNode);
@@ -315,23 +317,107 @@ static MetaIndex *FindHitIndexCaseExprOrSet(List *select_table_list, ExprNode *n
     return FindEffcientIndexCaseExprOrSet(meta_indexs);
 }
 
+/* Check if meta column exists in EXPR_VAR. */
+static bool MetaColumnExistInExprVar(MetaColumn *meta_column, ExprNode *node) {
+    
+}
+
+/* Check if meta column exists in EXPR_AND_SET. */
+static bool MetaColumnExistInExprAndSet(MetaColumn *meta_column, ExprNode *node) {
+    ListCell *lc;
+    foreach (lc, node->children) {
+        ExprNode *child = (ExprNode *)lfirst(lc);   
+        if (MetaColumnExistInExprVar(meta_column, child)) return true;
+        else continue;
+    }
+    return false;
+}
+
+/* Calculate the index score when case EXPR_VAR. */
+static float CalcIndexScoreCaseExprVar(MetaIndex *index, ExprNode *node) {
+    int success = 0;
+    MetaColumn *meta_column;
+
+    ListCell *lc;
+    foreach (lc, index->meta_columns) {
+        meta_column = (MetaColumn *) lfirst(lc);
+
+    }
+
+    return (success * 100.0) / index->column_size;
+}
+
+/* Calculate the index score when case EXPR_OR_SET. */
+static float CalcIndexScoreCaseExprOrSet(MetaIndex *index, ExprNode *node) {
+    int success = 0;
+    MetaColumn *meta_column;
+
+    ListCell *lc;
+    foreach (lc, index->meta_columns) {
+        meta_column = (MetaColumn *) lfirst(lc);
+
+    }
+
+    return (success * 100.0) / index->column_size;
+}
+
+/* Calculate the index score when case EXPR_AND_SET. */
+static float CalcIndexScoreCaseExprAndSet(MetaIndex *index, ExprNode *node) {
+    int success = 0;
+    MetaColumn *meta_column;
+
+    ListCell *lc;
+    foreach (lc, index->meta_columns) {
+        meta_column = (MetaColumn *) lfirst(lc);
+        if (MetaColumnExistInExprAndSet(meta_column, node)) success++;
+        else break;
+    }
+
+    return (success * 100.0) / index->column_size;
+}
+
+
+/* Calculate the index score.  */
+static float CalcIndexScore(MetaIndex *index, ExprNode *node) {
+    if (node == NULL) return LOWEST_SOCRE;
+    switch (node->type) {
+        case EXPR_VAR: 
+            return CalcIndexScoreCaseExprVar(index, node);
+        case EXPR_AND_SET: 
+            return CalcIndexScoreCaseExprAndSet(index, node);
+        case EXPR_OR_SET:
+            return CalcIndexScoreCaseExprOrSet(index, node);
+        case EXPR_TRUTH_VALUE: 
+            return LOWEST_SOCRE;
+        default:
+            UNEXPECTED_VALUE(node->type);
+            return LOWEST_SOCRE;
+    }
+}
+
 
 /* Find the hit index . */
 static MetaIndex *FindHitIndex(List *select_table_list, ExprNode *node) {
     if (node == NULL) return NULL;
-    switch (node->type) {
-        case EXPR_VAR: 
-            return FindHitIndexCaseExprVar(select_table_list, node);
-        case EXPR_AND_SET:
-            return FindHitIndexCaseExprAndSet(select_table_list, node);
-        case EXPR_OR_SET:
-            return FindHitIndexCaseExprOrSet(select_table_list, node);
-        case EXPR_TRUTH_VALUE: 
-            return NULL;
-        default:
-            UNEXPECTED_VALUE(node->type);
-            return NULL;
+
+    SelectTable *stable;
+    MetaIndex *index, *best = NULL;
+    float highest = LOWEST_SOCRE, score;
+
+    ListCell *lc1, *lc2;
+    foreach (lc1, select_table_list) {
+        stable = (SelectTable *) lfirst(lc2);
+        if (list_empty(stable->table->meta_indexs)) continue;
+        foreach (lc2, stable->table->meta_indexs) {
+            index = (MetaIndex *) lfirst(lc2);
+            if ((score = CalcIndexScore(index,  node)) > highest) {
+                best = index;
+                highest = score;
+            }
+        }
     }
+
+    return best;
 }
 
 /* Get LimitClauseNode for the SelectionNode. */
