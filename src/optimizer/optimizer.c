@@ -317,59 +317,112 @@ static MetaIndex *FindHitIndexCaseExprOrSet(List *select_table_list, ExprNode *n
     return FindEffcientIndexCaseExprOrSet(meta_indexs);
 }
 
-/* Check if meta column exists in EXPR_VAR. */
-static bool MetaColumnExistInExprVar(MetaColumn *meta_column, ExprNode *node) {
-    
+/* Check if meta column matches column node. */
+static bool MetaColumnMatchColumn(List *select_table_list, MetaColumn *meta_column, ColumnNode *column) {
+    Table *table = ColumnNodeFindTable(select_table_list, column);
+    if (table == NULL) {
+        Assert(len_list(select_table_list) == 1);
+        SelectTable *first = (SelectTable *)lfirst(first_cell(select_table_list));
+        table = first->table;
+    }
+    return meta_column->tid == table->oid && StrEq(meta_column->column_name, column->column_name);
 }
 
-/* Check if meta column exists in EXPR_AND_SET. */
-static bool MetaColumnExistInExprAndSet(MetaColumn *meta_column, ExprNode *node) {
+/* Check if meta column matches scalar expr. */
+static bool MetaColumnMatchSclarExp(List *select_table_list, MetaColumn *meta_column, ScalarExpNode *scalar_exp) {
+    switch (scalar_exp->type) {
+        case SCALAR_COLUMN:
+            return MetaColumnMatchColumn(select_table_list, meta_column, scalar_exp->column);
+        case SCALAR_VALUE:
+        case SCALAR_CALCULATE:
+        case SCALAR_FUNCTION:
+            return false;
+        default:
+            UNEXPECTED_VALUE(scalar_exp->type);     
+            return false;
+    }
+}
+
+/* Check if meta column matches comparison predicate. 
+ * The meta column matches left scalar expr or right scalar expr is ok.
+ * */
+static bool MetaColumnMatchComparisonPredicate(List *select_table_list, MetaColumn *meta_column, ExprNode *node) {
+    Assert(node->type == EXPR_VAR);
+    return MetaColumnMatchSclarExp(select_table_list, meta_column, node->leftVal) || 
+            MetaColumnMatchSclarExp(select_table_list, meta_column, node->rightVal);
+}
+
+/* Check if meta column matches like predicate. 
+ * Index is valid when match right wildcard .*/
+static bool MetaColumnMatchLikePredicate(List *select_table_list, MetaColumn *meta_column, ExprNode *node) {
+    return NoneLeftWildcard(GetLikeStrValue(node->rightVal)) 
+        ? MetaColumnMatchColumn(select_table_list, meta_column, node->leftVal) 
+        : false;
+}
+
+/* Check if meta column matches in-predicate. */
+static bool MetaColumnMatchInPredicate(List *select_table_list, MetaColumn *meta_column, ExprNode *node) {
+    return MetaColumnMatchColumn(select_table_list, meta_column, node->leftVal);
+}
+
+/* Check if meta column matches EXPR_VAR. */
+static bool MetaColumnMatchExprVar(List *select_table_list, MetaColumn *meta_column, ExprNode *node) {
+    switch (node->opr) {
+        case OP_EQ: case OP_NE: case OP_GT: case OP_GE: case OP_LT: case OP_LE:
+            return MetaColumnMatchComparisonPredicate(select_table_list, meta_column, node);
+        case OP_LIKE: case OP_NOT_LIKE:
+            return MetaColumnMatchLikePredicate(select_table_list, meta_column, node);
+        case OP_IN: case OP_NOT_IN:
+            return MetaColumnMatchInPredicate(select_table_list, meta_column, node);
+        default:
+            UNEXPECTED_VALUE(node->type);
+            return NULL;
+    }
+}
+
+/* Check if meta column matches EXPR_AND_SET. */
+static bool MetaColumnMatchExprAndSet(List *select_table_list, MetaColumn *meta_column, ExprNode *node) {
     ListCell *lc;
     foreach (lc, node->children) {
         ExprNode *child = (ExprNode *)lfirst(lc);   
-        if (MetaColumnExistInExprVar(meta_column, child)) return true;
+        if (MetaColumnMatchExprVar(select_table_list, meta_column, child)) return true;
         else continue;
     }
     return false;
 }
 
 /* Calculate the index score when case EXPR_VAR. */
-static float CalcIndexScoreCaseExprVar(MetaIndex *index, ExprNode *node) {
+static float CalcIndexScoreCaseExprVar(List *select_table_list, MetaIndex *index, ExprNode *node) {
     int success = 0;
     MetaColumn *meta_column;
 
     ListCell *lc;
     foreach (lc, index->meta_columns) {
         meta_column = (MetaColumn *) lfirst(lc);
-
+        if (MetaColumnMatchExprVar(select_table_list, meta_column, node)) success++;
+        else break;
     }
 
     return (success * 100.0) / index->column_size;
 }
 
-/* Calculate the index score when case EXPR_OR_SET. */
-static float CalcIndexScoreCaseExprOrSet(MetaIndex *index, ExprNode *node) {
-    int success = 0;
-    MetaColumn *meta_column;
-
-    ListCell *lc;
-    foreach (lc, index->meta_columns) {
-        meta_column = (MetaColumn *) lfirst(lc);
-
-    }
-
-    return (success * 100.0) / index->column_size;
+/* Calculate the index score when case EXPR_OR_SET. 
+ * To be simple, we think EXPR_OR_SET always make index invalid.
+ * Actually, it's wrong, for example, id = 1 or id = 2 can be converted to id in (1, 2).
+ * */
+static float CalcIndexScoreCaseExprOrSet(List *select_table_list, MetaIndex *index, ExprNode *node) {
+    return LOWEST_SOCRE;
 }
 
 /* Calculate the index score when case EXPR_AND_SET. */
-static float CalcIndexScoreCaseExprAndSet(MetaIndex *index, ExprNode *node) {
+static float CalcIndexScoreCaseExprAndSet(List *select_table_list, MetaIndex *index, ExprNode *node) {
     int success = 0;
     MetaColumn *meta_column;
 
     ListCell *lc;
     foreach (lc, index->meta_columns) {
         meta_column = (MetaColumn *) lfirst(lc);
-        if (MetaColumnExistInExprAndSet(meta_column, node)) success++;
+        if (MetaColumnMatchExprAndSet(select_table_list, meta_column, node)) success++;
         else break;
     }
 
@@ -378,15 +431,15 @@ static float CalcIndexScoreCaseExprAndSet(MetaIndex *index, ExprNode *node) {
 
 
 /* Calculate the index score.  */
-static float CalcIndexScore(MetaIndex *index, ExprNode *node) {
+static float CalcIndexScore(List *select_table_list, MetaIndex *index, ExprNode *node) {
     if (node == NULL) return LOWEST_SOCRE;
     switch (node->type) {
         case EXPR_VAR: 
-            return CalcIndexScoreCaseExprVar(index, node);
+            return CalcIndexScoreCaseExprVar(select_table_list, index, node);
         case EXPR_AND_SET: 
-            return CalcIndexScoreCaseExprAndSet(index, node);
+            return CalcIndexScoreCaseExprAndSet(select_table_list, index, node);
         case EXPR_OR_SET:
-            return CalcIndexScoreCaseExprOrSet(index, node);
+            return CalcIndexScoreCaseExprOrSet(select_table_list, index, node);
         case EXPR_TRUTH_VALUE: 
             return LOWEST_SOCRE;
         default:
@@ -394,7 +447,6 @@ static float CalcIndexScore(MetaIndex *index, ExprNode *node) {
             return LOWEST_SOCRE;
     }
 }
-
 
 /* Find the hit index . */
 static MetaIndex *FindHitIndex(List *select_table_list, ExprNode *node) {
@@ -406,11 +458,12 @@ static MetaIndex *FindHitIndex(List *select_table_list, ExprNode *node) {
 
     ListCell *lc1, *lc2;
     foreach (lc1, select_table_list) {
-        stable = (SelectTable *) lfirst(lc2);
+        stable = (SelectTable *) lfirst(lc1);
         if (list_empty(stable->table->meta_indexs)) continue;
         foreach (lc2, stable->table->meta_indexs) {
             index = (MetaIndex *) lfirst(lc2);
-            if ((score = CalcIndexScore(index,  node)) > highest) {
+            score = CalcIndexScore(select_table_list, index, node);
+            if (score > highest) {
                 best = index;
                 highest = score;
             }
