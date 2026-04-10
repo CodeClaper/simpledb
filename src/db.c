@@ -54,7 +54,19 @@ const char *program_name;
 
 /* Child process signal.*/
 static inline void sigchild(int signal) {
-    while (waitpid(-1, NULL, WNOHANG) > 0);
+    int status;
+    while (waitpid(-1, &status, WNOHANG) > 0) {
+        if (WIFEXITED(status) && WEXITSTATUS(status) != 0) {
+            db_log(PANIC, "Child process exited with error: %d.", WEXITSTATUS(status));
+            kill(0, SIGTERM);
+            _exit(EXIT_FAILURE);
+        }
+        else if (WIFSIGNALED(status)) {
+            db_log(PANIC, "Child process killed by signal: %d.", WTERMSIG(status));
+            kill(0, SIGTERM);
+            _exit(EXIT_FAILURE);
+        }
+    }
 }
 
 
@@ -107,6 +119,11 @@ static void init_db() {
 
     /* Initialise table cache. */
     InitTableCache();
+
+    /* Signal child process. */
+    signal(SIGCHLD, sigchild);
+
+    db_log(SUCCESS, "Init db success.");
 }
 
 /* Start bgwriter. */
@@ -132,19 +149,15 @@ static void start_backend(int server_socket, struct sockaddr_in *client_name, so
         if (client_secket == -1)
             db_log(PANIC, "Socket accept fail.");
         
-        /* Signal child process. */
-        signal(SIGCHLD, sigchild);
 
         /* Create new child process. */
         pid_t pid = fork();
-        if (pid < 0) 
-            db_log(PANIC, "Create new child process fail.");
+        if (pid < 0) db_log(PANIC, "Create new child process fail.");
         else if (pid == 0) {
             AcceptRequest((intptr_t)client_secket);
             exit(EXECUTE_SUCCESS);
-        }
-        else
-            close(client_secket);
+        } 
+        else close(client_secket);
     }
 }
 
@@ -168,9 +181,6 @@ static void db_run() {
      * and accept the request of backend. */
     MakeSysState(SYS_RUNNING);
 
-    /* Start up bgwriter.*/
-    start_bgwriter();
-
     /* Start up backend. */
     start_backend(server_socket, client_name, client_name_len);
 }
@@ -186,6 +196,7 @@ static void db_end() {
 int main(int argc, char* argv[]) {
     program_name = argv[0];
     init_db();
+    start_bgwriter();
     db_run();
     db_end();
 }
