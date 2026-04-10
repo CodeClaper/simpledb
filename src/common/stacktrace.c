@@ -155,7 +155,6 @@ static void handler(int sig) {
 			break;
 	}
     print_stacktrace();
-    exit(EXIT_FAILURE);
 }
 
 /* Set signal handler. */
