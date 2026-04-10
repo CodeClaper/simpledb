@@ -3,6 +3,7 @@
 #include <signal.h>
 #include <string.h>
 #include <regex.h>
+#include "data.h"
 #include "defs.h"
 #include "stacktrace.h"
 #include "log.h"
@@ -119,7 +120,7 @@ void print_stacktrace() {
     size_t size = backtrace(array, 20);
     char **strings = backtrace_symbols(array, size);
 	if(strings == NULL) {
-		perror("backtrace_symbols");
+		db_log(PANIC, "backtrace_symbols");
 		exit(EXIT_FAILURE);
 	}
 

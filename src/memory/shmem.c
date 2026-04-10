@@ -39,7 +39,7 @@ static void create_shmem() {
     void *shm_ptr = mmap(NULL, SHMEM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
     if (shm_ptr == MAP_FAILED) {
         perror("Try to create shared memory fail.");
-        exit(1);
+        abort();
     }
     bzero(shm_ptr, SHMEM_SIZE);
         
@@ -105,7 +105,7 @@ void *shmem_alloc(size_t size) {
     void *ptr = shmem_alloc_inner(size);
     if (IsNull(ptr)) {
         perror("Out of shared memory.");
-        exit(1);
+        abort();
     }
     return ptr;
 }

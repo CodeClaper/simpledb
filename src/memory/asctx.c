@@ -56,7 +56,7 @@ MemoryContext AllocSetMemoryContextCreate(MemoryContext parent, char *name, uint
     set = (AllocSet) malloc(size);
     if (set == NULL) {
         perror("Malloc fail.");
-        exit(1);
+        abort();
     }
     Assert(!shmem_addr_valid(set));
 
@@ -128,7 +128,7 @@ static void *AllocSetAllocLarge(MemoryContext context, Size size) {
     block = (AllocBlock) malloc(blk_size);
     if (block == NULL) {
         perror("Malloc fail.");
-        exit(1);
+        abort();
     }
 
     context->allocated_size += blk_size;
@@ -211,7 +211,7 @@ void *AllocSetAllocNewBlock(MemoryContext context, Size chksize) {
     AllocBlock block = (AllocBlock) malloc(blk_size);
     if (block == NULL) {
         perror("Malloc fail.");
-        exit(1);
+        abort();
     }
 
     block->freeptr = ((char *) block) + ALLOC_BLOCK_SIZE;
@@ -275,7 +275,7 @@ void *AllocSetRealloc(void *ptr, Size size) {
         block = realloc(block, blksize);
         if (IsNull(block)) {
             fprintf(stderr, "Out of memory.");
-            exit(1);
+            abort();
         }
 
         set->header.allocated_size -= oldblksize;

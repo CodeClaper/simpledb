@@ -43,7 +43,7 @@ void BufferReadBlock(BufferTag *tag, Buffer buffer) {
     lseek(fdesc, tag->blockNum * PAGE_SIZE, SEEK_SET);
     ssize_t read_bytes = read(fdesc, block, PAGE_SIZE);
     if (read_bytes == -1) {
-        fprintf(stderr, "Table file read error: %s", strerror(errno));
+        db_log(PANIC, "Table file read error: %s", strerror(errno));
         exit(1);
     }
 }

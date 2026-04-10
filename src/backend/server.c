@@ -166,8 +166,6 @@ void AcceptRequest(intptr_t client) {
     /* Start new session. */
     NewSession(client);
 
-    /* Set signal handler. */
-    set_signal_handler();
 
     MemoryContextStart();
 

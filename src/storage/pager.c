@@ -17,10 +17,12 @@
 #include <unistd.h>
 #include <errno.h>
 #include "pager.h"
+#include "data.h"
 #include "spinlock.h"
 #include "fdesc.h"
 #include "mmgr.h"
 #include "bufmgr.h"
+#include "log.h"
 
 /* Get the page size. */
 Size GetPageSize(Oid oid) {
@@ -30,7 +32,7 @@ Size GetPageSize(Oid oid) {
 
     file_length = lseek(fdesc, 0, SEEK_END);
     if (file_length == -1) {
-        fprintf(stderr, "Error seek end: %s.", strerror(errno));
+        db_log(PANIC, "Error seek end: %s.", strerror(errno));
         exit(1);
     }
     

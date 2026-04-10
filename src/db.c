@@ -36,6 +36,7 @@
 #include "asctx.h"
 #include "systable.h"
 #include "sysstate.h"
+#include "stacktrace.h"
 
 /* 
  * Conf 
@@ -55,14 +56,15 @@ const char *program_name;
 /* Child process signal.*/
 static inline void sigchild(int signal) {
     int status;
-    while (waitpid(-1, &status, WNOHANG) > 0) {
+    pid_t pid;
+    while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
         if (WIFEXITED(status) && WEXITSTATUS(status) != 0) {
-            db_log(PANIC, "Child process exited with error: %d.", WEXITSTATUS(status));
+            db_log(PANIC, "Child process %d exited with error: %d.", pid, WEXITSTATUS(status));
             kill(0, SIGTERM);
             _exit(EXIT_FAILURE);
         }
         else if (WIFSIGNALED(status)) {
-            db_log(PANIC, "Child process killed by signal: %d.", WTERMSIG(status));
+            db_log(PANIC, "Child process %d killed by signal: %d.", pid, WTERMSIG(status));
             kill(0, SIGTERM);
             _exit(EXIT_FAILURE);
         }
@@ -123,6 +125,9 @@ static void init_db() {
     /* Signal child process. */
     signal(SIGCHLD, sigchild);
 
+    /* Set signal handler. */
+    set_signal_handler();
+
     db_log(SUCCESS, "Init db success.");
 }
 
@@ -133,7 +138,7 @@ static void start_bgwriter() {
     if (pid < 0) db_log(PANIC, "Create new child process fail.");
     else if (pid == 0) {
         StartBgWriter();
-        exit(EXECUTE_SUCCESS);
+        exit(13);
     }
     else db_log(SUCCESS, "Start up background writer successfully.");
 }

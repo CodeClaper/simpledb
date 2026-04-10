@@ -2,6 +2,7 @@
 #include "bgwriter.h"
 #include "bufmgr.h"
 #include "bufpool.h"
+#include "data.h"
 #include "defs.h"
 #include "asctx.h"
 #include "ltbase.h"
@@ -46,4 +47,5 @@ void StartBgWriter() {
         FlushDirtyPage();
         BgDelay();
     }
+    db_log(PANIC, "Recive unrecivable.");
 }

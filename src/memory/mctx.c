@@ -216,7 +216,7 @@ static MemoryContext GetCurrentMemoryContext() {
         }
         default: {
             perror("Unknown MemMode");
-            exit(1);
+            abort();
         }
     }
     return CURRENT_MEMORY_CONTEXT;

@@ -27,7 +27,7 @@ char *read_conf(char *title, char *key) {
     FILE *file = fopen(DEFAULT_CONF_FILE, "r");
     if (file == NULL) {
         fprintf(stderr, "Try to open config file in path '%s' fail.\n", DEFAULT_CONF_FILE);
-        exit(1);
+        abort();
     }
     char buff[BUFF_SIZE];
     char *p;
@@ -36,7 +36,7 @@ char *read_conf(char *title, char *key) {
         char *ret = fgets(buff, BUFF_SIZE, file);
         if (ret == NULL) {
             perror("Read conf file error.");
-            exit(1);
+            abort();
         }
         char *line = Trim(buff);
         /* Check if commenter line. */
@@ -58,7 +58,7 @@ char *read_conf(char *title, char *key) {
         p = strstr(line, key);
         if (p == NULL) {
             perror("Read configuration error.");
-            exit(1);
+            abort();
         }
         p += strlen(key);
         Trim(p);

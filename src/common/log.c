@@ -66,7 +66,7 @@ static void flush_log(char* msg) {
     if (file == NULL) {
         fprintf(stderr, "Try to open log file '%s', error info: %s. \n", 
                 log_path, strerror(errno));
-        exit(1);
+        abort();
     }
 
     fputs(msg, file);

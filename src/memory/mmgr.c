@@ -70,7 +70,7 @@ static MemType FindType() {
         }
         default: {
             perror("Unknown MemMode");
-            exit(1);
+            abort();
         }
     }
 }
@@ -90,7 +90,7 @@ inline void switch_shared() {
         }
         default: {
             perror("Unknown MemMode");
-            exit(1);
+            abort();
         }
     }
 }
@@ -110,7 +110,7 @@ inline void switch_local() {
         }
         default: {
             perror("Unknown MemMode");
-            exit(1);
+            abort();
         }
     }
 }
