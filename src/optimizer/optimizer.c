@@ -9,7 +9,8 @@
 #include "simplify.h"
 #include "select.h"
 
-#define LOWEST_SOCRE 0
+#define HIGHTEST_SCORE  100.0f
+#define LOWEST_SOCRE    0.0f
 
 static bool OnlySelectAllInSelection(SelectNode *selectNode);
 static bool OnlyCountInSelection(SelectNode *selectNode);
@@ -209,6 +210,18 @@ static bool MetaColumnMatchExprAndSet(List *select_table_list, MetaColumn *meta_
     return false;
 }
 
+/* Calculate the index score when case EXPR_OR_SET. 
+ * If all columns in set are same with meta column, return true, otherwise return false. */
+static bool MetaColumnMatchExprOrSet(List *select_table_list, MetaColumn *meta_column, ExprNode *node) {
+    ListCell *lc;
+    foreach (lc, node->children) {
+        ExprNode *child = (ExprNode *)lfirst(lc);   
+        if (child->type == EXPR_VAR && MetaColumnMatchExprVar(select_table_list, meta_column, child)) continue;
+        else return false;
+    }
+    return true;
+}
+
 /* Calculate the index score when case EXPR_VAR. */
 static float CalcIndexScoreCaseExprVar(List *select_table_list, MetaIndex *index, ExprNode *node) {
     int success = 0;
@@ -225,11 +238,16 @@ static float CalcIndexScoreCaseExprVar(List *select_table_list, MetaIndex *index
 }
 
 /* Calculate the index score when case EXPR_OR_SET. 
- * To be simple, we think EXPR_OR_SET always make index invalid.
- * Actually, it's wrong, for example, id = 1 or id = 2 can be converted to id in (1, 2).
+ * To be simple, we use this logic:
+ * (1) If the index is multi-columns, we think the index is invalid.
+ * (2) Otherwise, if the set have all same column, it got HIGHTEST_SCORE.
+ * (3) Otherwise, it got LOWEST_SOCRE.
  * */
 static float CalcIndexScoreCaseExprOrSet(List *select_table_list, MetaIndex *index, ExprNode *node) {
-    return LOWEST_SOCRE;
+    if (index->column_size > 1) return LOWEST_SOCRE;
+    MetaColumn *meta_column = lfirst(first_cell(index->meta_columns));
+    Assert(meta_column != NULL);
+    return MetaColumnMatchExprOrSet(select_table_list, meta_column, node) ? HIGHTEST_SCORE : LOWEST_SOCRE;
 }
 
 /* Calculate the index score when case EXPR_AND_SET. */
@@ -248,7 +266,9 @@ static float CalcIndexScoreCaseExprAndSet(List *select_table_list, MetaIndex *in
 }
 
 
-/* Calculate the index score.  */
+/* Calculate the index score. 
+ * The score range in [0.0, 100.0]
+ * */
 static float CalcIndexScore(List *select_table_list, MetaIndex *index, ExprNode *node) {
     if (node == NULL) return LOWEST_SOCRE;
     switch (node->type) {
