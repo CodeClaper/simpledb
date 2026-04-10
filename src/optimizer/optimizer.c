@@ -385,7 +385,7 @@ static bool MetaColumnMatchExprAndSet(List *select_table_list, MetaColumn *meta_
     ListCell *lc;
     foreach (lc, node->children) {
         ExprNode *child = (ExprNode *)lfirst(lc);   
-        if (MetaColumnMatchExprVar(select_table_list, meta_column, child)) return true;
+        if (child->type == EXPR_VAR && MetaColumnMatchExprVar(select_table_list, meta_column, child)) return true;
         else continue;
     }
     return false;
