@@ -130,14 +130,12 @@ static void init_db() {
 static void start_bgwriter() {
     /* Create new child process. */
     pid_t pid = fork();
-    if (pid < 0) 
-        db_log(PANIC, "Create new child process fail.");
+    if (pid < 0) db_log(PANIC, "Create new child process fail.");
     else if (pid == 0) {
         StartBgWriter();
         exit(EXECUTE_SUCCESS);
     }
-    else 
-        db_log(SUCCESS, "Start up background writer successfully.");
+    else db_log(SUCCESS, "Start up background writer successfully.");
 }
 
 /* Start backend. */
@@ -146,9 +144,7 @@ static void start_backend(int server_socket, struct sockaddr_in *client_name, so
     /* Listen client connecting. */
     while (true) {
         client_secket = accept(server_socket, (struct sockaddr *) client_name, &client_name_len);
-        if (client_secket == -1)
-            db_log(PANIC, "Socket accept fail.");
-        
+        if (client_secket == -1) db_log(PANIC, "Socket accept fail.");
 
         /* Create new child process. */
         pid_t pid = fork();
