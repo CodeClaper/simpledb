@@ -60,11 +60,13 @@ static inline void sigchild(int signal) {
     while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
         if (WIFEXITED(status) && WEXITSTATUS(status) != 0) {
             db_log(PANIC, "Child process %d exited with error: %d.", pid, WEXITSTATUS(status));
+            print_stacktrace();
             kill(0, SIGTERM);
             _exit(EXIT_FAILURE);
         }
         else if (WIFSIGNALED(status)) {
             db_log(PANIC, "Child process %d killed by signal: %d.", pid, WTERMSIG(status));
+            print_stacktrace();
             kill(0, SIGTERM);
             _exit(EXIT_FAILURE);
         }
@@ -193,10 +195,31 @@ static void db_end() {
 }
 
 
+/* Parse argv. */
+static void parse_argv(int argc, char* argv[]) {
+    for (int i = 1; i < argc; i++) {
+        if ((StrEq(argv[i], "-l") || StrEq(argv[i], "level"))) {
+            if (i + 1 >= argc) continue;
+            char *level = argv[++i];
+            if (StrEq(level, "TRACE")) conf->log_level = TRACE;
+            else if (StrEq(level, "DEBUG")) conf->log_level = DEBUGER;
+            else if (StrEq(level, "INFO")) conf->log_level = INFO;
+            else if (StrEq(level, "SUCCESS")) conf->log_level = SUCCESS;
+            else if (StrEq(level, "WARN")) conf->log_level = WARN;
+            else if (StrEq(level, "ERROR")) conf->log_level = ERROR;
+            else {
+                fprintf(stderr, "Bad log level: %s, only support 'TRACE', 'DEBUG;, 'INFO', 'SUCCS', 'WARN', 'ERROR', 'SYSERR', 'TATAL', 'PANIC'. ", level);
+                _exit(1);
+            }
+        }
+    }
+}
+
 /* The main entry. */
 int main(int argc, char* argv[]) {
     program_name = argv[0];
     init_db();
+    parse_argv(argc, argv);
     start_bgwriter();
     db_run();
     db_end();
