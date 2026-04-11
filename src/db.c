@@ -130,6 +130,7 @@ static void init_db() {
     /* Set signal handler. */
     set_signal_handler();
 
+    MakeSysState(SYS_INITED);
     db_log(SUCCESS, "Init db success.");
 }
 

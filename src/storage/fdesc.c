@@ -13,21 +13,21 @@
 #include "sysstate.h"
 
 /* FDescEntry cache. */
-static List *F_DESC_LIST = NIL;
+static List *fdCache = NIL;
 
 /* Initilise fdesc. */
 void init_fdesc() {
-    F_DESC_LIST = create_list(NODE_VOID);
+    fdCache = create_list(NODE_VOID);
 }
 
-/* Find file descriptor in F_DESC_LIST. 
+/* Find file descriptor in fdCache. 
  * Return file descriptor or -1 if not found.
  * */
 static FDesc find_fdesc(Oid oid) {
-    Assert(F_DESC_LIST != NIL);
+    Assert(fdCache != NIL);
     
     ListCell *lc;
-    foreach(lc, F_DESC_LIST) {
+    foreach(lc, fdCache) {
         FDescEntry *entry = lfirst(lc);
         if (entry->oid == oid)
             return entry->desc;
@@ -57,11 +57,10 @@ static void close_file_desc(FDesc fdesc) {
 
 /* Register fdesc. */
 static void register_fdesc(Oid oid, FDesc desc) {
-    Assert(F_DESC_LIST != NIL);
+    Assert(fdCache != NIL);
     
     /* If sys not running, not register the fdesc. */
-    if (SYS_IS_READY) 
-        return;
+    if (!SYS_IS_INITED ) return;
 
     /* Switch to CACHE_MEMORY_CONTEXT. */
     MemoryContext oldcontext = CURRENT_MEMORY_CONTEXT;
@@ -70,7 +69,7 @@ static void register_fdesc(Oid oid, FDesc desc) {
     FDescEntry *entry = instance(FDescEntry);
     entry->desc = desc;
     entry->oid = oid;
-    append_list(F_DESC_LIST, entry);
+    append_list(fdCache, entry);
 
     /* Recover the MemoryContext. */
     MemoryContextSwitchTo(oldcontext);
@@ -84,11 +83,11 @@ void unregister_fdesc(Oid oid) {
     MemoryContextSwitchTo(CACHE_MEMORY_CONTEXT);
 
     ListCell *lc;
-    foreach(lc, F_DESC_LIST) {
+    foreach(lc, fdCache) {
         FDescEntry *entry = lfirst(lc);
         if (entry->oid == oid) {
             close_file_desc(entry->desc);
-            list_delete(F_DESC_LIST, entry);
+            list_delete(fdCache, entry);
             break;
         }
     }
@@ -100,10 +99,10 @@ void unregister_fdesc(Oid oid) {
 
 /* Get file descriptor. 
  * --------------------
- * Fistly find in F_DESC_LIST.
+ * Fistly find in fdCache.
  * If missing, load file descriptor and register it. */
 FDesc get_file_desc(Oid oid) {
-    /* Fistly find in F_DESC_LIST. */
+    /* Fistly find in fdCache. */
     FDesc desc = find_fdesc(oid);
     /* If missing cache.*/
     if (desc == -1) {
