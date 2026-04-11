@@ -194,11 +194,10 @@ static void db_end() {
     exit(EXIT_SUCCESS);
 }
 
-
 /* Parse argv. */
 static void parse_argv(int argc, char* argv[]) {
     for (int i = 1; i < argc; i++) {
-        if ((StrEq(argv[i], "-l") || StrEq(argv[i], "level"))) {
+        if ((StrEq(argv[i], "-l") || StrEq(argv[i], "--level"))) {
             if (i + 1 >= argc) continue;
             char *level = argv[++i];
             if (StrEq(level, "TRACE")) conf->log_level = TRACE;
