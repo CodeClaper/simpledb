@@ -86,8 +86,6 @@ static void init_db() {
     /* Load configuration. */
     conf = load_conf();
 
-    MakeSysState(SYS_READY);
-
     /* Init environment. */
     init_env();
 
@@ -142,8 +140,10 @@ static void start_bgwriter() {
     else if (pid == 0) {
         StartBgWriter();
         exit(13);
+    } else {
+        MakeSysState(SYS_READY);
+        db_log(SUCCESS, "Start up background writer successfully.");
     }
-    else db_log(SUCCESS, "Start up background writer successfully.");
 }
 
 /* Start backend. */

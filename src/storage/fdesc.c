@@ -60,7 +60,7 @@ static void register_fdesc(Oid oid, FDesc desc) {
     Assert(fdCache != NIL);
     
     /* If sys not running, not register the fdesc. */
-    if (!SYS_IS_INITED ) return;
+    if (!SYS_IS_INITED) return;
 
     /* Switch to CACHE_MEMORY_CONTEXT. */
     MemoryContext oldcontext = CURRENT_MEMORY_CONTEXT;

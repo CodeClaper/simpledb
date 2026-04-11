@@ -1,6 +1,6 @@
 #include "sysstate.h"
 
-SysState sys_state;
+SysState sys_state = SYS_NONE;
 
 /* Change the machin state. */
 inline void MakeSysState(SysState _sys_state) {

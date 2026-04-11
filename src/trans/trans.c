@@ -241,7 +241,7 @@ void AutoBeginTransaction() {
 /* Begin a new transaction which need be committed manually. */
 void BeginTransaction() {
     TransEntry *entry = FindTransaction();
-    Assert(!entry);
+    if (entry != NULL) return;
 
     /* Generate new transaction. */
     entry = NewTransEntry(NextXid(), getpid(), false, NULL);
@@ -340,7 +340,7 @@ void AutoRollbackTransaction() {
  * */
 bool IsVisibleInner(Xid created_xid, Xid expired_xid, TransEntry *current) {
     /* When system ready, simple check. */
-    if (SYS_IS_READY) 
+    if (!SYS_IS_RUNNING) 
         return (created_xid != 0 && expired_xid == 0);
 
     Assert(current != NULL);
@@ -399,7 +399,7 @@ bool RowIsVisible(Row *row) {
     Xid row_expired_xid = *(Xid *)expired_xid_col->value;
 
     /* When system ready, simple check. */
-    if (SYS_IS_READY) 
+    if (!SYS_IS_RUNNING) 
         return (row_created_xid != 0 && row_expired_xid == 0);
 
     /* Get current transaction. */
