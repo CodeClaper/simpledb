@@ -12,6 +12,3 @@ static inline char *GET_FUNCTION_NAME(FunctionType type) {
 static inline bool IsAggFuncion(FunctionType type) {
     return type <= F_AVG;
 }
-
-
-
