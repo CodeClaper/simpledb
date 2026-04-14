@@ -30,7 +30,7 @@ Test suites are located in `test/`:
 
 1. **Start the server**: `./src/simpledb` (uses default port 4083 from config).
    - The server reads configuration from `config/simpledb.cnf`.
-   - Data directory is configured as `dir` under `[data]` (default `/home/zc/data/`).
+   - Data directory is configured as `dir` under `[data]` (default `~/data/`).
    - Log directory is configured under `[log]`.
 
 2. **Run the CLI client**: `./src/simpledb_cli -h <host> -p <port>` (default host 127.0.0.1, port 4080).
@@ -91,8 +91,8 @@ SimpleDb is an object‑oriented relational database engine written in C. It fol
 ## Development Tips
 
 - Use `debug.sh` to build with debug symbols, kill any running server, clear the data directory, and start GDB.
-- The data directory is `/home/zc/data/` by default; ensure it exists and is writable.
-- Logs are written to `/home/zc/logs/simpledb/` (configurable).
+- The data directory is `~/data/` by default; ensure it exists and is writable.
+- Logs are written to `~/logs/simpledb/` (configurable).
 - When adding new SQL syntax, update `sql/sql2.y` (parser) and `sql/scn2.l` (lexer), then regenerate the C files (requires flex & bison).
 - The codebase uses a custom allocator (`dalloc`/`dfree`) that respects memory contexts; prefer these over `malloc`/`free` for database‑managed memory.
 - Commit messages often use a prefix (`fix:`, `raf:`, etc.) to indicate the type of change.
