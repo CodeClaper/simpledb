@@ -172,12 +172,12 @@ static bool BinSearchMetaColumnFallIntoComparisonPredicateForEQ(List *select_tab
     if (left_scalar->type == SCALAR_COLUMN && right_scalar->type == SCALAR_VALUE) {
         value = QueryTupleValueItem(right_scalar->value);
         max_value = new_simple_key_value(meta_column->column_name, max_key, meta_column->column_type);
-        min_value = new_simple_key_value(meta_column->column_name, max_key, meta_column->column_type);
+        min_value = new_simple_key_value(meta_column->column_name, min_key, meta_column->column_type);
         return KeyValueEval(O_LT, min_value, value) && KeyValueEval(O_GE, max_value, value);
     } else if (left_scalar->type == SCALAR_VALUE && right_scalar->type == SCALAR_COLUMN) {
         value = QueryTupleValueItem(left_scalar->value);
         max_value = new_simple_key_value(meta_column->column_name, max_key, meta_column->column_type);
-        min_value = new_simple_key_value(meta_column->column_name, max_key, meta_column->column_type);
+        min_value = new_simple_key_value(meta_column->column_name, min_key, meta_column->column_type);
         return KeyValueEval(O_LT, min_value, value) && KeyValueEval(O_GE, max_value, value);
     } else unreachable(NULL, "Logic error.");
 }
@@ -200,7 +200,7 @@ static bool BinSearchMetaColumnFallIntoComparisonPredicateForGT(List *select_tab
         return KeyValueEval(O_GT, max_value, value);
     } else if (left_scalar->type == SCALAR_VALUE && right_scalar->type == SCALAR_COLUMN) {
         value = QueryTupleValueItem(left_scalar->value);
-        min_value = new_simple_key_value(meta_column->column_name, max_key, meta_column->column_type);
+        min_value = new_simple_key_value(meta_column->column_name, min_key, meta_column->column_type);
         return KeyValueEval(O_LT, min_value, value);
     } else unreachable(NULL, "Logic error.");
 }
@@ -218,7 +218,7 @@ static bool BinSearchMetaColumnFallIntoComparisonPredicateForGE(List *select_tab
         return KeyValueEval(O_GE, max_value, value);
     } else if (left_scalar->type == SCALAR_VALUE && right_scalar->type == SCALAR_COLUMN) {
         value = QueryTupleValueItem(left_scalar->value);
-        min_value = new_simple_key_value(meta_column->column_name, max_key, meta_column->column_type);
+        min_value = new_simple_key_value(meta_column->column_name, min_key, meta_column->column_type);
         return KeyValueEval(O_LE, min_value, value);
     } else unreachable(NULL, "Logic error.");
 }
@@ -232,7 +232,7 @@ static bool BinSearchMetaColumnFallIntoComparisonPredicateForLT(List *select_tab
     right_scalar = expr->rightVal;
     if (left_scalar->type == SCALAR_COLUMN && right_scalar->type == SCALAR_VALUE) {
         value = QueryTupleValueItem(right_scalar->value);
-        min_value = new_simple_key_value(meta_column->column_name, max_key, meta_column->column_type);
+        min_value = new_simple_key_value(meta_column->column_name, min_key, meta_column->column_type);
         return KeyValueEval(O_LT, min_value, value);
     } else if (left_scalar->type == SCALAR_VALUE && right_scalar->type == SCALAR_COLUMN) {
         value = QueryTupleValueItem(left_scalar->value);
@@ -250,7 +250,7 @@ static bool BinSearchMetaColumnFallIntoComparisonPredicateForLE(List *select_tab
     right_scalar = expr->rightVal;
     if (left_scalar->type == SCALAR_COLUMN && right_scalar->type == SCALAR_VALUE) {
         value = QueryTupleValueItem(right_scalar->value);
-        min_value = new_simple_key_value(meta_column->column_name, max_key, meta_column->column_type);
+        min_value = new_simple_key_value(meta_column->column_name, min_key, meta_column->column_type);
         return KeyValueEval(O_LE, min_value, value);
     } else if (left_scalar->type == SCALAR_VALUE && right_scalar->type == SCALAR_COLUMN) {
         value = QueryTupleValueItem(left_scalar->value);
@@ -265,7 +265,7 @@ static bool BinSearchMetaColumnFallIntoLikePredicate(List *select_table_list, Me
     value = QueryTupleValueItem(expr->rightVal);
     TrimRightEscapeForLikePredicate(value);
     max_value = new_simple_key_value(meta_column->column_name, max_key, meta_column->column_type);
-    min_value = new_simple_key_value(meta_column->column_name, max_key, meta_column->column_type);
+    min_value = new_simple_key_value(meta_column->column_name, min_key, meta_column->column_type);
     return KeyValueEval(O_LT, min_value, value) && KeyValueEval(O_GE, max_value, value);
 }
 
@@ -274,7 +274,7 @@ static bool BinSearchMetaColumnFallIntoInPredicate(List *select_table_list, Meta
     KeyValue *value, *max_value, *min_value;
     value = QueryTupleValueItem(expr->rightVal);
     max_value = new_simple_key_value(meta_column->column_name, max_key, meta_column->column_type);
-    min_value = new_simple_key_value(meta_column->column_name, max_key, meta_column->column_type);
+    min_value = new_simple_key_value(meta_column->column_name, min_key, meta_column->column_type);
     return KeyValueEval(O_LT, min_value, value) && KeyValueEval(O_GE, max_value, value);
 }
 
