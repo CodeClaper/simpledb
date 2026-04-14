@@ -58,6 +58,7 @@ typedef struct SelectPlan {
 
 char *GetExprNodeName(ExprNode *node);
 char *GetOprTypeName(OprType op);
+bool MetaColumnMatchExprVar(List *select_table_list, MetaColumn *meta_column, ExprNode *node);
 SelectPlan *OptimizeSelect(SelectNode *selectNode, StatementType stmt_type);
 SelectPlan *SimpleSelectPlan(ROW_HANDLER rowHanler, ROW_HANDLER_ARG_TYPE type, void *arg, SearchConditionNode *condition);
 

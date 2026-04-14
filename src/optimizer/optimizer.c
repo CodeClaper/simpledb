@@ -162,13 +162,22 @@ static bool MetaColumnMatchSclarExp(List *select_table_list, MetaColumn *meta_co
     }
 }
 
+/* Check whether the expr node is only composed of scalar column and scalar value.*/
+static bool ExprNodeIsScalarColumnAndValue(ExprNode *node) {
+    ScalarExpNode *left_scalar = node->leftVal;
+    ScalarExpNode *right_scalar = node->rightVal;
+    return (left_scalar->type == SCALAR_COLUMN && right_scalar->type == SCALAR_VALUE) || 
+            (left_scalar->type == SCALAR_VALUE && right_scalar->type == SCALAR_COLUMN);
+}
+ 
 /* Check if meta column matches comparison predicate. 
  * The meta column matches left scalar expr or right scalar expr is ok.
  * */
 static bool MetaColumnMatchComparisonPredicate(List *select_table_list, MetaColumn *meta_column, ExprNode *node) {
     Assert(node->type == EXPR_VAR);
+    if (!ExprNodeIsScalarColumnAndValue(node)) return false;
     return MetaColumnMatchSclarExp(select_table_list, meta_column, node->leftVal) || 
-            MetaColumnMatchSclarExp(select_table_list, meta_column, node->rightVal);
+        MetaColumnMatchSclarExp(select_table_list, meta_column, node->rightVal);
 }
 
 /* Check if meta column matches like predicate. 
@@ -185,7 +194,7 @@ static bool MetaColumnMatchInPredicate(List *select_table_list, MetaColumn *meta
 }
 
 /* Check if meta column matches EXPR_VAR. */
-static bool MetaColumnMatchExprVar(List *select_table_list, MetaColumn *meta_column, ExprNode *node) {
+static bool MetaColumnMatchExprVarInner(List *select_table_list, MetaColumn *meta_column, ExprNode *node) {
     switch (node->opr) {
         case OP_EQ: case OP_NE: case OP_GT: case OP_GE: case OP_LT: case OP_LE:
             return MetaColumnMatchComparisonPredicate(select_table_list, meta_column, node);
@@ -199,12 +208,17 @@ static bool MetaColumnMatchExprVar(List *select_table_list, MetaColumn *meta_col
     }
 }
 
+/* Check if meta columm matches EXPR_VAR. */
+bool MetaColumnMatchExprVar(List *select_table_list, MetaColumn *meta_column, ExprNode *node) {
+    return node->type == EXPR_VAR && MetaColumnMatchExprVarInner(select_table_list, meta_column, node);
+}
+
 /* Check if meta column matches EXPR_AND_SET. */
 static bool MetaColumnMatchExprAndSet(List *select_table_list, MetaColumn *meta_column, ExprNode *node) {
     ListCell *lc;
     foreach (lc, node->children) {
         ExprNode *child = (ExprNode *)lfirst(lc);   
-        if (child->type == EXPR_VAR && MetaColumnMatchExprVar(select_table_list, meta_column, child)) return true;
+        if (MetaColumnMatchExprVar(select_table_list, meta_column, child)) return true;
         else continue;
     }
     return false;
@@ -216,7 +230,7 @@ static bool MetaColumnMatchExprOrSet(List *select_table_list, MetaColumn *meta_c
     ListCell *lc;
     foreach (lc, node->children) {
         ExprNode *child = (ExprNode *)lfirst(lc);   
-        if (child->type == EXPR_VAR && MetaColumnMatchExprVar(select_table_list, meta_column, child)) continue;
+        if (MetaColumnMatchExprVar(select_table_list, meta_column, child)) continue;
         else return false;
     }
     return true;
