@@ -1,5 +1,5 @@
 #include "data.h"
-#include "select.h"
+#include "optimizer.h"
 
 /* Bin search under conditon. */
-void BinSearchUnderCondition(SelectResult *select_result, SelectPlan *select_plan);
+void BinSearchUnderExpr(SelectResult *select_result, SelectPlan *select_plan);

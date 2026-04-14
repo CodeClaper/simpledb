@@ -34,7 +34,7 @@ static struct IndexMethods methods[] = {
     [BTREE_INDEX].load = BinLoad,
     [BTREE_INDEX].drop = BinDrop,
     [BTREE_INDEX].insert = BtreeIndexInsert,
-    [BTREE_INDEX].searchUnderCondition = BinSearchUnderCondition,
+    [BTREE_INDEX].searchUnderCondition = BinSearchUnderExpr,
     
     /* For hash index. */
     [HASH_INDEX].create = HashIndexCreate,
