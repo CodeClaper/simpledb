@@ -167,134 +167,118 @@ static inline KeyValue *KeyValueGenerateByMetaColumn(MetaColumn *meta_column, vo
 }
 
 /* Bin search internal node when case comparison predicate for EQ. */
-static bool BinSearchMetaColumnFallIntoComparisonPredicateForEQ(List *select_table_list, MetaColumn *meta_column, void *min_key, void *max_key, ExprNode *expr) {
+static bool BinSearchMetaColumnFallIntoComparisonPredicateForEQ(List *select_table_list, MetaColumn *meta_column, KeyValue *min_value, KeyValue *max_value, ExprNode *expr) {
     ScalarExpNode *left_scalar, *right_scalar;
-    KeyValue *value, *max_value, *min_value;
+    KeyValue *value;
 
     left_scalar = expr->leftVal;
     right_scalar = expr->rightVal;
     if (left_scalar->type == SCALAR_COLUMN && right_scalar->type == SCALAR_VALUE) {
         value = QueryTupleValueItem(right_scalar->value);
-        max_value = KeyValueGenerateByMetaColumn(meta_column, max_key);
-        min_value = KeyValueGenerateByMetaColumn(meta_column, min_key);
         return KeyValueEval(O_LT, min_value, value) && KeyValueEval(O_GE, max_value, value);
     } else if (left_scalar->type == SCALAR_VALUE && right_scalar->type == SCALAR_COLUMN) {
         value = QueryTupleValueItem(left_scalar->value);
-        max_value = KeyValueGenerateByMetaColumn(meta_column, max_key);
-        min_value = KeyValueGenerateByMetaColumn(meta_column, min_key);
         return KeyValueEval(O_LT, min_value, value) && KeyValueEval(O_GE, max_value, value);
     } else unreachable(NULL, "Logic error.");
 }
 
 /* Bin search internal node when case comparison predicate for NE. */
-static bool BinSearchMetaColumnFallIntoComparisonPredicateForNE(List *select_table_list, MetaColumn *meta_column, void *min_key, void *max_key, ExprNode *expr) {
-    return !BinSearchMetaColumnFallIntoComparisonPredicateForEQ(select_table_list, meta_column, min_key, max_key, expr);
+static bool BinSearchMetaColumnFallIntoComparisonPredicateForNE(List *select_table_list, MetaColumn *meta_column, KeyValue *min_value, KeyValue *max_value, ExprNode *expr) {
+    return !BinSearchMetaColumnFallIntoComparisonPredicateForEQ(select_table_list, meta_column, min_value, max_value, expr);
 }
 
 /* Bin search internal node when case comparison predicate for GT. */
-static bool BinSearchMetaColumnFallIntoComparisonPredicateForGT(List *select_table_list, MetaColumn *meta_column, void *min_key, void *max_key, ExprNode *expr) {
+static bool BinSearchMetaColumnFallIntoComparisonPredicateForGT(List *select_table_list, MetaColumn *meta_column, KeyValue *min_value, KeyValue *max_value, ExprNode *expr) {
     ScalarExpNode *left_scalar, *right_scalar;
-    KeyValue *value, *max_value, *min_value;
+    KeyValue *value;
 
     left_scalar = expr->leftVal;
     right_scalar = expr->rightVal;
     if (left_scalar->type == SCALAR_COLUMN && right_scalar->type == SCALAR_VALUE) {
         value = QueryTupleValueItem(right_scalar->value);
-        max_value = KeyValueGenerateByMetaColumn(meta_column, max_key);
         return KeyValueEval(O_GT, max_value, value);
     } else if (left_scalar->type == SCALAR_VALUE && right_scalar->type == SCALAR_COLUMN) {
         value = QueryTupleValueItem(left_scalar->value);
-        min_value = KeyValueGenerateByMetaColumn(meta_column, min_key);
         return KeyValueEval(O_LT, min_value, value);
     } else unreachable(NULL, "Logic error.");
 }
 
 /* Bin search internal node when case comparison predicate for GE. */
-static bool BinSearchMetaColumnFallIntoComparisonPredicateForGE(List *select_table_list, MetaColumn *meta_column, void *min_key, void *max_key, ExprNode *expr) {
+static bool BinSearchMetaColumnFallIntoComparisonPredicateForGE(List *select_table_list, MetaColumn *meta_column, KeyValue *min_value, KeyValue *max_value, ExprNode *expr) {
     ScalarExpNode *left_scalar, *right_scalar;
-    KeyValue *value, *max_value, *min_value;
+    KeyValue *value;
 
     left_scalar = expr->leftVal;
     right_scalar = expr->rightVal;
     if (left_scalar->type == SCALAR_COLUMN && right_scalar->type == SCALAR_VALUE) {
         value = QueryTupleValueItem(right_scalar->value);
-        max_value = KeyValueGenerateByMetaColumn(meta_column, max_key);
         return KeyValueEval(O_GE, max_value, value);
     } else if (left_scalar->type == SCALAR_VALUE && right_scalar->type == SCALAR_COLUMN) {
         value = QueryTupleValueItem(left_scalar->value);
-        min_value = KeyValueGenerateByMetaColumn(meta_column, min_key);
         return KeyValueEval(O_LE, min_value, value);
     } else unreachable(NULL, "Logic error.");
 }
 
 /* Bin search internal node when case comparison predicate for LT. */
-static bool BinSearchMetaColumnFallIntoComparisonPredicateForLT(List *select_table_list, MetaColumn *meta_column, void *min_key, void *max_key, ExprNode *expr) {
+static bool BinSearchMetaColumnFallIntoComparisonPredicateForLT(List *select_table_list, MetaColumn *meta_column, KeyValue *min_value, void *max_value, ExprNode *expr) {
     ScalarExpNode *left_scalar, *right_scalar;
-    KeyValue *value, *max_value, *min_value;
+    KeyValue *value;
 
     left_scalar = expr->leftVal;
     right_scalar = expr->rightVal;
     if (left_scalar->type == SCALAR_COLUMN && right_scalar->type == SCALAR_VALUE) {
         value = QueryTupleValueItem(right_scalar->value);
-        min_value = KeyValueGenerateByMetaColumn(meta_column, min_key);
         return KeyValueEval(O_LT, min_value, value);
     } else if (left_scalar->type == SCALAR_VALUE && right_scalar->type == SCALAR_COLUMN) {
         value = QueryTupleValueItem(left_scalar->value);
-        max_value = KeyValueGenerateByMetaColumn(meta_column, max_key);
         return KeyValueEval(O_GT, max_value, value);
     } else unreachable(NULL, "Logic error.");
 }
 
 /* Bin search internal node when case comparison predicate for LE. */
-static bool BinSearchMetaColumnFallIntoComparisonPredicateForLE(List *select_table_list, MetaColumn *meta_column, void *min_key, void *max_key, ExprNode *expr) {
+static bool BinSearchMetaColumnFallIntoComparisonPredicateForLE(List *select_table_list, MetaColumn *meta_column, KeyValue *min_value, KeyValue *max_value, ExprNode *expr) {
     ScalarExpNode *left_scalar, *right_scalar;
-    KeyValue *value, *max_value, *min_value;
+    KeyValue *value;
 
     left_scalar = expr->leftVal;
     right_scalar = expr->rightVal;
     if (left_scalar->type == SCALAR_COLUMN && right_scalar->type == SCALAR_VALUE) {
         value = QueryTupleValueItem(right_scalar->value);
-        min_value = KeyValueGenerateByMetaColumn(meta_column, min_key);
         return KeyValueEval(O_LE, min_value, value);
     } else if (left_scalar->type == SCALAR_VALUE && right_scalar->type == SCALAR_COLUMN) {
         value = QueryTupleValueItem(left_scalar->value);
-        max_value = KeyValueGenerateByMetaColumn(meta_column, max_key);
         return KeyValueEval(O_GE, max_value, value);
     } else unreachable(NULL, "Logic error.");
 }
 
 /* Bin search internal node when case like predicate.. */
-static bool BinSearchMetaColumnFallIntoLikePredicate(List *select_table_list, MetaColumn *meta_column, void *min_key, void *max_key, ExprNode *expr) {
-    KeyValue *value, *max_value, *min_value;
+static bool BinSearchMetaColumnFallIntoLikePredicate(List *select_table_list, MetaColumn *meta_column, KeyValue *min_value, KeyValue *max_value, ExprNode *expr) {
+    KeyValue *value;
     value = QueryTupleValueItem(expr->rightVal);
     TrimRightEscapeForLikePredicate(value);
-    max_value = KeyValueGenerateByMetaColumn(meta_column, max_key);
-    min_value = KeyValueGenerateByMetaColumn(meta_column, min_key);
     return KeyValueEval(O_LT, min_value, value) && KeyValueEval(O_GE, max_value, value);
 }
 
 /* Bin search internal node when case in predicate.. */
-static bool BinSearchMetaColumnFallIntoInPredicate(List *select_table_list, MetaColumn *meta_column, void *min_key, void *max_key, ExprNode *expr) {
-    KeyValue *value, *max_value, *min_value;
+static bool BinSearchMetaColumnFallIntoInPredicate(List *select_table_list, MetaColumn *meta_column, KeyValue *min_value, KeyValue *max_value, ExprNode *expr) {
+    KeyValue *value;
     value = QueryTupleValueItem(expr->rightVal);
-    max_value = KeyValueGenerateByMetaColumn(meta_column, max_key);
-    min_value = KeyValueGenerateByMetaColumn(meta_column, min_key);
     return KeyValueEval(O_LT, min_value, value) && KeyValueEval(O_GE, max_value, value);
 }
 
 /* Bin search internal node when case EXPR_VAR. */
-static bool BinSearchMetaColumnFallIntoExprVar(List *select_table_list, MetaColumn *meta_column, void *min_key, void *max_key, ExprNode *expr) {
+static bool BinSearchMetaColumnFallIntoExprVar(List *select_table_list, MetaColumn *meta_column, KeyValue *min_value, KeyValue *max_value, ExprNode *expr) {
     switch (expr->opr) {
-        case OP_EQ: return BinSearchMetaColumnFallIntoComparisonPredicateForEQ(select_table_list, meta_column, min_key, max_key, expr);
-        case OP_NE: return BinSearchMetaColumnFallIntoComparisonPredicateForNE(select_table_list, meta_column, min_key, max_key, expr);
-        case OP_GT: return BinSearchMetaColumnFallIntoComparisonPredicateForGT(select_table_list, meta_column, min_key, max_key, expr);
-        case OP_GE: return BinSearchMetaColumnFallIntoComparisonPredicateForGE(select_table_list, meta_column, min_key, max_key, expr);
-        case OP_LT: return BinSearchMetaColumnFallIntoComparisonPredicateForLT(select_table_list, meta_column, min_key, max_key, expr);
-        case OP_LE: return BinSearchMetaColumnFallIntoComparisonPredicateForLE(select_table_list, meta_column, min_key, max_key, expr);
-        case OP_LIKE: return BinSearchMetaColumnFallIntoLikePredicate(select_table_list, meta_column, min_key, max_key, expr);
-        case OP_NOT_LIKE: return !BinSearchMetaColumnFallIntoLikePredicate(select_table_list, meta_column, min_key, max_key, expr);
-        case OP_IN: return BinSearchMetaColumnFallIntoInPredicate(select_table_list, meta_column, min_key, max_key, expr);
-        case OP_NOT_IN: return !BinSearchMetaColumnFallIntoInPredicate(select_table_list, meta_column, min_key, max_key, expr);
+        case OP_EQ: return BinSearchMetaColumnFallIntoComparisonPredicateForEQ(select_table_list, meta_column, min_value, max_value, expr);
+        case OP_NE: return BinSearchMetaColumnFallIntoComparisonPredicateForNE(select_table_list, meta_column, min_value, max_value, expr);
+        case OP_GT: return BinSearchMetaColumnFallIntoComparisonPredicateForGT(select_table_list, meta_column, min_value, max_value, expr);
+        case OP_GE: return BinSearchMetaColumnFallIntoComparisonPredicateForGE(select_table_list, meta_column, min_value, max_value, expr);
+        case OP_LT: return BinSearchMetaColumnFallIntoComparisonPredicateForLT(select_table_list, meta_column, min_value, max_value, expr);
+        case OP_LE: return BinSearchMetaColumnFallIntoComparisonPredicateForLE(select_table_list, meta_column, min_value, max_value, expr);
+        case OP_LIKE: return BinSearchMetaColumnFallIntoLikePredicate(select_table_list, meta_column, min_value, max_value, expr);
+        case OP_NOT_LIKE: return !BinSearchMetaColumnFallIntoLikePredicate(select_table_list, meta_column, min_value, max_value, expr);
+        case OP_IN: return BinSearchMetaColumnFallIntoInPredicate(select_table_list, meta_column, min_value, max_value, expr);
+        case OP_NOT_IN: return !BinSearchMetaColumnFallIntoInPredicate(select_table_list, meta_column, min_value, max_value, expr);
         default: unreachable(false, "Not support expr node type: %d", expr->type);
     }
 }
@@ -305,12 +289,13 @@ static bool BinSearchMetaColumnFallIntoExprOrSet(List *select_table_list, MetaCo
 }
 
 /* Bin search internal node when case EXPR_AND_SET. */
-static bool BinSearchMetaColumnFallIntoExprAndSet(List *select_table_list, MetaColumn *meta_column, void *min_key, void *max_key, ExprNode *expr) {
+static bool BinSearchMetaColumnFallIntoExprAndSet(List *select_table_list, MetaColumn *meta_column, KeyValue *min_value, KeyValue *max_value, ExprNode *expr) {
     ListCell *lc;
     foreach (lc, expr->children) {
         ExprNode *child = (ExprNode *)lfirst(lc);
-        if (MetaColumnMatchExprVar(select_table_list, meta_column, expr)) continue;
-        else return BinSearchMetaColumnFallIntoExprVar(select_table_list, meta_column, min_key, max_key, child);
+        if (!MetaColumnMatchExprVar(select_table_list, meta_column, child)) continue;
+        bool ret = BinSearchMetaColumnFallIntoExprVar(select_table_list, meta_column, min_value, max_value, child);
+        return ret;
     }
     unreachable(true, "Logic error.");
 }
@@ -318,11 +303,16 @@ static bool BinSearchMetaColumnFallIntoExprAndSet(List *select_table_list, MetaC
 /* Bin search internal node when case EXPR_VAR. */
 static bool BinSearchInternalNodeCaseExprVar(List *select_table_list, MetaIndex *meta_index, void *min_key, void *max_key, ExprNode *expr) {
     uint32_t offset = 0;
+    MetaColumn *meta_column;
+    KeyValue *max_value, *min_value;
+
     ListCell *lc;
     foreach (lc, meta_index->meta_columns) {
-        MetaColumn *meta_column = (MetaColumn *) lfirst(lc);
-        if (!BinSearchMetaColumnFallIntoExprVar(select_table_list, meta_column, min_key + offset, max_key + offset, expr)) return false;
-        else offset += meta_column->column_length;
+        meta_column = (MetaColumn *) lfirst(lc);
+        max_value = KeyValueGenerateByMetaColumn(meta_column, max_key + offset);
+        min_value = KeyValueGenerateByMetaColumn(meta_column, min_key + offset);
+        if (KeyValueEval(O_EQ, max_value, min_value)) { offset += meta_column->column_length; continue; }
+        else return BinSearchMetaColumnFallIntoExprVar(select_table_list, meta_column, min_value, max_value, expr);
     }
     return true;
 }
@@ -338,13 +328,18 @@ static bool BinSearchInternalNodeCaseExprOrSet(List *select_table_list, MetaInde
 /* Bin search internal node when case EXPR_AND_SET. */
 static bool BinSearchInternalNodeCaseExprAndSet(List *select_table_list, MetaIndex *meta_index, void *min_key, void *max_key, ExprNode *expr) {
     uint32_t offset = 0;
+    MetaColumn *meta_column;
+    KeyValue *max_value, *min_value;
+
     ListCell *lc;
     foreach (lc, meta_index->meta_columns) {
-        MetaColumn *meta_column = (MetaColumn *) lfirst(lc);
-        if (!BinSearchMetaColumnFallIntoExprAndSet(select_table_list, meta_column, min_key + offset, max_key + offset, expr)) return false;
-        else offset += meta_column->column_length;
+        meta_column = (MetaColumn *) lfirst(lc);
+        max_value = KeyValueGenerateByMetaColumn(meta_column, max_key + offset);
+        min_value = KeyValueGenerateByMetaColumn(meta_column, min_key + offset);
+        if (KeyValueEval(O_EQ, max_value, min_value)) { offset += meta_column->column_length; continue; }
+        return BinSearchMetaColumnFallIntoExprAndSet(select_table_list, meta_column, min_value, max_value, expr);
     }
-    return true;
+    unreachable(false, "Logic error, can't max_value equals to min_value for each column.");
 }
 
 /* Bin search internal node for expr node. */
@@ -352,17 +347,11 @@ static bool BinSearchInternalNodeForExpr(List *select_table_list, MetaIndex *met
     /* If index is invalid, just return true. */
     if (meta_index == NULL) return true;
     switch (expr->type) {
-        case EXPR_VAR: 
-            return BinSearchInternalNodeCaseExprVar(select_table_list, meta_index, min_key, max_key, expr);
-        case EXPR_OR_SET: 
-            return BinSearchInternalNodeCaseExprOrSet(select_table_list, meta_index, min_key, max_key, expr);
-        case EXPR_AND_SET: 
-            return BinSearchInternalNodeCaseExprAndSet(select_table_list, meta_index, min_key, max_key, expr);
-        case EXPR_TRUTH_VALUE: 
-            return expr->truthVal;
-        default:
-            UNEXPECTED_VALUE(expr->type);     
-            return false;
+        case EXPR_VAR: return BinSearchInternalNodeCaseExprVar(select_table_list, meta_index, min_key, max_key, expr);
+        case EXPR_OR_SET: return BinSearchInternalNodeCaseExprOrSet(select_table_list, meta_index, min_key, max_key, expr);
+        case EXPR_AND_SET: return BinSearchInternalNodeCaseExprAndSet(select_table_list, meta_index, min_key, max_key, expr);
+        case EXPR_TRUTH_VALUE: return expr->truthVal;
+        default: unreachable(false, "Not support expr type: %d", expr->type);
     }
 }
 
@@ -442,15 +431,9 @@ void BinSearchUnderExprInner(MetaIndex *meta_index, uint32_t page_num, void *bou
     
     type = GetNodeType(node);
     switch (type) {
-        case LEAF_NODE:
-            return BinSearchUnderConditionForLeafNode(meta_index, page_num, boundary_key, select_result, select_plan);
-            break;
-        case INTERNAL_NODE:
-            return BinSearchUnderExprForInternalNode(meta_index, page_num, boundary_key, select_result, select_plan);
-            break;
-        default:
-            UNEXPECTED_VALUE(type);
-            break;
+        case LEAF_NODE: return BinSearchUnderConditionForLeafNode(meta_index, page_num, boundary_key, select_result, select_plan);
+        case INTERNAL_NODE: return BinSearchUnderExprForInternalNode(meta_index, page_num, boundary_key, select_result, select_plan);
+        default: UNEXPECTED_VALUE(type);
     }
 }
 
