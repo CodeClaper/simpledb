@@ -1,9 +1,9 @@
 includedir = ../include
-SUBDIRS := backend common optimizer json lock memory ltree index rid sid parser heap storage trans utils sys
+SUBDIRS := db backend common optimizer json lock memory ltree index rid sid parser heap storage trans utils sys
 CC = gcc
 OBJS := $(patsubst %.c, %.o, $(shell find $(SUBDIRS) -name "*.c"))
 
-headerdirs = $(includedir)/common $(includedir)/json $(includedir)/lock $(includedir)/memory $(includedir)/ltree $(includedir)/parser \
+headerdirs = $(includedir)/db $(includedir)/common $(includedir)/json $(includedir)/lock $(includedir)/memory $(includedir)/ltree $(includedir)/parser \
 			 $(includedir)/sys $(includedir)/backend $(includedir)/storage $(includedir)/trans $(includedir)/utils $(includedir)/optimizer
 
 headers := $(shell find $(headerdirs) -name "*.h")
@@ -12,22 +12,16 @@ include ./common.mk
 
 LDADDCFLAGS = -lpthread -lm -lz
 
-all: $(SUBDIRS) simpledb simpledb_cli bench
+all: $(SUBDIRS) simpledb  bench
 
-simpledb: db.o $(OBJS)
-	$(CC) $(CFLAGS)  db.o $(OBJS) -o $@ $(LDADDCFLAGS)
-
-simpledb_cli: db_cli.o
-	$(CC) $(CFLAGS) db_cli.o -o $@ -lreadline -ltinfo
+simpledb: main.o $(OBJS)
+	$(CC) $(CFLAGS) main.o $(OBJS) -o $@ $(LDADDCFLAGS)
 
 bench:
 	@$(MAKE) -C $@
 
-db.o: db.c $(headers)
-	$(CC) $(CFLAGS) -c db.c -o $@
-
-db_cli.o: db_cli.c
-	$(CC) $(CFLAGS) -c db_cli.c -o $@
+main.o: main.c $(headers)
+	$(CC) $(CFLAGS) -c main.c -o $@
 
 $(SUBDIRS): 
 	@$(MAKE) -C $@
