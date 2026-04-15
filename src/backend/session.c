@@ -145,9 +145,7 @@ bool db_send(const char *format, ...) {
     uint32_t len;
     char sbuff[SPOOL_SIZE];
 
-    if (format == NULL)
-        return false;
-
+    if (format == NULL) return false;
     Assert(strlen(format) < SPOOL_SIZE);
 
     /* Initialize send buffer. */

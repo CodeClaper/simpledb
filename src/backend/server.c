@@ -134,8 +134,7 @@ static void RequestHandler(intptr_t client) {
 
     while ((rdata = ReceiveRequestData(client)) != NULL) {
         Execute(rdata);
-        if (!DbSendOver())
-            break;
+        if (!DbSendOver()) break;
         MemoryContextReset(MASTER_MEMORY_CONTEXT);
         DestroyContextRecorders();
         gettimeofday(&end_time, NULL);
