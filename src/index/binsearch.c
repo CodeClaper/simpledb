@@ -283,10 +283,6 @@ static bool BinSearchMetaColumnFallIntoExprVar(List *select_table_list, MetaColu
     }
 }
 
-/* Bin search internal node when case EXPR_OR_SET. */
-static bool BinSearchMetaColumnFallIntoExprOrSet(List *select_table_list, MetaColumn *meta_column, void *min_key, void *max_key, ExprNode *expr) {
-    return false;
-}
 
 /* Bin search internal node when case EXPR_AND_SET. */
 static bool BinSearchMetaColumnFallIntoExprAndSet(List *select_table_list, MetaColumn *meta_column, KeyValue *min_value, KeyValue *max_value, ExprNode *expr) {
@@ -294,10 +290,30 @@ static bool BinSearchMetaColumnFallIntoExprAndSet(List *select_table_list, MetaC
     foreach (lc, expr->children) {
         ExprNode *child = (ExprNode *)lfirst(lc);
         if (!MetaColumnMatchExprVar(select_table_list, meta_column, child)) continue;
-        bool ret = BinSearchMetaColumnFallIntoExprVar(select_table_list, meta_column, min_value, max_value, child);
-        return ret;
+        return BinSearchMetaColumnFallIntoExprVar(select_table_list, meta_column, min_value, max_value, child);
     }
-    unreachable(true, "Logic error.");
+    return true;
+}
+
+/* Bin search internal node when case EXPR_OR_SET. */
+static bool BinSearchMetaColumnFallIntoExprOrSet(List *select_table_list, MetaColumn *meta_column, KeyValue *min_value, KeyValue *max_value, ExprNode *expr) {
+    ListCell *lc;
+    foreach (lc, expr->children) {
+        ExprNode *child = (ExprNode *)lfirst(lc);
+        switch (child->type) {
+            case EXPR_VAR: {
+                if (!MetaColumnMatchExprVar(select_table_list, meta_column, child)) return true;
+                if (BinSearchMetaColumnFallIntoExprVar(select_table_list, meta_column, min_value, max_value, child)) return true;
+                else break;
+            }
+            case EXPR_AND_SET: {
+                if (BinSearchMetaColumnFallIntoExprAndSet(select_table_list, meta_column, min_value, max_value, child)) return true;
+                else break;;
+            }
+            default: unreachable(false, "Expr type %d should not appear here.", child->type);
+        }
+    }
+    return false;
 }
 
 /* Bin search internal node when case EXPR_VAR. */
