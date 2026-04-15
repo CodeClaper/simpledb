@@ -24,7 +24,6 @@
 #include "banner.h"
 #include "mctx.h"
 #include "asctx.h"
-#include "stacktrace.h"
 #include "instance.h"
 #include "jsonwriter.h"
 
