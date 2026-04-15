@@ -74,9 +74,7 @@ bool MakeTempData(const char *format, ...) {
     uint32_t len;
     char sbuff[SPOOL_SIZE];
 
-    if (format == NULL)
-        return false;
-
+    if (format == NULL) return false;
     Assert(strlen(format) < SPOOL_SIZE);
 
     /* Initialize send buffer. */
@@ -92,8 +90,7 @@ bool MakeTempData(const char *format, ...) {
     if (!StrIsEmpty(client.tempData))
         DbSendTempData();
 
-    if (!SessionIsEmpty()) 
-    {
+    if (!SessionIsEmpty()) {
         len = (uint32_t) strlen(client.spool);
         Assert(len > 0);
         Assert(len < SPOOL_SIZE - LEFT_SPACE);
@@ -103,9 +100,7 @@ bool MakeTempData(const char *format, ...) {
 
         /* Check if client close connection, if recv get zero 
          * which means client has closed conneciton. */
-        if ((s = send(client.client, client.spool, (len + 4), 0)) > 0)
-            /* Clear up spool. */
-            CleanUpSession();
+        if ((s = send(client.client, client.spool, (len + 4), MSG_NOSIGNAL)) > 0) CleanUpSession();
     }
     
     client.tempData = dstrdup(sbuff);
@@ -115,8 +110,7 @@ bool MakeTempData(const char *format, ...) {
 
 /* Cancel the temp data. */
 bool CancelTempData() {
-    if (client.tempData == NULL)
-        return false;
+    if (client.tempData == NULL) return false;
     dfree(client.tempData);
     client.tempData = NULL;
     return true;
@@ -124,8 +118,7 @@ bool CancelTempData() {
 
 /* Send the temp data. */
 static bool DbSendTempData() {
-    if (client.tempData == NULL)
-        return true;
+    if (client.tempData == NULL) return true;
     char sbuff[SPOOL_SIZE];
     Size len;
 
@@ -134,7 +127,7 @@ static bool DbSendTempData() {
     memcpy(sbuff, &len, 4);
     memcpy(sbuff + 4, client.tempData, len);
 
-    return send(client.client, sbuff, len + 4, 0) > 0 && CancelTempData();
+    return send(client.client, sbuff, len + 4, MSG_NOSIGNAL) > 0 && CancelTempData();
 }
 
 /* Socket send message.
@@ -162,9 +155,7 @@ bool db_send(const char *format, ...) {
     char *left_msg = SaveSessionMessage(sbuff);
 
     /* Only when spool is full or OVER FLAG, socket will send the whole spool data. */
-    if (!SessionIsFull() && !StrEq(OVER_FLAG, sbuff))
-        return true;
-
+    if (!SessionIsFull() && !StrEq(OVER_FLAG, sbuff)) return true;
     Assert(!SessionIsEmpty());
 
     len = (uint32_t) strlen(client.spool);
@@ -178,7 +169,7 @@ bool db_send(const char *format, ...) {
      * which means client has closed conneciton. */
     if (
         DbSendTempData() && 
-        (s = send(client.client, client.spool, (len + 4), 0)) > 0
+        (s = send(client.client, client.spool, (len + 4), MSG_NOSIGNAL)) > 0
     ) {
         /* Clear up spool. */
         CleanUpSession();
@@ -203,9 +194,8 @@ char *DbRecv() {
     bzero(buf, SPOOL_SIZE);
     
     r = recv(client.client, buf, SPOOL_SIZE, 0);
-    if (r > 0) {
-        return buf;
-    } else {
+    if (r > 0) return buf;
+    else {
         dfree(buf);
         return NULL;
     }
