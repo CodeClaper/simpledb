@@ -1,6 +1,5 @@
 #include <stdint.h>
 #include "minunit.h"
-#include "mmgr.h"
 #include "db.h"
 #include "./test_flatten.c"
 #include "./test_log_macros.c"
