@@ -17,7 +17,6 @@ typedef struct ExprNode {
     struct ExprNode *leftChild;         /* For EXPR_AND, EXPR_OR. */
     struct ExprNode *rightChild;        /* For EXPR_AND, EXPR_OR. */
     List *children;                     /* For EXPR_AND_SET, EXPR_OR_SET.  */
-    int sflag;                          /* Simplify flag. */
 } ExprNode;
 
 

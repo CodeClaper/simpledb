@@ -79,6 +79,9 @@ typedef struct List {
 #define forboth(lc1, list1, lc2, list2) \
         for (uint32_t __i = 0; __i < list1->size && __i < list2->size ? (lc1 = &list1->elements[__i], lc2 = &list2->elements[__i], true) : (lc1 = NULL, lc2 = NULL,  false); __i++)
 
+#define stepback() \
+        (__i--)
+
 /* Last list cell. */
 static inline ListCell *first_cell(List *list) {
     Assert(list != NIL);
