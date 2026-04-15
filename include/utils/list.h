@@ -139,106 +139,32 @@ static inline bool list_null_or_empty(List *list) {
     return list == NIL || list->size == 0;
 }
 
-/* Create List and initialization. 
- * Return the created list.
- * */
 List *create_list(NodeTag type);
-
-/* Create List with init list. */
 List *create_list_init(NodeTag type, List *init_list);
-
-/* Append int item to list. */
 void append_list_int(List *list, int item);
-
-/* Append long item to list. */
 void append_list_long(List *list, int64_t item);
-
-/* Append item to list. */
 void append_list(List *list, void *item);
-
-/* Append item to list at index. */
 void append_list_at(List *list, void *item, uint32_t index);
-
-/* Check if the int item is the member of list. */
 bool list_member_int(List *list, int item);
-
-/* Check if the bool item is the member of list. */
 bool list_member_bool(List *list, bool item);
-
-/* Check if the float item is the member of list. */
 bool list_member_float(List *list, float item);
-
-/* Check if the double item is the member of list. */
 bool list_member_double(List *list, double item);
-
-/* Check if the pointer is the member of list. */
 bool list_member_ptr(List *list, void *ptr);
-
-/* Check if the item is the memeber of list. */
 bool list_member(List *list, void *item);
-
-/* Check if the int item is all the member of list. */
 bool list_all_int(List *list, int item);
-
-/* Delete int item in List. 
- * Skip if not found in list.
- * */
+void list_delete_cell(List *list, ListCell *lc);
 void list_delete_int(List *list, int item);
-
-/* Delete bool item in List. 
- * Skip if not found in list.
- * */
 void list_delete_bool(List *list, bool item);
-
-/* Delete float item in List. 
- * Skip if not found in list.
- * */
 void list_delete_float(List *list, float item);
-
-/* Delete double item in List. 
- * Skip if not found in list.
- * */
 void list_delete_double(List *list, double item);
-
-
-/* Delete item in List. 
- * Skip if not found in list.
- * */
 void list_delete(List *list, void *item);
-
-
-/* Delete item in list at index. */
 void list_delete_at(List *list, int index);
-
-
-/* Delete first target int item in List. 
- * Skip if not found in list.
- * */
 void list_delete_int_first(List *list, int item);
-
-
-/* Delete the last n item */
 void list_delete_tail(List *list, int num);
-
-
-/* Replace list at n. */
 void list_replace_at(List *list, int n, void *item);
-
-
-/* List copy. */
 List *list_copy(List *old_list);
-
-
-/* List copy deep. */
 List *list_copy_deep(List *old_list);
-
-
-/* Free all cells and objects those are 
- * point-to by cells in list DOES NOT be freed*/
 void free_list(List *list);
-
-/* Free all cells and any object that are 
- * point-to by cells in list will be freed*/
 void free_list_deep(List *list);
 
 #endif
