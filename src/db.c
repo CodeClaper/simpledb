@@ -81,7 +81,7 @@ static void init_env() {
 }
 
 /* DB Start. */
-static void init_db() {
+void init_db() {
 
     /* Load configuration. */
     conf = load_conf();
@@ -196,7 +196,8 @@ static void db_end() {
 }
 
 /* Parse argv. */
-static void parse_argv(int argc, char* argv[]) {
+void parse_argv(int argc, char* argv[]) {
+    program_name = argv[0];
     for (int i = 1; i < argc; i++) {
         if ((StrEq(argv[i], "-l") || StrEq(argv[i], "--level"))) {
             if (i + 1 >= argc) continue;
@@ -217,7 +218,6 @@ static void parse_argv(int argc, char* argv[]) {
 
 /* The main entry. */
 int main(int argc, char* argv[]) {
-    program_name = argv[0];
     init_db();
     parse_argv(argc, argv);
     start_bgwriter();
