@@ -1,6 +1,6 @@
 # test_trans.py
-from ..support.db_cli import DbClient
-from ..support.asserts import assert_all
+from support.db_cli import DbClient
+from support.asserts import assert_all
 client1 = DbClient("127.0.0.1", 4083)
 client2 = DbClient("127.0.0.1", 4083)
 client1.login("root", "Zc120130211")
