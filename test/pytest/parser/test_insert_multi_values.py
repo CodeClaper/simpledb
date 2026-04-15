@@ -1,5 +1,4 @@
 ## test_insert_multi_values.py
-
 from support.db_cli import DbClient
 
 client = DbClient("127.0.0.1", 4083)    

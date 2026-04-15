@@ -1,5 +1,4 @@
 # test_insert.py
-
 from support.db_cli import DbClient
 from support.asserts import assert_all
 

@@ -98,7 +98,7 @@ def test_query_long_text():
 
 ## test insert file text.
 def test_insert_file_text():
-    with open('test/pytest/unit/files/whatisdocker.txt', encoding= 'utf-8') as file:
+    with open('files/whatisdocker.txt', encoding= 'utf-8') as file:
         content = file.read()
         sql = f"insert into Email values ('12', '{content}', 'lily', '{time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(time.time()))}');"
         ret = client.execute(sql)
@@ -107,7 +107,7 @@ def test_insert_file_text():
 
 ## test query file text.
 def test_query_file_content():
-    with open('test/pytest/unit/files/whatisdocker.txt', encoding= 'utf-8') as file:
+    with open('files/whatisdocker.txt', encoding= 'utf-8') as file:
         content = file.read()
         sql = "select content from Email where id = '12';"
         ret = client.execute(sql)
