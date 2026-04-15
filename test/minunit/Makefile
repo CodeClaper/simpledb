@@ -1,10 +1,10 @@
 topdir = ../../
 includedir = $(topdir)include
 srcdir = $(topdir)src
-headerdirs = $(includedir)/optimizer $(includedir)/common $(includedir)/storage $(includedir)/backend \
+headerdirs = $(includedir)/db $(includedir)/optimizer $(includedir)/common $(includedir)/storage $(includedir)/backend \
 			 $(includedir)/memory $(includedir)/utils $(includedir)/trans $(includedir)/ltree $(includedir)/index \
 		     $(includedir)/rid $(includedir)/sid $(includedir)/sys $(includedir)/parser $(includedir)/lock $(includedir)/heap
-SUBDIRS := $(srcdir)/backend  $(srcdir)/common $(srcdir)/lock $(srcdir)/heap \
+SUBDIRS := $(srcdir)/db $(srcdir)/backend  $(srcdir)/common $(srcdir)/lock $(srcdir)/heap \
 		   $(srcdir)/memory $(srcdir)/parser $(srcdir)/storage $(srcdir)/sys\
 		   $(srcdir)/trans $(srcdir)/utils $(srcdir)/ltree $(srcdir)/sid $(srcdir)/rid $(srcdir)/index $(srcdir)/optimizer
 headers := $(shell find $(headerdirs) -name "*.h")
