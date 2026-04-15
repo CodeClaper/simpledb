@@ -1,5 +1,6 @@
 # test_string.py
 import time
+from pathlib import Path
 from support.db_cli import DbClient
 
 client = DbClient("127.0.0.1", 4083)    
@@ -98,7 +99,8 @@ def test_query_long_text():
 
 ## test insert file text.
 def test_insert_file_text():
-    with open('files/whatisdocker.txt', encoding= 'utf-8') as file:
+    current_file = Path(__file__).resolve()
+    with open(current_file.parent / 'files/whatisdocker.txt', encoding= 'utf-8') as file:
         content = file.read()
         sql = f"insert into Email values ('12', '{content}', 'lily', '{time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(time.time()))}');"
         ret = client.execute(sql)
@@ -107,7 +109,8 @@ def test_insert_file_text():
 
 ## test query file text.
 def test_query_file_content():
-    with open('files/whatisdocker.txt', encoding= 'utf-8') as file:
+    current_file = Path(__file__).resolve()
+    with open(current_file.parent / 'files/whatisdocker.txt', encoding= 'utf-8') as file:
         content = file.read()
         sql = "select content from Email where id = '12';"
         ret = client.execute(sql)
