@@ -57,7 +57,7 @@ static ExprNode *MakeOrSetExprNode() {
     return expr;
 }
 
-static ExprNode *MakeTruthValueExprNode(bool truthVal) {
+ExprNode *MakeTruthValueExprNode(bool truthVal) {
     ExprNode *expr = instance(ExprNode);
     expr->type = EXPR_TRUTH_VALUE;
     expr->truthVal = truthVal;

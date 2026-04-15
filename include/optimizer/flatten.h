@@ -5,6 +5,7 @@
 #include "data.h"
 #include "optimizer.h"
 
+ExprNode *MakeTruthValueExprNode(bool truthVal);
 ExprNode *ExprParse(SearchConditionNode *search_condition);
 ExprNode *BNFTransform(ExprNode *node);
 ExprNode *Negate(ExprNode *node);
