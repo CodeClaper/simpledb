@@ -25,3 +25,7 @@ test: $(objects)
 
 clean:
 	rm -f *.o test
+
+check: test
+	@./test
+

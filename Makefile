@@ -1,4 +1,7 @@
-SUBDIRS := src test/gtest
+SUBDIRS := src test/gtest test/minunit
+
+single:
+	$(MAKE) -C src
 
 all: 
 	$(foreach dir, $(SUBDIRS), $(MAKE) -C $(dir);)
@@ -17,7 +20,7 @@ check-gtest:
 	@$(MAKE) -C test/gtest check
 
 check-minunit:
-	cd test/minunit && ./test
+	@$(MAKE) -C test/minunit check
 
 clean: 
 	@$(foreach dir, $(SUBDIRS), $(MAKE) -C $(dir) clean;)
