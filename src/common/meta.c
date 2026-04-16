@@ -423,8 +423,7 @@ uint32_t TableCalcPrimaryKeyLength(Table *table) {
         if (meta_column->is_primary)
             return meta_column->column_length;
     }
-    panic("Not found primary key.");
-    return -1;
+    UNREACHABLE(-1, "Not found primary key.");
 }
 
 

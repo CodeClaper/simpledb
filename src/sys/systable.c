@@ -1,10 +1,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <time.h>
 #include "systable.h"
 #include "mmgr.h"
 #include "data.h"
@@ -109,7 +107,7 @@ void InitSysTable() {
         !CreateHeapTableInner(SYS_ROOT_HEAP_OID) ||
         !CreateSidTableInner(SYS_ROOT_SID_OID) ||
         !CreateRidTableInner(SYS_ROOT_RID_OID)
-    ) panic("Create system table fail");
+    ) PANIC("Create system table fail");
 }
 
 
@@ -639,8 +637,7 @@ static void *ObjectConvertKeyValue(Object entity, int i) {
             *type = entity.reltype;
             return type;
         }
-        default:
-            panic("Logic error, overflow the Object fields scope.");
+        default: UNREACHABLE(NULL, "Logic error, overflow the Object fields scope.");
     }
     return NULL;
 }

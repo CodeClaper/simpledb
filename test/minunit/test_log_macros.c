@@ -52,11 +52,11 @@ static int run_in_child2(void (*func)(void)) {
 
 /* Test functions that will be called in child */
 static void test_panic_macro(void) {
-    panic("panic test message");
+    PANIC("panic test message");
 }
 
-static int test_unreachable_macro(void) {
-    unreachable(72, "unreachable test message");
+static int test_UNREACHABLE_macro(void) {
+    UNREACHABLE(72, "UNREACHABLE test message");
 }
 
 MU_TEST(test_panic_exits_with_failure) {
@@ -64,8 +64,8 @@ MU_TEST(test_panic_exits_with_failure) {
     mu_assert_int_eq(EXIT_FAILURE, exit_status);
 }
 
-MU_TEST(test_unreachable_exits_with_failure) {
-    int exit_status = run_in_child(test_unreachable_macro);
+MU_TEST(test_UNREACHABLE_exits_with_failure) {
+    int exit_status = run_in_child(test_UNREACHABLE_macro);
     mu_assert_int_eq(EXIT_FAILURE, exit_status);
 }
 

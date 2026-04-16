@@ -236,8 +236,7 @@ static KeyValue *QueryTupleValue(SelectPlan *select_plan, List *meta_columns, Sc
 static Rid *ReferValueFindRid(ReferValue *refer_value, MetaColumn *meta_column) {
     switch (refer_value->type) {
         case DIRECTLY:
-            panic("Logic error");
-            break;
+            UNREACHABLE(NULL , "Logic error");
         case INDIRECTLY: {
             Rid rid = FetchRefIdUnderCondition(meta_column->type_oid, refer_value->condition); 
             return copy_value(&rid, T_RID);
@@ -1306,7 +1305,7 @@ static AtomNode *GenerateAtomNode(MetaColumn *meta_column, void *value) {
         case T_RID:
         case T_OBJECT:
         case T_UNKNOWN:
-            panic("Cant convert type to AtomNode.");
+            PANIC("Cant convert type to AtomNode.");
         break;
     }   
     return atom_node;

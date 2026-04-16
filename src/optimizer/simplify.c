@@ -50,7 +50,7 @@ static ExprNode *SimplifyCaseVar(ExprNode *node) {
         case OP_IN:
         case OP_NOT_LIKE:
         case OP_NOT_IN: return node;
-        default: unreachable(node, "Not suport expr opr: %d", node->opr);
+        default: UNREACHABLE(node, "Not suport expr opr: %d", node->opr);
     }
 }
 
@@ -79,7 +79,7 @@ static ExprNode *SimplifyCaseExprAndSet(ExprNode *node) {
                             break;
                         }
                         return MakeTruthValueExprNode(false);
-                    default: unreachable(node, "Logic error.");
+                    default: UNREACHABLE(node, "Logic error.");
                 }
                 break;
             }
@@ -91,7 +91,7 @@ static ExprNode *SimplifyCaseExprAndSet(ExprNode *node) {
                 }
                 return MakeTruthValueExprNode(false);
             }
-            default: unreachable(node, "Logic error.");
+            default: UNREACHABLE(node, "Logic error.");
         }
     }
     return list_empty(node->children) ? MakeTruthValueExprNode(true) : node;
@@ -116,7 +116,7 @@ static ExprNode *SimplifyCaseExprOrSet(ExprNode *node) {
                         }
                         return MakeTruthValueExprNode(true);
                     }
-                    default: unreachable(node, "Logic error.");
+                    default: UNREACHABLE(node, "Logic error.");
                 }
                 break;
             }
@@ -133,7 +133,7 @@ static ExprNode *SimplifyCaseExprOrSet(ExprNode *node) {
                             break;
                         }
                         return MakeTruthValueExprNode(true);
-                    default: unreachable(node, "Logic error.");
+                    default: UNREACHABLE(node, "Logic error.");
                 }
                 break;
             }
@@ -145,7 +145,7 @@ static ExprNode *SimplifyCaseExprOrSet(ExprNode *node) {
                 }
                 return MakeTruthValueExprNode(true);
             }
-            default: unreachable(node, "Logic error.");
+            default: UNREACHABLE(node, "Logic error.");
         }
     }
     return list_empty(node->children) ? MakeTruthValueExprNode(false) : node;
@@ -159,6 +159,6 @@ ExprNode *Simplify(ExprNode *node) {
         case EXPR_TRUTH_VALUE: return SimplifyCaseTruthVal(node);
         case EXPR_AND_SET: return SimplifyCaseExprAndSet(node); 
         case EXPR_OR_SET: return SimplifyCaseExprOrSet(node); 
-        default: unreachable(node, "Logic error");
+        default: UNREACHABLE(node, "Logic error");
     }
 }

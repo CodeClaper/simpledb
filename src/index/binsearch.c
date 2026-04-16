@@ -179,7 +179,7 @@ static bool BinSearchMetaColumnFallIntoComparisonPredicateForEQ(List *select_tab
     } else if (left_scalar->type == SCALAR_VALUE && right_scalar->type == SCALAR_COLUMN) {
         value = QueryTupleValueItem(left_scalar->value);
         return KeyValueEval(O_LT, min_value, value) && KeyValueEval(O_GE, max_value, value);
-    } else unreachable(NULL, "Logic error.");
+    } else UNREACHABLE(NULL, "Logic error.");
 }
 
 /* Bin search internal node when case comparison predicate for NE. */
@@ -200,7 +200,7 @@ static bool BinSearchMetaColumnFallIntoComparisonPredicateForGT(List *select_tab
     } else if (left_scalar->type == SCALAR_VALUE && right_scalar->type == SCALAR_COLUMN) {
         value = QueryTupleValueItem(left_scalar->value);
         return KeyValueEval(O_LT, min_value, value);
-    } else unreachable(NULL, "Logic error.");
+    } else UNREACHABLE(NULL, "Logic error.");
 }
 
 /* Bin search internal node when case comparison predicate for GE. */
@@ -216,7 +216,7 @@ static bool BinSearchMetaColumnFallIntoComparisonPredicateForGE(List *select_tab
     } else if (left_scalar->type == SCALAR_VALUE && right_scalar->type == SCALAR_COLUMN) {
         value = QueryTupleValueItem(left_scalar->value);
         return KeyValueEval(O_LE, min_value, value);
-    } else unreachable(NULL, "Logic error.");
+    } else UNREACHABLE(NULL, "Logic error.");
 }
 
 /* Bin search internal node when case comparison predicate for LT. */
@@ -232,7 +232,7 @@ static bool BinSearchMetaColumnFallIntoComparisonPredicateForLT(List *select_tab
     } else if (left_scalar->type == SCALAR_VALUE && right_scalar->type == SCALAR_COLUMN) {
         value = QueryTupleValueItem(left_scalar->value);
         return KeyValueEval(O_GT, max_value, value);
-    } else unreachable(NULL, "Logic error.");
+    } else UNREACHABLE(NULL, "Logic error.");
 }
 
 /* Bin search internal node when case comparison predicate for LE. */
@@ -248,7 +248,7 @@ static bool BinSearchMetaColumnFallIntoComparisonPredicateForLE(List *select_tab
     } else if (left_scalar->type == SCALAR_VALUE && right_scalar->type == SCALAR_COLUMN) {
         value = QueryTupleValueItem(left_scalar->value);
         return KeyValueEval(O_GE, max_value, value);
-    } else unreachable(NULL, "Logic error.");
+    } else UNREACHABLE(NULL, "Logic error.");
 }
 
 /* Bin search internal node when case like predicate.. */
@@ -279,7 +279,7 @@ static bool BinSearchMetaColumnFallIntoExprVar(List *select_table_list, MetaColu
         case OP_NOT_LIKE: return !BinSearchMetaColumnFallIntoLikePredicate(select_table_list, meta_column, min_value, max_value, expr);
         case OP_IN: return BinSearchMetaColumnFallIntoInPredicate(select_table_list, meta_column, min_value, max_value, expr);
         case OP_NOT_IN: return !BinSearchMetaColumnFallIntoInPredicate(select_table_list, meta_column, min_value, max_value, expr);
-        default: unreachable(false, "Not support expr node type: %d", expr->type);
+        default: UNREACHABLE(false, "Not support expr node type: %d", expr->type);
     }
 }
 
@@ -310,7 +310,7 @@ static bool BinSearchMetaColumnFallIntoExprOrSet(List *select_table_list, MetaCo
                 if (BinSearchMetaColumnFallIntoExprAndSet(select_table_list, meta_column, min_value, max_value, child)) return true;
                 else break;;
             }
-            default: unreachable(false, "Expr type %d should not appear here.", child->type);
+            default: UNREACHABLE(false, "Expr type %d should not appear here.", child->type);
         }
     }
     return false;
@@ -355,7 +355,7 @@ static bool BinSearchInternalNodeCaseExprAndSet(List *select_table_list, MetaInd
         if (KeyValueEval(O_EQ, max_value, min_value)) { offset += meta_column->column_length; continue; }
         return BinSearchMetaColumnFallIntoExprAndSet(select_table_list, meta_column, min_value, max_value, expr);
     }
-    unreachable(false, "Logic error, can't max_value equals to min_value for each column.");
+    UNREACHABLE(false, "Logic error, can't max_value equals to min_value for each column.");
 }
 
 /* Bin search internal node for expr node. */
@@ -367,7 +367,7 @@ static bool BinSearchInternalNodeForExpr(List *select_table_list, MetaIndex *met
         case EXPR_OR_SET: return BinSearchInternalNodeCaseExprOrSet(select_table_list, meta_index, min_key, max_key, expr);
         case EXPR_AND_SET: return BinSearchInternalNodeCaseExprAndSet(select_table_list, meta_index, min_key, max_key, expr);
         case EXPR_TRUTH_VALUE: return expr->truthVal;
-        default: unreachable(false, "Not support expr type: %d", expr->type);
+        default: UNREACHABLE(false, "Not support expr type: %d", expr->type);
     }
 }
 

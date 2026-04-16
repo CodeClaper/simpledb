@@ -1,5 +1,3 @@
-#ifndef DATA_H
-#define DATA_H
 #include <bits/types/struct_timeval.h>
 #include <pthread.h>
 #include <sched.h>
@@ -11,6 +9,9 @@
 #include "list.h"
 #include "queue.h"
 #include "sys.h"
+
+#ifndef __DATA_H__
+#define __DATA_H__
 
 
 #define PAGE_SIZE 16384
