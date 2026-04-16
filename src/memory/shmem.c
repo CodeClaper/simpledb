@@ -7,6 +7,7 @@
 * The shared memory is used to store table cache, table reg and transaction data.
 *********************************************************************************************
 */
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,6 +18,7 @@
 #include "spinlock.h"
 #include "utils.h"
 
+static void *shm_ptr;
 static ShmemHeader *shmrd;
 static s_lock* lock;
 
@@ -36,7 +38,7 @@ void init_shmem() {
 /* Create Shmem. */
 static void create_shmem() {
     ShmemHeader init_shmrd;
-    void *shm_ptr = mmap(NULL, SHMEM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+    shm_ptr = mmap(NULL, SHMEM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
     if (shm_ptr == MAP_FAILED) {
         perror("Try to create shared memory fail.");
         abort();
@@ -113,4 +115,14 @@ void *shmem_alloc(size_t size) {
 /* Check if addess is valid shared memory. */
 bool shmem_addr_valid(void *ptr) {
     return (ptr >= BaseStart) && (ptr < BaseEnd);
+}
+
+/* Destroy sheme. */
+void destroy_shmem() {
+    if (shm_ptr == NULL || shm_ptr == MAP_FAILED) return;
+    if (munmap(shm_ptr, SHMEM_SIZE) == -1) {
+        perror("Try to free shared memory fail.");
+        abort();
+    }
+    shm_ptr = NULL;
 }

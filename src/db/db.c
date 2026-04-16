@@ -80,7 +80,9 @@ static void init_env() {
     tzset();
 }
 
+/* What to do on exit.*/
 static void onExit() {
+    //destroy_shmem();
     free_conf(conf);
 }
 
@@ -131,8 +133,9 @@ void init_db() {
 
     /* Set signal handler. */
     set_signal_handler();
-
-    on_exit(onExit, NULL);
+    
+    /* To do on exit.*/
+    atexit(onExit);
 
     MakeSysState(SYS_INITED);
     db_log(SUCCESS, "Init db success.");
