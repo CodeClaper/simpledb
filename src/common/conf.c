@@ -40,8 +40,7 @@ char *read_conf(char *title, char *key) {
         }
         char *line = Trim(buff);
         /* Check if commenter line. */
-        if (StartWith(line, "//") || StartWith(line, "#"))
-            continue;
+        if (StartWith(line, "//") || StartWith(line, "#")) continue;
         /* Check if the title */
         if (StartWith(line, "[") && StartWith(line + 1, title)) {
             inBlock = true;    
@@ -50,11 +49,9 @@ char *read_conf(char *title, char *key) {
         /* If not in the title block, skip it. */
         if (!inBlock) continue;
         /* Check if has symbol '='. */
-        if (strchr(line, '=') == NULL)
-            continue;
+        if (strchr(line, '=') == NULL) continue;
         /* Check if this line contains key. */
-        if (!StartWith(line, key))
-            continue;
+        if (!StartWith(line, key)) continue;
         p = strstr(line, key);
         if (p == NULL) {
             perror("Read configuration error.");
@@ -97,6 +94,7 @@ static char* append_dir_end(char *dir) {
     else {
         char *append = malloc(size + 1);
         sprintf(append, "%s/", dir);
+        free(dir);
         return append;
     }
 }
@@ -131,6 +129,7 @@ void free_conf(Conf *conf) {
         if (conf->log_dir) free(conf->log_dir);
         if (conf->account) free(conf->account);
         if (conf->password) free(conf->password);
+        if (conf->time_zone) free(conf->time_zone);
         free(conf);
     }
 }
