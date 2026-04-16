@@ -1,11 +1,11 @@
 [data]
-dir=/home/zc/data/
+dir=~/data/
 [base]
 port=4083
 ## Share memory size (GB)
 share_memory_size=3
 [log]
-dir=/home/zc/logs/simpledb/
+dir=~/logs/simpledb/
 level=DEBUG
 [transaction]
 ## Supports four transaction isoland level, READ_UNCOMMITTED, READ_COMMITTED, REPEATABLE_READ, SERIALIZABLE.

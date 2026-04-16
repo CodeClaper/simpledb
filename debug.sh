@@ -16,7 +16,7 @@ else
 fi
 
 echo "Cleaning up data directory..."
-rm -rf /home/zc/data/*
+rm -rf ~/data/*
 
 echo "Starting GDB..."
 gdb src/simpledb
