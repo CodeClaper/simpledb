@@ -302,8 +302,8 @@ bool list_all_int(List *list, int item) {
 /* Delete nth cell in List. */
 void list_delete_nth_cell(List *list, int n) {
     Assert(n >= 0 && n < list->size);
-    memcpy(list->elements + n, list->elements + n + 1, 
-           sizeof(ListCell) * (list->size - n - 1));
+    memmove(list->elements + n, list->elements + n + 1, 
+            sizeof(ListCell) * (list->size - n - 1));
     list->size--;
 }
 
