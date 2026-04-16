@@ -166,6 +166,7 @@ void set_signal_handler() {
 	signal(SIGINT,  handler);
 	signal(SIGSEGV, handler);
 	signal(SIGTERM, handler);
+	signal(SIGKILL, handler);
 }
 
 
