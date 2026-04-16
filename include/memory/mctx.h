@@ -42,33 +42,13 @@ typedef struct MemContextRecorder {
 void MemoryContextInit(void);
 void RegisterContextRecorders(pthread_t workers[], int workerNum);
 void DestroyContextRecorders();
-
-/* Create MemoryContext.
- * Thist abstract function not really to create MemoryContext and it just
- * make up the relation of MemoryContext.
- * */
 void MemoryContextCreate(MemoryContext node, MemoryContext parent, const char *name, ContextType type, MemoryContextMethodID id);
-
-/* MemoryContextReset. 
- * Release all space allocate within a context and also its children contexts. */
 void MemoryContextReset(MemoryContext context);
-
-/* Delete the MemoryContext. */
 void MemoryContextDelete(MemoryContext node);
-
-/* Switch to MemoryContext. */
 void *MemoryContextSwitchTo(MemoryContext currentConext);
-
-/* Alloc from MemoryContext. */
 void *MemoryContextAlloc(size_t size);
-
-/* Free from MemoryContext. */
 void MemoryContextFree(void *ptr);
-
-/* Realloc from MemoryContext. */
 void *MemoryContextRealloc(void *pointer, size_t size);
-
-/* Strdup from MemoryContext. */
 char *MemoryContextStrdup(char *str);
 
 #endif

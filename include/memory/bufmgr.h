@@ -58,50 +58,19 @@ BufferDesc *GetBufferDesc(Buffer buffer);
 /* Read Buffer. */
 Buffer ReadBuffer(Oid oid, BlockNum blockNum);
 
-/* Release Buffer. */
 void ReleaseBuffer(Buffer buffer);
-
-/* Upgrade Lock Buffer. */
 void UpgradeLockBuffer(Buffer buffer);
-
-/* Downgrade Lock Buffer. */
 void DowngradeLockBuffer(Buffer buffer);
-
-/* LocK Buffer. 
- * Try to acquire the exclusive content lock in BufferDesc.
- * */
 void LockBuffer(Buffer buffer, RWLockMode mode);
-
-/* Unlock Buffer
- * Unlock the exclusive content lock in BufferDesc.
- * */
 void UnlockBuffer(Buffer buffer);
-
-/* Get Buffer page. */
 void *GetBufferPage(Buffer buffer);
-
-/* Get Buffer page copy. */
 void *GetBufferPageCopy(Buffer buffer);
-
-/* Pin the buffer. */
 void PinBuffer(BufferDesc *desc);
-
-/* Pin the buffer inner. */
 void PinBufferInner(BufferDesc *desc);
-
-/* Unpin the buffer. */
 void UnpinBuffer(BufferDesc *desc);
-
-/* Make Buffer dirty. */
 void MakeBufferDirty(Buffer buffer);
-
-/* Make Buffer normal. */
 void MakeBufferNormal(Buffer buffer);
-
-/* Get Lock Mode. */
 RWLockMode GetLockModeBuffer(Buffer buffer);
-
-/* Get locked BufferDesc. */
 List *GetLockedBufferDescList();
 
 #endif
