@@ -15,7 +15,6 @@ extern YY_BUFFER_STATE yy_scan_string(char *str);
 extern void yy_delete_buffer(YY_BUFFER_STATE buffer);
 extern int yyparse(List *states);
 
-
 /* Parse sql and generate statement list. */
 List *parse(char *sql) {
     if (sql == NULL) return NULL;

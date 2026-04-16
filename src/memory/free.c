@@ -1,7 +1,6 @@
 #include <stdint.h>
 #include "free.h"
 #include "data.h"
-#include "flatten.h"
 #include "mmgr.h"
 #include "refer.h"
 #include "asserts.h"
