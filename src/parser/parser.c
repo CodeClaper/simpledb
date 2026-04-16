@@ -28,9 +28,10 @@ List *parse(char *sql) {
     sprintf(buff, "%s%c", sql, '\n');
     buff[size] = '\0';
     /* Scan. */
-    yy_scan_string(buff);
-
+    YY_BUFFER_STATE buffer = yy_scan_string(buff);
     List *states = create_list(NODE_STATEMENT);
+    int ret = yyparse(states);
+    yy_delete_buffer(buffer);
 
-    return yyparse(states) == 0 ? states : NULL;
+    return ret ==  0 ? states : NULL;
 }
