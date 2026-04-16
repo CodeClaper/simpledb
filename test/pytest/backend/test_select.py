@@ -350,7 +350,7 @@ def test_query_with_limit_claus7():
     assert ret["message"] == "OFFSET must not be negative."
 
 
-## drop mock tables   
+## drop mock tables
 def test_drop_mock_tables():
     sql = "drop table Student;\n"\
           "drop table Class;"
@@ -358,3 +358,6 @@ def test_drop_mock_tables():
     assert ret[0]["success"] == True
     assert ret[1]["success"] == True
 
+
+def teardown_module(module):
+    client.close()

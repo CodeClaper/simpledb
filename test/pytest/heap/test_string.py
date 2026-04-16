@@ -122,3 +122,7 @@ def test_drop_mock_table():
     sql = "drop table Email;"
     ret = client.execute(sql)
     assert ret["success"] == True
+
+
+def teardown_module(module):
+    client.close()

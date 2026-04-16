@@ -29,3 +29,6 @@ def test_drop_not_exist_table():
     assert ret["success"] == False
     assert ret["message"] == "Table 'X' not exists."
 
+
+def teardown_module(module):
+    client.close()

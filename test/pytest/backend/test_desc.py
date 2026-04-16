@@ -42,3 +42,5 @@ def test_drop_table():
     assert ret[1]["success"] == True
 
 
+def teardown_module(module):
+    client.close()

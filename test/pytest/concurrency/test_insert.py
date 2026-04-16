@@ -2,7 +2,7 @@ from support.db_cli import DbClient
 import threading
 import random
 
-clients = []
+clients :list[DbClient] = []
 threads = []
 share_resource = {}
 
@@ -72,3 +72,9 @@ def test_drop_mock_table():
     sql = "drop table Student;"
     ret = client.execute(sql)
     assert ret["success"] == True
+
+
+def teardown_module(module):
+    client.close()
+    for cli in clients:
+        cli.close()

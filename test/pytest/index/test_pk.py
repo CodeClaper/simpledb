@@ -71,3 +71,7 @@ def test_drop_mock_tables():
     sql = "drop table Student;\n"
     ret = client.execute(sql)
     assert ret["success"] == True
+
+
+def teardown_module(module):
+    client.close()

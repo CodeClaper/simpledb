@@ -90,3 +90,6 @@ def test_drop_table():
     ret = client.execute(sql)
     assert_all(ret)
 
+
+def teardown_module(module):
+    client.close()

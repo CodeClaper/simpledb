@@ -61,3 +61,7 @@ def test_drop_table():
           "DROP TABLE Pointer;\n"
     ret = client.execute(sql)
     assert_all(ret)
+
+
+def teardown_module(module):
+    client.close()

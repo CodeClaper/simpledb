@@ -35,3 +35,6 @@ def test_wrong_multi_statements():
     assert ret["success"] == False
     assert ret["message"] == "syntax error, unexpected IDENTIFIER, expecting SELECT or VALUES at or near [value]."
 
+
+def teardown_module(module):
+    client.close()

@@ -126,3 +126,5 @@ def test_drop_table():
     assert_all(ret)
 
 
+def teardown_module(module):
+    client.close()

@@ -67,3 +67,7 @@ def test_drop_mock_tables():
           "drop table Scheduler;\n" 
     ret = client.execute(sql)
     assert_all(ret)
+
+
+def teardown_module(module):
+    client.close()

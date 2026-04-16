@@ -134,3 +134,7 @@ def test_delete_mock_table():
     ret = client.execute(sql)
     assert ret[0]["success"] == True
     assert ret[1]["success"] == True
+
+
+def teardown_module(module):
+    client.close()

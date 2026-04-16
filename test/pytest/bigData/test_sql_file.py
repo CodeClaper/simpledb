@@ -6,7 +6,7 @@ from support.db_cli import DbClient
 from pathlib import Path
 
 stop = False
-clients = []
+clients: list[DbClient] = []
 threads = []
 share_resource = {}
 
@@ -61,3 +61,8 @@ def test_drop_table():
     ret = client.execute(sql)
     assert ret["success"] == True
 
+
+def teardown_module(module):
+    client.close()
+    for cli in clients:
+        cli.close()

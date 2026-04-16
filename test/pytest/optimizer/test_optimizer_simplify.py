@@ -75,3 +75,7 @@ def test_drop_table():
     assert ret["success"] == True
     ret = client.execute("drop table Teacher;")
     assert ret["success"] == True
+
+
+def teardown_module(module):
+    client.close()
