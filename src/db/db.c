@@ -80,6 +80,10 @@ static void init_env() {
     tzset();
 }
 
+static void onExit() {
+    free_conf(conf);
+}
+
 /* DB Start. */
 void init_db() {
 
@@ -127,6 +131,8 @@ void init_db() {
 
     /* Set signal handler. */
     set_signal_handler();
+
+    on_exit(onExit, NULL);
 
     MakeSysState(SYS_INITED);
     db_log(SUCCESS, "Init db success.");
@@ -215,6 +221,7 @@ void parse_argv(int argc, char* argv[]) {
         }
     }
 }
+
 
 /* The main entry. */
 int run(int argc, char* argv[]) {

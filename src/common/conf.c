@@ -123,3 +123,14 @@ Conf *load_conf() {
     conf->time_zone = read_conf("env", "time_zone");
     return conf;
 }
+
+/* Free config. */
+void free_conf(Conf *conf) {
+    if (conf) {
+        if (conf->data_dir) free(conf->data_dir);
+        if (conf->log_dir) free(conf->log_dir);
+        if (conf->account) free(conf->account);
+        if (conf->password) free(conf->password);
+        free(conf);
+    }
+}
