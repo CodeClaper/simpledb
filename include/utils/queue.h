@@ -54,25 +54,12 @@ static inline QueueCell *QueueTail(Queue *queue) {
     return queue->tail;
 }
 
-/* Create a Queue. */
 Queue *CreateQueue(NodeTag tag);
-
-/* Append item to the Queue. */
 void AppendQueue(Queue *queue, void *item);
-
-/* Concat two Queues. */
 void ConcatQueue(Queue *queue1, Queue *queue2);
-
-/* Delete item from the Queue. */
 void DeleteQueue(Queue *queue, void *item);
-
-/* Delete from item if meets the condition. */
 void DeleteQueueUnderCondition(Queue *queue, QUEUE_CONDTION condition);
-
-/* If the int item is the member of queue.  */
 bool QueueMemberInt(Queue *queue, int item);
-
-/* Free the Queue. */
 void FreeQueue(Queue *queue);
 
 #endif

@@ -20,13 +20,8 @@ typedef struct XLogEntry {
     struct XLogEntry *next;     /* Next XLogEntry */
 } XLogEntry;
 
-/* Record Xlog. */
 void RecordXlog(Oid oid, Sid sid, XLogHeapType type);
-
-/* Commit Xlog. */
 void CommitXlog();
-
-/* Execute rollback. */
 void ExecuteRollback();
 
 #endif
