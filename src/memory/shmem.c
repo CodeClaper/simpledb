@@ -7,6 +7,7 @@
 * The shared memory is used to store table cache, table reg and transaction data.
 *********************************************************************************************
 */
+#include <cstddef>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -38,6 +39,7 @@ void init_shmem() {
 /* Create Shmem. */
 static void create_shmem() {
     ShmemHeader init_shmrd;
+
     shm_ptr = mmap(NULL, SHMEM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
     if (shm_ptr == MAP_FAILED) {
         perror("Try to create shared memory fail.");
@@ -66,36 +68,33 @@ static void create_shmem_lock() {
  * And it only work befor shmem lock ready. */
 static void *shmem_alloc_inner_unlock(size_t size) {
     void *ptr;
+    size_t current_offset;
 
     Assert(shmrd);
 
-    size_t current_offset = shmrd->offset + size;
-    if (current_offset <= shmrd->total_size) 
-    {
+    current_offset = shmrd->offset + size;
+    if (current_offset <= shmrd->total_size) {
         ptr = (void *) ((char *) shmrd + shmrd->offset);   
         shmrd->offset = current_offset;
-    }
-    else 
-        ptr = NULL;
+    } else ptr = NULL;
 
     return ptr;
 }
 
 /* Allocate memory in Shmem for inner. */
 static void *shmem_alloc_inner(size_t size) {
-    Assert(shmrd);
     void *ptr;
+    size_t current_offset;
+
+    Assert(shmrd);
 
     acquire_spin_lock(lock);
 
-    size_t current_offset = shmrd->offset + size;
-    if (current_offset <= shmrd->total_size) 
-    {
+    current_offset = shmrd->offset + size;
+    if (current_offset <= shmrd->total_size) {
         ptr = (void *) ((char *) shmrd + shmrd->offset);   
         shmrd->offset = current_offset;
-    }
-    else 
-        ptr = NULL;
+    } else ptr = NULL;
 
     release_spin_lock(lock);
 
