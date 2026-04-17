@@ -129,6 +129,7 @@ char *ReceiveRequestData(intptr_t client) {
     if (chars_num <= 0)
         return NULL;
 
+    rdata[len] = '\0';
     return rdata;
 }
 

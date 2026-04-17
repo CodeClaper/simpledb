@@ -1,10 +1,10 @@
 includedir = ../include
-SUBDIRS := db backend common optimizer json lock memory ltree index rid sid parser heap storage trans utils sys
+SUBDIRS := db backend common optimizer json lock memory ltree index rid sid parser heap storage trans utils sys socket
 CC = gcc
 OBJS := $(patsubst %.c, %.o, $(shell find $(SUBDIRS) -name "*.c"))
 
 headerdirs = $(includedir)/db $(includedir)/common $(includedir)/json $(includedir)/lock $(includedir)/memory $(includedir)/ltree $(includedir)/parser \
-			 $(includedir)/sys $(includedir)/backend $(includedir)/storage $(includedir)/trans $(includedir)/utils $(includedir)/optimizer
+			 $(includedir)/sys $(includedir)/backend $(includedir)/storage $(includedir)/trans $(includedir)/utils $(includedir)/optimizer $(includedir)/socket
 
 headers := $(shell find $(headerdirs) -name "*.h")
 

@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include "session.h"
+#include "socket.h"
 #include "data.h"
 #include "mmgr.h"
 #include "log.h"
@@ -70,7 +71,6 @@ static char *SaveSessionMessage(char *message) {
  * */
 bool MakeTempData(const char *format, ...) {
     va_list ap;
-    ssize_t s;
     uint32_t len;
     char sbuff[SPOOL_SIZE];
 
@@ -100,7 +100,7 @@ bool MakeTempData(const char *format, ...) {
 
         /* Check if client close connection, if recv get zero 
          * which means client has closed conneciton. */
-        if ((s = send(client.client, client.spool, (len + 4), MSG_NOSIGNAL)) > 0) CleanUpSession();
+        if ((SocketSend(client.client, client.spool, (len + 4), MSG_NOSIGNAL)) > 0) CleanUpSession();
     }
     
     client.tempData = dstrdup(sbuff);
@@ -134,7 +134,6 @@ static bool DbSendTempData() {
  * return true if send successfully, else return false. */
 bool db_send(const char *format, ...) {
     va_list ap;
-    ssize_t s;
     uint32_t len;
     char sbuff[SPOOL_SIZE];
 
@@ -169,7 +168,7 @@ bool db_send(const char *format, ...) {
      * which means client has closed conneciton. */
     if (
         DbSendTempData() && 
-        (s = send(client.client, client.spool, (len + 4), MSG_NOSIGNAL)) > 0
+        (SocketSend(client.client, client.spool, (len + 4), MSG_NOSIGNAL)) > 0
     ) {
         /* Clear up spool. */
         CleanUpSession();
