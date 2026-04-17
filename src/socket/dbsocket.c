@@ -7,7 +7,7 @@
 #include "cJSON.h"
 
 /* Over flag of message. */
-#define OVER_FLAG "\r\n\r\n"  
+#define MG_EOF "\r\n\r\n"  
 
 /* check if a file has suffix. */
 static bool endwith(char *str, char *suffix) {
@@ -55,7 +55,7 @@ char *RecvData(int client) {
         data = realloc(data, size + len + 1);
         memcpy(data + size, rdata, len);
         size += len;
-        if (endwith(rdata, OVER_FLAG)) {
+        if (endwith(rdata, MG_EOF)) {
             free(rdata);
             break;
         }
