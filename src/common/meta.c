@@ -37,50 +37,30 @@
 /* Column type length */
 uint32_t DataTypeDefaultLength(DataType column_type) {
     switch (column_type) {
-        case T_BOOL:
-            return DEFAULT_BOOL_LENGTH;
-        case T_CHAR:
-            return sizeof(char);
-        case T_VARCHAR:
-            return DEFAULT_STRING_LENGTH;
-        case T_INT:
-            return sizeof(int32_t);
-        case T_LONG:
-            return sizeof(int64_t);
-        case T_DOUBLE:
-            return sizeof(double);
-        case T_FLOAT:
-            return sizeof(float);
-        /* For String type, use StrRefer to store the refer info. */
-        case T_STRING:
-            return sizeof(StrRefer);
-        case T_DATE:
-            return DEFAULT_DATE_LENGTH;
-        case T_TIMESTAMP:
-            return DEFAULT_TIMESTAMP_LENGTH;
-        case T_RID:
-            return DEFAULT_REFERENCE_LENGTH;
-        default:
-            UNEXPECTED_VALUE("Unknown column type");
-            return -1;
+        case T_BOOL: return DEFAULT_BOOL_LENGTH;
+        case T_CHAR: return sizeof(char);
+        case T_VARCHAR: return DEFAULT_STRING_LENGTH;
+        case T_INT: return sizeof(int32_t);
+        case T_LONG: return sizeof(int64_t);
+        case T_DOUBLE: return sizeof(double);
+        case T_FLOAT: return sizeof(float);
+        case T_STRING: return sizeof(StrRefer);
+        case T_DATE: return DEFAULT_DATE_LENGTH;
+        case T_TIMESTAMP: return DEFAULT_TIMESTAMP_LENGTH;
+        case T_RID: return DEFAULT_REFERENCE_LENGTH;
+        default: UNREACHABLE(-1, "Unknown column type");
   }
 }
 
 /* Convert AtomType to DataType. */
 DataType AtomTypeConvertDataType(AtomType atom_type) {
     switch (atom_type) {
-        case A_INT:
-            return T_LONG;
-        case A_BOOL:
-            return T_BOOL;
-        case A_FLOAT: 
-            return T_DOUBLE;
-        case A_STRING:
-            return T_VARCHAR;
-        case A_REFERENCE:
-            return T_REFER;
-        default:
-            UNEXPECTED_VALUE(atom_type);
+        case A_INT: return T_LONG;
+        case A_BOOL: return T_BOOL;
+        case A_FLOAT: return T_DOUBLE;
+        case A_STRING: return T_VARCHAR;
+        case A_REFERENCE: return T_REFER;
+        default: UNREACHABLE(T_UNKNOWN, "Unknown atmo type");
     }
 }
 
@@ -228,20 +208,13 @@ void *ValueItemNodeAssignValue(ValueItemNode *value_item_node, MetaColumn *meta_
 /* Get value from atom. */
 static void *AtomNodeFindValue(AtomNode *atom_node) {
     switch (atom_node->type) {
-        case A_INT: 
-            return &atom_node->value.intval;
-        case A_BOOL:
-            return &atom_node->value.boolval;
-        case A_FLOAT:
-            return &atom_node->value.floatval;
-        case A_STRING:
-            return atom_node->value.strval;
-        case A_REFERENCE:
-            return atom_node->value.referval;
-        default:
-            UNEXPECTED_VALUE(atom_node->type);
+        case A_INT: return &atom_node->value.intval;
+        case A_BOOL: return &atom_node->value.boolval;
+        case A_FLOAT: return &atom_node->value.floatval;
+        case A_STRING: return atom_node->value.strval;
+        case A_REFERENCE: return atom_node->value.referval;
+        default: UNREACHABLE(NULL, "Unknown atom type");
     }
-    return NULL;
 }
 
 /* Get value from value item node. 
