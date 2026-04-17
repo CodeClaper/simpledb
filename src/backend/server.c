@@ -11,6 +11,7 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <errno.h>
 #include "server.h"
 #include "defs.h"
 #include "mmgr.h"
@@ -95,10 +96,19 @@ static int SocketRecv(intptr_t client, void *data, size_t size) {
 
     while (rsize < size) {
         chars_num = recv(client, data + rsize, size - rsize, 0);
-        if (chars_num > 0)
+        if (chars_num > 0) {
             rsize += chars_num;
-        else
+        } else if (chars_num == 0) {
+            /* EOF: client closed connection gracefully */
             return -1;
+        } else {
+            /* Interrupted by signal, retry */
+            if (errno == EINTR) continue;
+            /* Connection reset by peer or broken pipe */
+            if (errno == ECONNRESET || errno == EPIPE) return -1;
+            /* Other error */
+            return -1;
+        }
     }
 
     return rsize;

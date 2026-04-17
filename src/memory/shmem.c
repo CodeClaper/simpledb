@@ -7,7 +7,6 @@
 * The shared memory is used to store table cache, table reg and transaction data.
 *********************************************************************************************
 */
-#include <cstddef>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
