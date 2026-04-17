@@ -16,7 +16,7 @@ for _ in range(0, 30):
 
 
 # thread to insert.
-def thread_insert(cli):
+def thread_insert(cli: DbClient):
     try:
         names = ["zhangsan", "lisi", "Sun", "July", "Kaili", "James", "Max"]
         for i in range(0, 10000):
@@ -63,7 +63,6 @@ def test_select():
             duplicates.add(item)
         else:
             seen.add(item)
-    print(duplicates)
     assert len(duplicates) == 0
     assert ret["rows"] == 10000
 
