@@ -30,61 +30,24 @@ extern MetaColumn SYS_RESERVED_COLUMNS[];
 #define IS_SYS_ROOT_RID(oid) (oid == SYS_ROOT_RID_OID)
 #define IS_SYS_ROOT_HEAP(oid) (oid == SYS_ROOT_HEAP_OID)
 
-/* Init the sys table. */
 void InitSysTable();
-
-/* Find next Oid. */
 Oid FindNextOid();
-
-/* RefIdFindObject. */
-Object OidFindObject(Oid oid);
-
-/* Find oid by table name. */
 Oid TableNameFindOid(char *tableName);
-
-/* Find oid of index table by index name. */
 Oid IndexNameFindOid(char *indexName);
-
-/* Find oid of string table by table name. */
 Oid StrTableNameFindOid(char *tableName);
-
-/* Find oid of heap table by table name. */
 Oid TableNameFindHeapOid(char *tableName);
-
-/* Find relname by oid. */
-char *OidFindRelName(Oid oid);
-
-/* Find string table riod by toid. */
 Oid ToidFindStoid(Oid toid);
-
-/* Find rid table riod by toid. */
 Oid ToidFindRoid(Oid toid);
-
-/* Find sid table siod by toid. */
 Oid ToidFindSoid(Oid toid);
-
-/* Find heap table hiod by toid. */
 Oid ToidFindHoid(Oid toid);
-
-/* Find oid of heap table by table name. */
 Oid TableNameFindHeapOid(char *tableName);
-
-/* Find indexs by toid. */
 List *ToidFindIndexs(Oid toid);
-
-/* Find all object list. */
 List *FindAllObject();
-
-/* Geneate Object entity. */
+char *OidFindRelName(Oid oid);
+Object OidFindObject(Oid oid);
 Object GenerateObjectInner(Oid oid, Oid toid, char *relname, ObjectType reltype);
-
-/* Generate Object entity. */
 Object GenerateObject(Oid toid, char *relname, ObjectType reltype);
-
-/* Save Object. */
 bool SaveObject(Object entity);
-
-/* Remove the object. */
 bool RemoveObject(Oid oid);
 
 #endif

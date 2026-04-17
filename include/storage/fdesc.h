@@ -12,11 +12,6 @@ typedef struct FDescEntry {
 } FDescEntry;
 
 
-/* Initilise fdesc. */
 void init_fdesc();
-
-/* Unregister fdesc. */
 void unregister_fdesc(Oid oid);
-
-/* Get file descriptor. */
 FDesc get_file_desc(Oid oid);
