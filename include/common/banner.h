@@ -8,4 +8,5 @@
                "                              \\ \\_\\ \n"\
                "                               \\/_/  \n"\
                " Your simpledb server version is 0.0.1. \n"\
-               " Copyright (c) 2025, Inspur.com \n"
+               " Listening port %d, log level: %s. \n"\
+               " Copyright (c) 2025, Inspur.com. \n"

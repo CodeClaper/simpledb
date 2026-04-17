@@ -186,8 +186,7 @@ static void db_run() {
     server_socket = Startup(conf->port);
 
     /* Print out banner. */
-    puts(BANNER);
-
+    db_log_raw(BANNER, conf->port, get_log_level());
     db_log(INFO, "Simpledb server start up successfully and listen port %d.", conf->port);
 
     /* Means the system start up successfully, 

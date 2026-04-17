@@ -31,6 +31,11 @@ static void save_stack_message(const char *msg) {
     memcpy(CurrentMessage, msg, min_size(BUFF_SIZE, strlen(msg)));
 }
 
+/* Get log level.*/
+inline char *get_log_level() {
+    return LOG_LEVEL_NAME_LIST[conf->log_level];
+}
+
 /* Get stack message. */
 inline char *get_stack_message() {
     return CurrentMessage;
@@ -148,3 +153,31 @@ void db_log(LogLevel level, char *format, ...) {
     }
 }
 
+/* Db log in raw. */
+void db_log_raw(char *format, ...) {
+    Size len;
+    va_list ap;
+
+    /* Calculate the len. */
+    va_start(ap, format);
+    len = vsnprintf(NULL, 0, format, ap);
+    if (len <= 0) {
+        va_end(ap);
+        return;
+    }
+
+    len = len + 1;
+    char message[len];
+    memset(message, 0, len);
+
+    va_start(ap, format);
+    vsnprintf(message, len, format, ap);
+    va_end(ap);
+
+    char *sys_time = get_datetime(MICROSECOND);
+    char buff[len + 100];
+    sprintf(buff, "%s\n", message);
+    fprintf(stdout, "%s", buff);
+    flush_log(buff);
+    dfree(sys_time);
+}

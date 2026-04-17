@@ -10,8 +10,10 @@
         return(ret_val);            \
     } while (0)
 
+char *get_log_level();
 char *get_stack_message();
 int get_current_log_fdesc();
 void db_log(LogLevel level, char *format, ...);
+void db_log_raw(char *format, ...);
 
 #endif
