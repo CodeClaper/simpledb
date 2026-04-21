@@ -1,5 +1,5 @@
 #include <stdbool.h>
-#include <string.h>
+#include <stdint.h>
 #include "queue.h"
 #include "mmgr.h"
 
@@ -71,6 +71,17 @@ static void AppendQueueDouble(Queue *queue, double item) {
     AppendQueueCell(queue, cell);
 }
 
+/* Append double item to the Queue. */
+static void AppendQueueLong(Queue *queue, int64_t item) {
+    QueueCell *cell = instance(QueueCell);
+    ListCell *lc = instance(ListCell);
+    lc->long_value = item;
+    cell->data = lc;
+    cell->next = NULL;
+    cell->pres = NULL;
+    AppendQueueCell(queue, cell);
+}
+
 /* Append poiter item ti the Queue. */
 static void AppendQueuePtr(Queue *queue, void *item) {
     QueueCell *cell = instance(QueueCell);
@@ -98,11 +109,15 @@ void AppendQueue(Queue *queue, void *item) {
         case NODE_DOUBLE:
             AppendQueueDouble(queue, *(double *) item);
             break;
+        case NODE_LONG:
+            AppendQueueLong(queue, *(int64_t *)item);
         default:
             AppendQueuePtr(queue, item);
             break;
     }
 }
+
+
 
 /* Concat two Queues. */
 void ConcatQueue(Queue *q1, Queue *q2) {
@@ -174,6 +189,17 @@ static void DeleteQueueDouble(Queue *queue, double item) {
 }
 
 
+/* Delete long item from the Queue. */
+static void DeleteQueueLong(Queue *queue, int64_t item) {
+    QueueCell *qc;
+    qforeach (qc, queue) {
+        if (qfirst_long(qc) == item) {
+            DeleteQueueCell(queue, qc);
+        }
+    }
+}
+
+
 /* Delete poiter item from the Queue. */
 static void DeleteQueuePtr(Queue *queue, void *item) {
     QueueCell *qc;
@@ -200,6 +226,8 @@ void DeleteQueue(Queue *queue, void *item) {
         case NODE_DOUBLE:
             DeleteQueueDouble(queue, *(double *) item);
             break;
+        case NODE_LONG:
+            DeleteQueueLong(queue,  *(int64_t *) item);
         default:
             DeleteQueuePtr(queue, item);
             break;

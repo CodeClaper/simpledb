@@ -26,6 +26,7 @@ typedef struct QueueCell {
 #define qfirst_bool(qc) (((qc)->data)->bool_value)
 #define qfirst_float(qc) (((qc)->data)->float_value)
 #define qfirst_double(qc) (((qc)->data)->double_value)
+#define qfirst_long(qc) (((qc)->data)->long_value)
 
 /* qforeach: a macro for looping throngh a queue. */
 #define qforeach(qc, queue)\
