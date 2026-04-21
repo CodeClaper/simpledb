@@ -131,6 +131,8 @@ void db_log(LogLevel level, char *format, ...) {
             save_stack_message(message);
             /* Auto rollback*/
             AutoRollbackTransaction();
+            /* Unlock and release remaining acuqired buffer. */
+            UnlockAndReleaseBufferViaPid(getpid());
             /* Stop the process, goto stmt. */
             longjmp(errEnv, 1);
             break;

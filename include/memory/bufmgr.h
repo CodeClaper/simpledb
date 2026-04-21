@@ -72,5 +72,6 @@ void MakeBufferDirty(Buffer buffer);
 void MakeBufferNormal(Buffer buffer);
 RWLockMode GetLockModeBuffer(Buffer buffer);
 List *GetLockedBufferDescList();
+void UnlockAndReleaseBufferViaPid(Pid pid);
 
 #endif

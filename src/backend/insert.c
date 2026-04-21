@@ -9,13 +9,10 @@
  *********************************************************************************************/
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdio.h>
-#include <string.h>
 #include <strings.h>
 #include <unistd.h>
 #define _XOPEN_SOURCE
 #define __USE_XOPEN
-#include <time.h>
 #include "insert.h"
 #include "mmgr.h"
 #include "common.h"

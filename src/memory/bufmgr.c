@@ -364,3 +364,20 @@ List *GetLockedBufferDescList() {
     }
     return li;
 }
+
+/* Unlock and relase buffer via pid. 
+ * This method used for error. The current process might 
+ * forget to unlock and release acquired buffer.
+ * */
+void UnlockAndReleaseBufferViaPid(Pid pid) {
+    for (Index i = 0; i < BUFFER_SLOT_NUM; i++) {
+        BufferDesc *desc = (BufferDesc *)(bDescTable + i);
+        if (desc->lock.content_lock == SPIN_LOCKED_STATUS) {
+            RWLockEntry lock = desc->lock;
+            if (lock.mode == RW_WRITER && lock.writer == pid) {
+                ReleaseRWlock(&desc->lock);
+                UnpinBuffer(desc);
+            }
+        }
+    }
+}
