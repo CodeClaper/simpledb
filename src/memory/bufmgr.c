@@ -350,7 +350,7 @@ void UnlockBuffer(Buffer buffer) {
 RWLockMode GetLockModeBuffer(Buffer buffer) {
     BufferDesc *desc = GetBufferDesc(buffer);
     Assert(desc != NULL);
-    return desc->lock.content_lock;
+    return desc->lock.mode;
 }
 
 /* Get locked BufferDesc. */
