@@ -321,7 +321,12 @@ retry:
 
     created_xid = LeafNodeGetCellCreatedXid(leaf_node, key_len, value_len, default_value_len, refer->cell_num);
     expired_xid = LeafNodeGetCellExpiredXid(leaf_node, key_len, value_len, default_value_len, refer->cell_num);
-    Assert(created_xid != 0);
+    if (created_xid == 0) {
+        /* The created_xid maybe 0 when the page has splitten and reset zero. 
+         * In this way, no need to check if duplicate, just insert to check.*/
+        flag = false;
+        goto quit;
+    }
     
     if (expired_xid == 0) {
         /* Block here until the created transaction fade out. */
@@ -342,6 +347,7 @@ retry:
         flag = false;
     }
 
+quit:
     dfree(leaf_node);
     return flag;
 }
