@@ -173,6 +173,9 @@ acquire:
 
 /* Try to release rwlock.*/
 static inline void ReleaseRWLockInner(RWLockEntry *lock_entry) {
+    lock_entry->mode = RW_INIT;
+    lock_entry->writer = 0;
+
     /* Tell the c compiler and the CPU to not move loads or stores
      * past this point, to ensure that all the stores in the critical
      * section are visible to other CPUs before the  lock is released,
@@ -180,13 +183,10 @@ static inline void ReleaseRWLockInner(RWLockEntry *lock_entry) {
      * the lock is released. */
 	__sync_synchronize();
 
-    /* Release the lock, equivalent to lock_entry->content_lock = 0. 
+    /* Release the lock, equivalent to lock_entry->content_lock = 0.
      * This code does`t use a C assignment, since the C standard implies
      * that an assignment might be implemented with multiple store instructions. */
     __sync_lock_release(&lock_entry->content_lock);
-
-    lock_entry->mode = RW_INIT;
-    lock_entry->writer = 0;
 
     /* Notice block processor. */
     NOTICE();
