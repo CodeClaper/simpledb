@@ -74,9 +74,6 @@ static void BtreeInsertForInternalNodeUpdateCellKey(Oid oid, uint32_t page_num, 
     Buffer buffer;
     void *internal_node, *high_key;
 
-    if (StrEq(old_key, "03a241ae-28d6-4569-8421-9b58e016dacd"))
-        db_log(DEBUGER, "BIGNOD");
-
     table = open_table_inner(oid);
     ptype = MetaTableFindPrimaryDataType(table->meta_table);
     buffer = ReadBuffer(oid, page_num);
