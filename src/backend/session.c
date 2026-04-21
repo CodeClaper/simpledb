@@ -168,7 +168,7 @@ bool db_send(const char *format, ...) {
      * which means client has closed conneciton. */
     if (
         DbSendTempData() && 
-        (SocketSend(client.client, client.spool, (len + 4), MSG_NOSIGNAL)) > 0
+        SocketSend(client.client, client.spool, (len + 4), MSG_NOSIGNAL) > 0
     ) {
         /* Clear up spool. */
         CleanUpSession();

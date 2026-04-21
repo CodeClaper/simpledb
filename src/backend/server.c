@@ -172,22 +172,13 @@ static void MemoryContextEnd() {
 
 /* Accept request.*/
 void AcceptRequest(intptr_t client) {
-    /* Start new session. */
     NewSession(client);
-
-
     MemoryContextStart();
-
-    /* Auth login message. */
     if (AuthRequest(client)) {
         db_log(INFO, "Client ID '%ld' connect successfully.", getpid());
         RequestHandler(client);
-    }
-
+    } else db_log(INFO, "Client ID '%ld' connect, but with wrong login account or password.", getpid());
     close(client);
-
     MemoryContextEnd();
-
-    /* Quite */
     exit(0);
 }
