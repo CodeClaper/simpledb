@@ -117,8 +117,6 @@ void AppendQueue(Queue *queue, void *item) {
     }
 }
 
-
-
 /* Concat two Queues. */
 void ConcatQueue(Queue *q1, Queue *q2) {
     if (q1->tail)
@@ -131,18 +129,11 @@ void ConcatQueue(Queue *q1, Queue *q2) {
 
 /* Delete QueueCell from the Queue. */
 static void DeleteQueueCell(Queue *queue, QueueCell *qc) {
-    if (queue->head == qc) 
-        queue->head = qc->next;
-
-    if (queue->head == NULL)
-        queue->tail = NULL;
-
-    if (qc->pres != NULL) 
-        qc->pres->next = qc->next;
-    
-    if (qc->next != NULL) 
-        qc->next->pres = qc->pres;
-
+    if (queue->head == qc) queue->head = qc->next;
+    if (queue->tail == qc) queue->tail = qc->pres;
+    if (queue->head == NULL) queue->tail = NULL;
+    if (qc->pres != NULL) qc->pres->next = qc->next;
+    if (qc->next != NULL) qc->next->pres = qc->pres;
     queue->size--;
 }
 
@@ -242,6 +233,104 @@ void DeleteQueueUnderCondition(Queue *queue, QUEUE_CONDTION condition) {
             DeleteQueueCell(queue, qc);
         }
     }
+}
+
+/* Push int item to the Queue. */
+static void PushQueueInt(Queue *queue, int item) {
+    QueueCell *cell = instance(QueueCell);
+    ListCell *lc = instance(ListCell);
+    lc->int_value = item;
+    cell->data = lc;
+    cell->next = NULL;
+    cell->pres = NULL;
+    AppendQueueCell(queue, cell);
+}
+
+/* Push bool item to the Queue. */
+static void PushQueueBool(Queue *queue, bool item) {
+    QueueCell *cell = instance(QueueCell);
+    ListCell *lc = instance(ListCell);
+    lc->bool_value = item;
+    cell->data = lc;
+    cell->next = NULL;
+    cell->pres = NULL;
+    AppendQueueCell(queue, cell);
+}
+
+/* Push float item to the Queue. */
+static void PushQueueFloat(Queue *queue, float item) {
+    QueueCell *cell = instance(QueueCell);
+    ListCell *lc = instance(ListCell);
+    lc->float_value = item;
+    cell->data = lc;
+    cell->next = NULL;
+    cell->pres = NULL;
+    AppendQueueCell(queue, cell);
+}
+
+/* Push double item to the Queue. */
+static void PushQueueDouble(Queue *queue, double item) {
+    QueueCell *cell = instance(QueueCell);
+    ListCell *lc = instance(ListCell);
+    lc->double_value = item;
+    cell->data = lc;
+    cell->next = NULL;
+    cell->pres = NULL;
+    AppendQueueCell(queue, cell);
+}
+
+/* Push long item to the Queue. */
+static void PushQueueLong(Queue *queue, int64_t item) {
+    QueueCell *cell = instance(QueueCell);
+    ListCell *lc = instance(ListCell);
+    lc->long_value = item;
+    cell->data = lc;
+    cell->next = NULL;
+    cell->pres = NULL;
+    AppendQueueCell(queue, cell);
+}
+
+/* Push poiter item to the Queue. */
+static void PushQueuePtr(Queue *queue, void *item) {
+    QueueCell *cell = instance(QueueCell);
+    ListCell *lc = instance(ListCell);
+    lc->ptr_value = item;
+    cell->data = lc;
+    cell->next = NULL;
+    cell->pres = NULL;
+    AppendQueueCell(queue, cell);
+}
+
+/* Push item to the Queue in FILO maner. */
+void PushQueue(Queue *queue, void *item) {
+    Assert(queue != NULL);
+    switch (queue->tag) {
+        case NODE_INT:
+            PushQueueInt(queue, *(int *) item);
+            break;
+        case NODE_BOOL:
+            PushQueueBool(queue, *(bool *) item);
+            break;
+        case NODE_FLOAT:
+            PushQueueFloat(queue, *(float *) item);
+            break;
+        case NODE_DOUBLE:
+            PushQueueDouble(queue, *(double *) item);
+            break;
+        case NODE_LONG:
+            PushQueueLong(queue, *(int64_t *)item);
+        default:
+            AppendQueuePtr(queue, item);
+            break;
+    }
+}
+
+/* Pop the queue from in the FILO maner. */
+QueueCell *PopQueue(Queue *queue) {
+    QueueCell *tail = queue->tail;
+    if (tail->pres) queue->tail = tail->pres;
+    else queue->head = queue->tail = NULL;
+    return tail;
 }
 
 /* If the int item is the member of queue.  */

@@ -60,6 +60,8 @@ void AppendQueue(Queue *queue, void *item);
 void ConcatQueue(Queue *queue1, Queue *queue2);
 void DeleteQueue(Queue *queue, void *item);
 void DeleteQueueUnderCondition(Queue *queue, QUEUE_CONDTION condition);
+void PushQueue(Queue *queue, void *item);
+QueueCell *PopQueue(Queue *queue);
 bool QueueMemberInt(Queue *queue, int item);
 void FreeQueue(Queue *queue);
 
