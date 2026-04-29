@@ -13,22 +13,9 @@ typedef struct {
 #define OVER_FLAG "\r\n\r\n"  /* Over flag of message. */
 #define LEFT_SPACE 4
 
-/* Generate new session. */
 void NewSession(int cli);
-
-/* Cancel the temp data. */
 bool CancelTempData();
-
-/* Make the temp data. */
 bool MakeTempData(const char *format, ...);
-
-/* Socket send
- * return true if send successfully, else return false.  */
 bool db_send(const char *format, ...);
-
-/* Socket send 'Over' flag,
- * which means the message is over. */
 bool DbSendOver();
-
-/* Socket recv. */
 char *DbRecv();

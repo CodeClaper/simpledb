@@ -37,13 +37,8 @@ static inline bool ReferIsEmpty(Refer *refer) {
     return refer->page_num == -1 && refer->cell_num == -1;
 }
 
-/* Make a empty Refer. */
 Refer *MakeEmptyRefer();
-
-/* Fetch ref id under condition. */
 Rid FetchRefIdUnderCondition(Oid oid, SearchConditionNode *condition);
-
-/* Append new tuple and return ref id. */
 Rid AppendAndReturnRefId(Oid oid, List *value_list);
 
 

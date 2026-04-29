@@ -8,10 +8,6 @@
  */
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
 #include "desc.h"
 #include "data.h"
 #include "list.h"
