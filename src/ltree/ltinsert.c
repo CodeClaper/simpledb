@@ -506,7 +506,7 @@ static void BtreeInsertForInternalNodeExtend(Oid oid, void *key, void *value, vo
     }
 
     if (min_index > keys_num)
-        db_log(PANIC, "Tried to access child_num %d > num_keys %d.", 
+        logger(PANIC, "Tried to access child_num %d > num_keys %d.", 
                min_index, 
                keys_num);
     else if (min_index == keys_num) {
@@ -666,7 +666,7 @@ static void BtreeInsertForLeafNodeSplit(Oid oid, void *key, void *value, Buffer 
             case ERRO: {
                 UnlockBuffer(buffer);
                 ReleaseBuffer(buffer);
-                db_log(ERROR, "key '%s' in table '%s' already exists, not allow duplicate key.", 
+                logger(ERROR, "key '%s' in table '%s' already exists, not allow duplicate key.", 
                        KeyGetSysStrValue(key, ptype), GET_TABLE_NAME(table));
                 break;
             }
@@ -791,7 +791,7 @@ static void BtreeInsertForLeafNodeNoSplit(Oid oid, void *key, void *value, Buffe
             case ERRO: {
                 UnlockBuffer(buffer);
                 ReleaseBuffer(buffer);
-                db_log(ERROR, "key '%s' in table '%s' already exists, not allow duplicate key.", 
+                logger(ERROR, "key '%s' in table '%s' already exists, not allow duplicate key.", 
                        KeyGetSysStrValue(key, ptype), GET_TABLE_NAME(table));
                 break;
             }

@@ -98,7 +98,7 @@ static void BtreeModifyForInternalNodeExtend(Oid oid, void *key, void *value, vo
     }
 
     if (min_index > keys_num)
-        db_log(PANIC, "Tried to access child_num %d > num_keys %d.", 
+        logger(PANIC, "Tried to access child_num %d > num_keys %d.", 
                min_index, 
                keys_num);
     else if (min_index == keys_num) {
@@ -274,7 +274,7 @@ static void BtreeModifyExpiredXidForInternalNodeExtend(Oid oid, void *key, Xid e
     }
 
     if (min_index > keys_num)
-        db_log(PANIC, "Tried to access child_num %d > num_keys %d.", 
+        logger(PANIC, "Tried to access child_num %d > num_keys %d.", 
                min_index, 
                keys_num);
     else if (min_index == keys_num) {

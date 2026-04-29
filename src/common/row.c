@@ -67,7 +67,7 @@ void *RowSeriableTuple(Row *row, Table *table) {
         value = RowGetValueOrDefault(row, meta_column);
 
         if (meta_column->not_null && IsNull(value)) {
-            db_log(ERROR, "Column '%s' does`t have a default value.", 
+            logger(ERROR, "Column '%s' does`t have a default value.", 
                    meta_column->column_name);
             return NULL;
         }

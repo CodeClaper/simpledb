@@ -139,7 +139,7 @@ void ExecuteShowStatement(ShowNode *show_node, DBResult *result) {
             result->success = true;
             result->data = tables;
             result->message = dstrdup("Show tables executed successfully.");
-            db_log(SUCCESS, "Show tables statement is executed successfully."); 
+            logger(SUCCESS, "Show tables statement is executed successfully."); 
             break;
         }
         case SHOW_IDNEXS: {
@@ -147,7 +147,7 @@ void ExecuteShowStatement(ShowNode *show_node, DBResult *result) {
             result->success = true;
             result->data = indexs;
             result->message = dstrdup("Show indexs executed successfully.");
-            db_log(SUCCESS, "Show indexs statement is executed successfully."); 
+            logger(SUCCESS, "Show indexs statement is executed successfully."); 
             break;
         }
     }

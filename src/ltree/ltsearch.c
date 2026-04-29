@@ -41,7 +41,7 @@ static void BtreeSearchReferForInternalNodeExtend(Oid oid, void *key, void *inte
     }
 
     if (min_index > keys_num)
-        db_log(PANIC, "Tried to access child_num %d > num_keys %d.", 
+        logger(PANIC, "Tried to access child_num %d > num_keys %d.", 
                min_index, keys_num);
     else if (min_index == keys_num) {
         /* The target cell is right child. */
@@ -184,7 +184,7 @@ static void *BtreeSearchValueForInternalNodeExtend(Oid oid, void *key, void *int
     }
 
     if (min_index > keys_num) {
-        db_log(PANIC, "Tried to access child_num %d > num_keys %d.", 
+        logger(PANIC, "Tried to access child_num %d > num_keys %d.", 
                min_index, 
                keys_num);
         return NULL;

@@ -168,7 +168,7 @@ void ExecuteUpdateStatement(UpdateNode *update_node, DBResult *result) {
     table = open_table(update_node->table_name);
     /* Check table exists. */
     if (table == NULL)
-        db_log(ERROR, "Try to open table '%s' fail.", 
+        logger(ERROR, "Try to open table '%s' fail.", 
                update_node->table_name);
 
     /* Check out update node. */
@@ -189,7 +189,7 @@ void ExecuteUpdateStatement(UpdateNode *update_node, DBResult *result) {
     result->success = true;
     result->message = FormatStr("Successfully updated %d row data.", result->rows);
 
-    db_log(SUCCESS, "Successfully updated %d row data.", result->rows);
+    logger(SUCCESS, "Successfully updated %d row data.", result->rows);
     
     select_result->row_size = 0;
     free_select_result(select_result);

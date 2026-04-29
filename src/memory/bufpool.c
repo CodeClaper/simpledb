@@ -43,7 +43,7 @@ void BufferReadBlock(BufferTag *tag, Buffer buffer) {
     lseek(fdesc, tag->blockNum * PAGE_SIZE, SEEK_SET);
     ssize_t read_bytes = read(fdesc, block, PAGE_SIZE);
     if (read_bytes == -1) {
-        db_log(PANIC, "Table file read error: %s", strerror(errno));
+        logger(PANIC, "Table file read error: %s", strerror(errno));
         exit(1);
     }
 }
@@ -73,7 +73,7 @@ bool BufferWriteBlock(Buffer buffer) {
 
     off_t offset = lseek(fdesc, PAGE_SIZE * tag.blockNum, SEEK_SET);
     if (offset == (off_t) -1) {
-        db_log(PANIC, "Error seek set: %s, which happen in %ld and page num %d.", 
+        logger(PANIC, "Error seek set: %s, which happen in %ld and page num %d.", 
                strerror(errno), tag.oid, tag.blockNum);
         exit(1);
     }
@@ -81,7 +81,7 @@ bool BufferWriteBlock(Buffer buffer) {
     /* Write. */
     ssize_t write_size = write(fdesc, block, PAGE_SIZE);
     if (write_size == -1) {
-        db_log(PANIC, "Try to write page error: %s.", strerror(errno));
+        logger(PANIC, "Try to write page error: %s.", strerror(errno));
         exit(1);
     }
 

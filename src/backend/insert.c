@@ -169,7 +169,7 @@ static List *GenerateInsertRowForAll(InsertNode *insert_node) {
     /* Table and MetaTable. */
     table = open_table(insert_node->table_name);
     if (table == NULL) {
-        db_log(ERROR, "Try to open table '%s' fail.", insert_node->table_name);
+        logger(ERROR, "Try to open table '%s' fail.", insert_node->table_name);
         return NULL;
     }
 
@@ -203,7 +203,7 @@ static Row *GenerateInsertRowForPartInner(Oid tid, MetaTable *meta_table, List *
         MetaColumn *meta_column = NameFindMetaColumn(meta_table, column->column_name);
 
         if (!meta_table)
-            db_log(ERROR, "Not found column '%s' in table '%s'.",
+            logger(ERROR, "Not found column '%s' in table '%s'.",
                    column->column_name,
                    meta_table->table_name);
 
@@ -240,7 +240,7 @@ static List *GenerateInsertRowForPart(InsertNode *insert_node) {
     /* Table and MetaTable. */
     Table *table = open_table(insert_node->table_name);
     if (table == NULL) {
-        db_log(ERROR, "Try to open table '%s' fail.", insert_node->table_name);
+        logger(ERROR, "Try to open table '%s' fail.", insert_node->table_name);
         return NULL;
     }
 
@@ -418,7 +418,7 @@ Rid InsertForRow(Table *table, Row *row) {
         IndexDuplicateKeyCheck(key, preRefer) && 
         WaitForDuplicateKeyRelease(preRefer)
     ) {
-        db_log(ERROR, "key '%s' in table '%s' already exists, not allow duplicate key.", 
+        logger(ERROR, "key '%s' in table '%s' already exists, not allow duplicate key.", 
                KeyGetSysStrValue(key, ptype), GET_TABLE_NAME(table));
         return RID_ZERO;
     }
@@ -469,7 +469,7 @@ static List *InsertForQuerySpec(InsertNode *insert_node) {
     /* Check if table exists. */
     Table *table = open_table(insert_node->table_name);
     if (!table) {
-        db_log(ERROR, "Try to open table '%s' fail.", insert_node->table_name);
+        logger(ERROR, "Try to open table '%s' fail.", insert_node->table_name);
         return NULL;
     }
     
@@ -525,7 +525,7 @@ List *ExecuteInsertStatement(InsertNode *insert_node) {
             return InsertForQuerySpec(insert_node);
         }
         default: {
-            db_log(ERROR, "Unknown ValuesOrQuerySpecNode type.");
+            logger(ERROR, "Unknown ValuesOrQuerySpecNode type.");
             return NULL;
         }
     }

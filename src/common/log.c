@@ -50,7 +50,7 @@ int get_current_log_fdesc() {
     sprintf(file_path, "%s%s.%s", conf->log_dir, sys_date, "log");
     int desc= open(file_path, O_APPEND, S_IRUSR | S_IWUSR);
     if (desc == -1) 
-        db_log(
+        logger(
             PANIC,
             "Open log file %s fail: %s.", 
             file_path, 
@@ -81,7 +81,7 @@ static void flush_log(char* msg) {
 }
 
 /* Db log. */
-void db_log(LogLevel level, char *format, ...) {
+void logger(LogLevel level, char *format, ...) {
     Size len;
     va_list ap;
 
@@ -156,7 +156,7 @@ void db_log(LogLevel level, char *format, ...) {
 }
 
 /* Db log in raw. */
-void db_log_raw(char *format, ...) {
+void logger_raw(char *format, ...) {
     Size len;
     va_list ap;
 

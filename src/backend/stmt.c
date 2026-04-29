@@ -128,7 +128,7 @@ static void ExecuteInsertStmt(Statement *stmt, DBResult *result) {
         result->rows = len_list(list);
         result->message = FormatStr("Insert %d rows data to table '%s' successfully.",
                                  result->rows, stmt->insert_node->table_name);
-        db_log(SUCCESS, "Insert %d row data to table '%s' successfully.",
+        logger(SUCCESS, "Insert %d row data to table '%s' successfully.",
                result->rows, stmt->insert_node->table_name);
         free_list_deep(list);
     }
@@ -165,7 +165,7 @@ static void ExecuteDescribeStmt(Statement *statement, DBResult *result) {
         result->success = true;
         result->data = list;
         result->message = dstrdup("Describe executed successfully.");
-        db_log(SUCCESS, "Describe statement is executed successfully.");
+        logger(SUCCESS, "Describe statement is executed successfully.");
     }
 }
 
@@ -253,7 +253,7 @@ static void ExecuteStatement(Statement *statement, DBResult *result) {
     /* Calulate duration. */
     gettimeofday(&result->end_time, NULL);
     result->duration = time_span(result->end_time, result->start_time);
-    db_log(INFO, "Duration: %lfs", result->duration);
+    logger(INFO, "Duration: %lfs", result->duration);
 }
 
 
@@ -315,7 +315,7 @@ void Execute(char *sql) {
                 /* Calulate duration. */
                 gettimeofday(&last_result->end_time, NULL);
                 last_result->duration = time_span(last_result->end_time, last_result->start_time);
-                db_log(INFO, "Duration: %lfs", last_result->duration);
+                logger(INFO, "Duration: %lfs", last_result->duration);
             }
 
             json_db_result(last_result);
@@ -337,5 +337,5 @@ void Execute(char *sql) {
 
     /* Calulate whole duration. */
     gettimeofday(&end_time, NULL);
-    db_log(INFO, "Whole duration: %lfs", time_span(end_time, start_time));
+    logger(INFO, "Whole duration: %lfs", time_span(end_time, start_time));
 }

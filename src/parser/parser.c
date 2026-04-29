@@ -19,7 +19,7 @@ extern int yyparse(List *states);
 List *parse(char *sql) {
     if (sql == NULL) return NULL;
     Trim(sql); 
-    db_log(DEBUGER, "Execute sql: %s", sql);
+    logger(DEBUGER, "Execute sql: %s", sql);
 
     size_t size = strlen(sql) + 1;
     char buff[size + 1];

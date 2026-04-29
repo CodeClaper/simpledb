@@ -326,9 +326,9 @@ static Object OidFindObjectInner(Oid oid) {
 
     /* Logically, we will get one row data. */
     if (result->row_size == 0)
-        db_log(PANIC, "Not found oid %ld in system table.", oid);
+        logger(PANIC, "Not found oid %ld in system table.", oid);
     if (result->row_size > 1)
-        db_log(PANIC, "Logic error, found more than one object by oid %ld in system table.", oid);
+        logger(PANIC, "Logic error, found more than one object by oid %ld in system table.", oid);
     
     tuple = (void *) qfirst(QueueHead(result->tuples));
 
@@ -391,7 +391,7 @@ static Oid RelnameAndReltypeFindOid(char *relname, ObjectType reltype) {
     if (result->row_size == 0)
         return OID_ZERO;
     if (result->row_size > 1)
-        db_log(PANIC,
+        logger(PANIC,
                "Logic error, found more than one object by relname '%s' and reltype '%d' in system table.", 
                relname, reltype);
     
@@ -427,7 +427,7 @@ static Oid ToidAndRelTypeFindOid(Oid toid, ObjectType reltype) {
     if (result->row_size == 0)
         return OID_ZERO;
     if (result->row_size > 1)
-        db_log(PANIC,
+        logger(PANIC,
                "Logic error, found more than one object by toid '%ld' and reltype '%d' in system table.", 
                toid, reltype);
     

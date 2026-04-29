@@ -96,7 +96,7 @@ static void ColumnDefOptListForMetaColumn(MetaColumn *meta_column, List *column_
                 if (meta_column->column_type == T_RID) {
                     Rid rid = *(Rid *) meta_column->default_value;
                     if (ZERO_RID(rid))
-                        db_log(ERROR, "Try to use refer value as default value, but it does not exist.");
+                        logger(ERROR, "Try to use refer value as default value, but it does not exist.");
                 }
                 break;
             case OPT_DEFAULT_NULL: 
@@ -108,7 +108,7 @@ static void ColumnDefOptListForMetaColumn(MetaColumn *meta_column, List *column_
                 break;
             case OPT_CHECK_CONDITION:
             case OPT_REFERENECS:
-                db_log(ERROR, "Not support thus column def operation yet");
+                logger(ERROR, "Not support thus column def operation yet");
                 break;
         }
     }
@@ -138,7 +138,7 @@ MetaColumn *ColumnDefNodeGenerateMetaColumn(Oid tid, Oid stid, ColumnDefNode *co
         if (sub_table) 
             meta_column->type_oid = GET_TABLE_OID(sub_table);
         else 
-            db_log(ERROR, "Table '%s' not exists.", column_def->data_type->table_name);
+            logger(ERROR, "Table '%s' not exists.", column_def->data_type->table_name);
     }
 
     /* Special handling STRING, record the strheaptable name. */
@@ -206,7 +206,7 @@ static void OperateContraint(MetaTable *meta_table, TableContraintDefNode *table
             break;
         case TCONTRAINT_FOREIGN_KEY:
         case TCONTRAINT_CHECK:
-            db_log(ERROR, "Not support table contraint yet.");
+            logger(ERROR, "Not support table contraint yet.");
             break;
     }
 }
@@ -388,7 +388,7 @@ void ExecuteCreateTableStatement(CreateTableNode *create_table_node, DBResult *r
         result->success = true;
         result->rows = 0;
         result->message = FormatStr("Table '%s' created successfully.", create_table_node->table_name);
-        db_log(SUCCESS, "Table '%s' created successfully.", create_table_node->table_name);
+        logger(SUCCESS, "Table '%s' created successfully.", create_table_node->table_name);
     }
 
     free_meta_table(meta_table);
@@ -408,7 +408,7 @@ void ExecuteCreateIndexStatement(CreateIndexNode *create_index_node, DBResult *r
     oid = FindNextOid();
     table = open_table(create_index_node->table_name);
     if (table == NULL) {
-        db_log(ERROR, "Table '%s' not exist.", create_index_node->table_name);
+        logger(ERROR, "Table '%s' not exist.", create_index_node->table_name);
         return;
     }
     
@@ -427,7 +427,7 @@ void ExecuteCreateIndexStatement(CreateIndexNode *create_index_node, DBResult *r
         result->success = true;
         result->rows = 0;
         result->message = FormatStr("Index '%s' created successfully.", create_index_node->index_name);
-        db_log(SUCCESS, "Index '%s' created successfully.", create_index_node->index_name);
+        logger(SUCCESS, "Index '%s' created successfully.", create_index_node->index_name);
     }
 
     AfterReleaseTable(toid);

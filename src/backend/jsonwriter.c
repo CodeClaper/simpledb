@@ -103,7 +103,7 @@ static void json_key_value_inner(Oid oid, char *key, void *value, DataType type)
             break;
         }
         default:
-            db_log(PANIC, "Not support data type at <json_key_value>");
+            logger(PANIC, "Not support data type at <json_key_value>");
     }
 }
 
@@ -251,7 +251,7 @@ static void json_key_array_value_inner(Oid oid, char *key, ArrayValue *array_val
             break;
         }
         default:
-            db_log(PANIC, "Not support data type at <json_key_value>");
+            logger(PANIC, "Not support data type at <json_key_value>");
     }
 }
 

@@ -91,7 +91,7 @@ static MetaColumn *TableRefListFindMetaColumn(List *list, char *column_name) {
         TableRefNode *table_ref = lfirst(lc);
         Table *table = open_table(table_ref->table);
         if (table == NULL) {
-            db_log(ERROR, "Table '%s' not exist.", table_ref->table);
+            logger(ERROR, "Table '%s' not exist.", table_ref->table);
             return NULL;
         }
         MetaColumn *meta_column = NameFindMetaColumn(table->meta_table, column_name);
@@ -108,12 +108,12 @@ static bool CheckQuerySpecMatchColumn(MetaColumn *meta_column, QuerySpecNode *qu
     if (selection->all_column) {
         MetaColumn *target_meta_column = TableRefListFindMetaColumn(list, meta_column->column_name);
         if (!target_meta_column) {
-            db_log(ERROR, "Lack column '%s' in query spec. ", 
+            logger(ERROR, "Lack column '%s' in query spec. ", 
                    meta_column->column_name);
             return false;
         }
         if (meta_column->column_type != target_meta_column->column_type) {
-            db_log(ERROR, "Column '%s' data type is %s, but support data type %s in query spec.", 
+            logger(ERROR, "Column '%s' data type is %s, but support data type %s in query spec.", 
                    meta_column->column_name,
                    GET_DATA_TYPE_NAME(meta_column->column_type),
                    GET_DATA_TYPE_NAME(target_meta_column->column_type));
@@ -137,11 +137,11 @@ static bool CheckQuerySpecMatchColumn(MetaColumn *meta_column, QuerySpecNode *qu
             }
         }
         if (!target_meta_column) {
-            db_log(ERROR, "Lack column '%s' in query spec. ", meta_column->column_name);
+            logger(ERROR, "Lack column '%s' in query spec. ", meta_column->column_name);
             return false;
         }
         if (meta_column->column_type != target_meta_column->column_type) {
-            db_log(ERROR, "Column '%s' data type is %s, but support data type %s in query spec.", 
+            logger(ERROR, "Column '%s' data type is %s, but support data type %s in query spec.", 
                    meta_column->column_name,
                    GET_DATA_TYPE_NAME(meta_column->column_type),
                    GET_DATA_TYPE_NAME(target_meta_column->column_type));
@@ -181,17 +181,17 @@ static MetaTable *ColumnFindMetaTable(ColumnNode *column, AliasMap alias_map) {
 
     if (current_meta_table == NULL) {
         if (column->range_variable)
-            db_log(ERROR, "Unknown column name '%s.%s'. ", 
+            logger(ERROR, "Unknown column name '%s.%s'. ", 
                    column->range_variable, column->column_name);
         else
-            db_log(ERROR, "Unknown column name '%s'. ", 
+            logger(ERROR, "Unknown column name '%s'. ", 
                    column->column_name);
 
         return current_meta_table;
     }
 
     if (times > 1) {
-        db_log(ERROR, "Column name '%s' is ambiguous.", column->column_name);
+        logger(ERROR, "Column name '%s' is ambiguous.", column->column_name);
         return current_meta_table;
     }
 
@@ -239,7 +239,7 @@ static bool CheckValueMatchType(DataType column_type, AtomNode *atom_node, char 
         default:
             UNEXPECTED_VALUE(column_type);
     }
-    db_log(ERROR, "Incorrect %s value for column '%s' with type %s in table '%s'", 
+    logger(ERROR, "Incorrect %s value for column '%s' with type %s in table '%s'", 
            GET_DATA_TYPE_NAME(AtomTypeConvertDataType(atom_node->type)),
            column_name, 
            GET_DATA_TYPE_NAME(column_type), 
@@ -262,7 +262,7 @@ bool CheckValueIsValid(MetaColumn *meta_column, AtomNode *atom_node) {
             return true;
         case T_INT: {
             if (atom_node->value.intval > INT_MAX || atom_node->value.intval < INT_MIN)
-                db_log(ERROR, "Value is int overflow for column '%s'.", meta_column->column_name);
+                logger(ERROR, "Value is int overflow for column '%s'.", meta_column->column_name);
             return true;
         }
         case T_FLOAT: {
@@ -270,7 +270,7 @@ bool CheckValueIsValid(MetaColumn *meta_column, AtomNode *atom_node) {
                     (isinff(atom_node->value.floatval) || 
                         atom_node->value.floatval > FLT_MAX || 
                             atom_node->value.floatval < FLT_MIN))
-                db_log(ERROR, "Value is float overflow for column '%s'.", meta_column->column_name);
+                logger(ERROR, "Value is float overflow for column '%s'.", meta_column->column_name);
             return true;
         }
         case T_CHAR: {
@@ -279,7 +279,7 @@ bool CheckValueIsValid(MetaColumn *meta_column, AtomNode *atom_node) {
             /* For CHAR type, only allow one character. */
             size_t len = strlen((char *) value);
             if (len != 1)
-                db_log(ERROR, "Try to convert value '%s' to char value type fail.", 
+                logger(ERROR, "Try to convert value '%s' to char value type fail.", 
                        (char *) value);
             return len == 1;
         }
@@ -288,7 +288,7 @@ bool CheckValueIsValid(MetaColumn *meta_column, AtomNode *atom_node) {
                 return false;
             size_t size = strlen(value);
             if (size > meta_column->column_length)
-                db_log(ERROR, "Exceed the limit of data length: %d > %d, for column '%s'. ", 
+                logger(ERROR, "Exceed the limit of data length: %d > %d, for column '%s'. ", 
                        size, 
                        meta_column->column_length - 2, 
                        meta_column->column_name);
@@ -305,12 +305,12 @@ bool CheckValueIsValid(MetaColumn *meta_column, AtomNode *atom_node) {
             /* Visit `https://www.regular-expressions.info/gnu.html` and notice there`s not "\\b". */
             comp_result = regcomp(&reegex, "^([0-9]{4})-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])\\s(0[0-9]|1[0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])(\\.[0-9]{1,3})?$", REG_EXTENDED);
             if (comp_result != 0)
-                db_log(ERROR, "Regex compile fail.");
+                logger(ERROR, "Regex compile fail.");
             exe_result = regexec(&reegex, (char *)value, 0, NULL, 0);
             regfree(&reegex);
 
             if (exe_result == REG_NOMATCH) 
-                db_log(ERROR, "Try to convert value '%s' to timestamp value fail.", 
+                logger(ERROR, "Try to convert value '%s' to timestamp value fail.", 
                        (char *) value);
 
             return exe_result == REG_NOERROR;
@@ -327,12 +327,12 @@ bool CheckValueIsValid(MetaColumn *meta_column, AtomNode *atom_node) {
                                   "^([0-9]{4})-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$", 
                                   REG_EXTENDED);
             if (comp_result != 0)
-                db_log(ERROR, "Regex compile fail.");
+                logger(ERROR, "Regex compile fail.");
             exe_result = regexec(&reegex, (char *)value, 0, NULL, 0);
             regfree(&reegex);
 
             if (exe_result == REG_NOMATCH) 
-                db_log(ERROR, "Try to convert value '%s' to date value fail.", 
+                logger(ERROR, "Try to convert value '%s' to date value fail.", 
                        (char *) value);
 
             return exe_result == REG_NOERROR;
@@ -361,7 +361,7 @@ static bool CheckForValueItem(MetaTable *meta_table, char *column_name, ValueIte
                 }
                 case V_NULL: {
                     if (meta_column->not_null)
-                        db_log(ERROR, "Column '%s' can`t be null.", 
+                        logger(ERROR, "Column '%s' can`t be null.", 
                                column_name);
                     return true;
                 }
@@ -377,7 +377,7 @@ static bool CheckForValueItem(MetaTable *meta_table, char *column_name, ValueIte
         }
     }
 
-    db_log(ERROR, "Unknown column '%s'.", column_name);
+    logger(ERROR, "Unknown column '%s'.", column_name);
     return false;
 }
 
@@ -401,7 +401,7 @@ static bool CheckFunctionForValueType(FunctionType type, ColumnNode *column, Met
             case F_MAX:
             case F_MIN: {
                 if (meta_column->column_type == T_RID) {
-                    db_log(ERROR, "Function %s not support for reference type column.", 
+                    logger(ERROR, "Function %s not support for reference type column.", 
                            GET_FUNCTION_TYPE_NAME(type));
                     return false;
                 }
@@ -415,7 +415,7 @@ static bool CheckFunctionForValueType(FunctionType type, ColumnNode *column, Met
         MetaColumn *sub_meta_column = NameFindMetaColumn(table->meta_table, column->sub_column->column_name);
         return CheckFunctionForValueType(type, column->sub_column, sub_meta_column);
     } else if (column->has_sub_column) {
-        db_log(ERROR, "Function %s not support for reference type column.", 
+        logger(ERROR, "Function %s not support for reference type column.", 
                GET_FUNCTION_TYPE_NAME(type));
         return false;
     }
@@ -445,13 +445,13 @@ static bool CheckForColumn(ColumnNode *column_node, MetaTable *meta_table) {
                                 break;
                             }
                             case SCALAR_FUNCTION:
-                                db_log(ERROR, "Not allowed use funtion in nested column. ");
+                                logger(ERROR, "Not allowed use funtion in nested column. ");
                                 break;
                             case SCALAR_CALCULATE:
                             case SCALAR_VALUE:
                                 break;
                             default:
-                                db_log(PANIC, "Unknown Scalar Express type.");
+                                logger(PANIC, "Unknown Scalar Express type.");
                         }
                     }
                     return true;
@@ -462,11 +462,11 @@ static bool CheckForColumn(ColumnNode *column_node, MetaTable *meta_table) {
     
     /* Reach here, means column is unknown. */
     if (column_node->range_variable) 
-        db_log(ERROR, "Unknown column '%s.%s'.", 
+        logger(ERROR, "Unknown column '%s.%s'.", 
                column_node->range_variable, 
                column_node->column_name);
     else 
-        db_log(ERROR, "Unknown column '%s'.", 
+        logger(ERROR, "Unknown column '%s'.", 
                column_node->column_name);
 
     return false;
@@ -547,7 +547,7 @@ static bool CheckCalculateInSearchCondition(CalculateNode *calculate) {
 /* Check function in search condition. */
 static bool CheckFuntionInSearchCondition(FunctionNode *function) {
     if (IsAggFuncion(function->type)) {
-        db_log(ERROR, "Aggregate function not allowd in where.");
+        logger(ERROR, "Aggregate function not allowd in where.");
         return false;
     }
     return true;
@@ -563,7 +563,7 @@ static bool CheckAtomInSeachCondition(AtomNode *atom) {
             case INDIRECTLY:
                 return true;
             case DIRECTLY: {
-                db_log(ERROR, "Not allowed use directly refer value in search condition.");
+                logger(ERROR, "Not allowed use directly refer value in search condition.");
                 return false;
             }
             default:
@@ -641,7 +641,7 @@ static bool CheckForInPredicate(InNode *in_node, AliasMap alias_map) {
 /* Check like data type. */
 static bool CheckLikePredicateType(MetaColumn *meta_column) {
     if (meta_column->column_type != T_STRING && meta_column->column_type != T_VARCHAR) {
-        db_log(ERROR, "For like predicate, only support string data type.");
+        logger(ERROR, "For like predicate, only support string data type.");
         return false;
     }
     return true;
@@ -723,7 +723,7 @@ static bool CheckForSearchCondition(SearchConditionNode *condition_node, AliasMa
 static bool CheckForTableRef(TableRefNode *table_ref) {
     Table *table = open_table(table_ref->table);
     if (table == NULL) {
-        db_log(ERROR, "Table '%s' not exist.", table_ref->table);
+        logger(ERROR, "Table '%s' not exist.", table_ref->table);
         return false;
     }
     return true;
@@ -742,13 +742,13 @@ static bool CheckForTableRefList(List *list) {
             TableRefNode *table_ref2 = lfirst(list_nth_cell(list, j));
             /* Check duplicate table. */
             if (StrEq(table_ref->table, table_ref2->table)) {
-                db_log(ERROR, "Duplicate table '%s'. ", table_ref->table);
+                logger(ERROR, "Duplicate table '%s'. ", table_ref->table);
                 return false;
             }
             /* Check duplicate table alias name. */
             if (table_ref->range_variable && table_ref2->range_variable 
                 && StrEq(table_ref->range_variable, table_ref2->range_variable)) {
-                db_log(ERROR, "Duplicate table alias name: '%s'. ", table_ref->range_variable);
+                logger(ERROR, "Duplicate table alias name: '%s'. ", table_ref->range_variable);
                 return false;
             }
         }
@@ -774,11 +774,11 @@ static bool CheckForWhereClause(WhereClauseNode *where_clause, AliasMap alias_ma
 static bool CheckForLimitClause(LimitClauseNode *limit_clause) {
     if (NonNull(limit_clause)) {
         if (limit_clause->rows < 0) {
-            db_log(ERROR, "LIMIT must not be negative.");
+            logger(ERROR, "LIMIT must not be negative.");
             return false;
         }
         if (limit_clause->offset < 0) {
-            db_log(ERROR, "OFFSET must not be negative.");
+            logger(ERROR, "OFFSET must not be negative.");
             return false;
         }
     }
@@ -810,7 +810,7 @@ static bool CheckUpdateForUniqueColumn(Table *table, MetaColumn *meta_column, vo
      * (2) Just one row hits the condition, we need to check if the same row as one we will update.
      *.*/
     if (select_result->row_size > 1) {
-        db_log(ERROR, "Column '%s' is unique, not allowd duplicate.", 
+        logger(ERROR, "Column '%s' is unique, not allowd duplicate.", 
                meta_column->column_name);
         return false;
     } else if (select_result->row_size == 1) {
@@ -829,7 +829,7 @@ static bool CheckUpdateForUniqueColumn(Table *table, MetaColumn *meta_column, vo
             target_key = TupleFindKey(target_tuple, table);
 
             if (CompareKey(pri_meta_index, select_key, target_key) != 0) {
-                db_log(ERROR, "Key '%s' already exists, not allowd duplicate key. ",
+                logger(ERROR, "Key '%s' already exists, not allowd duplicate key. ",
                        KeyGetUserStrValue(value, meta_column->column_type));
                 return false;
             } 
@@ -853,7 +853,7 @@ static bool CheckUpdateForAssignmentList(UpdateNode *update_node) {
 
         MetaColumn *meta_column = NameFindMetaColumn(table->meta_table, column_node->column_name);
         if (IsNull(meta_column)) {
-            db_log(ERROR, "Not found column %s in table %s.", 
+            logger(ERROR, "Not found column %s in table %s.", 
                    column_node->column_name, 
                    GET_TABLE_NAME(table));
             return false;
@@ -878,7 +878,7 @@ static bool CheckUpdateForAssignmentList(UpdateNode *update_node) {
 /* Check if system reserved table. */
 static bool AvoidSysReservedTableName(char *table_name) {
     if (if_table_reserved(table_name)) {
-        db_log(ERROR, "Table '%s' is system reserved, not allowd duplication.", table_name); 
+        logger(ERROR, "Table '%s' is system reserved, not allowd duplication.", table_name); 
         return false;
     }
     return true;
@@ -887,7 +887,7 @@ static bool AvoidSysReservedTableName(char *table_name) {
 /* Check if table alreay exist. */
 static bool TableAlreadyExists(char *table_name) {
     if (check_table_exist(table_name)) {
-        db_log(ERROR, "Table '%s' already exists.", table_name); 
+        logger(ERROR, "Table '%s' already exists.", table_name); 
         return false;
     } 
     else 
@@ -959,7 +959,7 @@ static bool CheckForDefaultAtomValueType(AtomNode *atom_node, DataType data_type
             ReferValue *refer_value = atom_node->value.referval;
             switch (refer_value->type) {
                 case DIRECTLY: 
-                    db_log(ERROR, "Default value does not support directly subrow value. You can try indirect refer value, but make sure the referenct exists.");
+                    logger(ERROR, "Default value does not support directly subrow value. You can try indirect refer value, but make sure the referenct exists.");
                     return false;
                 case INDIRECTLY: 
                     return true;
@@ -982,7 +982,7 @@ static bool CheckForDefaultValueType(ValueItemNode *value_item_node, DataType da
         case V_NULL: 
             return true;
         case V_ARRAY: {
-            db_log(ERROR, "Not support array as default value.");
+            logger(ERROR, "Not support array as default value.");
             return false;
         }
         default: 
@@ -1012,7 +1012,7 @@ static bool CheckForColumnDef(ColumnDefNode *column_def) {
                     ValueItemNode *value_item_node = column_def_opt->value;
                     DataType data_type = ColumnDefFindType(column_def);
                     if (!CheckForDefaultValueType(value_item_node, data_type)) {
-                        db_log(ERROR, "Invalid default value for '%s', can`t convert to '%s'.", 
+                        logger(ERROR, "Invalid default value for '%s', can`t convert to '%s'.", 
                                ColumnDefFindName(column_def),
                                GET_DATA_TYPE_NAME(data_type));
                         return false;
@@ -1021,7 +1021,7 @@ static bool CheckForColumnDef(ColumnDefNode *column_def) {
                 } 
                 case OPT_COMMENT: {
                     if (strlen(column_def_opt->comment) > MAX_COMMENT_STRING_LENGTH) {
-                        db_log(ERROR, "Too long comment for '%s'.", 
+                        logger(ERROR, "Too long comment for '%s'.", 
                                ColumnDefFindName(column_def));
                         return false;
                     }
@@ -1033,7 +1033,7 @@ static bool CheckForColumnDef(ColumnDefNode *column_def) {
         }
 
         if (has_defined_not_null && has_defined_default_null) {
-            db_log(ERROR, "Invalid default value for '%s'", 
+            logger(ERROR, "Invalid default value for '%s'", 
                    ColumnDefFindName(column_def));
             return false;
         }
@@ -1055,7 +1055,7 @@ static bool CheckForBaseTableElementCommalist(List *base_table_element_commalist
                 ColumnDefNode *current_column_def = base_table_element->column_def;
                 if (ColumnDefAlearyExists(list, current_column_def)) {
                     free_list(list);
-                    db_log(ERROR, "Column '%s' already exists, not allowd duplicate defination.", 
+                    logger(ERROR, "Column '%s' already exists, not allowd duplicate defination.", 
                            ColumnDefFindName(current_column_def));
                     return false;
                 }
@@ -1063,7 +1063,7 @@ static bool CheckForBaseTableElementCommalist(List *base_table_element_commalist
                     if (primary_key_flag) 
                     {
                         free_list(list);
-                        db_log(ERROR, "Dulicate primary key.");
+                        logger(ERROR, "Dulicate primary key.");
                         return false;
                     } 
                     else
@@ -1080,7 +1080,7 @@ static bool CheckForBaseTableElementCommalist(List *base_table_element_commalist
                 if (table_contraint_def->type == TCONTRAINT_PRIMARY_KEY) {
                     if (primary_key_flag) {
                         free_list(list);
-                        db_log(ERROR, "Dulicate primary key.");
+                        logger(ERROR, "Dulicate primary key.");
                         return false;
                     } else
                         primary_key_flag = true;
@@ -1088,7 +1088,7 @@ static bool CheckForBaseTableElementCommalist(List *base_table_element_commalist
                 break;
             }
             default:
-                db_log(ERROR, "Unknown base table element type.");
+                logger(ERROR, "Unknown base table element type.");
                 break;
         }
     }
@@ -1110,7 +1110,7 @@ static bool CheckInsertForValueItems(InsertNode *insert_node, List *value_item_l
     if (insert_node->all_column) {
         /* Check column number equals the insert values number. */
         if (meta_table->column_size != len_list(value_item_list)) {
-            db_log(ERROR, "Column count doesn`t match value count: %d != %d.", 
+            logger(ERROR, "Column count doesn`t match value count: %d != %d.", 
                    meta_table->column_size, 
                    len_list(value_item_list));
             return false;
@@ -1129,7 +1129,7 @@ static bool CheckInsertForValueItems(InsertNode *insert_node, List *value_item_l
     } else {
         /* Check column number equals the insert values number. */
         if (len_list(insert_node->column_list) != len_list(value_item_list)) {
-            db_log(ERROR, "Column count doesn`t match value count.");
+            logger(ERROR, "Column count doesn`t match value count.");
             return false;
         }
 
@@ -1139,7 +1139,7 @@ static bool CheckInsertForValueItems(InsertNode *insert_node, List *value_item_l
             ValueItemNode *value_item_node = lfirst(lc2);
             MetaColumn *meta_column = NameFindMetaColumn(meta_table, column_node->column_name);
             if (IsNull(meta_column)) {
-                db_log(ERROR, "Unknown column '%s'", column_node->column_name);
+                logger(ERROR, "Unknown column '%s'", column_node->column_name);
                 return false;
             }
             if (!CheckForValueItem(meta_table, meta_column->column_name, value_item_node))
@@ -1198,7 +1198,7 @@ static bool CheckInsertForValuesOrQuerySpec(InsertNode *insert_node, ValuesOrQue
         case VQ_QUERY_SPEC:
             return CheckInsertForQuerySpec(insert_node, values_or_query_spec->query_spec);
         default:
-            db_log(ERROR, "Unknown ValuesOrQuerySpecNode type");
+            logger(ERROR, "Unknown ValuesOrQuerySpecNode type");
             return false;
     }
 
@@ -1214,7 +1214,7 @@ static bool CheckForAddColumn(char *table_name, AddColumnDef *add_column) {
     char *column_name = AddColumnDefFindColumnName(add_column);
     /* Check add column if exists. */
     if (ColumnExistsInTable(column_name, table_name)) {
-        db_log(ERROR, "Table '%s' already exists column '%s'.", 
+        logger(ERROR, "Table '%s' already exists column '%s'.", 
                table_name, 
                column_name);
         return false;
@@ -1223,7 +1223,7 @@ static bool CheckForAddColumn(char *table_name, AddColumnDef *add_column) {
     /* Check if the position column def exists. */
     if (!IsNull(add_column->position_def) 
             && !ColumnExistsInTable(add_column->position_def->column, table_name)) {
-        db_log(ERROR, "Unknown column '%s' in table '%s'.", 
+        logger(ERROR, "Unknown column '%s' in table '%s'.", 
                add_column->position_def->column, 
                table_name);
         return false;
@@ -1250,7 +1250,7 @@ static bool CheckForDropColumn(char *table_name, DropColumnDef *drop_column_def)
 
     /* Check drop column if exists. */
     if (IsNull(meta_column)) {
-        db_log(ERROR, "Table '%s' not exists column '%s'.", 
+        logger(ERROR, "Table '%s' not exists column '%s'.", 
                table_name, 
                drop_column_def->column_name);
         return false;
@@ -1258,14 +1258,14 @@ static bool CheckForDropColumn(char *table_name, DropColumnDef *drop_column_def)
 
     /* Not alloed drop primary-key column. */
     if (meta_column->is_primary) {
-        db_log(ERROR, "Column '%s' is priamry-key, not allowed to drop.", 
+        logger(ERROR, "Column '%s' is priamry-key, not allowed to drop.", 
                drop_column_def->column_name);
         return false;
     }
 
     /* If only exists last one column, not allowed to drop. */
     if (meta_table->column_size == 1) {
-        db_log(ERROR, "Column '%s' is the last column, not allowed to drop.", 
+        logger(ERROR, "Column '%s' is the last column, not allowed to drop.", 
                drop_column_def->column_name);
         return false;
     }
@@ -1276,7 +1276,7 @@ static bool CheckForDropColumn(char *table_name, DropColumnDef *drop_column_def)
 /* Check for columns in index statement. */
 static bool CheckForIndexColumns(char *table_name, List *columns) {
     if (list_empty(columns)) {
-        db_log(ERROR, "At least support one column for create index.");
+        logger(ERROR, "At least support one column for create index.");
         return false;
     }
 
@@ -1284,7 +1284,7 @@ static bool CheckForIndexColumns(char *table_name, List *columns) {
     foreach (lc, columns) {
         ColumnNode *column_node = (ColumnNode *) lfirst(lc);
         if (!ColumnExistsInTable(column_node->column_name, table_name)) {
-            db_log(ERROR, "Table '%s' not exists column '%s'.", 
+            logger(ERROR, "Table '%s' not exists column '%s'.", 
                    table_name, 
                    column_node->column_name);
             return false;
@@ -1311,7 +1311,7 @@ static bool CheckForTable(char *table_name) {
     if (check_table_exist(table_name))
         return true;
     else {
-        db_log(ERROR, "Table '%s' not exists.", table_name);
+        logger(ERROR, "Table '%s' not exists.", table_name);
         return false;
     }
 }
@@ -1319,7 +1319,7 @@ static bool CheckForTable(char *table_name) {
 /* Check index. */
 static bool CheckForIndex(char *index_name) {
     if (check_index_exist(index_name)) {
-        db_log(ERROR, "Index '%s' alreay exists.", index_name);
+        logger(ERROR, "Index '%s' alreay exists.", index_name);
         return false;
     } else {
         return true;
@@ -1338,7 +1338,7 @@ static bool TableIsRefered(Table *table, Table *ref_table) {
         if (meta_column->column_type == T_RID && 
             meta_column->type_oid == GET_TABLE_OID(ref_table)
         ) {
-            db_log(ERROR , "Table '%s' is refered by column '%s' in table '%s', so can`t drop it.", 
+            logger(ERROR , "Table '%s' is refered by column '%s' in table '%s', so can`t drop it.", 
                    GET_TABLE_NAME(ref_table), meta_column->column_name, table->meta_table->table_name);
             return true;
         }
@@ -1357,7 +1357,7 @@ bool CheckForSelect(SelectNode *select_node) {
         return true;
 
     if (len_list(from_clause->from) > MAX_MULTI_TABLE_NUM) {
-        db_log(ERROR, "Exceed max table numbers.");
+        logger(ERROR, "Exceed max table numbers.");
         return false;
     }
 
@@ -1424,7 +1424,7 @@ bool CheckForDropTable(char *table_name) {
 
     /* Check table exists. */
     if (!check_table_exist(table_name)) {
-        db_log(ERROR, "Table '%s' not exists.", table_name);
+        logger(ERROR, "Table '%s' not exists.", table_name);
         return false;
     }
 
@@ -1449,7 +1449,7 @@ bool CheckForDropTable(char *table_name) {
 bool checkForDropIndex(char *index_name) {
     /* Check table exists. */
     if (!check_index_exist(index_name)) {
-        db_log(ERROR, "Index '%s' not exists.", index_name);
+        logger(ERROR, "Index '%s' not exists.", index_name);
         return false;
     }
 

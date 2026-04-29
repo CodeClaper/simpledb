@@ -88,7 +88,7 @@ static void *AtomNodeAssignValue(AtomNode *atom_node, MetaColumn *meta_column) {
                     val = (float)atom_node->value.floatval;
                     break;
                 default:
-                    db_log(ERROR, "Can`t convert to data type [%s] for column '%s'", 
+                    logger(ERROR, "Can`t convert to data type [%s] for column '%s'", 
                            AtomTypeConvertDataType(atom_node->type), 
                            meta_column->column_name);
                     break;
@@ -105,7 +105,7 @@ static void *AtomNodeAssignValue(AtomNode *atom_node, MetaColumn *meta_column) {
                     val = (double)atom_node->value.floatval;
                     break;
                 default:
-                    db_log(ERROR, "Can`t convert to data type [%s] for column '%s'", 
+                    logger(ERROR, "Can`t convert to data type [%s] for column '%s'", 
                            AtomTypeConvertDataType(atom_node->type), 
                            meta_column->column_name);
                     break;
@@ -310,7 +310,7 @@ char *KeyGetUserStrValue(void *key, DataType ptype) {
             strftime(str, strlen(str), "%Y-%m-%d %H:%M:%S", tmp_time);
             return str;
         } default: {
-            db_log(ERROR, "Not allowed data type as primary key.");
+            logger(ERROR, "Not allowed data type as primary key.");
             return NULL;
         }
     }
@@ -358,7 +358,7 @@ char *KeyGetSysStrValue(void *key, DataType ptype) {
             strftime(str, strlen(str), "%Y-%m-%d %H:%M:%S", tmp_time);
             return str;
         } default: {
-            db_log(ERROR, "Not allowed data type as primary key.");
+            logger(ERROR, "Not allowed data type as primary key.");
             return NULL;
         }
     }

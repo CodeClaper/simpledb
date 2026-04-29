@@ -50,7 +50,7 @@ void ExecuteExplainStatement(ExplainNode *explain_node, DBResult *result) {
     result->data = ExplainStatement(explain_node);
     result->message = dstrdup("Explain excuted successfully.");
     result->success = true;
-    db_log(SUCCESS, "Explain excuted successfully.");
+    logger(SUCCESS, "Explain excuted successfully.");
 }
 
 /* Execute explain statement. */
@@ -60,5 +60,5 @@ void ExecuteExpressStatement(ExpressNode *express_node, DBResult *result) {
     result->data = ExpressStatement(express_node);
     result->message = dstrdup("Express excuted successfully.");
     result->success = true;
-    db_log(SUCCESS, "Express excuted successfully.");
+    logger(SUCCESS, "Express excuted successfully.");
 }

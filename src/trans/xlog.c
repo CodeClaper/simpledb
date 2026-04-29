@@ -182,7 +182,7 @@ void ExecuteRollback() {
                 HeapDeleteXLog(current->oid, current->sid, trans);
                 break;
             default:
-                db_log(PANIC, "Unknown XLogHeapType.");
+                logger(PANIC, "Unknown XLogHeapType.");
         }        
     }
 }

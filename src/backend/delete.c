@@ -65,7 +65,7 @@ void exec_delete_statement(DeleteNode *delete_node, DBResult *result) {
     /* Check table exists. */
     Table *table = open_table(delete_node->table_name);
     if (table == NULL) {
-        db_log(ERROR, "Try to open table '%s' fail.", delete_node->table_name);
+        logger(ERROR, "Try to open table '%s' fail.", delete_node->table_name);
         return;
     }
 
@@ -87,5 +87,5 @@ void exec_delete_statement(DeleteNode *delete_node, DBResult *result) {
     result->rows = select_result->row_size;
     result->message = FormatStr("Successfully deleted %d row data.", select_result->row_size);
 
-    db_log(SUCCESS, "Successfully deleted %d row data.", select_result->row_size);
+    logger(SUCCESS, "Successfully deleted %d row data.", select_result->row_size);
 }

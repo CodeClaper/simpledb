@@ -36,7 +36,7 @@ int Startup(u_short port) {
     struct sockaddr_in *address = dalloc(sizeof(struct sockaddr_in));
     httpd = socket(PF_INET, SOCK_STREAM, 0);
     if (httpd == -1)
-        db_log(PANIC, "Create socket fail.");
+        logger(PANIC, "Create socket fail.");
     memset(address, 0, sizeof(struct sockaddr_in));
     address->sin_family = AF_INET;
     address->sin_port = htons(port);
@@ -44,23 +44,23 @@ int Startup(u_short port) {
 
     /* SO_REUSEADDR */
     if ((setsockopt(httpd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on))) < 0) 
-        db_log(PANIC, "Set socket SO_REUSEADDR option fail.");
+        logger(PANIC, "Set socket SO_REUSEADDR option fail.");
 
     /* SO_RCVBUF */
     if ((setsockopt(httpd, SOL_SOCKET, SO_RCVBUF, &buff_size, sizeof(buff_size))) < 0) 
-        db_log(PANIC, "Set socket SO_RCVBUF option fail.");
+        logger(PANIC, "Set socket SO_RCVBUF option fail.");
 
     /* SO_SNDBUF */
     if ((setsockopt(httpd, SOL_SOCKET, SO_SNDBUF, &buff_size, sizeof(buff_size))) < 0) 
-        db_log(PANIC, "Set socket SO_SNDBUF option fail.");
+        logger(PANIC, "Set socket SO_SNDBUF option fail.");
 
     /* Bind */
     if (bind(httpd, (struct sockaddr *)address, sizeof(*address)) < 0) 
-        db_log(PANIC, "Bind socket fail.");
+        logger(PANIC, "Bind socket fail.");
 
     /* Listen */
     if (listen(httpd, 10) < 0) 
-        db_log(PANIC, "Socket listen fail.");
+        logger(PANIC, "Socket listen fail.");
 
     return httpd;
 }
@@ -148,11 +148,11 @@ static void RequestHandler(intptr_t client) {
         MemoryContextReset(MASTER_MEMORY_CONTEXT);
         DestroyContextRecorders();
         gettimeofday(&end_time, NULL);
-        db_log(INFO, "Loop duration: %lfs", time_span(end_time, start_time));
+        logger(INFO, "Loop duration: %lfs", time_span(end_time, start_time));
         start_time = end_time;
     }
 
-    db_log(INFO, "Client ID '%ld' disconnect.", getpid());
+    logger(INFO, "Client ID '%ld' disconnect.", getpid());
 }
 
 /* At the MemoryContext start. */
@@ -175,9 +175,9 @@ void AcceptRequest(intptr_t client) {
     NewSession(client);
     MemoryContextStart();
     if (AuthRequest(client)) {
-        db_log(INFO, "Client ID '%ld' connect successfully.", getpid());
+        logger(INFO, "Client ID '%ld' connect successfully.", getpid());
         RequestHandler(client);
-    } else db_log(INFO, "Client ID '%ld' connect, but with wrong login account or password.", getpid());
+    } else logger(INFO, "Client ID '%ld' connect, but with wrong login account or password.", getpid());
     close(client);
     MemoryContextEnd();
     exit(0);

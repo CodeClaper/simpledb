@@ -32,7 +32,7 @@ Size GetPageSize(Oid oid) {
 
     file_length = lseek(fdesc, 0, SEEK_END);
     if (file_length == -1) {
-        db_log(PANIC, "Error seek end: %s.", strerror(errno));
+        logger(PANIC, "Error seek end: %s.", strerror(errno));
         exit(1);
     }
     

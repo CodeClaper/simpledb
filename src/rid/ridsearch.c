@@ -33,7 +33,7 @@ static Refer *RidSearchForInternalNodeExtend(Oid roid, Rid key, void *internal_n
     }
 
     if (min_index > keys_num)
-        db_log(PANIC, "Tried to access child_num %d > num_keys %d.", 
+        logger(PANIC, "Tried to access child_num %d > num_keys %d.", 
                min_index, keys_num);
     else if (min_index == keys_num) {
         /* The target cell is right child. */

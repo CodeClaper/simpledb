@@ -20,13 +20,13 @@ bool CreateSidTableInner(Oid soid) {
 
     file_path = table_file_path(soid);
     if (table_file_exist(file_path)) {
-        db_log(ERROR, "Sid file '%ld' already exists.", soid);
+        logger(ERROR, "Sid file '%ld' already exists.", soid);
         return false;
     }
 
     descr = open(file_path, O_CREAT | O_WRONLY, S_IWUSR | S_IRUSR);
     if (descr == -1) {
-        db_log(ERROR, "Open database file '%s' fail.", file_path);
+        logger(ERROR, "Open database file '%s' fail.", file_path);
         return false;
     }
 
@@ -38,7 +38,7 @@ bool CreateSidTableInner(Oid soid) {
     lseek(descr, 0, SEEK_SET);
     ssize_t w_size = write(descr, root_node, PAGE_SIZE);
     if (w_size == -1) {
-        db_log(ERROR, "Write index meta info error and error message: %s.", strerror(errno));
+        logger(ERROR, "Write index meta info error and error message: %s.", strerror(errno));
         return false;
     }
 
@@ -66,7 +66,7 @@ bool DropSidTable(Oid soid) {
     heap_table_file = table_file_path(soid);
 
     if (!check_table_exist_direct(soid)) {
-        db_log(ERROR, "Heap table file '%s' not exists, error : %s", 
+        logger(ERROR, "Heap table file '%s' not exists, error : %s", 
                heap_table_file, strerror(errno));
         return false;
     }
@@ -79,7 +79,7 @@ bool DropSidTable(Oid soid) {
     }
 
     /* Not reach here logically. */
-    db_log(ERROR, "Try to drop sid file '%ld' fail, error : %s", 
+    logger(ERROR, "Try to drop sid file '%ld' fail, error : %s", 
            soid, strerror(errno));
 
     return false;

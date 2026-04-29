@@ -98,7 +98,7 @@ static int print_stacktrace_addr2line(char *addr) {
 				}
 
                 /* Record in log. */
-				db_log(SYS_ERROR, "%s in <%s> at %s.", addr, funcName, lineName + lastSlashPos);
+				logger(SYS_ERROR, "%s in <%s> at %s.", addr, funcName, lineName + lastSlashPos);
 			} else {
 				pclose(fp);
 				return 0;
@@ -120,7 +120,7 @@ void print_stacktrace() {
     size_t size = backtrace(array, 20);
     char **strings = backtrace_symbols(array, size);
 	if(strings == NULL) {
-		db_log(PANIC, "backtrace_symbols");
+		logger(PANIC, "backtrace_symbols");
 		exit(EXIT_FAILURE);
 	}
 
@@ -128,7 +128,7 @@ void print_stacktrace() {
         /* Firstly use addr2line print stacktrace. 
          * If fail, print raw stacktrace. */
         if (print_stacktrace_addr2line(strings[i]) == 0)
-            db_log(SYS_ERROR, "%s", strings[i]);
+            logger(SYS_ERROR, "%s", strings[i]);
     }
     free(strings); 
 }
@@ -136,23 +136,23 @@ void print_stacktrace() {
 static void handler(int sig) {
 	switch(sig) {
 		case SIGABRT:
-			db_log(SYS_ERROR, "Caught SIGABRT: usually caused by an abort() or assert().");
+			logger(SYS_ERROR, "Caught SIGABRT: usually caused by an abort() or assert().");
 			break;
 		case SIGFPE:
-			db_log(SYS_ERROR, "Caught SIGFPE: arithmetic exception, such as divide by zero.");
+			logger(SYS_ERROR, "Caught SIGFPE: arithmetic exception, such as divide by zero.");
 			break;
 		case SIGILL:
-			db_log(SYS_ERROR, "Caught SIGILL: illegal instruction.");
+			logger(SYS_ERROR, "Caught SIGILL: illegal instruction.");
 			break;
 		case SIGINT:
-			db_log(SYS_ERROR, "Caught SIGINT: interactive attention signal, probably a ctrl+c.");
+			logger(SYS_ERROR, "Caught SIGINT: interactive attention signal, probably a ctrl+c.");
             return;
 		case SIGSEGV:
-			db_log(SYS_ERROR, "Caught SIGSEGV: segfault.");
+			logger(SYS_ERROR, "Caught SIGSEGV: segfault.");
 			break;
 		case SIGTERM:
 		default:
-			db_log(SYS_ERROR, "Caught SIGTERM: a termination request was sent to the program.");
+			logger(SYS_ERROR, "Caught SIGTERM: a termination request was sent to the program.");
 			break;
 	}
     print_stacktrace();

@@ -132,7 +132,7 @@ static MetaColumn *ColumnNodeFindMetaColumn(SelectPlan *select_plan, List *meta_
             ? NameFindMetaColumnInner(meta_columns, column->column_name)
             : TableColumnNameFindMetaColumn(meta_columns, GET_TABLE_OID(table), column->column_name);
     if (target_meta_column == NULL) {
-        db_log(ERROR, "Unknown column '%s.%s' in where clause. ", 
+        logger(ERROR, "Unknown column '%s.%s' in where clause. ", 
                column->range_variable, 
                column->column_name);
         return NULL;
@@ -211,7 +211,7 @@ static KeyValue *QueryTupleCalulateValue(SelectPlan *select_plan, List *meta_col
 /* Query tuple function value. */
 static KeyValue *QueryTupleFuncitonValue(SelectPlan *select_plan, List *meta_columns, FunctionNode *function, void *tuple) {
     if (IsAggFuncion(function->type))
-        db_log(ERROR, "Aggregate function not allowd in where.");
+        logger(ERROR, "Aggregate function not allowd in where.");
     return NULL;
 }
 
@@ -287,12 +287,12 @@ static bool SatisfyColumnAndReferValueCompparison(ScalarExpNode *left, ScalarExp
         if (right->type == SCALAR_COLUMN)
             return true;
         else
-            db_log(ERROR, "Refer value must compare with column.");
+            logger(ERROR, "Refer value must compare with column.");
     } else if (ScalarExpIsRidValue(right)) {
         if (left->type == SCALAR_COLUMN)
             return true;
         else
-            db_log(ERROR, "Refer value must compare with column.");
+            logger(ERROR, "Refer value must compare with column.");
     }
     return false;
 }
@@ -1119,7 +1119,7 @@ static void SelectForInternalNodeChildTask(void *taskArg) {
             SelectForInternalNode(oid, child_page_num, NULL, select_result, select_plan);
             break;
         default:
-            db_log(PANIC, "Unknown node type.");
+            logger(PANIC, "Unknown node type.");
             break;
     }
 
@@ -1246,7 +1246,7 @@ static void SelectUnderCondition(Oid oid, uint32_t page_num, void *boundary_key,
             break;
         }
         default:
-            db_log(PANIC, "Unknown data type occurs in <query_with_condition>.");
+            logger(PANIC, "Unknown data type occurs in <query_with_condition>.");
     }
 
 }
@@ -1261,7 +1261,7 @@ void QueryUnderSearchCondition(SelectResult *select_result, SelectPlan *select_p
     /* Check if table exists. */
     Table *table = open_table(select_result->table_name);
     if (table == NULL) {
-        db_log(ERROR, "Table %s not exist.", select_result->table_name);
+        logger(ERROR, "Table %s not exist.", select_result->table_name);
         return;
     }
     QueryUnderSearchConditionInner(GET_TABLE_OID(table), select_result, select_plan);
@@ -1514,7 +1514,7 @@ static KeyValue *CalcSumValue(ColumnNode *column, SelectResult *select_result, S
             }
             case T_RID: 
             case T_OBJECT: {
-                db_log(ERROR, "Reference type not used for sum function.");
+                logger(ERROR, "Reference type not used for sum function.");
                 break;
             }
             default: {
@@ -1554,7 +1554,7 @@ static KeyValue *CalcAvgValue(ColumnNode *column, SelectResult *select_result, S
             }
             case T_RID: 
             case T_OBJECT: {
-                db_log(ERROR, "Reference type not used for avg function.");
+                logger(ERROR, "Reference type not used for avg function.");
                 break;
             }
             default: {
@@ -1631,7 +1631,7 @@ static KeyValue *QuerySumFunctionValue(FunctionValueNode *value, SelectResult *s
             return new_key_value(SUM_NAME, &sum, T_DOUBLE, select_result->oid, OID_ZERO);
         }
         case V_ALL: {
-            db_log(ERROR, "Sum function not support '*'");
+            logger(ERROR, "Sum function not support '*'");
             return NULL;
         }
         default: {
@@ -1649,7 +1649,7 @@ KeyValue *QueryAvgFunctionValue(FunctionValueNode *value, SelectResult *select_r
         case V_INT: 
             return new_key_value(AVG_NAME, &value->i_value, T_DOUBLE, select_result->oid, OID_ZERO);
         case V_ALL: 
-            db_log(ERROR, "Avg function not support '*'");
+            logger(ERROR, "Avg function not support '*'");
             return NULL;
         default:
             UNEXPECTED_VALUE(value->value_type);
@@ -1665,7 +1665,7 @@ KeyValue *QueryMaxFunctionValue(FunctionValueNode *value, SelectResult *select_r
         case V_INT: 
             return new_key_value(MAX_NAME, &value->i_value, T_INT, select_result->oid, OID_ZERO);
         case V_ALL: 
-            db_log(ERROR, "Max function not support '*'.");
+            logger(ERROR, "Max function not support '*'.");
             return NULL;
         default:
             UNEXPECTED_VALUE(value->value_type);
@@ -1681,7 +1681,7 @@ KeyValue *QueryMinFunctionValue(FunctionValueNode *value, SelectResult *select_r
         case V_INT: 
             return new_key_value(MIN_NAME, &value->i_value, T_INT, select_result->oid, OID_ZERO);
         case V_ALL: 
-            db_log(PANIC, "Min function not support '*'");
+            logger(PANIC, "Min function not support '*'");
             return NULL;
         default:
             UNEXPECTED_VALUE(value->value_type);
@@ -1716,7 +1716,7 @@ static KeyValue *QueryRowColumnValue(SelectPlan *select_plan, ColumnNode *column
     /* Get table name via alias name. */
     char *table_name = SearchTableNameViaAlias(select_plan, column->range_variable);
     if (column->range_variable && table_name == NULL) {
-        db_log(ERROR, "Unknown table alias '%s' in select items. ", 
+        logger(ERROR, "Unknown table alias '%s' in select items. ", 
                column->range_variable);
         return NULL;
     }
@@ -1746,13 +1746,13 @@ static KeyValue *QueryRowColumnValue(SelectPlan *select_plan, ColumnNode *column
                 }
             }
             else if (column->has_sub_column) 
-                db_log(ERROR, "Column '%s' is not Reference type, no sub column found.", 
+                logger(ERROR, "Column '%s' is not Reference type, no sub column found.", 
                        column->column_name);
             else
                 return (key_value);
         }
     }
-    db_log(ERROR, "Not found column '%s'. ", column->column_name);
+    logger(ERROR, "Not found column '%s'. ", column->column_name);
     return NULL;
 }
 
@@ -2331,7 +2331,7 @@ static KeyValue *QueryRowValue(SelectPlan *select_plan, ScalarExpNode *scalar_ex
         case SCALAR_VALUE:
             return QueryRowValueItem(scalar_exp->value, row);
         case SCALAR_FUNCTION:
-            db_log(PANIC, "System logic error at <QueryRowValue>");
+            logger(PANIC, "System logic error at <QueryRowValue>");
             return NULL;
         default:
             UNEXPECTED_VALUE(scalar_exp->type);
@@ -2506,7 +2506,7 @@ void exec_select_statement(SelectNode *select_node, DBResult *result) {
                                 select_result->table_name);
 
     /* Make up success result. */
-    db_log(SUCCESS, "Query %d rows data from table '%s' successfully.", 
+    logger(SUCCESS, "Query %d rows data from table '%s' successfully.", 
            result->rows, 
            select_result->table_name);
 }

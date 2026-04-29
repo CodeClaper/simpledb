@@ -71,7 +71,7 @@ static int ColumnPositionDefFindPos(MetaTable *meta_table, ColumnPositionDef *po
         }
     }
 
-    db_log(ERROR, "Column '%s' not exists in table '%s'.", 
+    logger(ERROR, "Column '%s' not exists in table '%s'.", 
            position_def->column, 
            meta_table->table_name);
 
@@ -239,7 +239,7 @@ static void AlterAddNewColumn(AddColumnDef *add_column_def, char *table_name, DB
 
     /* By now, not support primary key alter operation. */
     if (new_meta_column->is_primary)
-        db_log(ERROR, "Not support add primary-key column through alter table.");
+        logger(ERROR, "Not support add primary-key column through alter table.");
 
     /* Capture table exclusively. */
     AlterCaptureTable(oid);
@@ -249,7 +249,7 @@ static void AlterAddNewColumn(AddColumnDef *add_column_def, char *table_name, DB
         result->success = true;
         result->message = FormatStr("Add column '%s' for table '%s' successfully.", 
                                     new_meta_column->column_name, table_name);
-        db_log(SUCCESS, "Add column '%s' for table '%s' successfully.", 
+        logger(SUCCESS, "Add column '%s' for table '%s' successfully.", 
                new_meta_column->column_name, table_name);
     }
 
@@ -272,7 +272,7 @@ static void AlterDropOldColumn(DropColumnDef *drop_column_def, char *table_name,
         result->success = true;
         result->message = FormatStr("Drop column '%s' for table '%s' successfully.", 
                                     drop_column_def->column_name, table_name);
-        db_log(SUCCESS, "Drop column '%s' for table '%s' successfully.", 
+        logger(SUCCESS, "Drop column '%s' for table '%s' successfully.", 
                drop_column_def->column_name, table_name);
     }
 

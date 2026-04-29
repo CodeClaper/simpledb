@@ -344,7 +344,7 @@ static List *SelectNodeFindTables(SelectNode *selectNode) {
         TableRefNode *table_ref = (TableRefNode *) lfirst(lc);
         Table *table = open_table(table_ref->table);
         if (table == NULL)
-            db_log(ERROR, "Not found table %s", table_ref->range_variable);
+            logger(ERROR, "Not found table %s", table_ref->range_variable);
         SelectTable *select_table = instance(SelectTable);
         select_table->table = table;
         select_table->alias_name = table_ref->range_variable;

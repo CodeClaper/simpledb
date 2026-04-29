@@ -438,7 +438,7 @@ static void RidInsertForInternalNodeExtend(Table *table, Rid key, Refer *refer, 
     }
 
     if (min_index > keys_num)
-        db_log(PANIC, "Tried to access child_num %d > num_keys %d.", 
+        logger(PANIC, "Tried to access child_num %d > num_keys %d.", 
                min_index, 
                keys_num);
     else if (min_index == keys_num) {
@@ -575,7 +575,7 @@ static void RidInsertForLeafNodeSplit(Table *table, Buffer buffer, Rid key, Refe
             case ERRO:
                 UnlockBuffer(buffer);
                 ReleaseBuffer(buffer);
-                db_log(ERROR, "Not allow duplicate key.");
+                logger(ERROR, "Not allow duplicate key.");
                 break;
         }
     }
@@ -700,7 +700,7 @@ static void RidInsertForLeafNodeNoSplit(Table *table, Buffer buffer, Rid key, Re
             case ERRO:
                 UnlockBuffer(buffer);
                 ReleaseBuffer(buffer);
-                db_log(ERROR, "Not allow duplicate key.");
+                logger(ERROR, "Not allow duplicate key.");
                 break;
         }
     }

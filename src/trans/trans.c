@@ -231,7 +231,7 @@ void AutoBeginTransaction() {
 
     /* Generate new transaction. */
     entry = NewTransEntry(NextXid(), getpid(), true, NULL);
-    db_log(INFO, "Auto begin transaction xid: %"PRId64" and pid: %"PRId64".", 
+    logger(INFO, "Auto begin transaction xid: %"PRId64" and pid: %"PRId64".", 
            entry->xid, entry->pid);
 
     /* Register the transaction. */
@@ -250,7 +250,7 @@ void BeginTransaction() {
     RegisterTransaction(entry);
 
     /* Send message. */
-    db_log(SUCCESS, "Begin new transaction xid:%"PRId64" and pid: %"PRId64"successfully.",
+    logger(SUCCESS, "Begin new transaction xid:%"PRId64" and pid: %"PRId64"successfully.",
            entry->xid, entry->pid);
 }
 
@@ -258,7 +258,7 @@ void BeginTransaction() {
 void CommitTransaction() {
     TransEntry *entry = FindTransaction();
     if (IsNull(entry) || entry->auto_commit)
-        db_log(ERROR, "Not in any transaction, please begin a transaction");
+        logger(ERROR, "Not in any transaction, please begin a transaction");
 
     /* Commit Xlog. */
     CommitXlog();
@@ -270,8 +270,8 @@ void CommitTransaction() {
     DestroyTransaction(); 
     
     /* Print out success log. */
-    db_log(INFO, "Commit the transaction xid: %"PRId64" successfully.", entry->xid);
-    db_log(SUCCESS, "Commit the transaction successfully");
+    logger(INFO, "Commit the transaction xid: %"PRId64" successfully.", entry->xid);
+    logger(SUCCESS, "Commit the transaction successfully");
 }
 
 /* Commit transaction automatically. */
@@ -288,7 +288,7 @@ void AutoCommitTransaction() {
 
         /* Destroy transaction. */
         DestroyTransaction();
-        db_log(
+        logger(
             SUCCESS, 
             "Auto commit the transaction xid: %"PRId64" successfully.", 
             entry->xid
@@ -300,11 +300,11 @@ void AutoCommitTransaction() {
 void RollbackTransaction() {
     TransEntry *entry = FindTransaction();
     if (IsNull(entry) || entry->auto_commit)
-        db_log(ERROR, "Not in any transaction, please begin a transaction");
+        logger(ERROR, "Not in any transaction, please begin a transaction");
 
     ExecuteRollback();
     CommitTransaction();
-    db_log(
+    logger(
         SUCCESS, 
         "Transaction xid: %"PRId64" rollbacked and commited successfully.", 
         entry->xid
@@ -322,7 +322,7 @@ void AutoRollbackTransaction() {
 
         /* Rollback Xlog. */
         ExecuteRollback();
-        db_log(
+        logger(
             INFO, 
             "Transaction xid: %"PRId64" rollbacked and commited successfully.", 
             entry->xid

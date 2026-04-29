@@ -1463,11 +1463,11 @@ end:
 
 int yyerror(List *states, const char *s) {
     if (current_token != NULL) {
-	    db_log(ERROR, "%s at or near [%s].", s, current_token);
+	    logger(ERROR, "%s at or near [%s].", s, current_token);
         free(current_token);
         current_token = NULL;
     }
     else
-	    db_log(ERROR, "%s.", s);
+	    logger(ERROR, "%s.", s);
     return 0;
 }

@@ -82,14 +82,14 @@ bool create_table(Oid oid, MetaTable *meta_table) {
 
     file_path = table_file_path(oid);
     if (table_file_exist(file_path)) {
-        db_log(ERROR, "Table '%s' already exists.", meta_table->table_name);
+        logger(ERROR, "Table '%s' already exists.", meta_table->table_name);
         dfree(file_path);
         return false;
     }
 
     descr = open(file_path, O_CREAT | O_WRONLY, S_IWUSR | S_IRUSR);
     if (descr == -1) {
-        db_log(ERROR, "Open database file '%s' fail.", file_path);
+        logger(ERROR, "Open database file '%s' fail.", file_path);
         dfree(file_path);
         return false;
     }
@@ -125,7 +125,7 @@ bool create_table(Oid oid, MetaTable *meta_table) {
     lseek(descr, 0, SEEK_SET);
     ssize_t w_size = write(descr, root_node, PAGE_SIZE);
     if (w_size == -1) {
-        db_log(ERROR, "Write table meta info error and error message: %s.", strerror(errno));
+        logger(ERROR, "Write table meta info error and error message: %s.", strerror(errno));
         dfree(file_path);
         dfree(root_node);
         return false;
@@ -436,7 +436,7 @@ bool drop_table(char *table_name) {
     }
 
     /* Not reach here logically. */
-    db_log(ERROR, "Table '%s' deleted fail, error: %s", 
+    logger(ERROR, "Table '%s' deleted fail, error: %s", 
            table_name, strerror(errno));
 
     return false;

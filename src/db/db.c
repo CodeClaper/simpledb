@@ -59,13 +59,13 @@ static inline void sigchild(int signal) {
     pid_t pid;
     while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
         if (WIFEXITED(status) && WEXITSTATUS(status) != 0) {
-            db_log(PANIC, "Child process %d exited with error: %d.", pid, WEXITSTATUS(status));
+            logger(PANIC, "Child process %d exited with error: %d.", pid, WEXITSTATUS(status));
             print_stacktrace();
             kill(0, SIGTERM);
             _exit(EXIT_FAILURE);
         }
         else if (WIFSIGNALED(status)) {
-            db_log(PANIC, "Child process %d killed by signal: %d.", pid, WTERMSIG(status));
+            logger(PANIC, "Child process %d killed by signal: %d.", pid, WTERMSIG(status));
             print_stacktrace();
             kill(0, SIGTERM);
             _exit(EXIT_FAILURE);
@@ -138,20 +138,20 @@ void init_db() {
     atexit(onExit);
 
     MakeSysState(SYS_INITED);
-    db_log(SUCCESS, "Init db success.");
+    logger(SUCCESS, "Init db success.");
 }
 
 /* Start bgwriter. */
 static void start_bgwriter() {
     /* Create new child process. */
     pid_t pid = fork();
-    if (pid < 0) db_log(PANIC, "Create new child process fail.");
+    if (pid < 0) logger(PANIC, "Create new child process fail.");
     else if (pid == 0) {
         StartBgWriter();
         exit(13);
     } else {
         MakeSysState(SYS_READY);
-        db_log(SUCCESS, "Start up background writer successfully.");
+        logger(SUCCESS, "Start up background writer successfully.");
     }
 }
 
@@ -161,11 +161,11 @@ static void start_backend(int server_socket, struct sockaddr_in *client_name, so
     /* Listen client connecting. */
     while (true) {
         client_secket = accept(server_socket, (struct sockaddr *) client_name, &client_name_len);
-        if (client_secket == -1) db_log(PANIC, "Socket accept fail.");
+        if (client_secket == -1) logger(PANIC, "Socket accept fail.");
 
         /* Create new child process. */
         pid_t pid = fork();
-        if (pid < 0) db_log(PANIC, "Create new child process fail.");
+        if (pid < 0) logger(PANIC, "Create new child process fail.");
         else if (pid == 0) {
             AcceptRequest((intptr_t)client_secket);
             exit(EXECUTE_SUCCESS);
@@ -186,8 +186,8 @@ static void db_run() {
     server_socket = Startup(conf->port);
 
     /* Print out banner. */
-    db_log_raw(BANNER, conf->port, get_log_level());
-    db_log(INFO, "Simpledb server start up successfully and listen port %d.", conf->port);
+    logger_raw(BANNER, conf->port, get_log_level());
+    logger(INFO, "Simpledb server start up successfully and listen port %d.", conf->port);
 
     /* Means the system start up successfully, 
      * and accept the request of backend. */

@@ -20,7 +20,7 @@ void assert_true(bool condition, char *format, ...) {
         char buff[BUFF_SIZE];
         vsprintf(buff, format, ap);
         va_end(ap);
-        db_log(PANIC, buff);
+        logger(PANIC, buff);
     }
 }
 
@@ -32,7 +32,7 @@ void assert_false(bool condition, char *format, ...) {
         char buff[BUFF_SIZE];
         vsprintf(buff, format, ap);
         va_end(ap);
-        db_log(PANIC, buff);
+        logger(PANIC, buff);
     }
 }
 
@@ -44,7 +44,7 @@ void assert_not_null(void *express, char *format, ...) {
         char buff[BUFF_SIZE];
         vsprintf(buff, format, ap);
         va_end(ap);
-        db_log(PANIC, buff);
+        logger(PANIC, buff);
     }
 }
 
@@ -56,6 +56,6 @@ void assert_null(void *express, char *format, ...) {
         char buff[BUFF_SIZE];
         vsprintf(buff, format, ap);
         va_end(ap);
-        db_log(PANIC, buff);
+        logger(PANIC, buff);
     }
 }

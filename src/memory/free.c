@@ -525,7 +525,7 @@ void free_base_table_element_node(BaseTableElementNode *base_table_element) {
                 free_table_contraint_def_node(base_table_element->table_contraint_def);
                 break;
             default:
-                db_log(ERROR, "Unknown base type element type.");
+                logger(ERROR, "Unknown base type element type.");
                 break;
         }
         dfree(base_table_element);

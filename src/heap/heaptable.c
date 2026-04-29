@@ -80,13 +80,13 @@ bool CreateHeapTableInner(Oid hoid) {
 
     /* Avoid repeatly create. */
     if (table_file_exist(heap_table_file)) {
-        db_log(PANIC, "Heap table file %s alreay exists.", heap_table_file);
+        logger(PANIC, "Heap table file %s alreay exists.", heap_table_file);
         return true;
     }
 
     descr = open(heap_table_file, O_CREAT | O_WRONLY, S_IWUSR | S_IRUSR);
     if (descr == -1) {
-        db_log(PANIC, "Open database file '%s' fail.", heap_table_file);
+        logger(PANIC, "Open database file '%s' fail.", heap_table_file);
         return false;
     }
     
@@ -98,7 +98,7 @@ bool CreateHeapTableInner(Oid hoid) {
     lseek(descr, 0, SEEK_SET);
     w_size = write(descr, rblock, PAGE_SIZE);
     if (w_size == -1) {
-        db_log(PANIC, "Write table meta info error and errno message: %s.", strerror(errno));
+        logger(PANIC, "Write table meta info error and errno message: %s.", strerror(errno));
         return false;
     } 
 
@@ -310,7 +310,7 @@ bool DropHeapTable(Oid hoid) {
     heap_table_file = table_file_path(hoid);
 
     if (!check_table_exist_direct(hoid)) {
-        db_log(ERROR, "Heap table file '%s' not exists, error : %s", 
+        logger(ERROR, "Heap table file '%s' not exists, error : %s", 
                heap_table_file, strerror(errno));
         return false;
     }
@@ -323,7 +323,7 @@ bool DropHeapTable(Oid hoid) {
     }
 
     /* Not reach here logically. */
-    db_log(ERROR, "Try to drop heap file '%ld' fail, error : %s", 
+    logger(ERROR, "Try to drop heap file '%ld' fail, error : %s", 
            hoid, strerror(errno));
 
     return false;

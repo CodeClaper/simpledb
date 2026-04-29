@@ -399,13 +399,13 @@ bool BinCreate(MetaIndex *meta_index) {
 
     file_path = table_file_path(meta_index->oid);
     if (table_file_exist(file_path)) {
-        db_log(ERROR, "Index '%s' already exists.", meta_index->index_name);
+        logger(ERROR, "Index '%s' already exists.", meta_index->index_name);
         return false;
     }
 
     descr = open(file_path, O_CREAT | O_WRONLY, S_IWUSR | S_IRUSR);
     if (descr == -1) {
-        db_log(ERROR, "Open database file '%s' fail.", file_path);
+        logger(ERROR, "Open database file '%s' fail.", file_path);
         return false;
     }
 
@@ -428,7 +428,7 @@ bool BinCreate(MetaIndex *meta_index) {
     lseek(descr, 0, SEEK_SET);
     ssize_t w_size = write(descr, root_node, PAGE_SIZE);
     if (w_size == -1) {
-        db_log(ERROR, "Write index meta info error and error message: %s.", strerror(errno));
+        logger(ERROR, "Write index meta info error and error message: %s.", strerror(errno));
         return false;
     }
 
@@ -494,7 +494,7 @@ bool BinDrop(Oid oid) {
 
     file_path = table_file_path(oid);
     if (!table_file_exist(file_path)) {
-        db_log(ERROR, "Logic error, not found index file %ld", oid);
+        logger(ERROR, "Logic error, not found index file %ld", oid);
         return false;
     }
 
@@ -505,7 +505,7 @@ bool BinDrop(Oid oid) {
         return true;
     }
 
-    db_log(ERROR, "Index file %s deleted fail, error: %s", oid, strerror(errno));
+    logger(ERROR, "Index file %s deleted fail, error: %s", oid, strerror(errno));
     return false;
 }
 

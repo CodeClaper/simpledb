@@ -41,13 +41,13 @@ static bool CreateStrHeapTableInner(Oid stid) {
 
     /* Avoid repeatly create. */
     if (table_file_exist(str_table_file)) {
-        db_log(PANIC, "String heap table file %s alreay exists.", str_table_file);
+        logger(PANIC, "String heap table file %s alreay exists.", str_table_file);
         return false;
     }
 
     descr = open(str_table_file, O_CREAT | O_WRONLY, S_IWUSR | S_IRUSR);
     if (descr == -1) {
-        db_log(PANIC, "Open database file '%s' fail.", str_table_file);
+        logger(PANIC, "Open database file '%s' fail.", str_table_file);
         return false;
     }
     
@@ -59,7 +59,7 @@ static bool CreateStrHeapTableInner(Oid stid) {
     lseek(descr, 0, SEEK_SET);
     w_size = write(descr, rblock, PAGE_SIZE);
     if (w_size == -1) {
-        db_log(PANIC, "Write table meta info error and error message: %s.", strerror(errno));
+        logger(PANIC, "Write table meta info error and error message: %s.", strerror(errno));
         return false;
     } 
 
@@ -328,7 +328,7 @@ bool DropStrHeapTable(char *table_name) {
     str_table_file = table_file_path(oid);
 
     if (!check_table_exist_direct(oid)) {
-        db_log(ERROR, "Table file '%s' not exists, error : %s", 
+        logger(ERROR, "Table file '%s' not exists, error : %s", 
                str_table_file, strerror(errno));
         return false;
     }
@@ -341,7 +341,7 @@ bool DropStrHeapTable(char *table_name) {
     }
 
     /* Not reach here logically. */
-    db_log(ERROR, 
+    logger(ERROR, 
            "Try to drop string heap table '%s' fail, error : %s", 
            table_name, strerror(errno));
 

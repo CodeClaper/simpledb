@@ -73,7 +73,7 @@ void ExecuteDropTableStatement(char *table_name, DBResult *result) {
         result->success = true;
         result->rows = 0;
         result->message = FormatStr("Table '%s' droped successfully.", table_name);
-        db_log(SUCCESS, "Table '%s' droped successfully.", table_name);
+        logger(SUCCESS, "Table '%s' droped successfully.", table_name);
     }
 
     AfterReleaseTable(oid);
@@ -98,7 +98,7 @@ void ExecuteDropIndexStatement(char *index_name, DBResult *result) {
         result->success = true;
         result->rows = 0;
         result->message = FormatStr("Index '%s' droped successfully.", index_name);
-        db_log(SUCCESS, "Index '%s' droped successfully.", index_name);
+        logger(SUCCESS, "Index '%s' droped successfully.", index_name);
     }   
 
     AfterReleaseTable(obj.toid);

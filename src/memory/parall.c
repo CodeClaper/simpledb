@@ -83,7 +83,7 @@ static void TaskProxy() {
 void ParallelCompute(int workerNum, int taskNum, PARALLEL_TASK task, void *taskArgs[]) {
     Assert(workerNum <= MAX_WORKER_NUM);
     
-    db_log(DEBUGER, "Start parall computing, %d workers with %d tasks.", 
+    logger(DEBUGER, "Start parall computing, %d workers with %d tasks.", 
            workerNum, taskNum);
 
     pthread_t workers[workerNum];
@@ -111,6 +111,6 @@ void ParallelCompute(int workerNum, int taskNum, PARALLEL_TASK task, void *taskA
     
     SwitchComputeMode(oldMode);
 
-    db_log(DEBUGER, "End parall computing.");
+    logger(DEBUGER, "End parall computing.");
 }
 

@@ -3,17 +3,17 @@
 #ifndef __LOG_H__
 #define __LOG_H__
 
-#define PANIC(...) (db_log(PANIC, __VA_ARGS__))
+#define PANIC(...) (logger(PANIC, __VA_ARGS__))
 #define UNREACHABLE(ret_val, ...)   \
     do {                            \
-        db_log(PANIC, __VA_ARGS__); \
+        logger(PANIC, __VA_ARGS__); \
         return(ret_val);            \
     } while (0)
 
 char *get_log_level();
 char *get_stack_message();
 int get_current_log_fdesc();
-void db_log(LogLevel level, char *format, ...);
-void db_log_raw(char *format, ...);
+void logger(LogLevel level, char *format, ...);
+void logger_raw(char *format, ...);
 
 #endif

@@ -58,7 +58,7 @@ bool EQ(void *source, void *target, DataType data_type) {
         case T_RID:
             return *(Rid *) source == *(Rid *) target;
         default:
-            db_log(ERROR, "Not implement data type when operate equal.");
+            logger(ERROR, "Not implement data type when operate equal.");
             break;
     }
 
@@ -101,10 +101,10 @@ bool GT(void *source, void *target, DataType data_type) {
         case T_DATE:
             return *(time_t *)source > *(time_t *)target;
         case T_RID:
-            db_log(ERROR, "Refer data not allowed to be operated GT.");
+            logger(ERROR, "Refer data not allowed to be operated GT.");
             break;
         default:
-            db_log(ERROR, "Not implement data type when operate GT.");
+            logger(ERROR, "Not implement data type when operate GT.");
             break;
     }
 
@@ -144,7 +144,7 @@ bool eval(CompareType compare_type, void *source, void *target, DataType data_ty
         case O_LE:
             return LE(source, target, data_type);
         default:
-            db_log(ERROR, "Unknown compare type.");
+            logger(ERROR, "Unknown compare type.");
             break;
     }
     return false;
@@ -170,15 +170,15 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
                         case ST_SUCCESS:
                             return *(bool *)left->value == val;
                         case ST_INVALID: {
-                            db_log(ERROR, "Invalid input %s for type bool.", right->value);
+                            logger(ERROR, "Invalid input %s for type bool.", right->value);
                             return false;
                         }
                         case ST_OVERFLOW: {
-                            db_log(ERROR, "Overflow input %s for type bool.", right->value);
+                            logger(ERROR, "Overflow input %s for type bool.", right->value);
                             return false;
                         }
                         case ST_OUTRANGE: {
-                            db_log(ERROR, "Out of range input %s for type bool.", right->value);
+                            logger(ERROR, "Out of range input %s for type bool.", right->value);
                             return false;
                         }
                     }
@@ -202,15 +202,15 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
                         case ST_SUCCESS:
                             return *(int32_t *)left->value == val;
                         case ST_INVALID: {
-                            db_log(ERROR, "Invalid input %s for type int.", right->value);
+                            logger(ERROR, "Invalid input %s for type int.", right->value);
                             return false;
                         }
                         case ST_OVERFLOW: {
-                            db_log(ERROR, "Overflow input %s for type int.", right->value);
+                            logger(ERROR, "Overflow input %s for type int.", right->value);
                             return false;
                         }
                         case ST_OUTRANGE: {
-                            db_log(ERROR, "Out of range input %s for type int.", right->value);
+                            logger(ERROR, "Out of range input %s for type int.", right->value);
                             return false;
                         }
                     }
@@ -234,15 +234,15 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
                         case ST_SUCCESS:
                             return *(int64_t *)left->value == val;
                         case ST_INVALID: {
-                            db_log(ERROR, "Invalid input %s for type long.", right->value);
+                            logger(ERROR, "Invalid input %s for type long.", right->value);
                             return false;
                         }
                         case ST_OVERFLOW: {
-                            db_log(ERROR, "Overflow input %s for type long.", right->value);
+                            logger(ERROR, "Overflow input %s for type long.", right->value);
                             return false;
                         }
                         case ST_OUTRANGE: {
-                            db_log(ERROR, "Out of range input %s for type long.", right->value);
+                            logger(ERROR, "Out of range input %s for type long.", right->value);
                             return false;
                         }
                     }
@@ -266,15 +266,15 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
                         case ST_SUCCESS:
                             return *(float *)left->value == val;
                         case ST_INVALID: {
-                            db_log(ERROR, "Invalid input %s for type float.", right->value);
+                            logger(ERROR, "Invalid input %s for type float.", right->value);
                             return false;
                         }
                         case ST_OVERFLOW: {
-                            db_log(ERROR, "Overflow input %s for type float.", right->value);
+                            logger(ERROR, "Overflow input %s for type float.", right->value);
                             return false;
                         }
                         case ST_OUTRANGE: {
-                            db_log(ERROR, "Out of range input %s for type float.", right->value);
+                            logger(ERROR, "Out of range input %s for type float.", right->value);
                             return false;
                         }
                     }
@@ -298,15 +298,15 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
                         case ST_SUCCESS:
                             return *(double *)left->value == *(double *)right->value;
                         case ST_INVALID: {
-                            db_log(ERROR, "Invalid input %s for type float.", right->value);
+                            logger(ERROR, "Invalid input %s for type float.", right->value);
                             return false;
                         }
                         case ST_OVERFLOW: {
-                            db_log(ERROR, "Overflow input %s for type float.", right->value);
+                            logger(ERROR, "Overflow input %s for type float.", right->value);
                             return false;
                         }
                         case ST_OUTRANGE: {
-                            db_log(ERROR, "Out of range input %s for type float.", right->value);
+                            logger(ERROR, "Out of range input %s for type float.", right->value);
                             return false;
                         }
                     }
@@ -325,7 +325,7 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
                 case T_STRING: {
                     /* Check if valid input. */
                     if (!StrIsDate(right->value) && !StrIsTimestamp(right->value))
-                        db_log(ERROR, "Invalid input %s for type date.", right->value);
+                        logger(ERROR, "Invalid input %s for type date.", right->value);
 
                     struct tm tmp_time;
                     memset(&tmp_time, 0, sizeof(struct tm));
@@ -350,7 +350,7 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
                 case T_STRING: {
                     /* Check if valid input. */
                     if (!StrIsDate(right->value) && !StrIsTimestamp(right->value))
-                        db_log(ERROR, "Invalid input %s for type timestamp.", right->value);
+                        logger(ERROR, "Invalid input %s for type timestamp.", right->value);
 
                     struct tm tmp_time;
                     memset(&tmp_time, 0, sizeof(struct tm));
@@ -409,7 +409,7 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
     }
 
 ERR_TYPE:
-    db_log(ERROR, "Can`t compare %s with %s.", 
+    logger(ERROR, "Can`t compare %s with %s.", 
            GET_DATA_TYPE_NAME(left->data_type), 
            GET_DATA_TYPE_NAME(right->data_type));
 
@@ -444,15 +444,15 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
                         case ST_SUCCESS:
                             return *(bool *)left->value > val;
                         case ST_INVALID: {
-                            db_log(ERROR, "Invalid input %s for type bool.", right->value);
+                            logger(ERROR, "Invalid input %s for type bool.", right->value);
                             return false;
                         }
                         case ST_OVERFLOW: {
-                            db_log(ERROR, "Overflow input %s for type bool.", right->value);
+                            logger(ERROR, "Overflow input %s for type bool.", right->value);
                             return false;
                         }
                         case ST_OUTRANGE: {
-                            db_log(ERROR, "Out of range input %s for type bool.", right->value);
+                            logger(ERROR, "Out of range input %s for type bool.", right->value);
                             return false;
                         }
                     }
@@ -476,15 +476,15 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
                         case ST_SUCCESS:
                             return *(int32_t *)left->value > val;
                         case ST_INVALID: {
-                            db_log(ERROR, "Invalid input %s for type int.", right->value);
+                            logger(ERROR, "Invalid input %s for type int.", right->value);
                             return false;
                         }
                         case ST_OVERFLOW: {
-                            db_log(ERROR, "Overflow input %s for type int.", right->value);
+                            logger(ERROR, "Overflow input %s for type int.", right->value);
                             return false;
                         }
                         case ST_OUTRANGE: {
-                            db_log(ERROR, "Out of range input %s for type int.", right->value);
+                            logger(ERROR, "Out of range input %s for type int.", right->value);
                             return false;
                         }
                     }
@@ -508,15 +508,15 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
                         case ST_SUCCESS:
                             return *(int64_t *)left->value > val;
                         case ST_INVALID: {
-                            db_log(ERROR, "Invalid input %s for type long.", right->value);
+                            logger(ERROR, "Invalid input %s for type long.", right->value);
                             return false;
                         }
                         case ST_OVERFLOW: {
-                            db_log(ERROR, "Overflow input %s for type long.", right->value);
+                            logger(ERROR, "Overflow input %s for type long.", right->value);
                             return false;
                         }
                         case ST_OUTRANGE: {
-                            db_log(ERROR, "Out of range input %s for type long.", right->value);
+                            logger(ERROR, "Out of range input %s for type long.", right->value);
                             return false;
                         }
                     }
@@ -540,15 +540,15 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
                         case ST_SUCCESS:
                             return *(float *)left->value > val;
                         case ST_INVALID: {
-                            db_log(ERROR, "Invalid input %s for type float.", right->value);
+                            logger(ERROR, "Invalid input %s for type float.", right->value);
                             return false;
                         }
                         case ST_OVERFLOW: {
-                            db_log(ERROR, "Overflow input %s for type float.", right->value);
+                            logger(ERROR, "Overflow input %s for type float.", right->value);
                             return false;
                         }
                         case ST_OUTRANGE: {
-                            db_log(ERROR, "Out of range input %s for type float.", right->value);
+                            logger(ERROR, "Out of range input %s for type float.", right->value);
                             return false;
                         }
                     }
@@ -572,15 +572,15 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
                         case ST_SUCCESS:
                             return *(double *)left->value > *(double *)right->value;
                         case ST_INVALID: {
-                            db_log(ERROR, "Invalid input %s for type float.", right->value);
+                            logger(ERROR, "Invalid input %s for type float.", right->value);
                             return false;
                         }
                         case ST_OVERFLOW: {
-                            db_log(ERROR, "Overflow input %s for type float.", right->value);
+                            logger(ERROR, "Overflow input %s for type float.", right->value);
                             return false;
                         }
                         case ST_OUTRANGE: {
-                            db_log(ERROR, "Out of range input %s for type float.", right->value);
+                            logger(ERROR, "Out of range input %s for type float.", right->value);
                             return false;
                         }
                     }
@@ -599,7 +599,7 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
                 case T_STRING: {
                     /* Check if valid input. */
                     if (!StrIsDate(right->value) && !StrIsTimestamp(right->value))
-                        db_log(ERROR, "Invalid input %s for type date.", right->value);
+                        logger(ERROR, "Invalid input %s for type date.", right->value);
 
                     struct tm tmp_time;
                     memset(&tmp_time, 0, sizeof(struct tm));
@@ -624,7 +624,7 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
                 case T_STRING: {
                     /* Check if valid input. */
                     if (!StrIsDate(right->value) && !StrIsTimestamp(right->value))
-                        db_log(ERROR, "Invalid input %s for type timestamp.", right->value);
+                        logger(ERROR, "Invalid input %s for type timestamp.", right->value);
 
                     struct tm tmp_time;
                     memset(&tmp_time, 0, sizeof(struct tm));
@@ -660,7 +660,7 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
         case T_RID: {
             switch (right->data_type) {
                 case T_RID:
-                    db_log(ERROR, "Refer data not allowed to be operated GT.");
+                    logger(ERROR, "Refer data not allowed to be operated GT.");
                 default:
                     goto ERR_TYPE;
             }
@@ -669,7 +669,7 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
         case T_OBJECT: {
             switch (right->data_type) {
                 case T_OBJECT:
-                    db_log(ERROR, "Not implement data type when operate GT.");
+                    logger(ERROR, "Not implement data type when operate GT.");
                 default:
                     goto ERR_TYPE;
             }
@@ -682,7 +682,7 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
     }
 
 ERR_TYPE:
-    db_log(ERROR, "Can`t compare %s with %s.", 
+    logger(ERROR, "Can`t compare %s with %s.", 
            GET_DATA_TYPE_NAME(left->data_type), 
            GET_DATA_TYPE_NAME(right->data_type));
 
@@ -720,7 +720,7 @@ bool KeyValueEval(CompareType compare_type, KeyValue *left, KeyValue *right) {
         case O_LE:
             return KeyValueLE(left, right);
         default:
-            db_log(ERROR, "Unknown compare type.");
+            logger(ERROR, "Unknown compare type.");
             break;
     }
 

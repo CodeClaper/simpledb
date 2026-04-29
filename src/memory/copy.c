@@ -409,7 +409,7 @@ PredicateNode *copy_predicate_node(PredicateNode *predicate_node) {
             copy->in = copy_in_node(predicate_node->in);
             break;
         default:
-            db_log(PANIC, "Unknown predicate type");
+            logger(PANIC, "Unknown predicate type");
     }
     return copy;
 }
@@ -576,7 +576,7 @@ ScalarExpNode *copy_scalar_exp_node(ScalarExpNode *scalar_exp_node) {
             copy->value = copy_value_item_node(scalar_exp_node->value);
             break;
         default:
-            db_log(ERROR, "Not support scalar type.");
+            logger(ERROR, "Not support scalar type.");
     }
     copy->alias = copy_value(scalar_exp_node->alias, T_STRING);
     return copy;

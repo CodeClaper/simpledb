@@ -47,5 +47,5 @@ void StartBgWriter() {
         FlushDirtyPage();
         BgDelay();
     }
-    db_log(PANIC, "Recive unrecivable.");
+    logger(PANIC, "Recive unrecivable.");
 }

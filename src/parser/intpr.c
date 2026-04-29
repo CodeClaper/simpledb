@@ -15,13 +15,13 @@ int64_t parse_long(char *val) {
         case ST_SUCCESS:
             break;
         case ST_INVALID:
-            db_log(ERROR, "'%s' is not a valid number", val);
+            logger(ERROR, "'%s' is not a valid number", val);
             break;
         case ST_OVERFLOW:
-            db_log(ERROR, "'%s' is overflow.", val);
+            logger(ERROR, "'%s' is overflow.", val);
             break;
         case ST_OUTRANGE:
-            db_log(ERROR, "'%s' is out of range.", val);
+            logger(ERROR, "'%s' is out of range.", val);
             break;
     }
     return parsed;
@@ -35,13 +35,13 @@ double parse_double(char *val) {
         case ST_SUCCESS:
             break;
         case ST_INVALID:
-            db_log(ERROR, "'%s' is not a valid number", val);
+            logger(ERROR, "'%s' is not a valid number", val);
             break;
         case ST_OVERFLOW:
-            db_log(ERROR, "'%s' is overflow.", val);
+            logger(ERROR, "'%s' is overflow.", val);
             break;
         case ST_OUTRANGE:
-            db_log(ERROR, "'%s' is out of range.", val);
+            logger(ERROR, "'%s' is out of range.", val);
             break;
     }
     return parsed;
