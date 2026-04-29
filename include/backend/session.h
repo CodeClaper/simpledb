@@ -10,8 +10,8 @@ typedef struct {
     char *tempData;             /* The temp data. */
 } Session;
 
-#define OVER_FLAG "\r\n\r\n"  /* Over flag of message. */
-#define LEFT_SPACE 4
+#define EOF_MG      "\r\n\r\n"  /* EOF flag of message. */
+#define LEFT_SPACE  4
 
 void NewSession(int cli);
 bool CancelTempData();

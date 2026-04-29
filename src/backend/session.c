@@ -153,8 +153,8 @@ bool db_send(const char *format, ...) {
     /* Store message into spool. */
     char *left_msg = SaveSessionMessage(sbuff);
 
-    /* Only when spool is full or OVER FLAG, socket will send the whole spool data. */
-    if (!SessionIsFull() && !StrEq(OVER_FLAG, sbuff)) return true;
+    /* Only when spool is full or EOF_MG FLAG, socket will send the whole spool data. */
+    if (!SessionIsFull() && !StrEq(EOF_MG, sbuff)) return true;
     Assert(!SessionIsEmpty());
 
     len = (uint32_t) strlen(client.spool);
@@ -183,7 +183,7 @@ bool db_send(const char *format, ...) {
  * which means the message is over.
  * */
 bool DbSendOver() {
-    return db_send(OVER_FLAG);
+    return db_send(EOF_MG);
 }
 
 /* Socket recv. */
