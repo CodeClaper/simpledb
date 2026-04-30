@@ -425,9 +425,7 @@ static Oid ToidAndRelTypeFindOid(Oid toid, ObjectType reltype) {
     if (result->row_size == 0)
         return OID_ZERO;
     if (result->row_size > 1)
-        logger(PANIC,
-               "Logic error, found more than one object by toid '%ld' and reltype '%d' in system table.", 
-               toid, reltype);
+        THROW("Logic error, found more than one object by toid '%ld' and reltype '%d' in system table.", toid, reltype);
     
     tuple = (void *) qfirst(QueueHead(result->tuples));
 
@@ -442,8 +440,7 @@ static Oid ToidAndRelTypeFindOid(Oid toid, ObjectType reltype) {
  * Return OID_ZERO if missing.
  * */
 Oid TableNameFindOid(char *tableName) {
-    if (StrEq(tableName, SYS_TABLE_NAME))
-        return SYS_ROOT_OID;
+    if (StrEq(tableName, SYS_TABLE_NAME)) return SYS_ROOT_OID;
     return RelnameAndReltypeFindOid(tableName, OTABLE);
 }
 
