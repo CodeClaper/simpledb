@@ -11,7 +11,6 @@
 #include <string.h>
 #include <unistd.h>
 #include "create.h"
-#include "strheaptable.h"
 #include "data.h"
 #include "const.h"
 #include "common.h"
@@ -30,6 +29,8 @@
 #include "tablelock.h"
 #include "tablereg.h"
 #include "tablecache.h"
+#include "strheaptable.h"
+#include "arrheaptable.h"
 #include "heaptable.h"
 #include "systable.h"
 #include "sidcreate.h"
@@ -356,6 +357,7 @@ void ExecuteCreateTableStatement(CreateTableNode *create_table_node, DBResult *r
     Oid roid = FindNextOid();
     Oid hoid = FindNextOid();
     Oid stoid = FindNextOid();
+    Oid aoid = FindNextOid();
 
     Assert(toid != hoid && hoid != stoid && toid != stoid);
 
@@ -369,12 +371,15 @@ void ExecuteCreateTableStatement(CreateTableNode *create_table_node, DBResult *r
     /* Will do these: 
      * (1) Create table.
      * (2) Save table object.
-     * (3) Create rid table. 
-     * (4) Create sid table. 
+     * (3) Create sid table. 
+     * (4) Create rid table. 
      * (5) Create heap table.
      * (6) Create string heap table.
-     * Besides the normal table itself, we alse create its string heap table.
-     * Although the table maybe not have any string column, just in case.
+     * (7) Create array heap table.
+     * (8) Create array heap table.
+     * (9) Prepare save table cache.
+     * Note: we will create its string heap table and array heap table ahead,
+     * although the table maybe not have any string column or array column, just in case.
      * */
     if (
         create_table(toid, meta_table) && 
@@ -383,6 +388,7 @@ void ExecuteCreateTableStatement(CreateTableNode *create_table_node, DBResult *r
         CreateRidTable(roid, toid, GET_METATABLE_NAME(meta_table)) &&
         CreateHeapTable(hoid, toid, meta_table->table_name) &&
         CreateStrHeapTable(stoid, toid, meta_table->table_name) &&
+        CreateArrayHeapTable(aoid, toid, meta_table->table_name) &&
         PrepareSaveTableCache(toid, soid, roid, hoid, stoid, meta_table)
     ) {
         result->success = true;

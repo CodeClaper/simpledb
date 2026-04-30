@@ -15,13 +15,14 @@
 #include "utils.h"
 #include "systable.h"
 #include "heaptable.h"
-#include "strheaptable.h"
 #include "tablelock.h"
 #include "tablereg.h"
 #include "spinlock.h"
 #include "tablecache.h"
 #include "sidcreate.h"
 #include "ridcreate.h"
+#include "strheaptable.h"
+#include "arrheaptable.h"
 
 /* Try to catpture table.
  * If these other session on the table, wait and test. 
@@ -68,6 +69,7 @@ void ExecuteDropTableStatement(char *table_name, DBResult *result) {
         DropRidTable(table->roid) &&
         DropHeapTable(table->hoid) && 
         DropStrHeapTable(table_name) &&
+        DropArrayHeapTable(table_name) &&
         drop_table(table_name)  
     ) {
         result->success = true;

@@ -463,6 +463,16 @@ Oid StrTableNameFindOid(char *tableName) {
     return RelnameAndReltypeFindOid(tableName, OSTRING_HEAP_TABLE);
 }
 
+/* Find oid of array table by table name. 
+ * ------------------------
+ * Return the oid of the found object.
+ * Return OID_ZERO if missing.
+ * */
+Oid ArrayTableNameFindOid(char *tableName) {
+    if (StrEq(tableName, SYS_TABLE_NAME)) return OID_ZERO;
+    return RelnameAndReltypeFindOid(tableName, OARRAY_HEAP_TABLE);
+}
+
 /* Find string table riod by toid.
  * ------------------------------
  * Return the oid of the found object.
