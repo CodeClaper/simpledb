@@ -73,11 +73,11 @@ make DEBUG=1
 - [x] Multiple data type, bool, char, int, float, double, varchar string(dynamic scalable string), date, timestamp and reference
 - [x] Data type valid check
 - [x] Implement MVCC, support transaction and support the four types of transaction isolation levels
+- [x] Support multi-dim dynamic array
 - [ ] ACID
 - [ ] Refer function for manipulating Reference Data.
 - [ ] Subquery
 - [ ] Join query
 - [ ] Support index, B+Tree index store
-- [ ] Support view
 - [ ] Bin Log 
 - [ ] Distributed
