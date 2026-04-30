@@ -107,7 +107,7 @@ void InitSysTable() {
         !CreateHeapTableInner(SYS_ROOT_HEAP_OID) ||
         !CreateSidTableInner(SYS_ROOT_SID_OID) ||
         !CreateRidTableInner(SYS_ROOT_RID_OID)
-    ) PANIC("Create system table fail");
+    ) THROW("Create system table fail");
 }
 
 
@@ -325,10 +325,10 @@ static Object OidFindObjectInner(Oid oid) {
     );
 
     /* Logically, we will get one row data. */
-    if (result->row_size == 0)
-        logger(PANIC, "Not found oid %ld in system table.", oid);
-    if (result->row_size > 1)
-        logger(PANIC, "Logic error, found more than one object by oid %ld in system table.", oid);
+    if (result->row_size == 0) 
+        THROW("Not found oid %ld in system table.", oid);
+    if (result->row_size > 1) 
+        THROW("Logic error, found more than one object by oid %ld in system table.", oid);
     
     tuple = (void *) qfirst(QueueHead(result->tuples));
 
@@ -388,12 +388,10 @@ static Oid RelnameAndReltypeFindOid(char *relname, ObjectType reltype) {
 
     /* The rows number maybe zero, which means the table not exists. 
      * But rows number can`t be more than one. */
-    if (result->row_size == 0)
+    if (result->row_size == 0) 
         return OID_ZERO;
-    if (result->row_size > 1)
-        logger(PANIC,
-               "Logic error, found more than one object by relname '%s' and reltype '%d' in system table.", 
-               relname, reltype);
+    if (result->row_size > 1) 
+        THROW("Logic error, found more than one object by relname '%s' and reltype '%d' in system table.", relname, reltype);
     
     tuple = (void *) qfirst(QueueHead(result->tuples));
 

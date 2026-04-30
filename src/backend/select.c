@@ -1305,7 +1305,7 @@ static AtomNode *GenerateAtomNode(MetaColumn *meta_column, void *value) {
         case T_RID:
         case T_OBJECT:
         case T_UNKNOWN:
-            PANIC("Cant convert type to AtomNode.");
+            THROW("Cant convert type to AtomNode.");
         break;
     }   
     return atom_node;

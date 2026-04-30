@@ -61,7 +61,8 @@ bool check_table_exist_direct(Oid oid) {
 /* Check if table exists. */
 bool check_table_exist(char *table_name) {
     Oid oid = TableNameFindOid(table_name);
-    return check_table_exist_direct(oid);
+    if (ZERO_OID(oid)) return false;
+    else return check_table_exist_direct(oid);
 }
 
 /* Check if index exists. */

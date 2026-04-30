@@ -3,7 +3,7 @@
 #ifndef __LOG_H__
 #define __LOG_H__
 
-#define PANIC(...) (logger(PANIC, __VA_ARGS__))
+#define THROW(...) (logger(PANIC, __VA_ARGS__))
 #define UNREACHABLE(ret_val, ...)   \
     do {                            \
         logger(PANIC, __VA_ARGS__); \
