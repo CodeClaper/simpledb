@@ -69,6 +69,87 @@ def test_array_with_null():
     assert ret["success"] == True
 
 
+# --- Query tests ---
+
+def test_select_star_from_array_table():
+    ret = client.execute("select * from arr_t1;")
+    assert ret["success"] == True
+
+
+def test_select_array_column():
+    ret = client.execute("select id, tags from arr_t1;")
+    assert ret["success"] == True
+
+
+def test_select_array_with_where():
+    ret = client.execute("select * from arr_t1 where id = 1;")
+    assert ret["success"] == True
+    assert ret["rows"] == 1
+
+
+def test_select_array_with_where_compare():
+    ret = client.execute("select * from arr_t2 where id > 0;")
+    assert ret["success"] == True
+
+
+def test_select_array_with_count():
+    ret = client.execute("select count(*) from arr_t1;")
+    assert ret["success"] == True
+
+
+def test_select_array_with_limit():
+    ret = client.execute("select * from arr_t1 limit 1;")
+    assert ret["success"] == True
+    assert ret["rows"] == 1
+
+
+def test_select_int_array():
+    ret = client.execute("select * from arr_t2;")
+    assert ret["success"] == True
+
+
+def test_select_float_array():
+    ret = client.execute("select * from arr_t3;")
+    assert ret["success"] == True
+
+
+def test_select_bool_array():
+    ret = client.execute("select * from arr_t4;")
+    assert ret["success"] == True
+
+
+def test_select_two_dim_array():
+    ret = client.execute("select * from arr_t5;")
+    assert ret["success"] == True
+
+
+def test_select_three_dim_array():
+    ret = client.execute("select * from arr_t6;")
+    assert ret["success"] == True
+
+
+def test_select_two_dim_array_with_where():
+    ret = client.execute("select * from arr_t5 where name = 'matrix1';")
+    assert ret["success"] == True
+    assert ret["rows"] == 1
+
+
+def test_select_array_with_column_alias():
+    ret = client.execute("select id, tags as t from arr_t1;")
+    assert ret["success"] == True
+
+
+def test_select_array_with_count_and_group():
+    ret = client.execute("select count(*) from arr_t1 where id > 0;")
+    assert ret["success"] == True
+
+
+def test_select_array_with_in():
+    ret = client.execute("select * from arr_t1 where id in (1, 2);")
+    assert ret["success"] == True
+    assert ret["rows"] == 2
+
+
 # --- Cleanup ---
 
 def test_cleanup():
