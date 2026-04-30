@@ -591,7 +591,7 @@ static void MetaColumnAssginArrayNumToDestination(void *destination, uint32_t ar
 static void MetaColumnAssginArrayValueToDestination(void *destination, ArrayValue *array_value, MetaColumn *meta_column) {
     uint32_t len, span;
 
-    len =len_list(array_value->list);
+    len = len_list(array_value->list);
     /* User insert arrary values number integer multiple of array dim. */
     Assert(len % meta_column->array_dim == 0);
 

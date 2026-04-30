@@ -367,6 +367,11 @@ static bool CheckForValueItem(MetaTable *meta_table, char *column_name, ValueIte
                 }
                 case V_ARRAY: {
                     List *value_list = value_item_node->value.value_list;
+                    /* Actually it's wrong way to compare array dim. */
+                    if (len_list(value_list) % meta_column->array_dim != 0) {
+                        logger(ERROR, "Multidimensional arrays must have array expressions with matching dimensions");
+                        return false;
+                    }
                     return CheckForValueList(meta_table, column_name, value_list);
                 }
                 default: {
