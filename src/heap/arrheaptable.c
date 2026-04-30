@@ -56,7 +56,7 @@ static bool CreateArrayHeapTableInner(Oid oid) {
     dfree(refer);
     close(descr);
 
-    return false;
+    return true;
 }
 
 /* Create array heap table.
