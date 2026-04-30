@@ -65,9 +65,9 @@ static bool CreateArrayHeapTableInner(Oid oid) {
  * table_name:  Table name.
  * Return:      Success or fail. 
  * */
-bool CreateArrHeapTable(Oid oid, Oid tid, char *table_name) {
+bool CreateArrayHeapTable(Oid oid, Oid tid, char *table_name) {
     Object entity = GenerateObjectInner(oid, tid, table_name, OARRAY_HEAP_TABLE);
-    return CreateArrHeapTableInner(oid) && SaveObject(entity);
+    return CreateArrayHeapTableInner(oid) && SaveObject(entity);
 }
 
 /* Query array value. */
