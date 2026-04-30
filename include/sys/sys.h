@@ -60,7 +60,8 @@ typedef enum ObjectType {
     OSID_TABLE,
     ORID_TABLE,
     OHEAP_TABLE,
-    OSTRING_HEAP_TABLE
+    OSTRING_HEAP_TABLE,
+    OARRAY_HEAP_TABLE
 } ObjectType;
 
 /* Object type is table or view. */
@@ -75,7 +76,8 @@ static char *ObjectTypeNameList[] = {
     "SID_TABLE",
     "RID_TABLE",
     "HEAP_TABLE",
-    "STRING_HEAP_TABLE"
+    "STRING_HEAP_TABLE",
+    "ARRAY_HEAP_TABLE"
 };
 
 static inline char *GetObjectTypeName(ObjectType type) {
