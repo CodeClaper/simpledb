@@ -89,8 +89,7 @@ def test_cleanup():
           "drop table alt_t3;\n" \
           "drop table alt_t4;\n" \
           "drop table alt_t5;\n" \
-          "drop table alt_t6;\n" \
-          "drop table alt_t8;"
+          "drop table alt_t6;\n" 
     ret = client.execute(sql)
     assert_all(ret)
 

@@ -33,7 +33,7 @@ def test_create_table_int_array():
 
 
 def test_create_table_float_array():
-    sql = "create table arr_t3 (id int primary key, values float[]);\n" \
+    sql = "create table arr_t3 (id int primary key, `values` float[]);\n" \
           "insert into arr_t3 values (1, [1.5, 2.5, 3.5]);"
     ret = client.execute(sql)
     assert_all(ret)
