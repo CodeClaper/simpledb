@@ -35,7 +35,6 @@
 #define DEFAULT_TIMESTAMP_LENGTH    20
 #define DEFAULT_REFERENCE_LENGTH    48
 
-void *ValueItemNodeAssignValueInner(ValueItemNode *value_item_node, MetaColumn *meta_column);
 
 /* Column type length */
 uint32_t DataTypeDefaultLength(DataType column_type) {
@@ -178,7 +177,7 @@ static void *ValueListAssignValue(List *value_list, MetaColumn *meta_column) {
         ValueItemNode *value_item = lfirst(lc);
         append_list(
             array_value->list, 
-            ValueItemNodeAssignValueInner(value_item, meta_column)
+            ValueItemNodeAssignValue(value_item, meta_column)
         );
     }
 
@@ -187,11 +186,11 @@ static void *ValueListAssignValue(List *value_list, MetaColumn *meta_column) {
 
 /* Assign value from ValueItemNode. 
  * --------------------------------
- * Notice: the difference between <ValueItemNodeAssignValueInner> and <ValueItemNodeFindValue> is that 
- * <ValueItemNodeAssignValueInner> works for DML operation, like update, insert as value. 
+ * Notice: the difference between <ValueItemNodeAssignValue> and <ValueItemNodeFindValue> is that 
+ * <ValueItemNodeAssignValue> works for DML operation, like update, insert as value. 
  * <ValueItemNodeFindValue> works for DQL operation, like select as search condition value.
  * */
-void *ValueItemNodeAssignValueInner(ValueItemNode *value_item_node, MetaColumn *meta_column) {
+void *ValueItemNodeAssignValue(ValueItemNode *value_item_node, MetaColumn *meta_column) {
     switch (value_item_node->type) {
         case V_ATOM: {
             AtomNode *atom_node = value_item_node->value.atom;
@@ -208,15 +207,6 @@ void *ValueItemNodeAssignValueInner(ValueItemNode *value_item_node, MetaColumn *
     }
 }
 
-
-/* Assign value from ValueItemNode. 
- * Here will handler with V_ARRAY, insert into array heap table and return the refer. 
- * */
-void *ValueItemNodeAssignValue(ValueItemNode *value_item_node, MetaColumn *meta_column) {
-    void *value = ValueItemNodeAssignValueInner(value_item_node, meta_column);
-    if (value_item_node->type != V_ARRAY) return value;
-    else return InsertArrayValue(meta_column->type_oid, (ArrayValue *) value, meta_column);
-}
 
 /* Get value from atom. */
 static void *AtomNodeFindValue(AtomNode *atom_node) {

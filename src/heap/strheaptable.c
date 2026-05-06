@@ -19,14 +19,10 @@
 
 /* Compare two StrRefers. */
 int CompareStrRefer(StrRefer *source, StrRefer *target) {
-    if (ZERO_OID(source->refer.oid) && ZERO_OID(target->refer.oid))
-        return 0;
-    else if (ZERO_OID(source->refer.oid))
-        return -1;
-    else if (ZERO_OID(target->refer.oid))
-        return 1;
-    else
-        return strcmp(QueryStringValue(source), QueryStringValue(target));
+    if (ZERO_OID(source->refer.oid) && ZERO_OID(target->refer.oid)) return 0;
+    else if (ZERO_OID(source->refer.oid)) return -1;
+    else if (ZERO_OID(target->refer.oid)) return 1;
+    else return strcmp(QueryStringValue(source), QueryStringValue(target));
 }
 
 static bool CreateStrHeapTableInner(Oid stid) {

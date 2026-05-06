@@ -45,7 +45,7 @@ static bool ArrayTablePageWillOverflow(Refer *refer, Size size) {
     if (size % ARRAY_TABLE_ROW_SIZE != 0) useRowNum++;
     leftRowNum = ARRAY_TABLE_ROW_NUM - refer->cell_num;
 
-    return leftRowNum >= useRowNum;
+    return useRowNum > leftRowNum;
 }
 
 /* Create array heap table inner.
@@ -156,7 +156,7 @@ static void CalcArrayValueBound(ArrayValue *array, MetaColumn *meta_column, List
 static void CalcArrayValueValues(ArrayValue *array, int idx, List *values) {
     ListCell *lc;
     foreach(lc, array->list) {
-        if (idx > 0) CalcArrayValueValues(lfirst(lc), idx - 1, values);
+        if (idx > 1) CalcArrayValueValues(lfirst(lc), idx - 1, values);
         else append_list(values, lfirst(lc));
     }
 }
@@ -190,6 +190,7 @@ static void InsertArrayValueCrossPage(Refer *refer, MetaColumn *meta_column, Lis
     void *block, *dest, *tiled_src;
     size_t offset, size, left_size, use_size;
     uint32_t left_row_num;
+    int scope;
 
     size = CalcArrayValueValuesSize(meta_column, bound);
     left_row_num = ARRAY_TABLE_ROW_NUM - refer->cell_num;
@@ -204,7 +205,8 @@ static void InsertArrayValueCrossPage(Refer *refer, MetaColumn *meta_column, Lis
     /* Assign bound meta info. */
     ListCell *lc;
     foreach (lc, bound) {
-        memcpy(dest + offset, lfirst(lc), sizeof(int));
+        scope = lfirst_int(lc);
+        memcpy(dest + offset, &scope, sizeof(int));
         offset += sizeof(int);
     }
 
@@ -262,6 +264,7 @@ static void InsertArrayValueNotCrossPage(Refer *refer, MetaColumn *meta_column, 
     ListCell *lc1, *lc2;
     size_t offset;
     uint32_t row_num;
+    int scope;
 
     buffer = ReadBuffer(refer->oid, refer->page_num);
     LockBuffer(buffer, RW_WRITER);
@@ -270,8 +273,9 @@ static void InsertArrayValueNotCrossPage(Refer *refer, MetaColumn *meta_column, 
     offset = 0;
 
     /* Assign bound meta info. */
-    foreach(lc1, bound) {
-        memcpy(dest + offset, lfirst(lc1), sizeof(int));
+    foreach (lc1, bound) {
+        scope = lfirst_int(lc1);
+        memcpy(dest + offset, &scope, sizeof(int));
         offset += sizeof(int);
     }
 
@@ -385,7 +389,7 @@ static List *QueryArrayValueBound(Refer *refer, MetaColumn *meta_column) {
 static void QueryAndLoopArrayValue(ArrayValue *arr, void *dest, MetaColumn *meta_column, List *bound, int idx, size_t *offset) {
     int num = lfirst_int(list_nth_cell(bound, idx));
     for (int i = 0; i < num; i++) {
-        if (idx > 0) {
+        if (idx > 1) {
             ArrayValue *child = new_array_value(meta_column->column_type, 3);
             QueryAndLoopArrayValue(child, dest, meta_column, bound, idx - 1, offset);
             append_list(arr->list, child);
