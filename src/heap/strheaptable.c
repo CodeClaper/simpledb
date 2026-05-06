@@ -96,8 +96,7 @@ static void InsertNotCrossPage(Refer *rRefer, char *strVal) {
     block = GetBufferBlock(buffer);
 
     useRowNum = size / STRING_ROW_SIZE;
-    if (size % STRING_ROW_SIZE != 0)
-        useRowNum++;
+    if (size % STRING_ROW_SIZE != 0) useRowNum++;
     Assert(rRefer->cell_num + useRowNum <= STRING_ROW_SIZE);
     
     /* Store the string value. */
@@ -155,8 +154,7 @@ static void InsertCrossPage(Refer *rRefer, char *strVal) {
          * exclusing the first STRING_ROW_SIZE part. */
         if (leftSize <= PAGE_STRING_DATA_SIZE) {
             leftRowNum = leftSize / STRING_ROW_SIZE;
-            if (leftSize % STRING_ROW_SIZE != 0)
-                leftRowNum++;
+            if (leftSize % STRING_ROW_SIZE != 0) leftRowNum++;
             memcpy((nblock + PAGE_STRING_META_SIZE), strVal + useSize, leftSize);
             rRefer->cell_num = leftRowNum + 1;
             useSize = size;

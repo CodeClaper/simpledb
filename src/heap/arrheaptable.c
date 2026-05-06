@@ -1,5 +1,7 @@
 #include <fcntl.h>
 #include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
@@ -10,9 +12,39 @@
 #include "mmgr.h"
 #include "log.h"
 #include "fdesc.h"
+#include "bufmgr.h"
+#include "copy.h"
+#include "list.h"
 
-#define ARRAY_TABLE_ROOT_PAGE 0
-#define ARRAY_TABLE_FIRST_NUM 1
+#define ARRAY_TABLE_ROOT_PAGE   0
+#define ARRAY_TABLE_FIRST_NUM   1
+#define ARRAY_TABLE_ROW_NUM     64
+#define ARRAY_TABLE_ROW_SIZE    (PAGE_SIZE / ARRAY_TABLE_ROW_NUM)
+
+
+/* Get the root refer. 
+ * Skip the NODE_STATE_SIZE. 
+ * root_node:   Root node.
+ * Return:      Root refer.
+ * */
+static inline Refer *GetRootRefer(void *root_node) {
+    return (Refer *) (root_node + NODE_STATE_SIZE);
+}
+
+/* Calculate page will be overflow. 
+ * refer:   The refer of array value will be posted.
+ * size:    Size the bound.
+ * Return:  Will overflow or not
+ * */
+static bool ArrayTablePageWillOverflow(Refer *refer, Size size) {
+    uint32_t useRowNum, leftRowNum;
+    
+    useRowNum = size / ARRAY_TABLE_ROW_SIZE;
+    if (size % ARRAY_TABLE_ROW_SIZE != 0) useRowNum++;
+    leftRowNum = ARRAY_TABLE_ROW_NUM - refer->cell_num;
+
+    return leftRowNum >= useRowNum;
+}
 
 /* Create array heap table inner.
  * oid:         Array heap table oid.
@@ -71,16 +103,181 @@ bool CreateArrayHeapTable(Oid oid, Oid tid, char *table_name) {
 }
 
 /* Query array value. */
-ArrayValue *QueryArrayValue(Refer *refer, int dim) {
+ArrayValue *QueryArrayValue(Refer *refer, MetaColumn *meta_column) {
+    Assert(meta_column->array_dim > 0);
     return NULL;
 }
 
-/* Insert array value. */
-void InsertArrayValue(ArrayValue *array, int dim) {
-
+/* Calculate bound size. 
+ * If the array is 3D array, the M x N x P is value size, and three int size is the dim size.
+ * meta_column: Meta column.
+ * bound:       bound.
+ * */
+static Size CalcArrayValueBoundSize(MetaColumn *meta_column, List *bound) {
+    Size size = 1;
+    ListCell *lc;
+    foreach (lc, bound) {
+        size = size * lfirst_int(lc);
+    }
+    return (sizeof(int) * bound->size) + size * meta_column->column_length;
 }
 
-/* Drop array value. */
+/* Calculate array value bound. 
+ * Note: every element in the same dim has the same size, so we just consider the first element.
+ * array:       Array value.
+ * meta_column: Meta column.
+ * bound:       bound.
+ * */
+static void CalcArrayValueBound(ArrayValue *array, MetaColumn *meta_column, List *bound) {
+    ArrayValue *current = array;
+    Assert(meta_column->array_dim > 0);
+    for (int i = 0; i < meta_column->array_dim; i++) {
+        append_list_int(bound, current->list->size);
+        current = lfirst(first_cell(current->list));
+        AssertFalse(current == NULL);
+    }
+}
+
+/* Calculate array value values. 
+ * Note: every element in the same dim has the same size, so we just consider the first element.
+ * array:       Array value.
+ * meta_column: Meta column.
+ * values:      values.
+ * */
+static void CalcArrayValueValues(ArrayValue *array, int idx, List *values) {
+    ListCell *lc;
+    foreach(lc, array->list) {
+        if (idx > 0) CalcArrayValueValues(lfirst(lc), idx - 1, values);
+        else append_list(values, lfirst(lc));
+    }
+}
+
+/* Insert array value case cross page. */
+static void InsertArrayValueCrossPage(Refer *refer, MetaColumn *meta_column, List *values, List *bound) {
+    Buffer buffer;
+    void *block, *dest;
+    size_t offset;
+    ListCell *lc1, *lc2;
+
+    buffer = ReadBuffer(refer->oid, refer->page_num);
+    LockBuffer(buffer, RW_WRITER);
+    block = GetBufferPage(buffer);
+    dest = block + refer->cell_num * ARRAY_TABLE_ROW_SIZE;
+    offset = 0;
+
+    /* Assign bound meta info. */
+    foreach(lc1, bound) {
+        memcpy(dest + offset, lfirst(lc1), sizeof(int));
+        offset += sizeof(int);
+    }
+
+    MakeBufferDirty(buffer);
+    UnlockBuffer(buffer);
+    ReleaseBuffer(buffer);
+}
+
+/* Insert array value case not cross page. */
+static void InsertArrayValueNotCrossPage(Refer *refer, MetaColumn *meta_column, List *values, List *bound) {
+    Buffer buffer;
+    void *block, *dest;
+    ListCell *lc1, *lc2;
+    size_t offset;
+    uint32_t row_num;
+
+    buffer = ReadBuffer(refer->oid, refer->page_num);
+    LockBuffer(buffer, RW_WRITER);
+    block = GetBufferPage(buffer);
+    dest = block + refer->cell_num * ARRAY_TABLE_ROW_SIZE;
+    offset = 0;
+
+    /* Assign bound meta info. */
+    foreach(lc1, bound) {
+        memcpy(dest + offset, lfirst(lc1), sizeof(int));
+        offset += sizeof(int);
+    }
+
+    /* Assign array values. */
+    foreach (lc2, values) {
+        memcpy(dest + offset, lfirst(lc2), meta_column->column_length);
+        offset += meta_column->column_length;
+    }
+    
+    /* Update refer. */
+    row_num = offset / ARRAY_TABLE_ROW_SIZE;
+    if (row_num % ARRAY_TABLE_ROW_SIZE != 0) row_num++;
+    refer->cell_num += row_num;
+    if (refer->cell_num == ARRAY_TABLE_ROW_NUM) {
+        /* If current page is full, move to next page and first cell. */
+        refer->page_num++;
+        refer->cell_num = ARRAY_TABLE_FIRST_NUM;
+    }
+    
+    MakeBufferDirty(buffer);
+    UnlockBuffer(buffer);
+    ReleaseBuffer(buffer);
+}
+
+/* Insert array value inner. 
+ * refer:       The refer of array value will be posted.
+ * array:       Array value.
+ * meta_column: Meta column.
+ * Return:      The refer the array value posted.
+ * */
+static void InsertArrayValueInner(Refer *refer, ArrayValue *array, MetaColumn *meta_column) {
+    List *values, *bound;
+    Size size;
+
+    values = create_list(NODE_VOID);
+    bound = create_list(NODE_INT);
+    
+    CalcArrayValueValues(array, meta_column->array_dim, values);
+    CalcArrayValueBound(array, meta_column, bound);
+    size = CalcArrayValueBoundSize(meta_column, bound);
+    
+    if (ArrayTablePageWillOverflow(refer, size)) 
+        /* Not cross page. */
+        InsertArrayValueCrossPage(refer, meta_column, values, bound);
+    else 
+        /* Cross page. */
+        InsertArrayValueNotCrossPage(refer, meta_column, values, bound);
+}
+
+/* Insert array value. 
+ * oid:         Array heap table oid.
+ * array:       Array value.
+ * meta_column: Meta column.
+ * Return:      The refer the array value posted.
+ * */
+Refer *InsertArrayValue(Oid oid, ArrayValue *array, MetaColumn *meta_column) {
+    Buffer buffer;
+    void *block;
+    Refer *rrefer, *nrefer;
+
+    Assert(meta_column->array_dim > 0);
+    AssertFalse(ZERO_OID(oid));
+
+    buffer = ReadBuffer(oid, ARRAY_TABLE_ROOT_PAGE);
+    LockBuffer(buffer, RW_WRITER);
+
+    block = GetBufferPage(buffer);
+    rrefer = GetRootRefer(block);
+    Assert(rrefer->oid == oid);
+    nrefer = copy_refer(rrefer);
+    
+    /* Insert array value. */
+    InsertArrayValueInner(nrefer, array, meta_column);
+
+    MakeBufferDirty(buffer);
+    UnlockBuffer(buffer);
+    ReleaseBuffer(buffer);
+
+    return nrefer;
+}
+
+/* Drop the array value table vai table name
+ * table_name:  Table name.
+ * Return:      Success or fail.
+ * . */
 bool DropArrayHeapTable(char *table_name) {
     Oid oid;
     char *str_table_file;
