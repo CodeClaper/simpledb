@@ -25,7 +25,7 @@
 #define ROOT_NODE_IS_UNIQUE_SIZE  sizeof(uint8_t)
 #define ROOT_NODE_NOT_NULL_SIZE  sizeof(uint8_t)
 #define ROOT_NODE_ARRAY_DIM_SIZE sizeof(uint32_t)
-#define ROOT_NODE_ARRAY_CAP_SIZE sizeof(uint32_t)
+#define ROOT_NODE_ARRAY_HEAP_OID_SIZE sizeof(uint32_t)
 #define ROOT_NODE_DEFAULT_VALUE_TYPE_SIZE sizeof(uint8_t)
 #define ROOT_NODE_HAS_COMMENT_SIZE  sizeof(uint8_t)
 #define ROOT_NODE_COMMENT_STRING_SIZE  MAX_COMMENT_STRING_LENGTH
@@ -33,7 +33,7 @@
                                     ROOT_NODE_META_COLUMN_LENGTH_SIZE + ROOT_NODE_IS_PRIMARY_SIZE + \
                                     ROOT_NODE_META_COLUMN_TYPE_OID_SIZE + ROOT_NODE_SYS_RESERVED_SIZE + \
                                     ROOT_NODE_IS_UNIQUE_SIZE + ROOT_NODE_NOT_NULL_SIZE + \
-                                    ROOT_NODE_ARRAY_DIM_SIZE + ROOT_NODE_ARRAY_CAP_SIZE + \
+                                    ROOT_NODE_ARRAY_DIM_SIZE + ROOT_NODE_ARRAY_HEAP_OID_SIZE + \
                                     ROOT_NODE_DEFAULT_VALUE_TYPE_SIZE + \
                                     ROOT_NODE_HAS_COMMENT_SIZE + ROOT_NODE_COMMENT_STRING_SIZE)
 

@@ -208,7 +208,7 @@ MetaColumn *copy_meta_column(MetaColumn *meta_column) {
     duplica->is_unique = meta_column->is_unique;
     duplica->sys_reserved = meta_column->sys_reserved;
     duplica->array_dim = meta_column->array_dim;
-    duplica->array_cap = meta_column->array_cap;
+    duplica->aoid = meta_column->aoid;
     duplica->default_value_type = meta_column->default_value_type;
     duplica->default_value = copy_default_value(meta_column);
     duplica->has_comment = meta_column->has_comment;
@@ -273,6 +273,7 @@ Table *copy_table(Table *table) {
     duplica->soid = table->soid;
     duplica->hoid = table->hoid;
     duplica->stid = table->stid;
+    duplica->aoid = table->aoid;
     duplica->root_page_num = table->root_page_num;
     duplica->meta_table = copy_meta_table(table->meta_table);
     duplica->meta_indexs = list_copy_deep(table->meta_indexs);

@@ -2,9 +2,9 @@
 #include "refer.h"
 
 void *TupleFindValue(void *tuple, MetaColumn *meta_column);
-void TupleSetValue(void *tuple, MetaColumn *meta_column, void *value);
 void *TupleFindKey(void *tuple, Table *table);
 Xid TupleFindCreatedXid(void *tuple, MetaTable *meta_table);
+void TupleSetValue(void *tuple, MetaColumn *meta_column, void *value);
 void TupleSetCreatedXid(void *tuple, MetaTable *meta_table, Xid created_xid);
 Xid TupleFindExpiredXid(void *tuple, MetaTable *meta_table);
 void TupleSetExpiredXid(void *tuple, MetaTable *meta_table, Xid expired_xid);

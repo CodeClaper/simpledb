@@ -235,7 +235,7 @@ static void AlterAddNewColumn(AddColumnDef *add_column_def, char *table_name, DB
 
     oid = TableNameFindOid(table_name);
     table = open_table_inner(oid);
-    new_meta_column = ColumnDefNodeGenerateMetaColumn(oid, table->stid, add_column_def->column_def);        
+    new_meta_column = ColumnDefNodeGenerateMetaColumn(oid, table->stid, table->aoid, add_column_def->column_def);        
 
     /* By now, not support primary key alter operation. */
     if (new_meta_column->is_primary)

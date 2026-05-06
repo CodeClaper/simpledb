@@ -10,34 +10,8 @@
 #include "table.h"
 #include "ridsearch.h"
 #include "heaptable.h"
+#include "arrheaptable.h"
 
-/* Get array number. */
-static uint32_t GetArrayNumber(void *destination) {
-    return *(uint32_t *)(destination + LEAF_NODE_CELL_NULL_FLAG_SIZE);
-}
-
-/* Get array value. */
-static void *GetArrayValue(void *destination, uint32_t i, uint32_t span) {
-    return (destination + LEAF_NODE_CELL_NULL_FLAG_SIZE + LEAF_NODE_ARRAY_NUM_SIZE + span * i);
-}
-
-/* Get tuple array value. 
- * Return ArrayValue. */
-static ArrayValue *GetTupleArrayValue(void *destination, MetaColumn *meta_column) {
-    uint32_t array_num, span, i;
-    ArrayValue *array_value;
-
-    array_num = GetArrayNumber(destination);
-    span = (meta_column->column_length - LEAF_NODE_ARRAY_NUM_SIZE - LEAF_NODE_CELL_NULL_FLAG_SIZE) / meta_column->array_cap;
-    array_value = new_array_value(meta_column->column_type, array_num);
-
-    for (i = 0; i < array_num; i++) {
-        void *value = GetArrayValue(destination, i, span);
-        append_list(array_value->list, copy_value(value, meta_column->column_type));
-    }
-
-    return array_value;
-}
 
 /* Get tuple value. */ 
 static void *GetTupleValue(void *destination, MetaColumn *meta_column) {
@@ -45,7 +19,7 @@ static void *GetTupleValue(void *destination, MetaColumn *meta_column) {
             /* For non-array data. */
             ? destination + LEAF_NODE_CELL_NULL_FLAG_SIZE 
             /* For array data. */
-            : GetTupleArrayValue(destination, meta_column); 
+            : QueryArrayValue((Refer *) destination, meta_column); 
 }
 
 /* Get value in tuple. */
@@ -54,11 +28,6 @@ void *TupleFindValue(void *tuple, MetaColumn *meta_column) {
     return nflag ? NULL : GetTupleValue((tuple + meta_column->offset), meta_column);
 }
 
-/* Set value in tuple.*/
-void TupleSetValue(void *tuple, MetaColumn *meta_column, void *value) {
-    void *destination = tuple + meta_column->offset;
-    MetaColumnAssignValueToDestination(destination, value, meta_column);
-}
 
 /* Get primary key value in tuple. */
 void *TupleFindKey(void *tuple, Table *table) {
@@ -85,6 +54,13 @@ Xid TupleFindCreatedXid(void *tuple, MetaTable *meta_table) {
     MetaColumn *created_xid_meta_column = NameFindAllMetaColumn(meta_table, CREATED_XID_COLUMN_NAME);
     Assert(created_xid_meta_column != NULL);
     return *(Xid *)TupleFindValue(tuple, created_xid_meta_column);
+}
+
+
+/* Set value in tuple.*/
+void TupleSetValue(void *tuple, MetaColumn *meta_column, void *value) {
+    void *destination = tuple + meta_column->offset;
+    MetaColumnAssignValueToDestination(destination, value, meta_column);
 }
 
 /* Set created xid in tuple. */

@@ -27,12 +27,15 @@
 #include "systable.h"
 #include "select.h"
 #include "strheaptable.h"
+#include "arrheaptable.h"
 
 #define DEFAULT_BOOL_LENGTH         2
 #define DEFAULT_STRING_LENGTH       48
 #define DEFAULT_DATE_LENGTH         20
 #define DEFAULT_TIMESTAMP_LENGTH    20
 #define DEFAULT_REFERENCE_LENGTH    48
+
+void *ValueItemNodeAssignValueInner(ValueItemNode *value_item_node, MetaColumn *meta_column);
 
 /* Column type length */
 uint32_t DataTypeDefaultLength(DataType column_type) {
@@ -175,7 +178,7 @@ static void *ValueListAssignValue(List *value_list, MetaColumn *meta_column) {
         ValueItemNode *value_item = lfirst(lc);
         append_list(
             array_value->list, 
-            ValueItemNodeAssignValue(value_item, meta_column)
+            ValueItemNodeAssignValueInner(value_item, meta_column)
         );
     }
 
@@ -184,11 +187,11 @@ static void *ValueListAssignValue(List *value_list, MetaColumn *meta_column) {
 
 /* Assign value from ValueItemNode. 
  * --------------------------------
- * Notice: the difference between <ValueItemNodeAssignValue> and <ValueItemNodeFindValue> is that 
- * <ValueItemNodeAssignValue> works for DML operation, like update, insert as value. 
+ * Notice: the difference between <ValueItemNodeAssignValueInner> and <ValueItemNodeFindValue> is that 
+ * <ValueItemNodeAssignValueInner> works for DML operation, like update, insert as value. 
  * <ValueItemNodeFindValue> works for DQL operation, like select as search condition value.
  * */
-void *ValueItemNodeAssignValue(ValueItemNode *value_item_node, MetaColumn *meta_column) {
+void *ValueItemNodeAssignValueInner(ValueItemNode *value_item_node, MetaColumn *meta_column) {
     switch (value_item_node->type) {
         case V_ATOM: {
             AtomNode *atom_node = value_item_node->value.atom;
@@ -203,6 +206,16 @@ void *ValueItemNodeAssignValue(ValueItemNode *value_item_node, MetaColumn *meta_
         default:
             UNEXPECTED_VALUE(value_item_node->type);
     }
+}
+
+
+/* Assign value from ValueItemNode. 
+ * Here will handler with V_ARRAY, insert into array heap table and return the refer. 
+ * */
+void *ValueItemNodeAssignValue(ValueItemNode *value_item_node, MetaColumn *meta_column) {
+    void *value = ValueItemNodeAssignValueInner(value_item_node, meta_column);
+    if (value_item_node->type != V_ARRAY) return value;
+    else return InsertArrayValue(meta_column->type_oid, (ArrayValue *) value, meta_column);
 }
 
 /* Get value from atom. */
@@ -548,16 +561,16 @@ void *MetaColumnSeriable(MetaColumn *meta_column) {
     *(uint32_t *)(destination + ROOT_NODE_META_COLUMN_NAME_SIZE) = (uint32_t) meta_column->column_type;
     *(uint32_t *)(destination + ROOT_NODE_META_COLUMN_NAME_SIZE + ROOT_NODE_META_COLUMN_TYPE_SIZE) = (uint32_t) meta_column->column_length;
     *(uint8_t *)(destination + ROOT_NODE_META_COLUMN_NAME_SIZE + ROOT_NODE_META_COLUMN_TYPE_SIZE + ROOT_NODE_META_COLUMN_LENGTH_SIZE) = meta_column->is_primary;  
-    if (meta_column->column_type == T_RID || meta_column->column_type == T_STRING)
+    if (meta_column->column_type == T_RID || meta_column->column_type == T_STRING || meta_column->array_dim > 0)
         *(Oid *)(destination + ROOT_NODE_META_COLUMN_NAME_SIZE + ROOT_NODE_META_COLUMN_TYPE_SIZE + ROOT_NODE_META_COLUMN_LENGTH_SIZE + ROOT_NODE_IS_PRIMARY_SIZE) = meta_column->type_oid;
     *(uint8_t *)(destination + ROOT_NODE_META_COLUMN_NAME_SIZE + ROOT_NODE_META_COLUMN_TYPE_SIZE + ROOT_NODE_META_COLUMN_LENGTH_SIZE + ROOT_NODE_IS_PRIMARY_SIZE + ROOT_NODE_META_COLUMN_TYPE_OID_SIZE) = meta_column->sys_reserved;  
     *(uint8_t *)(destination + ROOT_NODE_META_COLUMN_NAME_SIZE + ROOT_NODE_META_COLUMN_TYPE_SIZE + ROOT_NODE_META_COLUMN_LENGTH_SIZE + ROOT_NODE_IS_PRIMARY_SIZE + ROOT_NODE_META_COLUMN_TYPE_OID_SIZE + ROOT_NODE_SYS_RESERVED_SIZE) = meta_column->is_unique;  
     *(uint8_t *)(destination + ROOT_NODE_META_COLUMN_NAME_SIZE + ROOT_NODE_META_COLUMN_TYPE_SIZE + ROOT_NODE_META_COLUMN_LENGTH_SIZE + ROOT_NODE_IS_PRIMARY_SIZE + ROOT_NODE_META_COLUMN_TYPE_OID_SIZE + ROOT_NODE_SYS_RESERVED_SIZE + ROOT_NODE_IS_UNIQUE_SIZE) = meta_column->not_null;  
     *(uint32_t *)(destination + ROOT_NODE_META_COLUMN_NAME_SIZE + ROOT_NODE_META_COLUMN_TYPE_SIZE + ROOT_NODE_META_COLUMN_LENGTH_SIZE + ROOT_NODE_IS_PRIMARY_SIZE + ROOT_NODE_META_COLUMN_TYPE_OID_SIZE + ROOT_NODE_SYS_RESERVED_SIZE + ROOT_NODE_IS_UNIQUE_SIZE + ROOT_NODE_NOT_NULL_SIZE) = meta_column->array_dim;  
-    *(uint32_t *)(destination + ROOT_NODE_META_COLUMN_NAME_SIZE + ROOT_NODE_META_COLUMN_TYPE_SIZE + ROOT_NODE_META_COLUMN_LENGTH_SIZE + ROOT_NODE_IS_PRIMARY_SIZE + ROOT_NODE_META_COLUMN_TYPE_OID_SIZE + ROOT_NODE_SYS_RESERVED_SIZE + ROOT_NODE_IS_UNIQUE_SIZE + ROOT_NODE_NOT_NULL_SIZE + ROOT_NODE_ARRAY_DIM_SIZE) = meta_column->array_cap;
-    *(uint8_t *)(destination + ROOT_NODE_META_COLUMN_NAME_SIZE + ROOT_NODE_META_COLUMN_TYPE_SIZE + ROOT_NODE_META_COLUMN_LENGTH_SIZE + ROOT_NODE_IS_PRIMARY_SIZE + ROOT_NODE_META_COLUMN_TYPE_OID_SIZE + ROOT_NODE_SYS_RESERVED_SIZE + ROOT_NODE_IS_UNIQUE_SIZE + ROOT_NODE_NOT_NULL_SIZE + ROOT_NODE_ARRAY_DIM_SIZE + ROOT_NODE_ARRAY_CAP_SIZE) = meta_column->default_value_type;
-    *(uint8_t *)(destination + ROOT_NODE_META_COLUMN_NAME_SIZE + ROOT_NODE_META_COLUMN_TYPE_SIZE + ROOT_NODE_META_COLUMN_LENGTH_SIZE + ROOT_NODE_IS_PRIMARY_SIZE + ROOT_NODE_META_COLUMN_TYPE_OID_SIZE + ROOT_NODE_SYS_RESERVED_SIZE + ROOT_NODE_IS_UNIQUE_SIZE + ROOT_NODE_NOT_NULL_SIZE + ROOT_NODE_ARRAY_DIM_SIZE + ROOT_NODE_ARRAY_CAP_SIZE + ROOT_NODE_DEFAULT_VALUE_TYPE_SIZE) = meta_column->has_comment;  
-    memcpy(destination + ROOT_NODE_META_COLUMN_NAME_SIZE + ROOT_NODE_META_COLUMN_TYPE_SIZE + ROOT_NODE_META_COLUMN_LENGTH_SIZE + ROOT_NODE_IS_PRIMARY_SIZE + ROOT_NODE_META_COLUMN_TYPE_OID_SIZE + ROOT_NODE_SYS_RESERVED_SIZE + ROOT_NODE_IS_UNIQUE_SIZE + ROOT_NODE_NOT_NULL_SIZE + ROOT_NODE_ARRAY_DIM_SIZE + ROOT_NODE_ARRAY_CAP_SIZE + ROOT_NODE_DEFAULT_VALUE_TYPE_SIZE + ROOT_NODE_HAS_COMMENT_SIZE, 
+    *(Oid *)(destination + ROOT_NODE_META_COLUMN_NAME_SIZE + ROOT_NODE_META_COLUMN_TYPE_SIZE + ROOT_NODE_META_COLUMN_LENGTH_SIZE + ROOT_NODE_IS_PRIMARY_SIZE + ROOT_NODE_META_COLUMN_TYPE_OID_SIZE + ROOT_NODE_SYS_RESERVED_SIZE + ROOT_NODE_IS_UNIQUE_SIZE + ROOT_NODE_NOT_NULL_SIZE + ROOT_NODE_ARRAY_DIM_SIZE) = meta_column->aoid;
+    *(uint8_t *)(destination + ROOT_NODE_META_COLUMN_NAME_SIZE + ROOT_NODE_META_COLUMN_TYPE_SIZE + ROOT_NODE_META_COLUMN_LENGTH_SIZE + ROOT_NODE_IS_PRIMARY_SIZE + ROOT_NODE_META_COLUMN_TYPE_OID_SIZE + ROOT_NODE_SYS_RESERVED_SIZE + ROOT_NODE_IS_UNIQUE_SIZE + ROOT_NODE_NOT_NULL_SIZE + ROOT_NODE_ARRAY_DIM_SIZE + ROOT_NODE_ARRAY_HEAP_OID_SIZE) = meta_column->default_value_type;
+    *(uint8_t *)(destination + ROOT_NODE_META_COLUMN_NAME_SIZE + ROOT_NODE_META_COLUMN_TYPE_SIZE + ROOT_NODE_META_COLUMN_LENGTH_SIZE + ROOT_NODE_IS_PRIMARY_SIZE + ROOT_NODE_META_COLUMN_TYPE_OID_SIZE + ROOT_NODE_SYS_RESERVED_SIZE + ROOT_NODE_IS_UNIQUE_SIZE + ROOT_NODE_NOT_NULL_SIZE + ROOT_NODE_ARRAY_DIM_SIZE + ROOT_NODE_ARRAY_HEAP_OID_SIZE + ROOT_NODE_DEFAULT_VALUE_TYPE_SIZE) = meta_column->has_comment;  
+    memcpy(destination + ROOT_NODE_META_COLUMN_NAME_SIZE + ROOT_NODE_META_COLUMN_TYPE_SIZE + ROOT_NODE_META_COLUMN_LENGTH_SIZE + ROOT_NODE_IS_PRIMARY_SIZE + ROOT_NODE_META_COLUMN_TYPE_OID_SIZE + ROOT_NODE_SYS_RESERVED_SIZE + ROOT_NODE_IS_UNIQUE_SIZE + ROOT_NODE_NOT_NULL_SIZE + ROOT_NODE_ARRAY_DIM_SIZE + ROOT_NODE_ARRAY_HEAP_OID_SIZE + ROOT_NODE_DEFAULT_VALUE_TYPE_SIZE + ROOT_NODE_HAS_COMMENT_SIZE, 
            meta_column->comment, 
            ROOT_NODE_COMMENT_STRING_SIZE);
     return destination;
@@ -576,35 +589,18 @@ MetaColumn *MetaColumnDeseriable(void *destination) {
     meta_column->is_unique = (bool)*(uint8_t *)(destination + ROOT_NODE_META_COLUMN_NAME_SIZE + ROOT_NODE_META_COLUMN_TYPE_SIZE + ROOT_NODE_META_COLUMN_LENGTH_SIZE + ROOT_NODE_IS_PRIMARY_SIZE + ROOT_NODE_META_COLUMN_TYPE_OID_SIZE + ROOT_NODE_SYS_RESERVED_SIZE);
     meta_column->not_null = (bool)*(uint8_t *)(destination + ROOT_NODE_META_COLUMN_NAME_SIZE + ROOT_NODE_META_COLUMN_TYPE_SIZE + ROOT_NODE_META_COLUMN_LENGTH_SIZE + ROOT_NODE_IS_PRIMARY_SIZE + ROOT_NODE_META_COLUMN_TYPE_OID_SIZE + ROOT_NODE_SYS_RESERVED_SIZE + ROOT_NODE_IS_UNIQUE_SIZE);
     meta_column->array_dim = *(uint32_t *)(destination + ROOT_NODE_META_COLUMN_NAME_SIZE + ROOT_NODE_META_COLUMN_TYPE_SIZE + ROOT_NODE_META_COLUMN_LENGTH_SIZE + ROOT_NODE_IS_PRIMARY_SIZE + ROOT_NODE_META_COLUMN_TYPE_OID_SIZE + ROOT_NODE_SYS_RESERVED_SIZE + ROOT_NODE_IS_UNIQUE_SIZE + ROOT_NODE_NOT_NULL_SIZE);
-    meta_column->array_cap = *(uint32_t *)(destination + ROOT_NODE_META_COLUMN_NAME_SIZE + ROOT_NODE_META_COLUMN_TYPE_SIZE + ROOT_NODE_META_COLUMN_LENGTH_SIZE + ROOT_NODE_IS_PRIMARY_SIZE + ROOT_NODE_META_COLUMN_TYPE_OID_SIZE + ROOT_NODE_SYS_RESERVED_SIZE + ROOT_NODE_IS_UNIQUE_SIZE + ROOT_NODE_NOT_NULL_SIZE + ROOT_NODE_ARRAY_DIM_SIZE);
-    meta_column->default_value_type = (DefaultValueType)*(uint8_t *)(destination + ROOT_NODE_META_COLUMN_NAME_SIZE + ROOT_NODE_META_COLUMN_TYPE_SIZE + ROOT_NODE_META_COLUMN_LENGTH_SIZE + ROOT_NODE_IS_PRIMARY_SIZE + ROOT_NODE_META_COLUMN_TYPE_OID_SIZE + ROOT_NODE_SYS_RESERVED_SIZE + ROOT_NODE_IS_UNIQUE_SIZE + ROOT_NODE_NOT_NULL_SIZE + ROOT_NODE_ARRAY_DIM_SIZE + ROOT_NODE_ARRAY_CAP_SIZE);
-    meta_column->has_comment = (bool)*(uint8_t *)(destination + ROOT_NODE_META_COLUMN_NAME_SIZE + ROOT_NODE_META_COLUMN_TYPE_SIZE + ROOT_NODE_META_COLUMN_LENGTH_SIZE + ROOT_NODE_IS_PRIMARY_SIZE + ROOT_NODE_META_COLUMN_TYPE_OID_SIZE + ROOT_NODE_SYS_RESERVED_SIZE + ROOT_NODE_IS_UNIQUE_SIZE + ROOT_NODE_NOT_NULL_SIZE + ROOT_NODE_ARRAY_DIM_SIZE + ROOT_NODE_ARRAY_CAP_SIZE + ROOT_NODE_DEFAULT_VALUE_TYPE_SIZE);
-    strcpy(meta_column->comment, destination + ROOT_NODE_META_COLUMN_NAME_SIZE + ROOT_NODE_META_COLUMN_TYPE_SIZE + ROOT_NODE_META_COLUMN_LENGTH_SIZE + ROOT_NODE_IS_PRIMARY_SIZE + ROOT_NODE_META_COLUMN_TYPE_OID_SIZE + ROOT_NODE_SYS_RESERVED_SIZE + ROOT_NODE_IS_UNIQUE_SIZE + ROOT_NODE_NOT_NULL_SIZE + ROOT_NODE_ARRAY_DIM_SIZE + ROOT_NODE_ARRAY_CAP_SIZE + ROOT_NODE_DEFAULT_VALUE_TYPE_SIZE + ROOT_NODE_HAS_COMMENT_SIZE);
+    meta_column->aoid = *(Oid *)(destination + ROOT_NODE_META_COLUMN_NAME_SIZE + ROOT_NODE_META_COLUMN_TYPE_SIZE + ROOT_NODE_META_COLUMN_LENGTH_SIZE + ROOT_NODE_IS_PRIMARY_SIZE + ROOT_NODE_META_COLUMN_TYPE_OID_SIZE + ROOT_NODE_SYS_RESERVED_SIZE + ROOT_NODE_IS_UNIQUE_SIZE + ROOT_NODE_NOT_NULL_SIZE + ROOT_NODE_ARRAY_DIM_SIZE);
+    meta_column->default_value_type = (DefaultValueType)*(uint8_t *)(destination + ROOT_NODE_META_COLUMN_NAME_SIZE + ROOT_NODE_META_COLUMN_TYPE_SIZE + ROOT_NODE_META_COLUMN_LENGTH_SIZE + ROOT_NODE_IS_PRIMARY_SIZE + ROOT_NODE_META_COLUMN_TYPE_OID_SIZE + ROOT_NODE_SYS_RESERVED_SIZE + ROOT_NODE_IS_UNIQUE_SIZE + ROOT_NODE_NOT_NULL_SIZE + ROOT_NODE_ARRAY_DIM_SIZE + ROOT_NODE_ARRAY_HEAP_OID_SIZE);
+    meta_column->has_comment = (bool)*(uint8_t *)(destination + ROOT_NODE_META_COLUMN_NAME_SIZE + ROOT_NODE_META_COLUMN_TYPE_SIZE + ROOT_NODE_META_COLUMN_LENGTH_SIZE + ROOT_NODE_IS_PRIMARY_SIZE + ROOT_NODE_META_COLUMN_TYPE_OID_SIZE + ROOT_NODE_SYS_RESERVED_SIZE + ROOT_NODE_IS_UNIQUE_SIZE + ROOT_NODE_NOT_NULL_SIZE + ROOT_NODE_ARRAY_DIM_SIZE + ROOT_NODE_ARRAY_HEAP_OID_SIZE + ROOT_NODE_DEFAULT_VALUE_TYPE_SIZE);
+    strcpy(meta_column->comment, destination + ROOT_NODE_META_COLUMN_NAME_SIZE + ROOT_NODE_META_COLUMN_TYPE_SIZE + ROOT_NODE_META_COLUMN_LENGTH_SIZE + ROOT_NODE_IS_PRIMARY_SIZE + ROOT_NODE_META_COLUMN_TYPE_OID_SIZE + ROOT_NODE_SYS_RESERVED_SIZE + ROOT_NODE_IS_UNIQUE_SIZE + ROOT_NODE_NOT_NULL_SIZE + ROOT_NODE_ARRAY_DIM_SIZE + ROOT_NODE_ARRAY_HEAP_OID_SIZE + ROOT_NODE_DEFAULT_VALUE_TYPE_SIZE + ROOT_NODE_HAS_COMMENT_SIZE);
     return meta_column;
 }
 
-static void MetaColumnAssginArrayNumToDestination(void *destination, uint32_t array_num) {
-    memcpy(destination + LEAF_NODE_CELL_NULL_FLAG_SIZE, &array_num, LEAF_NODE_ARRAY_NUM_SIZE);
-}
 
 /* Assign array value to destination. */
 static void MetaColumnAssginArrayValueToDestination(void *destination, ArrayValue *array_value, MetaColumn *meta_column) {
-    uint32_t len, span;
-
-    len = len_list(array_value->list);
-    /* User insert arrary values number integer multiple of array dim. */
-    Assert(len % meta_column->array_dim == 0);
-
-    /* Assign array number. */
-    MetaColumnAssginArrayNumToDestination(destination, len);
-    /* span: every value in array data lenght. */
-    span = (meta_column->column_length - LEAF_NODE_ARRAY_NUM_SIZE - LEAF_NODE_CELL_NULL_FLAG_SIZE) / meta_column->array_cap;
-
-    ListCell *lc;
-    foreach (lc, array_value->list) {
-        void *value = lfirst(lc);
-        memcpy((destination + LEAF_NODE_CELL_NULL_FLAG_SIZE + LEAF_NODE_ARRAY_NUM_SIZE + span * __i), value, span);
-    }
+    Refer *refer = InsertArrayValue(meta_column->aoid, array_value,  meta_column);
+    memcpy(destination + LEAF_NODE_CELL_NULL_FLAG_SIZE, refer, REFER_SIZE);
 }
 
 /* Assign value to destination. */

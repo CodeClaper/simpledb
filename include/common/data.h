@@ -676,7 +676,7 @@ typedef struct MetaColumn {
     bool is_unique;                             /* Unique column. */
     bool sys_reserved;                          /* System reserved column, only visible for system. */
     uint32_t array_dim;                         /* Array dimension. Default zero if not array. */
-    uint32_t array_cap;                         /* Array capacity. (array_cap = array_dim * n) */
+    Oid aoid;                                   /* Array heap table oid,  if it's array. */
     DefaultValueType default_value_type;        /* Default value type. */
     void *default_value;                        /* Default value. */
     bool has_comment;                           /* Has comment. */
@@ -714,6 +714,7 @@ typedef struct Table {
     Oid roid;                                   /* Rid table oid. */
     Oid hoid;                                   /* Heap table oid. */
     Oid stid;                                   /* String heap table oid. */
+    Oid aoid;                                   /* Array heap table oid. */
     uint32_t root_page_num;                     /* Root page num. */
     MetaTable *meta_table;                      /* Meta table info. */
     List *meta_indexs;                          /* Meta index info. */   

@@ -38,12 +38,13 @@
 
 /* Calculate meta column length. 
  * -----------------------------
- * If define data len, use defined data length, note that, T_STRING & T_VARCHAR data length will increase 1 for '\0' as end.
- * Otherwise, use system default data length.
- * Note: when array cap more than zere, it means column is array, 
- * column length = data type length * array cap + reserved array number length (sizeof(uint32_t));
+ * If define data len, use defined data length.
+ * Note that: 
+ * (1) T_STRING & T_VARCHAR data length will increase 1 for '\0' as end. Otherwise, use system default data length.
+ * (2) When array cap more than zere, it means column is array. We use array heap table to store array values. 
+ *     So column length = REFER_SIZE + LEAF_NODE_CELL_NULL_FLAG_SIZE;
  * */
-static uint32_t CalcMetaColumnLength(ColumnDefNode *column_def, uint32_t array_cap) {
+static uint32_t CalcMetaColumnLength(ColumnDefNode *column_def) {
     DataTypeNode *data_type = column_def->data_type;
     uint32_t column_length = 0;
     switch (data_type->type) {
@@ -65,9 +66,9 @@ static uint32_t CalcMetaColumnLength(ColumnDefNode *column_def, uint32_t array_c
         }
     }
     /* If type is array, single data type length multiply by array cap. */
-    return array_cap == 0 
+    return column_def->array_dim == 0 
             ? (column_length + LEAF_NODE_CELL_NULL_FLAG_SIZE)
-            : (column_length * array_cap + LEAF_NODE_ARRAY_NUM_SIZE + LEAF_NODE_CELL_NULL_FLAG_SIZE);
+            : (REFER_SIZE + LEAF_NODE_CELL_NULL_FLAG_SIZE);
 }
 
 /* Column Operation. */
@@ -116,7 +117,7 @@ static void ColumnDefOptListForMetaColumn(MetaColumn *meta_column, List *column_
 }
 
 /* Combine user-level column. */
-MetaColumn *ColumnDefNodeGenerateMetaColumn(Oid tid, Oid stid, ColumnDefNode *column_def) {
+MetaColumn *ColumnDefNodeGenerateMetaColumn(Oid tid, Oid stid, Oid aoid, ColumnDefNode *column_def) {
     MetaColumn *meta_column = instance(MetaColumn);
 
     /* Base info. */
@@ -128,8 +129,7 @@ MetaColumn *ColumnDefNodeGenerateMetaColumn(Oid tid, Oid stid, ColumnDefNode *co
     meta_column->column_type = column_def->data_type->type;
     meta_column->sys_reserved = false;
     meta_column->array_dim = column_def->array_dim;
-    meta_column->array_cap = column_def->array_dim * ARRAY_FLARE_FACTOR;
-    meta_column->column_length = CalcMetaColumnLength(column_def, meta_column->array_cap);
+    meta_column->column_length = CalcMetaColumnLength(column_def);
     meta_column->default_value_type = DEFAULT_VALUE_NONE;
     meta_column->default_value = NULL;
 
@@ -145,6 +145,10 @@ MetaColumn *ColumnDefNodeGenerateMetaColumn(Oid tid, Oid stid, ColumnDefNode *co
     /* Special handling STRING, record the strheaptable name. */
     if (column_def->data_type->type == T_STRING) 
         meta_column->type_oid = stid;
+
+    /* Special handling ARRAY. */
+    if (column_def->array_dim > 0)
+        meta_column->aoid = aoid;
 
     /* Operate column. */
     ColumnDefOptListForMetaColumn(meta_column, column_def->column_def_opt_list);
@@ -229,7 +233,7 @@ static void GenerateSystemPrimaryKey(MetaTable *meta_table) {
 }
 
 /* Combine meta table by create table node. */
-static MetaTable *CreateTableNodeGenerateMetaTable(Oid toid, Oid stoid, CreateTableNode *create_table_node) {
+static MetaTable *CreateTableNodeGenerateMetaTable(Oid toid, Oid stoid, Oid aoid, CreateTableNode *create_table_node) {
     MetaTable *meta_table = instance(MetaTable);
     meta_table->table_name = dstrdup(create_table_node->table_name);
     meta_table->column_size = CreateTableNodeColumnSize(create_table_node); 
@@ -243,7 +247,7 @@ static MetaTable *CreateTableNodeGenerateMetaTable(Oid toid, Oid stoid, CreateTa
         BaseTableElementNode *base_table_element = lfirst(lc);
         switch (base_table_element->type) {
             case TELE_COLUMN_DEF: {
-                MetaColumn *current = ColumnDefNodeGenerateMetaColumn(toid, stoid, base_table_element->column_def);
+                MetaColumn *current = ColumnDefNodeGenerateMetaColumn(toid, stoid, aoid, base_table_element->column_def);
                 current->offset = offset;
                 append_list(meta_table->meta_columns, current);
                 offset += current->column_length;
@@ -365,7 +369,7 @@ void ExecuteCreateTableStatement(CreateTableNode *create_table_node, DBResult *r
     if (!CheckForCreateTable(create_table_node)) return;
 
     /* Combine MetaTable. */
-    MetaTable *meta_table = CreateTableNodeGenerateMetaTable(toid, stoid, create_table_node);
+    MetaTable *meta_table = CreateTableNodeGenerateMetaTable(toid, stoid, aoid, create_table_node);
     if (meta_table == NULL) return;
 
     /* Will do these: 
