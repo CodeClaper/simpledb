@@ -104,11 +104,6 @@ bool CreateArrayHeapTable(Oid oid, Oid tid, char *table_name) {
     return CreateArrayHeapTableInner(oid) && SaveObject(entity);
 }
 
-/* Query array value. */
-ArrayValue *QueryArrayValue(Refer *refer, MetaColumn *meta_column) {
-    Assert(meta_column->array_dim > 0);
-    return NULL;
-}
 
 /* Calculate values size. 
  * If the array is 3D array, the M x N x P is value size.
@@ -324,6 +319,9 @@ static void InsertArrayValueInner(Refer *refer, ArrayValue *array, MetaColumn *m
     else 
         /* Cross page. */
         InsertArrayValueNotCrossPage(refer, meta_column, values, bound);
+
+    free_list(values);
+    free_list(bound);
 }
 
 /* Insert array value. 
@@ -358,10 +356,151 @@ Refer *InsertArrayValue(Oid oid, ArrayValue *array, MetaColumn *meta_column) {
     return nrefer;
 }
 
+/* Query array value bound. */
+static List *QueryArrayValueBound(Refer *refer, MetaColumn *meta_column) {
+    int i;
+    Buffer buffer;
+    void *block;
+    List *bound;
+    size_t offset;
+    
+    bound = create_list(NODE_INT);
+    buffer = ReadBuffer(refer->oid, refer->page_num);
+    LockBuffer(buffer, RW_READERS);
+    block = GetBufferPage(buffer);
+    offset = 0;
+    
+    for (i = 0; i < meta_column->array_dim; i++) {
+        append_list(bound, block + offset);
+        offset += sizeof(int);
+    }
+
+    UnlockBuffer(buffer);
+    ReleaseBuffer(buffer);
+
+    return bound;
+}
+
+/* Query and loop array value. */
+static void QueryAndLoopArrayValue(ArrayValue *arr, void *dest, MetaColumn *meta_column, List *bound, int idx, size_t *offset) {
+    int num = lfirst_int(list_nth_cell(bound, idx));
+    for (int i = 0; i < num; i++) {
+        if (idx > 0) {
+            ArrayValue *child = new_array_value(meta_column->column_type, 3);
+            QueryAndLoopArrayValue(child, dest, meta_column, bound, idx - 1, offset);
+            append_list(arr->list, child);
+        } else {
+            append_list(arr->list, dest + (*offset));
+            (*offset) += meta_column->column_length;
+        }
+    }
+}
+
+/* Query Array value tiled dest. */
+static void *QueryArrayValueTiledDest(Refer *refer, MetaColumn *meta_column, List *bound) {
+    Buffer buffer;
+    Size values_size;
+    void *block, *src, *dest;
+    uint32_t left_size, use_size;
+    int32_t current_page;
+
+    buffer = ReadBuffer(refer->oid, refer->page_num);
+    LockBuffer(buffer, RW_READERS);
+    block = GetBufferPage(buffer);
+    src= block + sizeof(int) * meta_column->array_dim;
+    values_size = CalcArrayValueValuesSize(meta_column, bound);
+    dest = dalloc(values_size);
+    current_page = refer->page_num;
+
+    left_size = PAGE_SIZE - refer->cell_num * ARRAY_TABLE_ROW_SIZE;
+    memcpy(dest, src, left_size);
+    use_size = left_size;
+
+    UnlockBuffer(buffer);
+    ReleaseBuffer(buffer);
+
+    while (use_size < values_size) {
+        Buffer nbuffer;
+        void *nblock;
+
+        nbuffer = ReadBuffer(refer->oid, ++current_page);
+        LockBuffer(nbuffer, RW_READERS);
+        nblock = GetBufferPage(nbuffer);
+
+        left_size = values_size - use_size;
+        if (left_size <= ARRAY_TABLE_DATA_SIZE) {
+            memcpy(dest + use_size, (nblock + ARRAY_TABLE_META_SIZE), left_size);
+            use_size = values_size;
+        } else {
+            memcpy(dest + use_size, (nblock + ARRAY_TABLE_META_SIZE), ARRAY_TABLE_DATA_SIZE);
+            use_size += PAGE_SIZE;
+        }
+
+        UnlockBuffer(nbuffer);
+        ReleaseBuffer(nbuffer);
+    }
+
+    return dest;
+} 
+
+/* Query array value cross page. */
+static ArrayValue *QueryArrayValueCrossPage(Refer *refer, MetaColumn *meta_column, List *bound) {
+    ArrayValue *arr;
+    void *dest;
+    size_t offset;
+    
+    arr = new_array_value(meta_column->column_type, 3);
+    dest = QueryArrayValueTiledDest(refer, meta_column, bound);
+    offset = 0;
+    QueryAndLoopArrayValue(arr, dest, meta_column, bound, meta_column->array_dim, &offset);
+
+    return arr;
+}
+
+
+/* Query array value without cross page. */
+static ArrayValue *QueryArrayValueNotCrossPage(Refer *refer, MetaColumn *meta_column, List *bound) {
+    ArrayValue *arr;
+    Buffer buffer;
+    void *block, *dest;
+    size_t offset;
+
+    arr = new_array_value(meta_column->column_type, 3);
+    buffer = ReadBuffer(refer->oid, refer->page_num);
+    LockBuffer(buffer, RW_READERS);
+    block = GetBufferPage(buffer);
+    dest = block + sizeof(int) * meta_column->array_dim;
+    offset = 0;
+
+    QueryAndLoopArrayValue(arr, dest, meta_column, bound, meta_column->array_dim, &offset);
+
+    dfree(dest);
+    UnlockBuffer(buffer);
+    ReleaseBuffer(buffer);
+    
+    return arr;
+}
+
+/* Query array value. */
+ArrayValue *QueryArrayValue(Refer *refer, MetaColumn *meta_column) {
+    List *bound;
+    Size size;
+
+    Assert(refer != NULL);
+    Assert(meta_column->array_dim > 0);
+
+    bound = QueryArrayValueBound(refer, meta_column);
+    size = CalcArrayValueBoundSize(meta_column, bound);
+
+    if (ArrayTablePageWillOverflow(refer, size)) return QueryArrayValueCrossPage(refer, meta_column, bound);
+    else return QueryArrayValueNotCrossPage(refer, meta_column, bound);
+}
+
+
 /* Drop the array value table vai table name
  * table_name:  Table name.
  * Return:      Success or fail.
- * . */
+ * */
 bool DropArrayHeapTable(char *table_name) {
     Oid oid;
     char *str_table_file;

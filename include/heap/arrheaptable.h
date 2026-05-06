@@ -1,5 +1,5 @@
-#include "data.h"
 #include <stdbool.h>
+#include "data.h"
 
 bool CreateArrayHeapTable(Oid oid, Oid tid, char *table_name);
 ArrayValue *QueryArrayValue(Refer *refer, MetaColumn *meta_column);
