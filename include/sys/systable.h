@@ -38,6 +38,7 @@ Oid StrTableNameFindOid(char *tableName);
 Oid ArrayTableNameFindOid(char *tableName);
 Oid TableNameFindHeapOid(char *tableName);
 Oid ToidFindStoid(Oid toid);
+Oid ToidFindAoid(Oid toid);
 Oid ToidFindRoid(Oid toid);
 Oid ToidFindSoid(Oid toid);
 Oid ToidFindHoid(Oid toid);

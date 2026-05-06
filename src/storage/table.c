@@ -1,12 +1,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <dirent.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <time.h>
 #include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -323,6 +321,7 @@ Table *load_table(Oid oid) {
     table->soid = ToidFindSoid(oid);
     table->roid = ToidFindRoid(oid);
     table->stid = ToidFindStoid(oid);
+    table->aoid = ToidFindAoid(oid);
     table->root_page_num = ROOT_PAGE_NUM; 
     table->creator = getpid();
     table->meta_table = LoadMetaTable(oid);

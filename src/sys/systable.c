@@ -483,6 +483,16 @@ Oid ToidFindStoid(Oid toid) {
     return ToidAndRelTypeFindOid(toid, OSTRING_HEAP_TABLE);
 }
 
+/* Find array heap table aiod by toid.
+ * ------------------------------
+ * Return the oid of the found object.
+ * Return OID_ZERO if missing.
+ * */
+Oid ToidFindAoid(Oid toid) {
+    if (toid == SYS_ROOT_OID) return OID_ZERO;
+    return ToidAndRelTypeFindOid(toid, OARRAY_HEAP_TABLE);
+} 
+
 /* Find rid table riod by toid.
  * ---------------------------
  * Return the oid of the found object.
@@ -502,6 +512,7 @@ Oid ToidFindSoid(Oid toid) {
     if (toid == SYS_ROOT_OID) return SYS_ROOT_SID_OID;
     return ToidAndRelTypeFindOid(toid, OSID_TABLE);
 }
+
 
 /* Find oid of heap table by table name. 
  * ------------------------
