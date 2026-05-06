@@ -19,7 +19,9 @@
 #define ARRAY_TABLE_ROOT_PAGE   0
 #define ARRAY_TABLE_FIRST_NUM   1
 #define ARRAY_TABLE_ROW_NUM     64
+#define ARRAY_TABLE_META_SIZE   ARRAY_TABLE_ROW_SIZE
 #define ARRAY_TABLE_ROW_SIZE    (PAGE_SIZE / ARRAY_TABLE_ROW_NUM)
+#define ARRAY_TABLE_DATA_SIZE   (PAGE_SIZE - ARRAY_TABLE_ROW_SIZE)
 
 
 /* Get the root refer. 
@@ -108,18 +110,30 @@ ArrayValue *QueryArrayValue(Refer *refer, MetaColumn *meta_column) {
     return NULL;
 }
 
-/* Calculate bound size. 
- * If the array is 3D array, the M x N x P is value size, and three int size is the dim size.
+/* Calculate values size. 
+ * If the array is 3D array, the M x N x P is value size.
  * meta_column: Meta column.
  * bound:       bound.
+ * Return:      Values size.
  * */
-static Size CalcArrayValueBoundSize(MetaColumn *meta_column, List *bound) {
+static Size CalcArrayValueValuesSize(MetaColumn *meta_column, List *bound) {
     Size size = 1;
     ListCell *lc;
     foreach (lc, bound) {
         size = size * lfirst_int(lc);
     }
-    return (sizeof(int) * bound->size) + size * meta_column->column_length;
+    return size * meta_column->column_length;
+}
+
+/* Calculate bound size. 
+ * Bound size = values size + dim size;
+ * If the array is 3D array, the M x N x P is value size, and three int size is the dim size.
+ * meta_column: Meta column.
+ * bound:       bound.
+ * Return:      Bound size.
+ * */
+static Size CalcArrayValueBoundSize(MetaColumn *meta_column, List *bound) {
+    return (sizeof(int) * bound->size) + CalcArrayValueValuesSize(meta_column, bound);
 }
 
 /* Calculate array value bound. 
@@ -152,28 +166,98 @@ static void CalcArrayValueValues(ArrayValue *array, int idx, List *values) {
     }
 }
 
+/* Calculate array values tiled src. 
+ * meta_column: Meta Column.
+ * values:      Values;
+ * bound:       Bound;
+ * Return:      Tiled src.
+ * */
+static void *CalcArrayValueTiledSrc(MetaColumn *meta_column, List *values, List *bound) {
+    ListCell *lc;
+    size_t offset, values_size;
+    void *src;
+    
+    offset = 0;
+    values_size = CalcArrayValueValuesSize(meta_column, bound);
+    src = dalloc(values_size);
+
+    foreach (lc, values) {
+        memcpy(src + offset, lfirst(lc), meta_column->column_length);
+        offset += meta_column->column_length;
+    }
+
+    return src;
+}
+
 /* Insert array value case cross page. */
 static void InsertArrayValueCrossPage(Refer *refer, MetaColumn *meta_column, List *values, List *bound) {
     Buffer buffer;
-    void *block, *dest;
-    size_t offset;
-    ListCell *lc1, *lc2;
+    void *block, *dest, *tiled_src;
+    size_t offset, size, left_size, use_size;
+    uint32_t left_row_num;
 
+    size = CalcArrayValueValuesSize(meta_column, bound);
+    left_row_num = ARRAY_TABLE_ROW_NUM - refer->cell_num;
+    left_size = left_row_num * ARRAY_TABLE_ROW_SIZE;
     buffer = ReadBuffer(refer->oid, refer->page_num);
     LockBuffer(buffer, RW_WRITER);
     block = GetBufferPage(buffer);
     dest = block + refer->cell_num * ARRAY_TABLE_ROW_SIZE;
-    offset = 0;
+    offset = 0; 
+    tiled_src = CalcArrayValueTiledSrc(meta_column, values, bound);
 
     /* Assign bound meta info. */
-    foreach(lc1, bound) {
-        memcpy(dest + offset, lfirst(lc1), sizeof(int));
+    ListCell *lc;
+    foreach (lc, bound) {
+        memcpy(dest + offset, lfirst(lc), sizeof(int));
         offset += sizeof(int);
     }
+
+    left_size -= offset;
+    memcpy(dest + offset, tiled_src, left_size);
 
     MakeBufferDirty(buffer);
     UnlockBuffer(buffer);
     ReleaseBuffer(buffer);
+    refer->cell_num = ARRAY_TABLE_ROW_NUM;
+
+    /* Store the array value to next page. */
+    use_size = left_size;
+    while (use_size < size) {
+        Buffer nbuffer;
+        void *nblock;
+
+        nbuffer = ReadBuffer(refer->oid, ++(refer->page_num));
+        LockBuffer(nbuffer, RW_WRITER);
+        nblock = GetBufferPage(nbuffer);
+
+        left_size = size - use_size;
+        /* Check if next page can store the left tiled data completely. 
+         * Note: not the whole page to store rather than the remaining part after 
+         * exclusing the first ARRAY_TABLE_ROW_SIZE part. */
+        if (left_size <= ARRAY_TABLE_DATA_SIZE) {
+            left_row_num = left_size / ARRAY_TABLE_ROW_SIZE;
+            if (left_row_num % ARRAY_TABLE_ROW_SIZE != 0) left_row_num++;
+            memcpy((nblock + ARRAY_TABLE_META_SIZE), tiled_src + use_size, left_size);
+            refer->cell_num = left_row_num + 1;
+            use_size = size;
+        } else {
+            memcpy(nblock + ARRAY_TABLE_META_SIZE, tiled_src + use_size, ARRAY_TABLE_DATA_SIZE);
+            use_size += PAGE_SIZE;
+        }
+
+        /* If current page is full, move to next page and first cell. */
+        if (refer->cell_num == ARRAY_TABLE_ROW_NUM) {
+            refer->page_num++;
+            refer->cell_num = ARRAY_TABLE_FIRST_NUM;
+        }
+
+        MakeBufferDirty(nbuffer);
+        UnlockBuffer(nbuffer);
+        ReleaseBuffer(nbuffer);
+    }
+    
+    dfree(tiled_src);
 }
 
 /* Insert array value case not cross page. */
