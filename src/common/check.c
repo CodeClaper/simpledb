@@ -44,6 +44,7 @@ static bool CheckForValueList(MetaTable *meta_table, char *column_name, List *va
 static bool CheckForScalarExp(ScalarExpNode *scalar_exp, AliasMap alias_map);
 static bool CheckForSearchCondition(SearchConditionNode *condition_node, AliasMap alias_map);
 static bool CheckSclarExpInSearchCondition(ScalarExpNode *scalar_exp);
+static bool CheckInsertForValueItems(InsertNode *insert_node, List *value_item_list);
 
 /* Get column name in ColumnDefNode. */
 static inline char *ColumnDefFindName(ColumnDefNode *column_def) {
@@ -100,6 +101,19 @@ static MetaColumn *TableRefListFindMetaColumn(List *list, char *column_name) {
     }
 
     return NULL;
+}
+
+/* Mock a InsertNode. 
+ * When check insert reference values, we mock a InsertNode
+ * to check DIRECTLY values uniformly.
+ * */
+static InsertNode *MockInsertNodeForReference(MetaColumn *meta_column) {
+    Assert(meta_column->column_type == T_RID);
+    Table *table = open_table_inner(meta_column->type_oid);
+    InsertNode *node = instance(InsertNode);
+    node->all_column = true;
+    node->table_name = dstrdup(GET_TABLE_NAME(table));
+    return node;
 }
 
 static bool CheckQuerySpecMatchColumn(MetaColumn *meta_column, QuerySpecNode *query_spec) {
@@ -199,9 +213,27 @@ static MetaTable *ColumnFindMetaTable(ColumnNode *column, AliasMap alias_map) {
 
 }
 
+/* Check if type convert pass when it's reference. */
+static bool CheckValueMatchTypeForReference(AtomNode *atom_node, MetaColumn *meta_column) {
+    Assert(atom_node->type == A_REFERENCE);
+    ReferValue *rval = atom_node->value.referval;
+    switch (rval->type) {
+        case DIRECTLY: {
+            InsertNode *node = MockInsertNodeForReference(meta_column);
+            return CheckInsertForValueItems(node, rval->nest_value_list);
+        }
+        case INDIRECTLY:
+            /* For INDIRECTLY, just make it simple, return true.*/
+            return true;
+        default:
+            UNREACHABLE(false, "Logic error, not support ReferValue type.");
+    }
+    return true;
+}
+
 /* Check if type convert pass. */
-static bool CheckValueMatchType(DataType column_type, AtomNode *atom_node, char *column_name, char *table_name) {
-    switch(column_type) {
+static bool CheckValueMatchType(AtomNode *atom_node, MetaColumn *meta_column, char *table_name) {
+    switch(meta_column->column_type) {
         case T_BOOL: {
             if (atom_node->type == A_BOOL)
                 return true;
@@ -233,16 +265,16 @@ static bool CheckValueMatchType(DataType column_type, AtomNode *atom_node, char 
             break;
         }
         case T_RID:
-            /* For Reference, it`s complicate, user can pass a refer or subrow column, 
-             * to be simple, just make flag true. */
-            return true;
+            if (CheckValueMatchTypeForReference(atom_node, meta_column))
+                return true;
+            break;
         default:
-            UNEXPECTED_VALUE(column_type);
+            UNEXPECTED_VALUE(meta_column->column_type);
     }
     logger(ERROR, "Incorrect %s value for column '%s' with type %s in table '%s'", 
            GET_DATA_TYPE_NAME(AtomTypeConvertDataType(atom_node->type)),
-           column_name, 
-           GET_DATA_TYPE_NAME(column_type), 
+           meta_column->column_name, 
+           GET_DATA_TYPE_NAME(meta_column->column_type), 
            table_name);
     return false;
 }
@@ -356,7 +388,7 @@ static bool CheckForValueItem(MetaTable *meta_table, char *column_name, ValueIte
             switch (value_item_node->type) {
                 case V_ATOM: {
                     AtomNode *atom_node = value_item_node->value.atom;
-                    return CheckValueMatchType(meta_column->column_type, atom_node, column_name, meta_table->table_name) && 
+                    return CheckValueMatchType(atom_node, meta_column, meta_table->table_name) && 
                             CheckValueIsValid(meta_column, atom_node);
                 }
                 case V_NULL: {
