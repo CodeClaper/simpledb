@@ -19,7 +19,7 @@ static void *GetTupleValue(void *destination, MetaColumn *meta_column) {
             /* For non-array data. */
             ? destination + LEAF_NODE_CELL_NULL_FLAG_SIZE 
             /* For array data. */
-            : QueryArrayValue((Refer *) destination, meta_column); 
+            : QueryArrayValue((Refer *) (destination + LEAF_NODE_CELL_NULL_FLAG_SIZE), meta_column); 
 }
 
 /* Get value in tuple. */
