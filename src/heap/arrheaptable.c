@@ -234,7 +234,7 @@ static void InsertArrayValueCrossPage(Refer *refer, MetaColumn *meta_column, Lis
          * exclusing the first ARRAY_TABLE_ROW_SIZE part. */
         if (left_size <= ARRAY_TABLE_DATA_SIZE) {
             left_row_num = left_size / ARRAY_TABLE_ROW_SIZE;
-            if (left_row_num % ARRAY_TABLE_ROW_SIZE != 0) left_row_num++;
+            if (left_size % ARRAY_TABLE_ROW_SIZE != 0) left_row_num++;
             memcpy((nblock + ARRAY_TABLE_META_SIZE), tiled_src + use_size, left_size);
             refer->cell_num = left_row_num + 1;
             use_size = size;
@@ -287,7 +287,7 @@ static void InsertArrayValueNotCrossPage(Refer *refer, MetaColumn *meta_column, 
     
     /* Update refer. */
     row_num = offset / ARRAY_TABLE_ROW_SIZE;
-    if (row_num % ARRAY_TABLE_ROW_SIZE != 0) row_num++;
+    if (offset % ARRAY_TABLE_ROW_SIZE != 0) row_num++;
     refer->cell_num += row_num;
     if (refer->cell_num == ARRAY_TABLE_ROW_NUM) {
         /* If current page is full, move to next page and first cell. */
@@ -351,7 +351,7 @@ Refer *InsertArrayValue(Oid oid, ArrayValue *array, MetaColumn *meta_column) {
     nrefer = copy_refer(rrefer);
     
     /* Insert array value. */
-    InsertArrayValueInner(nrefer, array, meta_column);
+    InsertArrayValueInner(rrefer, array, meta_column);
 
     MakeBufferDirty(buffer);
     UnlockBuffer(buffer);
