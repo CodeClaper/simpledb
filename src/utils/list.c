@@ -679,49 +679,56 @@ void free_list_deep(List *list) {
             case NODE_LIST: {
                 ListCell *lc;
                 foreach (lc, list) {
-                    free_list_deep(lfirst(lc));
+                    if (lfirst(lc) != NULL) 
+                        free_list_deep(lfirst(lc));
                 }
                 break;
             }
             case NODE_VOID: {
                 ListCell *lc;
                 foreach (lc, list) {
-                    dfree(lfirst(lc));
+                    if (lfirst(lc) != NULL) 
+                        dfree(lfirst(lc));
                 }
                 break;
             }
             case NODE_STRING: {
                 ListCell *lc;
                 foreach (lc, list) {
-                    dfree(lfirst(lc));
+                    if (lfirst(lc) != NULL) 
+                        dfree(lfirst(lc));
                 }
                 break;
             }
             case NODE_KEY_VALUE: {
                 ListCell *lc;
                 foreach (lc, list) {
-                    free_key_value(lfirst(lc));
+                    if (lfirst(lc) != NULL) 
+                        free_key_value(lfirst(lc));
                 }
                 break;
             }
             case NODE_ROW: {
                 ListCell *lc;
                 foreach (lc, list) {
-                    free_row(lfirst(lc));
+                    if (lfirst(lc) != NULL) 
+                        free_row(lfirst(lc));
                 }
                 break;
             }
             case NODE_REFER: {
                 ListCell *lc;
                 foreach (lc, list) {
-                    free_refer(lfirst(lc));
+                    if (lfirst(lc) != NULL) 
+                        free_refer(lfirst(lc));
                 }
                 break;
             }
             case NODE_COLUMN: {
                 ListCell *lc;
                 foreach (lc, list) {
-                    free_column_node(lfirst(lc));
+                    if (lfirst(lc) != NULL) 
+                        free_column_node(lfirst(lc));
                 }
                 break;
             }
@@ -753,98 +760,112 @@ void free_list_deep(List *list) {
             case NODE_META_INDEX: {
                 ListCell *lc;
                 foreach (lc, list) {
-                    free_meta_index(lfirst(lc));
+                    if (lfirst(lc) != NULL) 
+                        free_meta_index(lfirst(lc));
                 }
                 break;
             }
             case NODE_TABLE: {
                 ListCell *lc;
                 foreach (lc, list) {
-                    free_table(lfirst(lc));
+                    if (lfirst(lc) != NULL) 
+                        free_table(lfirst(lc));
                 }
                 break;
             }
             case NODE_EXPR_NODE: {
                 ListCell *lc;
                 foreach (lc, list) {
-                    free_expr_node(lfirst(lc));
+                    if (lfirst(lc) != NULL) 
+                        free_expr_node(lfirst(lc));
                 }
                 break;
             }
             case NODE_STATEMENT: {
                 ListCell *lc;
                 foreach (lc, list) {
-                    free_statement(lfirst(lc));
+                    if (lfirst(lc) != NULL) 
+                        free_statement(lfirst(lc));
                 }
                 break;
             }
             case NODE_DB_RESULT: {
                 ListCell *lc;
                 foreach (lc, list) {
-                    free_db_result(lfirst(lc));
+                    if (lfirst(lc) != NULL) 
+                        free_db_result(lfirst(lc));
                 }
                 break;
             }
             case NODE_COLUMN_DEF: {
                 ListCell *lc;
                 foreach (lc, list) {
-                    free_column_def_node(lfirst(lc));
+                    if (lfirst(lc) != NULL) 
+                        free_column_def_node(lfirst(lc));
                 }
                 break;
             }
             case NODE_COLUMN_DEF_OPT: {
                 ListCell *lc;
                 foreach (lc, list) {
-                    free_column_def_opt_node(lfirst(lc));
+                    if (lfirst(lc) != NULL) 
+                        free_column_def_opt_node(lfirst(lc));
                 }
                 break;
             }
             case NODE_COLUMN_DEF_NAME: {
                 ListCell *lc;
                 foreach (lc, list) {
-                    free_column_def_name(lfirst(lc));
+                    if (lfirst(lc) != NULL) 
+                        free_column_def_name(lfirst(lc));
                 }
                 break;
             }
             case NODE_SCALAR_EXP: {
                 ListCell *lc;
                 foreach (lc, list) {
-                    free_scalar_exp_node(lfirst(lc));
+                    if (lfirst(lc) != NULL) 
+                        free_scalar_exp_node(lfirst(lc));
                 }
                 break;
             }
             case NODE_VALUE_ITEM: {
                 ListCell *lc;
                 foreach (lc, list) {
-                    free_value_item_node(lfirst(lc));
+                    if (lfirst(lc) != NULL) 
+                        free_value_item_node(lfirst(lc));
                 }
                 break;
             }
             case NODE_BASE_TABLE_ELEMENT: {
                 ListCell *lc;
                 foreach (lc, list) {
-                    free_base_table_element_node(lfirst(lc));
+                    if (lfirst(lc) != NULL) 
+                        free_base_table_element_node(lfirst(lc));
                 }
                 break;
             }
             case NODE_TABLE_REFER: {
                 ListCell *lc;
                 foreach (lc, list) {
-                    free_table_ref_node(lfirst(lc));
+                    if (lfirst(lc) != NULL) 
+                        free_table_ref_node(lfirst(lc));
                 }
                 break;
             }
             case NODE_ASSIGNMENT: {
                 ListCell *lc;
                 foreach (lc, list) {
-                    free_assignment_node(lfirst(lc));
+                    if (lfirst(lc) != NULL) 
+                        free_assignment_node(lfirst(lc));
                 }
                 break;
             }
             case NODE_TABLE_BUFFER_ENTRY: {
                 ListCell *lc;
                 foreach(lc, list) {
-                    free_table_buffer_entry(lfirst(lc));
+                    if (lfirst(lc) != NULL) 
+                        free_table_buffer_entry(lfirst(lc));
                 }
                 break;
             }
@@ -853,7 +874,8 @@ void free_list_deep(List *list) {
                  * not care about the key.*/
                 ListCell *lc;
                 foreach(lc, list) {
-                    dfree(lfirst(lc));
+                    if (lfirst(lc) != NULL) 
+                        dfree(lfirst(lc));
                 }
             }
         }
