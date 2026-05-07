@@ -457,7 +457,9 @@ static ArrayValue *QueryArrayValueCrossPage(Refer *refer, MetaColumn *meta_colum
     arr = new_array_value(meta_column->column_type, 3);
     dest = QueryArrayValueTiledDest(refer, meta_column, bound);
     offset = 0;
+
     QueryAndLoopArrayValue(arr, dest, meta_column, bound, meta_column->array_dim - 1, &offset);
+    dfree(dest);
 
     return arr;
 }
@@ -479,7 +481,6 @@ static ArrayValue *QueryArrayValueNotCrossPage(Refer *refer, MetaColumn *meta_co
 
     QueryAndLoopArrayValue(arr, dest, meta_column, bound, meta_column->array_dim - 1, &offset);
 
-    dfree(dest);
     UnlockBuffer(buffer);
     ReleaseBuffer(buffer);
     
