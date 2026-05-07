@@ -1,7 +1,7 @@
 #include "data.h"
 
 DBResult *new_db_result();
-KeyValue *new_key_value(char *key, void *value, DataType data_type, Oid tid, Oid type_oid);
+KeyValue *new_key_value(char *key, void *value, DataType data_type, Oid tid, Oid type_oid, bool is_array);
 KeyValue *new_simple_key_value(char *key, void *value, DataType data_type);
 ArrayValue *new_array_value(DataType data_type, uint32_t size);
 SelectResult *new_select_result(StatementType stype, char *table_name, bool is_head);

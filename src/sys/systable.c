@@ -689,7 +689,8 @@ static Row *ObjectConvertRow(Object entity) {
                                             ObjectConvertKeyValue(entity, i), 
                                             meta_column.column_type, 
                                             meta_column.tid, 
-                                            meta_column.type_oid);
+                                            meta_column.type_oid,
+                                            meta_column.array_dim > 0);
         append_list(row->data, key_value);
     }
     

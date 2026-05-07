@@ -49,13 +49,13 @@ static List *MetaTableGenerateDescribeResult(Oid tid, MetaTable *meta_table) {
         /* filed */
         append_list(
             child_list, 
-            new_key_value("field", meta_column->column_name, T_VARCHAR, tid, meta_column->type_oid)
+            new_key_value("field", meta_column->column_name, T_VARCHAR, tid, meta_column->type_oid, meta_column->array_dim > 0)
         );
     
         /* key */
         append_list(
             child_list, 
-            new_key_value("key", GetKeyTypeName(meta_column), T_VARCHAR, tid, meta_column->type_oid)
+            new_key_value("key", GetKeyTypeName(meta_column), T_VARCHAR, tid, meta_column->type_oid, meta_column->array_dim > 0)
         );
     
         /* type */
@@ -63,28 +63,29 @@ static List *MetaTableGenerateDescribeResult(Oid tid, MetaTable *meta_table) {
             child_list, 
             new_key_value("type", 
                           meta_column->column_type == T_RID ?  GET_TABLE_NAME(subTable): GET_DATA_TYPE_NAME(meta_column->column_type), 
-                          T_VARCHAR, 
-                          tid, meta_column->type_oid)
+                          T_VARCHAR, tid, 
+                          meta_column->type_oid, 
+                          meta_column->array_dim > 0)
         );
 
         /* length */
         append_list(
             child_list, 
-            new_key_value("length", &column_length, T_INT, tid, meta_column->type_oid)
+            new_key_value("length", &column_length, T_INT, tid, meta_column->type_oid, meta_column->array_dim > 0)
         );
 
 
         /* array dim */
         append_list(
             child_list, 
-            new_key_value("array", &is_array, T_BOOL, tid, meta_column->type_oid)
+            new_key_value("array", &is_array, T_BOOL, tid, meta_column->type_oid, meta_column->array_dim > 0)
         );
 
         /* primary key */
         if (is_array)  {
             append_list(
                 child_list, 
-                new_key_value("array_dim", &meta_column->array_dim, T_BOOL, tid, meta_column->type_oid)
+                new_key_value("array_dim", &meta_column->array_dim, T_BOOL, tid, meta_column->type_oid, meta_column->array_dim > 0)
             );
         }
 
@@ -95,13 +96,13 @@ static List *MetaTableGenerateDescribeResult(Oid tid, MetaTable *meta_table) {
             case DEFAULT_VALUE_NULL:
                 append_list(
                     child_list, 
-                    new_key_value("default", NULL, meta_column->column_type, tid, meta_column->type_oid)
+                    new_key_value("default", NULL, meta_column->column_type, tid, meta_column->type_oid, meta_column->array_dim > 0)
                 );
                 break;
             case DEFAULT_VALUE:
                 append_list(
                     child_list, 
-                    new_key_value("default", meta_column->default_value, meta_column->column_type, tid, meta_column->type_oid)
+                    new_key_value("default", meta_column->default_value, meta_column->column_type, tid, meta_column->type_oid, meta_column->array_dim > 0)
                 );
                 break;
                 
@@ -111,7 +112,7 @@ static List *MetaTableGenerateDescribeResult(Oid tid, MetaTable *meta_table) {
         if (meta_column->has_comment) {
             append_list(
                 child_list, 
-                new_key_value("comment", meta_column->comment, T_VARCHAR, tid, meta_column->type_oid)
+                new_key_value("comment", meta_column->comment, T_VARCHAR, tid, meta_column->type_oid, meta_column->array_dim > 0)
             );
         }
 

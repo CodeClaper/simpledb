@@ -63,19 +63,19 @@ static List *ShowForTables() {
         /* oid */
         append_list(
             child_list, 
-            new_key_value(SYS_TABLE_OID_NAME, &entity->oid, T_LONG, OID_ZERO, OID_ZERO)
+            new_key_value(SYS_TABLE_OID_NAME, &entity->oid, T_LONG, OID_ZERO, OID_ZERO, false)
         );
 
         /* relname */
         append_list(
             child_list, 
-            new_key_value(SYS_TABLE_RELNAME_NAME, entity->relname, T_VARCHAR, OID_ZERO, OID_ZERO)
+            new_key_value(SYS_TABLE_RELNAME_NAME, entity->relname, T_VARCHAR, OID_ZERO, OID_ZERO, false)
         );
 
         /* object type */
         append_list(
             child_list, 
-            new_key_value(SYS_TABLE_RELTYPE_NAME, GetObjectTypeName(entity->reltype), T_VARCHAR, OID_ZERO, OID_ZERO)
+            new_key_value(SYS_TABLE_RELTYPE_NAME, GetObjectTypeName(entity->reltype), T_VARCHAR, OID_ZERO, OID_ZERO, false)
         );
 
         append_list(list, child_list);
@@ -97,31 +97,31 @@ static List *ShowForIndexs(char *table_name) {
         /* Index name */
         append_list(
             child_list, 
-            new_key_value("index_name", meta_index->index_name, T_VARCHAR, OID_ZERO, OID_ZERO)
+            new_key_value("index_name", meta_index->index_name, T_VARCHAR, OID_ZERO, OID_ZERO, false)
         );
 
         /* Table name */
         append_list(
             child_list, 
-            new_key_value("table_name", GET_TABLE_NAME(table), T_VARCHAR, OID_ZERO, OID_ZERO)
+            new_key_value("table_name", GET_TABLE_NAME(table), T_VARCHAR, OID_ZERO, OID_ZERO, false)
         );
 
         /* Is unique. */
         append_list(
             child_list, 
-            new_key_value("is_unique", &meta_index->is_unique, T_BOOL, OID_ZERO, OID_ZERO)
+            new_key_value("is_unique", &meta_index->is_unique, T_BOOL, OID_ZERO, OID_ZERO, false)
         );
 
         /* Index type. */
         append_list(
             child_list, 
-            new_key_value("index_type", GET_INDEX_TYPE_NAME(meta_index->type), T_VARCHAR, OID_ZERO, OID_ZERO)
+            new_key_value("index_type", GET_INDEX_TYPE_NAME(meta_index->type), T_VARCHAR, OID_ZERO, OID_ZERO, false)
         );
 
         /* Columns. */
         append_list(
             child_list,
-            new_key_value("columns", CombineColumnsForShowIndexs(meta_index), T_VARCHAR, OID_ZERO, OID_ZERO)
+            new_key_value("columns", CombineColumnsForShowIndexs(meta_index), T_VARCHAR, OID_ZERO, OID_ZERO, false)
         );
 
         append_list(list, child_list);

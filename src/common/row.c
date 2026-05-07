@@ -29,7 +29,8 @@ Row *GenerateRowInner(void *tuple, List *meta_columns) {
                                             TupleFindValue(tuple, meta_column),
                                             meta_column->column_type,
                                             meta_column->tid,
-                                            meta_column->type_oid);
+                                            meta_column->type_oid, 
+                                            meta_column->array_dim > 0);
         key_value->is_array = meta_column->array_dim > 0;
 
         /* Append to row data. */

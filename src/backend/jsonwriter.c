@@ -326,8 +326,7 @@ void json_tuple(List *meta_columns, void *tuple) {
         ListCell *lc;
         foreach (lc, meta_columns) {
             MetaColumn *meta_column = (MetaColumn *) lfirst(lc);
-            if (meta_column->sys_reserved)
-                continue;
+            if (meta_column->sys_reserved) continue;
             void *value = TupleFindValue(tuple, meta_column);
             json_tuple_entry(meta_column, value);
             if (last_cell(meta_columns) != lc)
