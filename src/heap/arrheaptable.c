@@ -156,7 +156,7 @@ static void CalcArrayValueBound(ArrayValue *array, MetaColumn *meta_column, List
 static void CalcArrayValueValues(ArrayValue *array, int idx, List *values) {
     ListCell *lc;
     foreach(lc, array->list) {
-        if (idx > 1) CalcArrayValueValues(lfirst(lc), idx - 1, values);
+        if (idx > 0) CalcArrayValueValues(lfirst(lc), idx - 1, values);
         else append_list(values, lfirst(lc));
     }
 }
@@ -313,7 +313,7 @@ static void InsertArrayValueInner(Refer *refer, ArrayValue *array, MetaColumn *m
     values = create_list(NODE_VOID);
     bound = create_list(NODE_INT);
     
-    CalcArrayValueValues(array, meta_column->array_dim, values);
+    CalcArrayValueValues(array, meta_column->array_dim - 1, values);
     CalcArrayValueBound(array, meta_column, bound);
     size = CalcArrayValueBoundSize(meta_column, bound);
     
@@ -364,7 +364,7 @@ Refer *InsertArrayValue(Oid oid, ArrayValue *array, MetaColumn *meta_column) {
 static List *QueryArrayValueBound(Refer *refer, MetaColumn *meta_column) {
     int i;
     Buffer buffer;
-    void *block;
+    void *block, *dest;
     List *bound;
     size_t offset;
     
@@ -372,10 +372,11 @@ static List *QueryArrayValueBound(Refer *refer, MetaColumn *meta_column) {
     buffer = ReadBuffer(refer->oid, refer->page_num);
     LockBuffer(buffer, RW_READERS);
     block = GetBufferPage(buffer);
+    dest = block + refer->cell_num * ARRAY_TABLE_ROW_SIZE;
     offset = 0;
     
     for (i = 0; i < meta_column->array_dim; i++) {
-        append_list(bound, block + offset);
+        append_list(bound, dest + offset);
         offset += sizeof(int);
     }
 
@@ -389,7 +390,7 @@ static List *QueryArrayValueBound(Refer *refer, MetaColumn *meta_column) {
 static void QueryAndLoopArrayValue(ArrayValue *arr, void *dest, MetaColumn *meta_column, List *bound, int idx, size_t *offset) {
     int num = lfirst_int(list_nth_cell(bound, idx));
     for (int i = 0; i < num; i++) {
-        if (idx > 1) {
+        if (idx > 0) {
             ArrayValue *child = new_array_value(meta_column->column_type, 3);
             QueryAndLoopArrayValue(child, dest, meta_column, bound, idx - 1, offset);
             append_list(arr->list, child);
@@ -411,7 +412,7 @@ static void *QueryArrayValueTiledDest(Refer *refer, MetaColumn *meta_column, Lis
     buffer = ReadBuffer(refer->oid, refer->page_num);
     LockBuffer(buffer, RW_READERS);
     block = GetBufferPage(buffer);
-    src= block + sizeof(int) * meta_column->array_dim;
+    src = block + refer->cell_num * ARRAY_TABLE_ROW_SIZE + sizeof(int) * meta_column->array_dim;
     values_size = CalcArrayValueValuesSize(meta_column, bound);
     dest = dalloc(values_size);
     current_page = refer->page_num;
@@ -456,7 +457,7 @@ static ArrayValue *QueryArrayValueCrossPage(Refer *refer, MetaColumn *meta_colum
     arr = new_array_value(meta_column->column_type, 3);
     dest = QueryArrayValueTiledDest(refer, meta_column, bound);
     offset = 0;
-    QueryAndLoopArrayValue(arr, dest, meta_column, bound, meta_column->array_dim, &offset);
+    QueryAndLoopArrayValue(arr, dest, meta_column, bound, meta_column->array_dim - 1, &offset);
 
     return arr;
 }
@@ -473,10 +474,10 @@ static ArrayValue *QueryArrayValueNotCrossPage(Refer *refer, MetaColumn *meta_co
     buffer = ReadBuffer(refer->oid, refer->page_num);
     LockBuffer(buffer, RW_READERS);
     block = GetBufferPage(buffer);
-    dest = block + sizeof(int) * meta_column->array_dim;
+    dest = block + refer->cell_num * ARRAY_TABLE_ROW_SIZE + sizeof(int) * meta_column->array_dim;
     offset = 0;
 
-    QueryAndLoopArrayValue(arr, dest, meta_column, bound, meta_column->array_dim, &offset);
+    QueryAndLoopArrayValue(arr, dest, meta_column, bound, meta_column->array_dim - 1, &offset);
 
     dfree(dest);
     UnlockBuffer(buffer);
