@@ -58,10 +58,11 @@ static XLogEntry *NewXLogEntry(Xid xid, Oid oid, Sid sid, XLogHeapType type) {
 }
 
 /* Check if the xlog has alreay exists. */
-static int XlogHasExists(Oid oid, Sid sid) {
+static bool XlogHasExists(Oid oid, Sid sid, XLogHeapType type) {
     if (XLHeader == NULL) return false;
     for (XLogEntry *current = XLHeader; current != NULL; current = current->next) {
-        if (current->oid == oid && current->sid == sid) return true;
+        if (current->oid == oid && current->sid == sid && type == current->type) 
+            return true;
     }
     return false;
 }
@@ -76,7 +77,7 @@ void RecordXlog(Oid oid, Sid sid, XLogHeapType type) {
     if (!conf->auto_rollback && trans->auto_commit) return;
     
     /* Just keep unique. */
-    AssertFalse(XlogHasExists(oid, sid));
+    AssertFalse(XlogHasExists(oid, sid, type));
 
     /* Switch to CACHE_MEMORY_CONTEXT. */
     MemoryContext oldcontext = CURRENT_MEMORY_CONTEXT;
