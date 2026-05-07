@@ -141,9 +141,9 @@ static void CalcArrayValueBound(ArrayValue *array, MetaColumn *meta_column, List
     ArrayValue *current = array;
     Assert(meta_column->array_dim > 0);
     for (int i = 0; i < meta_column->array_dim; i++) {
+        AssertFalse(current == NULL);
         append_list_int(bound, current->list->size);
         current = lfirst(first_cell(current->list));
-        AssertFalse(current == NULL);
     }
 }
 
@@ -170,14 +170,16 @@ static void CalcArrayValueValues(ArrayValue *array, int idx, List *values) {
 static void *CalcArrayValueTiledSrc(MetaColumn *meta_column, List *values, List *bound) {
     ListCell *lc;
     size_t offset, values_size;
-    void *src;
+    void *src, *val;
     
     offset = 0;
     values_size = CalcArrayValueValuesSize(meta_column, bound);
     src = dalloc(values_size);
 
     foreach (lc, values) {
-        memcpy(src + offset, lfirst(lc), meta_column->column_length);
+        val = lfirst(lc);
+        if (val != NULL) memcpy(src + offset, lfirst(lc), meta_column->column_length);
+        else memset(src + offset, '\0', meta_column->column_length);
         offset += meta_column->column_length;
     }
 
@@ -260,7 +262,7 @@ static void InsertArrayValueCrossPage(Refer *refer, MetaColumn *meta_column, Lis
 /* Insert array value case not cross page. */
 static void InsertArrayValueNotCrossPage(Refer *refer, MetaColumn *meta_column, List *values, List *bound) {
     Buffer buffer;
-    void *block, *dest;
+    void *block, *dest, *val;
     ListCell *lc1, *lc2;
     size_t offset;
     uint32_t row_num;
@@ -281,7 +283,9 @@ static void InsertArrayValueNotCrossPage(Refer *refer, MetaColumn *meta_column, 
 
     /* Assign array values. */
     foreach (lc2, values) {
-        memcpy(dest + offset, lfirst(lc2), meta_column->column_length);
+        val = lfirst(lc2);
+        if (val != NULL) memcpy(dest + offset, lfirst(lc2), meta_column->column_length);
+        else memset(dest + offset, '\0', meta_column->column_length);
         offset += meta_column->column_length;
     }
     
