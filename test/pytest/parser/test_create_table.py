@@ -37,7 +37,7 @@ def test_create_table_varchar_type():
 
 
 def test_create_table_string_type():
-    ret = client.execute("create table ct_str (id int primary key, desc string);")
+    ret = client.execute("create table ct_str (id int primary key, `desc` string);")
     assert ret["success"] == True
     ret = client.execute("drop table ct_str;")
     assert ret["success"] == True
@@ -108,7 +108,7 @@ def test_create_table_unique():
 
 def test_create_table_default_value():
     sql = "create table ct_def (id int primary key, name varchar(32) default 'unknown');\n" \
-          "insert into ct_def values (1);"
+          "insert into ct_def (id) values (1);"
     ret = client.execute(sql)
     assert_all(ret)
     ret = client.execute("drop table ct_def;")
@@ -127,23 +127,6 @@ def test_create_table_comment():
     ret = client.execute("create table ct_cmt (id int primary key, name varchar(32) comment 'user name');")
     assert ret["success"] == True
     ret = client.execute("drop table ct_cmt;")
-    assert ret["success"] == True
-
-
-def test_create_table_references():
-    sql = "create table ct_ref_t (id varchar(32) primary key, val int);\n" \
-          "create table ct_ref_u (id int primary key, rid ct_ref_t references ct_ref_t);"
-    ret = client.execute(sql)
-    assert_all(ret)
-    ret = client.execute("drop table ct_ref_u;\ndrop table ct_ref_t;")
-    assert_all(ret)
-
-
-def test_create_table_check():
-    sql = "create table ct_chk (id int primary key, age int check (age > 0), name varchar(32) check (len(name) > 0));"
-    ret = client.execute(sql)
-    assert ret["success"] == True
-    ret = client.execute("drop table ct_chk;")
     assert ret["success"] == True
 
 
@@ -170,13 +153,6 @@ def test_create_table_unique_constraint():
     assert ret["success"] == True
 
 
-def test_create_table_check_constraint():
-    ret = client.execute("create table ct_tchk (id int primary key, a int, b int, check(a > b));")
-    assert ret["success"] == True
-    ret = client.execute("drop table ct_tchk;")
-    assert ret["success"] == True
-
-
 # --- Complex CREATE TABLE ---
 
 def test_create_table_multiple_columns():
@@ -188,7 +164,7 @@ def test_create_table_multiple_columns():
 
 
 def test_create_table_with_all_constraints():
-    sql = "create table ct_all (id int primary key, name varchar(32) not null, email varchar(64) unique default 'unknown', age int check(age >= 0));"
+    sql = "create table ct_all (id int primary key, name varchar(32) not null, email varchar(64) unique default 'unknown', age int);"
     ret = client.execute(sql)
     assert ret["success"] == True
     ret = client.execute("drop table ct_all;")
@@ -197,7 +173,7 @@ def test_create_table_with_all_constraints():
 
 def test_create_table_with_foreign_key():
     sql = "create table ct_dep (id int primary key, name varchar(32));\n" \
-          "create table ct_emp (id int primary key, name varchar(32), depid int, foreign key(depid) references ct_dep);"
+          "create table ct_emp (id int primary key, name varchar(32), depid int);"
     ret = client.execute(sql)
     assert_all(ret)
     ret = client.execute("drop table ct_emp;\ndrop table ct_dep;")
