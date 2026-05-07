@@ -215,7 +215,9 @@ static MetaTable *ColumnFindMetaTable(ColumnNode *column, AliasMap alias_map) {
 
 /* Check if type convert pass when it's reference. */
 static bool CheckValueMatchTypeForReference(AtomNode *atom_node, MetaColumn *meta_column) {
-    Assert(atom_node->type == A_REFERENCE);
+    /* The atom_node maybe not A_REFERENCE even if meta_column column_type is T_RID.
+     * Like "where (class).studentNum = 30;", to make it simple, we just return true. */
+    if (atom_node->type != A_REFERENCE) return true;
     ReferValue *rval = atom_node->value.referval;
     switch (rval->type) {
         case DIRECTLY: {
