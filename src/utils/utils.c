@@ -405,8 +405,7 @@ ST_FLAG StrToBool(char *val, bool *ret) {
 }
 
 /* Escap the string value for JSON output. */
-char *EscapStr(char *str) {
-    if (StrIsEmpty(str)) return NULL;
+char *EscapStr(char *str, bool strict_utf8) {
     size_t new_len = 0;
     for (const char *p = str; *p; p++) {
         switch (*p) {
@@ -418,7 +417,7 @@ char *EscapStr(char *str) {
                 new_len += 2;
                 break;
             default:
-                if ((unsigned char)*p < 0x20 || (unsigned char)*p >= 0x80)
+                if  ((unsigned char)*p < 0x20 || (strict_utf8 && (unsigned char)*p >= 0x80))
                     new_len += 6; /* \u00XX */
                 else
                     new_len += 1;
@@ -451,7 +450,7 @@ char *EscapStr(char *str) {
                 *dst++ = 't';
                 break;
             default:
-                if ((unsigned char)*p < 0x20 || (unsigned char)*p >= 0x80) {
+                if ((unsigned char)*p < 0x20 || (strict_utf8 && (unsigned char)*p >= 0x80)) {
                     *dst++ = '\\';
                     *dst++ = 'u';
                     *dst++ = '0';

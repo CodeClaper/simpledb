@@ -40,8 +40,7 @@ static void json_expr_node(ExprNode *node);
 
 static char *json_error_message() {
     char *raw = get_stack_message();
-    char *out = EscapStr(raw);
-    return out;
+    return EscapStr(raw, true);
 }
 
 static void json_key_value_inner(Oid oid, char *key, void *value, DataType type) {
@@ -57,7 +56,7 @@ static void json_key_value_inner(Oid oid, char *key, void *value, DataType type)
             break;
         case T_CHAR: 
         case T_VARCHAR: 
-            db_send("\"%s\": \"%s\"", key, value ? EscapStr((char *)value) : "null");
+            db_send("\"%s\": \"%s\"", key, value ? EscapStr((char *)value, false) : "null");
             break;
         case T_FLOAT: 
             db_send("\"%s\": %f", key, value ? *(float *)value : 0);
@@ -91,7 +90,7 @@ static void json_key_value_inner(Oid oid, char *key, void *value, DataType type)
         }
         case T_STRING: {
             char *strVal = QueryStringValue((StrRefer *)value);
-            db_send("\"%s\": \"%s\"", key, strVal ? EscapStr(strVal) : "null");
+            db_send("\"%s\": \"%s\"", key, strVal ? EscapStr(strVal, false) : "null");
             break;
         }
         /* Specially deal with T_RID data. */
