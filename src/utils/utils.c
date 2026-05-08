@@ -404,27 +404,68 @@ ST_FLAG StrToBool(char *val, bool *ret) {
         return ST_INVALID;
 }
 
-/* Escap the string value. */
-char *EscapStr(const char *str) {
+/* Escap the string value for JSON output. */
+char *EscapStr(char *str) {
+    if (StrIsEmpty(str)) return NULL;
     size_t new_len = 0;
     for (const char *p = str; *p; p++) {
-        new_len += (*p == '\n') ? 2 : 1;
-    }
-    
-    char *result = (char*)dalloc(new_len + 1); 
-    if (!result) return NULL;
-    
-    char *dst = result;
-    for (const char *p = str; *p; p++) {
-        if (*p == '\n') {
-            *dst++ = '\\';
-            *dst++ = 'n';
-        } else {
-            *dst++ = *p;
+        switch (*p) {
+            case '"':
+            case '\\':
+            case '\n':
+            case '\r':
+            case '\t':
+                new_len += 2;
+                break;
+            default:
+                if ((unsigned char)*p < 0x20 || (unsigned char)*p >= 0x80)
+                    new_len += 6; /* \u00XX */
+                else
+                    new_len += 1;
+                break;
         }
     }
-    *dst = '\0'; 
-    
+
+    char *result = (char*)dalloc(new_len + 1);
+    char *dst = result;
+    for (const char *p = str; *p; p++) {
+        switch (*p) {
+            case '"':
+                *dst++ = '\\';
+                *dst++ = '"';
+                break;
+            case '\\':
+                *dst++ = '\\';
+                *dst++ = '\\';
+                break;
+            case '\n':
+                *dst++ = '\\';
+                *dst++ = 'n';
+                break;
+            case '\r':
+                *dst++ = '\\';
+                *dst++ = 'r';
+                break;
+            case '\t':
+                *dst++ = '\\';
+                *dst++ = 't';
+                break;
+            default:
+                if ((unsigned char)*p < 0x20 || (unsigned char)*p >= 0x80) {
+                    *dst++ = '\\';
+                    *dst++ = 'u';
+                    *dst++ = '0';
+                    *dst++ = '0';
+                    *dst++ = "0123456789abcdef"[(*p >> 4) & 0xf];
+                    *dst++ = "0123456789abcdef"[*p & 0xf];
+                } else {
+                    *dst++ = *p;
+                }
+                break;
+        }
+    }
+    *dst = '\0';
+
     return result;
 }
 

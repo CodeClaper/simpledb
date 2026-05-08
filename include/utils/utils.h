@@ -44,7 +44,7 @@ ST_FLAG StrToLong(char *val, int64_t *ret);
 ST_FLAG StrToFloat(char *val, float *ret);
 ST_FLAG StrToDouble(char *val, double *ret);
 ST_FLAG StrToBool(char *val, bool *ret);
-char *EscapStr(const char *str);
+char *EscapStr(char *str);
 int get_line(int sock, char *buf, int size);
 void show_bytes(byte_pointer start, size_t len);
 void print_binary(void *data, Size size);

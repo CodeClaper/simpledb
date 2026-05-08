@@ -38,6 +38,12 @@ static void handle_dulicate_key(Row *row);
 static void json_expr_node_list(List *node_list);
 static void json_expr_node(ExprNode *node);
 
+static char *json_error_message() {
+    char *raw = get_stack_message();
+    char *out = EscapStr(raw);
+    return out;
+}
+
 static void json_key_value_inner(Oid oid, char *key, void *value, DataType type) {
     switch(type) {
         case T_BOOL: 
@@ -451,7 +457,7 @@ static void json_expr_node_list(List *node_list) {
 static void json_select_result(DBResult *result) {
     db_send("{ \"success\": %s, \"message\": \"%s\"", 
             result->success ? "true" : "false", 
-            result->success ? result->message : get_stack_message());
+            result->success ? result->message : json_error_message());
 
     if (result->success) {
         db_send(", \"data\": ");
@@ -475,7 +481,8 @@ static void json_select_result(DBResult *result) {
 static void json_nondata_rows_result(DBResult *result) {
     db_send("{ \"success\": %s, \"message\": \"%s\", \"rows\": %d, \"duration\": %lf }", 
             result->success ? "true" : "false", 
-            result->success ? result->message : get_stack_message(), result->rows, 
+            result->success ? result->message : json_error_message(), 
+            result->rows, 
             result->duration);
 }
 
@@ -483,7 +490,7 @@ static void json_nondata_rows_result(DBResult *result) {
 static void json_nondata_result(DBResult *result) {
     db_send("{ \"success\": %s, \"message\": \"%s\", \"duration\": %lf }", 
             result->success ? "true" : "false", 
-            result->success? result->message : get_stack_message(), 
+            result->success? result->message : json_error_message(), 
             result->duration);
 }
 
@@ -498,7 +505,7 @@ static void json_login_result(DBResult *result) {
 static void json_express_result(DBResult *result) {
     db_send("{ \"success\": %s, \"message\": \"%s\", \"data\": ", 
             result->success ? "true" : "false", 
-            result->success ? result->message : get_stack_message());
+            result->success ? result->message : json_error_message());
     json_expr_node(result->data);
     db_send(", \"duration\": %lf }", result->duration);
 }
@@ -540,7 +547,7 @@ static void json_result_list(DBResult *result) {
     List *list = (List *)result->data;
     db_send("{ \"success\": %s, \"message\": \"%s\"", 
             result->success ? "true" : "false", 
-            result->success ? result->message : get_stack_message());
+            result->success ? result->message : json_error_message());
 
     if (result->success) {
         db_send(", \"data\": ");
