@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 #include <errno.h>
 #include "arrheaptable.h"
@@ -117,7 +118,7 @@ static Size CalcArrayValueValuesSize(MetaColumn *meta_column, List *bound) {
     foreach (lc, bound) {
         size = size * lfirst_int(lc);
     }
-    return size * meta_column->column_length;
+    return size * meta_column->column_length + LEAF_NODE_CELL_NULL_FLAG_SIZE;
 }
 
 /* Calculate bound size. 
@@ -171,6 +172,7 @@ static void *CalcArrayValueTiledSrc(MetaColumn *meta_column, List *values, List 
     ListCell *lc;
     size_t offset, values_size;
     void *src, *val;
+    bool nflag;
     
     offset = 0;
     values_size = CalcArrayValueValuesSize(meta_column, bound);
@@ -178,9 +180,12 @@ static void *CalcArrayValueTiledSrc(MetaColumn *meta_column, List *values, List 
 
     foreach (lc, values) {
         val = lfirst(lc);
-        if (val != NULL) memcpy(src + offset, lfirst(lc), meta_column->column_length);
-        else memset(src + offset, '\0', meta_column->column_length);
-        offset += meta_column->column_length;
+        nflag = val == NULL;
+        
+        memcpy(src + offset, &nflag, LEAF_NODE_CELL_NULL_FLAG_SIZE);
+        if (!nflag) memcpy(src + offset + LEAF_NODE_CELL_NULL_FLAG_SIZE, lfirst(lc), meta_column->column_length);
+        else memset(src + offset + LEAF_NODE_CELL_NULL_FLAG_SIZE, '\0', meta_column->column_length);
+        offset += meta_column->column_length + LEAF_NODE_CELL_NULL_FLAG_SIZE;
     }
 
     return src;
@@ -267,6 +272,7 @@ static void InsertArrayValueNotCrossPage(Refer *refer, MetaColumn *meta_column, 
     size_t offset;
     uint32_t row_num;
     int scope;
+    bool nflag;
 
     buffer = ReadBuffer(refer->oid, refer->page_num);
     LockBuffer(buffer, RW_WRITER);
@@ -284,9 +290,12 @@ static void InsertArrayValueNotCrossPage(Refer *refer, MetaColumn *meta_column, 
     /* Assign array values. */
     foreach (lc2, values) {
         val = lfirst(lc2);
-        if (val != NULL) memcpy(dest + offset, lfirst(lc2), meta_column->column_length);
-        else memset(dest + offset, '\0', meta_column->column_length);
-        offset += meta_column->column_length;
+        nflag = val == NULL;
+
+        memcpy(dest + offset, &nflag, LEAF_NODE_CELL_NULL_FLAG_SIZE);
+        if (!nflag) memcpy(dest + offset + LEAF_NODE_CELL_NULL_FLAG_SIZE, lfirst(lc2), meta_column->column_length);
+        else memset(dest + offset + LEAF_NODE_CELL_NULL_FLAG_SIZE, '\0', meta_column->column_length);
+        offset += meta_column->column_length + LEAF_NODE_CELL_NULL_FLAG_SIZE;
     }
     
     /* Update refer. */
@@ -399,8 +408,10 @@ static void QueryAndLoopArrayValue(ArrayValue *arr, void *dest, MetaColumn *meta
             QueryAndLoopArrayValue(child, dest, meta_column, bound, idx - 1, offset);
             append_list(arr->list, child);
         } else {
-            append_list(arr->list, dest + (*offset));
-            (*offset) += meta_column->column_length;
+            bool nflag = *(bool *)(dest + (*offset));
+            if (nflag) append_list(arr->list, NULL);
+            else append_list(arr->list, dest + (*offset) + LEAF_NODE_CELL_NULL_FLAG_SIZE);
+            (*offset) += meta_column->column_length + LEAF_NODE_CELL_NULL_FLAG_SIZE;
         }
     }
 }

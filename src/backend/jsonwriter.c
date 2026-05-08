@@ -11,6 +11,7 @@
  * [duration]   The execution time.
  ****************************************************************************************************/
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <time.h>
 #include <unistd.h>
@@ -56,7 +57,8 @@ static void json_key_value_inner(Oid oid, char *key, void *value, DataType type)
             break;
         case T_CHAR: 
         case T_VARCHAR: 
-            db_send("\"%s\": \"%s\"", key, value ? EscapStr((char *)value, false) : "null");
+            if (!value) db_send("%s", "null");
+            else db_send("\"%s\": \"%s\"", key, EscapStr((char *)value, false));
             break;
         case T_FLOAT: 
             db_send("\"%s\": %f", key, value ? *(float *)value : 0);
@@ -73,7 +75,7 @@ static void json_key_value_inner(Oid oid, char *key, void *value, DataType type)
                 db_send("\"%s\": \"%s\"", key, temp);
             } 
             else 
-                db_send("\"%s\": \"%s\"", key, "null");
+                db_send("%s", "null");
             break;
         }
         case T_DATE: {
@@ -85,12 +87,13 @@ static void json_key_value_inner(Oid oid, char *key, void *value, DataType type)
                 db_send("\"%s\": \"%s\"", key, temp);
             }
             else 
-                db_send("\"%s\": \"%s\"", key, "null");
+                db_send("%s", "null");
             break;
         }
         case T_STRING: {
             char *strVal = QueryStringValue((StrRefer *)value);
-            db_send("\"%s\": \"%s\"", key, strVal ? EscapStr(strVal, false) : "null");
+            if (strVal == NULL) db_send("%s", "null");
+            else db_send("\"%s\": \"%s\"", key, EscapStr(strVal, false));
             break;
         }
         /* Specially deal with T_RID data. */
@@ -119,8 +122,8 @@ static void json_key_array_value_inner(Oid oid, char *key, ArrayValue *array_val
 
             ListCell *lc;
             foreach (lc, array_value->list) {
-                bool value = *(bool *)lfirst(lc);
-                db_send(value ? "true" : "false");
+                void *value = lfirst(lc);
+                db_send(value && (*(bool *) value) ? "true" : "false");
                 if (last_cell(array_value->list) != lc)
                     db_send( ",");
             }
@@ -133,8 +136,8 @@ static void json_key_array_value_inner(Oid oid, char *key, ArrayValue *array_val
 
             ListCell *lc;
             foreach (lc, array_value->list) {
-                int32_t value = *(int32_t *)lfirst(lc);
-                char *strVal = IntToStr(value);
+                void *value = lfirst(lc);
+                char *strVal = IntToStr(value ? *(int32_t *)value : 0);
                 db_send(strVal);
                 if (last_cell(array_value->list) != lc)
                     db_send(",");
@@ -149,8 +152,8 @@ static void json_key_array_value_inner(Oid oid, char *key, ArrayValue *array_val
 
             ListCell *lc;
             foreach (lc, array_value->list) {
-                int64_t value = *(int64_t *)lfirst(lc);
-                char *strVal = LongToStr(value);
+                void *value = lfirst(lc);
+                char *strVal = LongToStr(value ? *(int64_t *)value : 0);
                 db_send(strVal);
                 if (last_cell(array_value->list) != lc)
                     db_send(",");
@@ -167,10 +170,10 @@ static void json_key_array_value_inner(Oid oid, char *key, ArrayValue *array_val
 
             ListCell *lc;
             foreach (lc, array_value->list) {
-                char *value = (char *)lfirst(lc);
-                db_send("\"%s\"", value);
-                if (last_cell(array_value->list) != lc)
-                    db_send(",");
+                void *value = lfirst(lc);
+                if (!value) db_send("%s", "null");
+                else db_send("\"%s\"", EscapStr((char *)value, false));
+                if (last_cell(array_value->list) != lc) db_send(",");
             }
 
             db_send("]");
@@ -181,8 +184,8 @@ static void json_key_array_value_inner(Oid oid, char *key, ArrayValue *array_val
 
             ListCell *lc;
             foreach (lc, array_value->list) {
-                float value = *(float *)lfirst(lc);
-                char *strVal = FloatToStr(value);
+                void *value = lfirst(lc);
+                char *strVal = FloatToStr(value ? *(float *)value : 0);
                 db_send(strVal);
                 if (last_cell(array_value->list) != lc)
                      db_send(",");
@@ -197,8 +200,8 @@ static void json_key_array_value_inner(Oid oid, char *key, ArrayValue *array_val
 
             ListCell *lc;
             foreach (lc, array_value->list) {
-                double value = *(double *)lfirst(lc);
-                char *strVal = DoubleToStr(value);
+                void *value = lfirst(lc);
+                char *strVal = DoubleToStr(value ? *(double *)value : 0);
                 db_send(strVal);
                 if (last_cell(array_value->list) != lc)
                     db_send(",");
@@ -213,12 +216,10 @@ static void json_key_array_value_inner(Oid oid, char *key, ArrayValue *array_val
 
             ListCell *lc;
             foreach (lc, array_value->list) {
-                time_t value = *(time_t *)lfirst(lc);
-                char *strVal = TimeToStr(value, "%Y-%m-%d %H:%M:%S");
-                db_send("\"%s\"", strVal);
-                if (last_cell(array_value->list) != lc)
-                    db_send(",");
-                dfree(strVal);
+                void *value = lfirst(lc);
+                if (!value) db_send("%s", "null");
+                else db_send("\"%s\"", TimeToStr(*(time_t *)value, "%Y-%m-%d %H:%M:%S"));
+                if (last_cell(array_value->list) != lc) db_send(",");
             }
 
             db_send("]");
@@ -229,12 +230,10 @@ static void json_key_array_value_inner(Oid oid, char *key, ArrayValue *array_val
 
             ListCell *lc;
             foreach (lc, array_value->list) {
-                time_t value = *(time_t *)lfirst(lc);
-                char *strVal = TimeToStr(value, "%Y-%m-%d");
-                db_send("\"%s\"", strVal);
-                if (last_cell(array_value->list) != lc)
-                    db_send(",");
-                dfree(strVal);
+                void *value = lfirst(lc);
+                if (!value) db_send("%s", "null");
+                else db_send("\"%s\"", TimeToStr(*(time_t *)value, "%Y-%m-%d") );
+                if (last_cell(array_value->list) != lc) db_send(",");
             }
 
             db_send("]");
