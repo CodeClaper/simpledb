@@ -489,20 +489,22 @@ ComparisonNode *copy_comparison_node(ComparisonNode *comparison_node) {
 LikeNode *copy_like_node(LikeNode *like_node) {
     if (like_node == NULL)
         return NULL;
-    LikeNode *copy = instance(LikeNode);
-    copy->column = copy_column_node(like_node->column);
-    copy->value = copy_value_item_node(like_node->value);
-    return copy;
+    LikeNode *duplica = instance(LikeNode);
+    duplica->column = copy_column_node(like_node->column);
+    duplica->value = copy_value_item_node(like_node->value);
+    duplica->is_not = like_node->is_not;
+    return duplica;
 }
 
 /* Copy an InNode. */
 InNode *copy_in_node(InNode *in_node) {
     if (in_node == NULL)
         return NULL;
-    InNode *copy = instance(InNode);
-    copy->column = copy_column_node(in_node->column);
-    copy->value_list = list_copy_deep(in_node->value_list);
-    return copy;
+    InNode *duplica = instance(InNode);
+    duplica->column = copy_column_node(in_node->column);
+    duplica->value_list = list_copy_deep(in_node->value_list);
+    duplica->is_not = in_node->is_not;
+    return duplica;
 }
 
 /* Copy LimitNode. */

@@ -1333,6 +1333,15 @@ like_predicate:
             LikeNode *like_node = instance(LikeNode);
             like_node->column = $1;
             like_node->value = $3;
+            like_node->is_not = false;
+            $$ = like_node;
+        }
+    | column NOT LIKE value_item
+        {
+            LikeNode *like_node = instance(LikeNode);
+            like_node->column = $1;
+            like_node->value = $4;
+            like_node->is_not = true;
             $$ = like_node;
         }
     ;
@@ -1342,6 +1351,15 @@ in_predicate:
             InNode *in_node = instance(InNode);
             in_node->column = $1;
             in_node->value_list = $4;
+            in_node->is_not = false;
+            $$ = in_node;
+        }
+    | column NOT IN '(' value_items ')'
+        {
+            InNode *in_node = instance(InNode);
+            in_node->column = $1;
+            in_node->value_list = $5;
+            in_node->is_not = true;
             $$ = in_node;
         }
     ;

@@ -469,12 +469,14 @@ typedef struct ComparisonNode {
 typedef struct LikeNode {
     ColumnNode *column;
     ValueItemNode *value;
+    bool is_not;
 } LikeNode;
 
 /* InNode */
 typedef struct InNode {
     ColumnNode *column;
     List *value_list;
+    bool is_not;
 } InNode;
 
 /* LimitClauseNode */

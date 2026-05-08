@@ -351,9 +351,9 @@ static bool LeafNodeForInPredicate(SelectPlan *select_plan, List *meta_columns, 
             target->data_type = T_RID;
         }
         if (KeyValueEval(O_EQ, value, target))
-            return true;
+            return in_node->is_not ? false : true;
     }
-    return false;
+    return in_node->is_not ? true : false;
 }
 
 /* Check if include leaf node satisfy like predicate. */
@@ -361,7 +361,9 @@ static bool LeafNodeForLikePredicate(SelectPlan *select_plan, List *meta_columns
     MetaColumn *meta_column = ColumnNodeFindMetaColumn(select_plan, meta_columns, like_node->column);
     void *target_value = ValueItemNodeFindValue(like_node->value);
     void *value = TupleFindValue(tuple, meta_column);
-    return ValueLikeStringValue(GetComparableValue(value, meta_column->column_type), target_value);
+    return like_node->is_not 
+        ?  !ValueLikeStringValue(GetComparableValue(value, meta_column->column_type), target_value)
+        :  ValueLikeStringValue(GetComparableValue(value, meta_column->column_type), target_value);
 }
 
 /* Check if the leaf node meets predicate. */
@@ -570,7 +572,7 @@ static bool InternalNodeForLikePredicate(SelectPlan *select_plan, KeyValue *min_
     /* For not like operation, it`s realy hard not to fall into the scope of internal node, 
      * which means everyone in the scope of internal node is like to the target value. 
      * Absolutely, it`s not possible so just return true. */
-    if (negation)
+    if (negation || like->is_not)
         return true;
 
     ColumnNode *column;
@@ -602,7 +604,7 @@ static bool InternalNodeForLikePredicate(SelectPlan *select_plan, KeyValue *min_
 static bool InternalNodeForInPredicate(SelectPlan *select_plan, KeyValue *min_key_value, KeyValue *max_key_value, InNode *in, bool negation) {
     /* For not in operation, it`s realy hard not to fall into the scope of internal node. 
      * Because it`s the whole world escape the in operation target values, so just return true. */
-    if (negation)
+    if (negation || in->is_not)
         return true;
 
     ColumnNode *column = in->column;
