@@ -139,9 +139,9 @@ KeyValue *copy_key_value(KeyValue *key_value) {
     /* Meta column may be null, in fact, for key aggregate function, 
      * key is min, max, sum, avg ect. there is no meta column. */
     duplica->data_type = key_value->data_type;
-    duplica->is_array = key_value->is_array;
+    duplica->array_dim = key_value->array_dim;
     /* Single and array data have difference way to deal. */
-    if (duplica->is_array)
+    if (duplica->array_dim > 0)
         duplica->value = copy_array_value(key_value->value);
     else
         duplica->value = copy_value(key_value->value, key_value->data_type);

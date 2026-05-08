@@ -32,7 +32,7 @@ void free_key_value(KeyValue *key_value) {
     if (key_value) {
         if (key_value->key)
             dfree(key_value->key);
-        if (key_value->is_array)
+        if (key_value->array_dim > 0)
             free_array_value(key_value->value);
         else
             free_value(key_value->value, key_value->data_type);

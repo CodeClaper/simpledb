@@ -742,7 +742,7 @@ typedef struct KeyValue {
     DataType data_type;                         /* Value data type. */
     Oid tid;                                    /* Own table oid. */
     Oid type_id;                                /* Table type oid if T_RID. */
-    bool is_array;                              /* Is Array.*/
+    uint32_t array_dim;                         /* Array dimension. Default zone if not array.*/
 } KeyValue;
 
 /* User-level Row. 

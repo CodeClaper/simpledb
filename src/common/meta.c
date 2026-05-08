@@ -245,8 +245,8 @@ void *ValueItemNodeFindValue(ValueItemNode *value_item_node) {
 KeyValue *QueryTupleValueItem(ValueItemNode *value_item) {
     void *value = ValueItemNodeFindValue(value_item);
     return value == NULL 
-        ? new_key_value(NULL, value, T_UNKNOWN, OID_ZERO, OID_ZERO, false)
-        : new_key_value(NULL, value, AtomTypeConvertDataType(value_item->value.atom->type), OID_ZERO, OID_ZERO, false);
+        ? new_simple_key_value(NULL, value, T_UNKNOWN)
+        : new_simple_key_value(NULL, value, AtomTypeConvertDataType(value_item->value.atom->type));
 }
 
 

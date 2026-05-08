@@ -296,7 +296,7 @@ static void json_array_tuple_entry(MetaColumn *meta_column, ArrayValue *array_va
 
 /* Json single-value key value. */
 static void json_single_key_value(KeyValue *key_value) {
-    Assert(!key_value->is_array);
+    AssertFalse(key_value->array_dim > 0);
     char *key = key_value->key;
     void *value = key_value->value;
     DataType type = key_value->data_type;
@@ -309,7 +309,7 @@ static void json_single_key_value(KeyValue *key_value) {
 
 /* Json array-value key value. */
 static void json_array_key_value(KeyValue *key_value) {
-    Assert(key_value->is_array);
+    Assert(key_value->array_dim > 0);
     char *key = key_value->key;
     ArrayValue *array_value = (ArrayValue *)key_value->value;
     DataType type = key_value->data_type;
@@ -317,7 +317,7 @@ static void json_array_key_value(KeyValue *key_value) {
     if (!array_value)
         db_send("%s", "null");
     else 
-        json_key_array_value(key_value->tid, key, array_value, type, 0);
+        json_key_array_value(key_value->tid, key, array_value, type, key_value->array_dim - 1);
 }
 
 /* Json key value. */
@@ -331,7 +331,7 @@ static void json_tuple_entry(MetaColumn *meta_column, void *value) {
 /* Json key value. */
 static void json_key_value(KeyValue *key_value) {
     Assert(key_value);
-    if (key_value->is_array)
+    if (key_value->array_dim > 0)
         json_array_key_value(key_value);
     else
         json_single_key_value(key_value);

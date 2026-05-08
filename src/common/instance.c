@@ -1,4 +1,5 @@
 #include <stdbool.h>
+#include <stdint.h>
 #include <sys/time.h>
 #include "instance.h"
 #include "data.h"
@@ -7,20 +8,20 @@
 #include "systable.h"
 
 /* Generate new KeyValue instance. */
-KeyValue *new_key_value(char *key, void *value, DataType data_type, Oid tid, Oid type_oid, bool is_array) {
+KeyValue *new_key_value(char *key, void *value, DataType data_type, Oid tid, Oid type_oid, uint32_t array_dim) {
     KeyValue *key_value = instance(KeyValue);
     key_value->key = dstrdup(key);
-    key_value->value = is_array ? copy_array_value((ArrayValue *)value) : copy_value(value, data_type);
+    key_value->value = array_dim > 0 ? copy_array_value((ArrayValue *)value) : copy_value(value, data_type);
     key_value->data_type = data_type;
     key_value->tid = tid;
     key_value->type_id = type_oid;
-    key_value->is_array = is_array;
+    key_value->array_dim = array_dim;
     return key_value;
 }
 
 /* Genrate new simple KeyValue instance. */
 KeyValue *new_simple_key_value(char *key, void *value, DataType data_type) {
-    return new_key_value(key, value, data_type, OID_ZERO, OID_ZERO, false);
+    return new_key_value(key, value, data_type, OID_ZERO, OID_ZERO, 0);
 }
 
 /* Generate new ArrayValue instance. */

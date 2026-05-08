@@ -88,14 +88,14 @@ static SelectNode *QuerySpceToSelection(QuerySpecNode *query_spec) {
 static KeyValue *NewKeyValueForSysId(Oid tid) {
     /* Automatically insert sys_id using current sys time. */
     Sid sid = FindNextOid();
-    return new_key_value(SYS_RESERVED_ID_COLUMN_NAME, &sid, T_LONG, tid, OID_ZERO, false);
+    return new_key_value(SYS_RESERVED_ID_COLUMN_NAME, &sid, T_LONG, tid, OID_ZERO, 0);
 }
 
 /* Generate new ref_id column. */
 static KeyValue *NewKeyValueForRefId(Oid tid) {
     /* Automatically insert sys_id using current sys time. */
     Rid rid = FindNextOid();
-    return new_key_value(SYS_REF_ID_COLUMN_NAME, &rid, T_LONG, tid, OID_ZERO, false);
+    return new_key_value(SYS_REF_ID_COLUMN_NAME, &rid, T_LONG, tid, OID_ZERO, 0);
 }
 
 /* Generate new created_xid column.*/
@@ -103,14 +103,14 @@ static KeyValue *NewKeyValueForCreatedXid(Oid tid) {
     /* Get current transaction. */
     TransEntry *current_trans = FindTransaction();
     Assert(current_trans);
-    return new_key_value(CREATED_XID_COLUMN_NAME, &current_trans->xid, T_LONG, tid, OID_ZERO, false);
+    return new_key_value(CREATED_XID_COLUMN_NAME, &current_trans->xid, T_LONG, tid, OID_ZERO, 0);
 }
 
 /* Generate new expired_xid column. */
 static KeyValue *NewKeyValueForExpiredXid(Oid tid) {
     /* For expired_xid */
     int64_t zero = 0;
-    return new_key_value(EXPIRED_XID_COLUMN_NAME, &zero, T_LONG, tid, OID_ZERO, false);
+    return new_key_value(EXPIRED_XID_COLUMN_NAME, &zero, T_LONG, tid, OID_ZERO, 0);
 }
 
 /* Makeup the system reserved column. */
@@ -146,7 +146,7 @@ static Row *GenerateInsertRowForAllInner(Oid tid, MetaTable *meta_table, List *v
                                             meta_column->column_type, 
                                             tid, 
                                             meta_column->type_oid,
-                                            meta_column->array_dim > 0);
+                                            meta_column->array_dim);
         /* Maybe array value, and the funciton <copy_value> 
          * not support ArrayValue, so specially assign here.*/
         key_value->value = GetInsertValue(value_item_list, __i, meta_column);
@@ -213,7 +213,7 @@ static Row *GenerateInsertRowForPartInner(Oid tid, MetaTable *meta_table, List *
                                             meta_column->column_type, 
                                             tid, 
                                             meta_column->type_oid, 
-                                            meta_column->array_dim > 0);
+                                            meta_column->array_dim);
         /* Maybe the value is array value, and the funciton <copy_value> 
          * not support ArrayValue, so specially assign here.*/
         key_value->value = GetInsertValue(value_item_list, __i, meta_column);
@@ -281,7 +281,7 @@ static Row *SelectRowToInsertRow(Row *select_row, Table *table) {
                                             current->data_type, 
                                             GET_TABLE_OID(table), 
                                             current->type_id, 
-                                            current->is_array);
+                                            current->array_dim);
         append_list(insert_row->data, key_value);
     }
 
