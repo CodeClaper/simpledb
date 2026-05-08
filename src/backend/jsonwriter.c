@@ -118,7 +118,7 @@ static void json_key_value_inner(Oid oid, char *key, void *value, DataType type)
 static void json_key_array_value_inner(Oid oid, char *key, ArrayValue *array_value, DataType type) {
     switch (type) {
         case T_BOOL: {
-            db_send("\"%s\": [", key);
+            db_send("[");
 
             ListCell *lc;
             foreach (lc, array_value->list) {
@@ -132,7 +132,7 @@ static void json_key_array_value_inner(Oid oid, char *key, ArrayValue *array_val
             break;
         }
         case T_INT: {
-            db_send("\"%s\": [", key);
+            db_send("[");
 
             ListCell *lc;
             foreach (lc, array_value->list) {
@@ -148,7 +148,7 @@ static void json_key_array_value_inner(Oid oid, char *key, ArrayValue *array_val
             break;
         }
         case T_LONG: {
-            db_send("\"%s\": [", key);
+            db_send("[");
 
             ListCell *lc;
             foreach (lc, array_value->list) {
@@ -166,7 +166,7 @@ static void json_key_array_value_inner(Oid oid, char *key, ArrayValue *array_val
         case T_STRING:
         case T_VARCHAR:
         case T_CHAR: {
-            db_send("\"%s\": [", key);
+            db_send("[");
 
             ListCell *lc;
             foreach (lc, array_value->list) {
@@ -180,7 +180,7 @@ static void json_key_array_value_inner(Oid oid, char *key, ArrayValue *array_val
             break;
         }
         case T_FLOAT: {
-            db_send("\"%s\": [", key);
+            db_send("[");
 
             ListCell *lc;
             foreach (lc, array_value->list) {
@@ -196,7 +196,7 @@ static void json_key_array_value_inner(Oid oid, char *key, ArrayValue *array_val
             break;
         }
         case T_DOUBLE: {
-            db_send("\"%s\": [", key);
+            db_send("[");
 
             ListCell *lc;
             foreach (lc, array_value->list) {
@@ -212,7 +212,7 @@ static void json_key_array_value_inner(Oid oid, char *key, ArrayValue *array_val
             break;
         }
         case T_TIMESTAMP: {
-            db_send("\"%s\": [", key);
+            db_send("[");
 
             ListCell *lc;
             foreach (lc, array_value->list) {
@@ -226,7 +226,7 @@ static void json_key_array_value_inner(Oid oid, char *key, ArrayValue *array_val
             break;
         }
         case T_DATE: {
-            db_send("\"%s\": [", key);
+            db_send("[");
 
             ListCell *lc;
             foreach (lc, array_value->list) {
@@ -240,7 +240,7 @@ static void json_key_array_value_inner(Oid oid, char *key, ArrayValue *array_val
             break;
         }
         case T_RID: {
-            db_send("\"%s\": [", key);
+            db_send("[");
 
             ListCell *lc;
             foreach (lc, array_value->list) {
@@ -259,6 +259,20 @@ static void json_key_array_value_inner(Oid oid, char *key, ArrayValue *array_val
     }
 }
 
+static void json_key_array_value(Oid oid, char *key, ArrayValue *array_value, DataType type, int idx) {
+    if (idx > 0) {
+        db_send("[");
+        ListCell *lc;
+        foreach (lc, array_value->list) {
+            json_key_array_value(oid, key, (ArrayValue *)lfirst(lc), type, idx - 1);
+            if (last_cell(array_value->list) != lc) db_send(",");
+        }
+        db_send("]");
+    } else {
+        json_key_array_value_inner(oid, key, array_value, type);
+    }
+}
+
 /* Json single-value key value. */
 static void json_single_tuple_entry(MetaColumn *meta_column, void *value) {
     char *key = meta_column->column_name;
@@ -273,10 +287,11 @@ static void json_single_tuple_entry(MetaColumn *meta_column, void *value) {
 static void json_array_tuple_entry(MetaColumn *meta_column, ArrayValue *array_value) {
     char *key = meta_column->column_name;
     DataType type = meta_column->column_type;
+    db_send("\"%s\": ", key);
     if (!array_value)
-        db_send("\"%s\": %s", key, "null");
+        db_send("%s", "null");
     else 
-        json_key_array_value_inner(meta_column->type_oid, key, array_value, type);
+        json_key_array_value(meta_column->type_oid, key, array_value, type, meta_column->array_dim - 1);
 }
 
 /* Json single-value key value. */
@@ -298,10 +313,11 @@ static void json_array_key_value(KeyValue *key_value) {
     char *key = key_value->key;
     ArrayValue *array_value = (ArrayValue *)key_value->value;
     DataType type = key_value->data_type;
+    db_send("\"%s\": ", key);
     if (!array_value)
-        db_send("\"%s\": %s", key, "null");
+        db_send("%s", "null");
     else 
-        json_key_array_value_inner(key_value->tid, key, array_value, type);
+        json_key_array_value(key_value->tid, key, array_value, type, 0);
 }
 
 /* Json key value. */
