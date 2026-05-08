@@ -49,6 +49,11 @@ def test_create_table_bool_type():
           "insert into ct_bool values (2, false);"
     ret = client.execute(sql)
     assert_all(ret)
+    ret = client.execute("select * from ct_bool;")
+    assert ret["data"] == [
+        {'id': 1, 'active': True},
+        {'id': 2, 'active': False},
+    ]
     ret = client.execute("drop table ct_bool;")
     assert ret["success"] == True
 
@@ -111,6 +116,8 @@ def test_create_table_default_value():
           "insert into ct_def (id) values (1);"
     ret = client.execute(sql)
     assert_all(ret)
+    ret = client.execute("select * from ct_def;")
+    assert ret["data"] == [{'id': 1, 'name': 'unknown'}]
     ret = client.execute("drop table ct_def;")
     assert ret["success"] == True
 

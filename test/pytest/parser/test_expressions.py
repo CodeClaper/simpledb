@@ -7,6 +7,12 @@ client.login("root", "Zc120130211")
 
 _table_created = False
 
+ALL_DATA = [
+    {'id': 1, 'a': 10, 'b': 3, 'c': 2.5},
+    {'id': 2, 'a': 20, 'b': 5, 'c': 4.0},
+    {'id': 3, 'a': 30, 'b': 6, 'c': 8.0},
+]
+
 
 def setup_data():
     global _table_created
@@ -24,39 +30,45 @@ def setup_data():
 
 def test_select_addition():
     setup_data()
-    ret = client.execute("select a + b from expr_test_t;")
+    ret = client.execute("select a + b as v from expr_test_t;")
     assert ret["success"] == True
     assert ret["rows"] == 3
+    assert ret["data"] == [{'v': 13}, {'v': 25}, {'v': 36}]
 
 
 def test_select_subtraction():
-    ret = client.execute("select a - b from expr_test_t;")
+    ret = client.execute("select a - b as v from expr_test_t;")
     assert ret["success"] == True
     assert ret["rows"] == 3
+    assert ret["data"] == [{'v': 7}, {'v': 15}, {'v': 24}]
 
 
 def test_select_multiplication():
-    ret = client.execute("select a * b from expr_test_t;")
+    ret = client.execute("select a * b as v from expr_test_t;")
     assert ret["success"] == True
     assert ret["rows"] == 3
+    assert ret["data"] == [{'v': 30}, {'v': 100}, {'v': 180}]
 
 
 def test_select_division():
-    ret = client.execute("select a / b from expr_test_t;")
+    ret = client.execute("select a / b as v from expr_test_t;")
     assert ret["success"] == True
     assert ret["rows"] == 3
+    assert ret["data"] == [{'v': 3}, {'v': 4}, {'v': 5}]
 
 
 def test_select_expression_with_parentheses():
-    ret = client.execute("select (a + b) * c from expr_test_t;")
+    ret = client.execute("select (a + b) * c as v from expr_test_t;")
     assert ret["success"] == True
     assert ret["rows"] == 3
+    assert ret["data"] == [{'v': 32.5}, {'v': 100.0}, {'v': 288.0}]
 
 
 def test_select_complex_expression():
-    ret = client.execute("select a + b * 2 - c from expr_test_t;")
+    ret = client.execute("select a + b * 2 - c as v from expr_test_t;")
     assert ret["success"] == True
     assert ret["rows"] == 3
+    assert ret["data"] == [{'v': 13.5}, {'v': 26.0}, {'v': 34.0}]
 
 
 def test_select_literal_addition_via_explain():
@@ -75,6 +87,7 @@ def test_select_expression_alias():
     ret = client.execute("select a + b as sum_val from expr_test_t;")
     assert ret["success"] == True
     assert ret["rows"] == 3
+    assert ret["data"] == [{'sum_val': 13}, {'sum_val': 25}, {'sum_val': 36}]
 
 
 def test_select_expression_alias_no_as():
@@ -89,23 +102,29 @@ def test_select_expression_alias_no_as():
 def test_where_expression_comparison():
     ret = client.execute("select * from expr_test_t where a + b > 20;")
     assert ret["success"] == True
+    assert ret["rows"] == 2
+    assert ret["data"] == [ALL_DATA[1], ALL_DATA[2]]
 
 
 def test_where_expression_both_sides():
     ret = client.execute("select * from expr_test_t where a * 2 > b + 10;")
     assert ret["success"] == True
+    assert ret["rows"] == 3
+    assert ret["data"] == ALL_DATA
 
 
 # --- Function in expressions ---
 
 def test_function_in_expression():
-    ret = client.execute("select count(*) + 1 from expr_test_t;")
+    ret = client.execute("select count(*) + 1 as v from expr_test_t;")
     assert ret["success"] == True
+    assert ret["data"] == [{'v': 4}]
 
 
 def test_count_sum_expression():
-    ret = client.execute("select count(*) * 100 from expr_test_t;")
+    ret = client.execute("select count(*) * 100 as v from expr_test_t;")
     assert ret["success"] == True
+    assert ret["data"] == [{'v': 300}]
 
 
 # --- Cleanup ---

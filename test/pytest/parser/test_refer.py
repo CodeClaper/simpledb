@@ -19,37 +19,53 @@ def test_refer_directly_select():
     ret = client.execute("select * from ref_test_emp;")
     assert ret["success"] == True
     assert ret["rows"] == 1
+    assert ret["data"] == [{'id': 1, 'name': 'alice', 'dept': {'id': 'D002', 'name': 'Computing'}}]
 
 
 def test_refer_column_access_with_parens():
-    ret = client.execute("select (dept).id from ref_test_emp;")
+    ret = client.execute("select (dept).id as dept_id from ref_test_emp;")
     assert ret["success"] == True
+    assert ret["data"] == [{'dept_id': 'D002'}]
 
 
 def test_refer_column_access_with_parens_name():
-    ret = client.execute("select (dept).name from ref_test_emp;")
+    ret = client.execute("select (dept).name as dept_name from ref_test_emp;")
     assert ret["success"] == True
+    assert ret["data"] == [{'dept_name': 'Computing'}]
 
 
 def test_refer_indirectly_ref_insert():
     ret = client.execute("insert into ref_test_emp values (2, 'bob', ref(id = 'D001'));")
     assert ret["success"] == True
+    ret = client.execute("select * from ref_test_emp where id = 2;")
+    assert ret["data"] == [{'id': 2, 'name': 'bob', 'dept': {'id': 'D001', 'name': 'Engineering'}}]
 
 
 def test_refer_indirectly_ref_with_condition():
     ret = client.execute("insert into ref_test_emp values (3, 'charlie', ref(id = 'D001' and name = 'Engineering'));")
     assert ret["success"] == True
+    ret = client.execute("select * from ref_test_emp where id = 3;")
+    assert ret["data"] == [{'id': 3, 'name': 'charlie', 'dept': {'id': 'D001', 'name': 'Engineering'}}]
 
 
 def test_refer_select_where_ref_condition():
     ret = client.execute("select * from ref_test_emp where (dept).id = 'D001';")
     assert ret["success"] == True
     assert ret["rows"] == 2
+    assert ret["data"] == [
+        {'id': 2, 'name': 'bob', 'dept': {'id': 'D001', 'name': 'Engineering'}},
+        {'id': 3, 'name': 'charlie', 'dept': {'id': 'D001', 'name': 'Engineering'}},
+    ]
 
 
 def test_refer_sub_access_in_where():
     ret = client.execute("select id, name from ref_test_emp where (dept).name = 'Engineering';")
     assert ret["success"] == True
+    assert ret["rows"] == 2
+    assert ret["data"] == [
+        {'id': 2, 'name': 'bob'},
+        {'id': 3, 'name': 'charlie'},
+    ]
 
 
 # --- Cleanup ---

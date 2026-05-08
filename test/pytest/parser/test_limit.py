@@ -7,6 +7,15 @@ client.login("root", "Zc120130211")
 
 _table_created = False
 
+ALL_DATA = [
+    {'id': 1, 'name': 'a'},
+    {'id': 2, 'name': 'b'},
+    {'id': 3, 'name': 'c'},
+    {'id': 4, 'name': 'd'},
+    {'id': 5, 'name': 'e'},
+    {'id': 6, 'name': 'f'},
+]
+
 
 def setup_data():
     global _table_created
@@ -30,29 +39,34 @@ def test_select_limit_rows_only():
     ret = client.execute("select * from lim_test_t limit 3;")
     assert ret["success"] == True
     assert ret["rows"] == 3
+    assert ret["data"] == ALL_DATA[:3]
 
 
 def test_select_limit_offset_comma_syntax():
     ret = client.execute("select * from lim_test_t limit 1, 3;")
     assert ret["success"] == True
     assert ret["rows"] == 3
+    assert ret["data"] == ALL_DATA[1:4]
 
 
 def test_select_limit_offset_keyword_syntax():
     ret = client.execute("select * from lim_test_t limit 3 offset 2;")
     assert ret["success"] == True
     assert ret["rows"] == 3
+    assert ret["data"] == ALL_DATA[2:5]
 
 
 def test_select_count_with_limit():
     ret = client.execute("select count(1) from lim_test_t limit 2;")
     assert ret["success"] == True
+    assert ret["data"] == [{'count': 6}]
 
 
 def test_select_limit_zero():
     ret = client.execute("select * from lim_test_t limit 0;")
     assert ret["success"] == True
     assert ret["rows"] == 0
+    assert ret["data"] == []
 
 
 # --- Limit with WHERE ---
@@ -61,12 +75,14 @@ def test_select_limit_with_where():
     ret = client.execute("select * from lim_test_t where id > 2 limit 2;")
     assert ret["success"] == True
     assert ret["rows"] == 2
+    assert ret["data"] == ALL_DATA[2:4]
 
 
 def test_select_limit_offset_with_where():
     ret = client.execute("select * from lim_test_t where id > 0 limit 1, 2;")
     assert ret["success"] == True
     assert ret["rows"] == 2
+    assert ret["data"] == ALL_DATA[1:3]
 
 
 # --- Error cases ---
