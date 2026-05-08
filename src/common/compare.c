@@ -194,6 +194,10 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
                     return *(int32_t *)left->value == *(int32_t *)right->value;
                 case T_LONG:
                     return *(int32_t *)left->value == *(int64_t *)right->value;
+                case T_FLOAT:
+                    return *(int32_t *)left->value == *(float *)right->value;
+                case T_DOUBLE:
+                    return *(int32_t *)left->value == *(double *)right->value;
                 case T_VARCHAR:
                 case T_STRING: {
                     int32_t val;
@@ -226,6 +230,10 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
                     return *(int64_t *)left->value == *(int32_t *)right->value;
                 case T_LONG:
                     return *(int64_t *)left->value == *(int64_t *)right->value;
+                case T_FLOAT:
+                    return *(int64_t *)left->value == *(float *)right->value;
+                case T_DOUBLE:
+                    return *(int64_t *)left->value == *(double *)right->value;
                 case T_VARCHAR:
                 case T_STRING: {
                     int64_t val;
@@ -258,6 +266,10 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
                     return *(float *)left->value == *(int32_t *)right->value;
                 case T_LONG:
                     return *(float *)left->value == *(int64_t *)right->value;
+                case T_FLOAT:
+                    return *(float *)left->value == *(float *)right->value;
+                case T_DOUBLE:
+                    return *(float *)left->value == *(double *)right->value; 
                 case T_VARCHAR:
                 case T_STRING: {
                     float val;
@@ -290,6 +302,10 @@ static bool KeyValueEQ(KeyValue *left, KeyValue *right) {
                     return *(double *)left->value == *(int32_t *)right->value;
                 case T_LONG:
                     return *(double *)left->value == *(int64_t *)right->value;
+                case T_FLOAT:
+                    return *(double *)left->value == *(float *)right->value;
+                case T_DOUBLE:
+                    return *(double *)left->value == *(double *)right->value; 
                 case T_VARCHAR:
                 case T_STRING: {
                     double val;
@@ -468,6 +484,10 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
                     return *(int32_t *)left->value > *(int32_t *)right->value;
                 case T_LONG:
                     return *(int32_t *)left->value > *(int64_t *)right->value;
+                case T_FLOAT:
+                    return *(int32_t *)left->value > *(float *)right->value;
+                case T_DOUBLE:
+                    return *(int32_t *)left->value > *(double *)right->value;
                 case T_VARCHAR:
                 case T_STRING: {
                     int32_t val;
@@ -500,6 +520,10 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
                     return *(int64_t *)left->value > *(int32_t *)right->value;
                 case T_LONG:
                     return *(int64_t *)left->value > *(int64_t *)right->value;
+                case T_FLOAT:
+                    return *(int64_t *)left->value > *(float *)right->value;
+                case T_DOUBLE:
+                    return *(int64_t *)left->value > *(double *)right->value;
                 case T_VARCHAR:
                 case T_STRING: {
                     int64_t val;
@@ -532,6 +556,10 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
                     return *(float *)left->value > *(int32_t *)right->value;
                 case T_LONG:
                     return *(float *)left->value > *(int64_t *)right->value;
+                case T_FLOAT:
+                    return *(float *)left->value > *(float *)right->value;
+                case T_DOUBLE:
+                    return *(float *)left->value > *(double *)right->value;
                 case T_VARCHAR:
                 case T_STRING: {
                     float val;
@@ -564,6 +592,10 @@ static bool KeyValueGT(KeyValue *left, KeyValue *right) {
                     return *(double *)left->value > *(int32_t *)right->value;
                 case T_LONG:
                     return *(double *)left->value > *(int64_t *)right->value;
+                case T_FLOAT:
+                    return *(double *)left->value > *(float *)right->value;
+                case T_DOUBLE:
+                    return *(double *)left->value > *(double *)right->value;
                 case T_VARCHAR:
                 case T_STRING: {
                     double val;
