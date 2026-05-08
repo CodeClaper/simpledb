@@ -54,7 +54,7 @@ static void UpdateTupleForAssignment(void *tuple, List *assignment_list, MetaTab
 
         /* Reset new value to tuple. */
         TupleSetValue(tuple, meta_column, new_value);
-        dfree(new_value);
+        if (new_value) dfree(new_value);
     }
 }
 
