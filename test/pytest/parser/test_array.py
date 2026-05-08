@@ -23,6 +23,7 @@ def test_insert_one_dim_array():
 def test_select_array_data():
     ret = client.execute("select * from arr_t1 where id = 1;")
     assert ret["success"] == True
+    assert ret["data"] == [{'id': 1, 'tags': ['hello', 'world']}]
 
 
 def test_create_table_int_array():
@@ -74,27 +75,40 @@ def test_array_with_null():
 def test_select_star_from_array_table():
     ret = client.execute("select * from arr_t1;")
     assert ret["success"] == True
+    assert ret["data"] == [
+        {'id': 1, 'tags': ['hello', 'world']},
+        {'id': 2, 'tags': ['a', 'b', 'c']},
+        {'id': 3, 'tags': [None, 'x', None]},
+    ]
 
 
 def test_select_array_column():
     ret = client.execute("select id, tags from arr_t1;")
     assert ret["success"] == True
+    assert ret["data"] == [
+        {'id': 1, 'tags': ['hello', 'world']},
+        {'id': 2, 'tags': ['a', 'b', 'c']},
+        {'id': 3, 'tags': [None, 'x', None]},
+    ]
 
 
 def test_select_array_with_where():
     ret = client.execute("select * from arr_t1 where id = 1;")
     assert ret["success"] == True
     assert ret["rows"] == 1
+    assert ret["data"] == [{'id': 1, 'tags': ['hello', 'world']}]
 
 
 def test_select_array_with_where_compare():
     ret = client.execute("select * from arr_t2 where id > 0;")
     assert ret["success"] == True
+    assert ret["data"] == [{'id': 1, 'scores': [90, 80, 70]}]
 
 
 def test_select_array_with_count():
     ret = client.execute("select count(*) from arr_t1;")
     assert ret["success"] == True
+    assert ret["data"] == [{'count': 3}]
 
 
 def test_select_array_with_limit():
@@ -106,48 +120,65 @@ def test_select_array_with_limit():
 def test_select_int_array():
     ret = client.execute("select * from arr_t2;")
     assert ret["success"] == True
+    assert ret["data"] == [{'id': 1, 'scores': [90, 80, 70]}]
 
 
 def test_select_float_array():
     ret = client.execute("select * from arr_t3;")
     assert ret["success"] == True
+    assert ret["data"] == [{'id': 1, 'values': [1.5, 2.5, 3.5]}]
 
 
 def test_select_bool_array():
     ret = client.execute("select * from arr_t4;")
     assert ret["success"] == True
+    assert ret["data"] == [{'id': 1, 'flags': [True, False, True]}]
 
 
 def test_select_two_dim_array():
     ret = client.execute("select * from arr_t5;")
+    print(ret)
     assert ret["success"] == True
+    assert ret["data"] == [{'id': 1, 'matrix': [[1, 2], [3, 4]], 'name': 'matrix1'}]
 
 
 def test_select_three_dim_array():
     ret = client.execute("select * from arr_t6;")
     assert ret["success"] == True
+    assert ret["data"] == [{'id': 1, 'cube': [[[1]]]}]
 
 
 def test_select_two_dim_array_with_where():
     ret = client.execute("select * from arr_t5 where name = 'matrix1';")
     assert ret["success"] == True
     assert ret["rows"] == 1
+    assert ret["data"] == [{'id': 1, 'matrix': [[1, 2], [3, 4]], 'name': 'matrix1'}]
 
 
 def test_select_array_with_column_alias():
     ret = client.execute("select id, tags as t from arr_t1;")
     assert ret["success"] == True
+    assert ret["data"] == [
+        {'id': 1, 't': ['hello', 'world']},
+        {'id': 2, 't': ['a', 'b', 'c']},
+        {'id': 3, 't': [None, 'x', None]},
+    ]
 
 
 def test_select_array_with_count_and_group():
     ret = client.execute("select count(*) from arr_t1 where id > 0;")
     assert ret["success"] == True
+    assert ret["data"] == [{'count': 3}]
 
 
 def test_select_array_with_in():
     ret = client.execute("select * from arr_t1 where id in (1, 2);")
     assert ret["success"] == True
     assert ret["rows"] == 2
+    assert ret["data"] == [
+        {'id': 1, 'tags': ['hello', 'world']},
+        {'id': 2, 'tags': ['a', 'b', 'c']},
+    ]
 
 
 # --- Cleanup ---
