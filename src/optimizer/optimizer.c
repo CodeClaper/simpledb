@@ -1,4 +1,5 @@
 #include <stdbool.h>
+#include <time.h>
 #include "optimizer.h"
 #include "data.h"
 #include "mmgr.h"
@@ -15,6 +16,7 @@
 static bool OnlySelectAllInSelection(SelectNode *selectNode);
 static bool OnlyCountInSelection(SelectNode *selectNode);
 static bool OnlyScanIndex(SelectNode *selectNode);
+static bool SelectHasAggFunction(SelectNode *selectNode);
 static MetaIndex *FindHitIndex(List *select_table_list, ExprNode *node);
 static LimitClauseNode *SelectNodeFindLimitClause(SelectNode *selectNode);
 static SearchConditionNode *SelectNodeFindCondition(SelectNode *selectNode);
@@ -32,6 +34,7 @@ SelectPlan *OptimizeSelect(SelectNode *selectNode, StatementType stmt_type) {
     select_plan->onlyAll = OnlySelectAllInSelection(selectNode);
     select_plan->onlyCount = OnlyCountInSelection(selectNode);
     select_plan->onlyScanIndex = OnlyScanIndex(selectNode);
+    select_plan->hasAggFunction = SelectHasAggFunction(selectNode);
     select_plan->hitIndex = FindHitIndex(select_plan->selectTableList, select_plan->condition_expr);
     select_plan->indexValid = select_plan->hitIndex != NULL;
     select_plan->limitClause = SelectNodeFindLimitClause(selectNode);
@@ -108,6 +111,49 @@ static bool OnlyScanIndex(SelectNode *selectNode) {
     return OnlyCountInSelection(selectNode) && 
                 selectNode->table_exp->where_clause == NULL && 
                     OnlyOneFrom(selectNode->table_exp->from_clause);
+}
+
+/* Check if ScalarExpNode is Function. 
+ * If CALCULATE, will check its children. */
+static bool ScalarExprHasAggFunction(ScalarExpNode *scalar_exp) {
+    switch (scalar_exp->type) {
+        case SCALAR_FUNCTION:
+            return true;
+        case SCALAR_COLUMN:
+            return false;
+        case SCALAR_VALUE:
+            return false;
+        case SCALAR_CALCULATE:
+            return ScalarExprHasAggFunction(scalar_exp->calculate->left) 
+                || ScalarExprHasAggFunction(scalar_exp->calculate->right);
+        default:
+            UNEXPECTED_VALUE(scalar_exp->type);
+            return false;
+    }
+}
+
+/* Check if exists function type scalar exp. */
+static bool ScalarExpListHasAggFunction(List *scalar_exp_list) {
+    ListCell *lc;
+    foreach (lc, scalar_exp_list) {
+        /* Check self if SCALAR_FUNCTION. */
+        ScalarExpNode *scalar_exp = lfirst(lc);
+        if (ScalarExprHasAggFunction(scalar_exp))
+            return true;
+    }
+    return false;
+}
+
+static bool SelectionHasAggFunction(SelectionNode *selection) {
+    if (selection == NULL) return false;
+    else if (selection->all_column) return false;
+    else return ScalarExpListHasAggFunction(selection->scalar_exp_list);
+}
+
+/* If Select has aggregation function. */
+static bool SelectHasAggFunction(SelectNode *selectNode) {
+    if (selectNode == NULL) return false;
+    else return SelectionHasAggFunction(selectNode->selection);
 }
 
 static Table *ColumnNodeFindTable(List *select_table_list, ColumnNode *column) {

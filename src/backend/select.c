@@ -1391,9 +1391,9 @@ void CountRow(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE typ
 
 /* Select tuple data. */
 void SelectTuple(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg) {
+    SelectPlan *select_plan = (SelectPlan *) arg;
     /* If has limit clause. */
-    if (type == ARG_SELECT_PARAM && ((SelectPlan *) arg)->limitClause != NULL) {
-        SelectPlan *select_plan = (SelectPlan *) arg;
+    if (type == ARG_SELECT_PARAM && select_plan->limitClause != NULL) {
         LimitClauseNode *limit_clause = select_plan->limitClause;
 
         /* If has limit clause, only append row whose pindex > offset and pindex < offset + rows. */
@@ -1417,10 +1417,10 @@ void SelectTuple(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE 
 
 /* Select row data. */
 void SelectRow(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg) {
+    SelectPlan *select_plan = (SelectPlan *) arg;
     Row *row = GenerateRowInner(tuple, select_result->columns);
     /* If has limit clause. */
-    if (type == ARG_SELECT_PARAM && ((SelectPlan *) arg)->limitClause != NULL) {
-        SelectPlan *select_plan = (SelectPlan *) arg;
+    if (type == ARG_SELECT_PARAM && select_plan->limitClause != NULL) {
         LimitClauseNode *limit_clause = select_plan->limitClause;
 
         /* If has limit clause, only append row whose pindex > offset and pindex < offset + rows. */
@@ -2367,47 +2367,13 @@ static void QueryColumnsSelection(List *scalar_exp_list, SelectResult *select_re
     }
 }
 
-/* Check if ScalarExpNode is Function. 
- * If CALCULATE, will check its children. */
-static bool IsFunctionScalarExp(ScalarExpNode *scalar_exp) {
-    switch (scalar_exp->type) {
-        case SCALAR_FUNCTION:
-            return true;
-        case SCALAR_COLUMN:
-            return false;
-        case SCALAR_VALUE:
-            return false;
-        case SCALAR_CALCULATE:
-            return IsFunctionScalarExp(scalar_exp->calculate->left) 
-                || IsFunctionScalarExp(scalar_exp->calculate->right);
-        default:
-            UNEXPECTED_VALUE(scalar_exp->type);
-            return false;
-    }
-}
-
-/* Check if exists function type scalar exp. */
-static bool FunctionScalarExpExists(List *scalar_exp_list) {
-    ListCell *lc;
-    foreach (lc, scalar_exp_list) {
-        /* Check self if SCALAR_FUNCTION. */
-        ScalarExpNode *scalar_exp = lfirst(lc);
-        if (IsFunctionScalarExp(scalar_exp))
-            return true;
-    }
-    return false;
-}
-
 
 /* Query selection. */
 static void QueryWithSelection(SelectionNode *selection, SelectResult *select_result, SelectPlan *select_plan) {
     /* For all column, data has stream out by <query_row>*/
-    if (selection->all_column)
-        return;
-    if (FunctionScalarExpExists(selection->scalar_exp_list)) 
-        QueryFunctionSelection(selection->scalar_exp_list, select_result, select_plan);
-    else 
-        QueryColumnsSelection(selection->scalar_exp_list, select_result, select_plan);
+    if (selection->all_column) return;
+    if (select_plan->hasAggFunction) QueryFunctionSelection(selection->scalar_exp_list, select_result, select_plan);
+    else QueryColumnsSelection(selection->scalar_exp_list, select_result, select_plan);
 }
 
 

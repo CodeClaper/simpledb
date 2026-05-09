@@ -43,7 +43,8 @@ typedef struct SelectPlan {
     bool onlyCount;                     /* Only count int select statement. */
     bool onlyScanIndex;                 /* Only scan index. */
     bool indexValid;                    /* Index if valid. */
-    MetaIndex *hitIndex;                 /* The hit index. */
+    bool hasAggFunction;                /* Selection has aggregation function. */
+    MetaIndex *hitIndex;                /* The hit index. */
     SearchConditionNode *condition;     /* The search condition. */
     ExprNode *condition_expr;           /* The condition expr. */                    
     List *selectTableList;              /* List of SelectTable. */
