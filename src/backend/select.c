@@ -2355,10 +2355,7 @@ static Row *QueryColumnsSelectOneRow(SelectPlan *select_plan, List *scalar_exp_l
     foreach (lc, scalar_exp_list) {
         ScalarExpNode *scalar_exp = lfirst(lc);
         KeyValue *key_value = QueryRowValue(select_plan, scalar_exp, row);
-        if (scalar_exp->alias) {
-            /* Rename as alias. */
-            key_value->key = dstrdup(scalar_exp->alias);
-        }
+        if (scalar_exp->alias) key_value->key = dstrdup(scalar_exp->alias);
         append_list(sub_row->data, key_value);
     }
     return sub_row;
