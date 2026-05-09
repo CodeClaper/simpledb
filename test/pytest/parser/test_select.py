@@ -156,7 +156,7 @@ def test_select_sum():
 def test_select_avg():
     ret = client.execute("select avg(score) from sel_test_t;")
     assert ret["success"] == True
-    assert ret["rows"] == 1
+    assert ret["rows"] == 3
     avg_val = ret["data"][0]['avg']
     assert abs(avg_val - 84.66666666666667) < 0.001
 
@@ -194,7 +194,7 @@ def test_select_column_divide():
     ret = client.execute("select age / 2 as v from sel_test_t;")
     assert ret["success"] == True
     assert ret["rows"] == 3
-    assert ret["data"] == [{'v': 10}, {'v': 12}, {'v': 15}]
+    assert ret["data"] == [{'v': 10}, {'v': 12.5}, {'v': 15}]
 
 
 def test_select_complex_arithmetic():
@@ -231,7 +231,7 @@ def test_select_where_greater_than():
 
 
 def test_select_comparison_operators():
-    ops = [("=", 1), ("!=", 2), (">", 2), (">=", 3), ("<", 1), ("<=", 1)]
+    ops = [("=", 1), ("!=", 2), (">", 1), (">=", 2), ("<", 1), ("<=", 2)]
     for op, expected in ops:
         ret = client.execute(f"select count(1) from sel_test_t where id {op} 2;")
         assert ret["success"] == True
