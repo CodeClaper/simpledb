@@ -1373,13 +1373,10 @@ void CountRow(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE typ
         LimitClauseNode *limit_clause = select_plan->limitClause;
 
         /* If has limit clause, only append row whose pindex > offset and pindex < offset + rows. */
-        if (select_plan->offset >= limit_clause->offset && 
-                select_plan->offset < (limit_clause->offset + limit_clause->rows)) {
-
+        if (0 <= limit_clause->offset && 0 < (limit_clause->offset + limit_clause->rows)) {
             acquire_spin_lock(&select_plan->slock);
             /* Double check for concurrency. */
-            if (select_plan->offset >= limit_clause->offset && 
-                    select_plan->offset < (limit_clause->offset + limit_clause->rows)) {
+            if (0 <= limit_clause->offset && 0 < (limit_clause->offset + limit_clause->rows)) {
                 select_result->row_size++;
             } 
             release_spin_lock(&select_plan->slock);
