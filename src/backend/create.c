@@ -14,6 +14,7 @@
 #include "data.h"
 #include "const.h"
 #include "common.h"
+#include "select.h"
 #include "table.h"
 #include "mmgr.h"
 #include "meta.h"
@@ -41,8 +42,7 @@
  * If define data len, use defined data length.
  * Note that: 
  * (1) T_STRING & T_VARCHAR data length will increase 1 for '\0' as end. Otherwise, use system default data length.
- * (2) When array cap more than zere, it means column is array. We use array heap table to store array values. 
- *     So column length = REFER_SIZE + LEAF_NODE_CELL_NULL_FLAG_SIZE;
+ * (2) When array cap more than zero, it means column is array. We use array heap table to store array values. 
  * */
 static uint32_t CalcMetaColumnLength(ColumnDefNode *column_def) {
     DataTypeNode *data_type = column_def->data_type;
@@ -65,10 +65,14 @@ static uint32_t CalcMetaColumnLength(ColumnDefNode *column_def) {
             break;
         }
     }
-    /* If type is array, single data type length multiply by array cap. */
     return column_def->array_dim == 0 
             ? (column_length + LEAF_NODE_CELL_NULL_FLAG_SIZE)
-            : (sizeof(StrRefer) + column_length + LEAF_NODE_CELL_NULL_FLAG_SIZE);
+            /* When it's array, the array refer value length is different from array item length. 
+             * The meta column length is actually repsent for array refer value length. 
+             * But to make it simple, we also use meta column length to repsent for array item length. 
+             * And this will cause space waste for array heap table, but it's more simple. 
+             * In the future, we maybe will make it different. */
+            : (max_size(column_length, REFER_SIZE) + LEAF_NODE_CELL_NULL_FLAG_SIZE);
 }
 
 /* Column Operation. */
