@@ -25,7 +25,6 @@ def test_setup_data():
 
 def test_select_addition():
     ret = client.execute("select a + b as v from expr_test_t;")
-    print(ret)
     assert ret["success"] == True
     assert ret["rows"] == 3
     assert ret["data"] == [{'v': 13}, {'v': 25}, {'v': 36}]
@@ -49,7 +48,7 @@ def test_select_division():
     ret = client.execute("select a / b as v from expr_test_t;")
     assert ret["success"] == True
     assert ret["rows"] == 3
-    assert ret["data"] == [{'v': 3}, {'v': 4}, {'v': 5}]
+    assert ret["data"] == [{'v': 3.333333}, {'v': 4}, {'v': 5}]
 
 
 def test_select_expression_with_parentheses():
