@@ -47,6 +47,41 @@ def test_create_table_bool_array():
     assert_all(ret)
 
 
+# --- String Array tests ---
+
+def test_create_table_string_array():
+    sql = "create table arr_str (id int primary key, items varchar(32)[]);\n" \
+          "insert into arr_str values (1, ['apple', 'banana', 'cherry']);\n" \
+          "insert into arr_str values (2, ['one', 'two']);"
+    ret = client.execute(sql)
+    assert_all(ret)
+
+
+def test_select_string_array():
+    ret = client.execute("select * from arr_str;")
+    assert ret["success"] == True
+    assert ret["data"] == [
+        {'id': 1, 'items': ['apple', 'banana', 'cherry']},
+        {'id': 2, 'items': ['one', 'two']},
+    ]
+
+
+def test_select_string_array_with_where():
+    ret = client.execute("select * from arr_str where id = 1;")
+    assert ret["success"] == True
+    assert ret["rows"] == 1
+    assert ret["data"] == [{'id': 1, 'items': ['apple', 'banana', 'cherry']}]
+
+
+def test_string_array_with_null():
+    ret = client.execute("insert into arr_str values (3, ['x', null, 'z']);")
+    assert ret["success"] == True
+
+    ret = client.execute("select * from arr_str where id = 3;")
+    assert ret["success"] == True
+    assert ret["data"] == [{'id': 3, 'items': ['x', None, 'z']}]
+
+
 # --- 2D Array tests ---
 
 def test_create_table_with_two_dim_array():
@@ -189,7 +224,8 @@ def test_cleanup():
           "drop table arr_t3;\n" \
           "drop table arr_t4;\n" \
           "drop table arr_t5;\n" \
-          "drop table arr_t6;"
+          "drop table arr_t6;\n" \
+          "drop table arr_str;"
     ret = client.execute(sql)
     assert_all(ret)
 
