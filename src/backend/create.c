@@ -67,8 +67,8 @@ static uint32_t CalcMetaColumnLength(ColumnDefNode *column_def) {
     }
     return column_def->array_dim == 0 
             ? (column_length + LEAF_NODE_CELL_NULL_FLAG_SIZE)
-            /* When it's array, the array refer value length is different from array item length. 
-             * The meta column length is actually repsent for array refer value length. 
+            /* When it's array, the array refer value length is different from array item length . 
+             * The meta column length is actually repsent for array refer value length (REFER_SIZE + LEAF_NODE_CELL_NULL_FLAG_SIZE). 
              * But to make it simple, we also use meta column length to repsent for array item length. 
              * And this will cause space waste for array heap table, but it's more simple. 
              * In the future, we maybe will make it different. */
