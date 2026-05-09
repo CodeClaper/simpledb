@@ -163,7 +163,6 @@ static void json_key_array_value_inner(Oid oid, char *key, ArrayValue *array_val
             db_send("]");
             break;
         }
-        case T_STRING:
         case T_VARCHAR:
         case T_CHAR: {
             db_send("[");
@@ -234,6 +233,26 @@ static void json_key_array_value_inner(Oid oid, char *key, ArrayValue *array_val
                 if (!value) db_send("%s", "null");
                 else db_send("\"%s\"", TimeToStr(*(time_t *)value, "%Y-%m-%d") );
                 if (last_cell(array_value->list) != lc) db_send(",");
+            }
+
+            db_send("]");
+            break;
+        }
+        case T_STRING: {
+            db_send("[");
+
+            ListCell *lc;
+            foreach (lc, array_value->list) {
+                void *value = lfirst(lc);
+                if (!value) 
+                    db_send("%s", "null");
+                else {
+                    char *strVal = QueryStringValue((StrRefer *)value);
+                    if (strVal == NULL) db_send("%s", "null");
+                    else db_send("\"%s\": \"%s\"", key, EscapStr(strVal, false));
+                }
+                if (last_cell(array_value->list) != lc)
+                    db_send(",");
             }
 
             db_send("]");

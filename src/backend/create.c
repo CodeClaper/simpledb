@@ -68,7 +68,7 @@ static uint32_t CalcMetaColumnLength(ColumnDefNode *column_def) {
     /* If type is array, single data type length multiply by array cap. */
     return column_def->array_dim == 0 
             ? (column_length + LEAF_NODE_CELL_NULL_FLAG_SIZE)
-            : (REFER_SIZE + LEAF_NODE_CELL_NULL_FLAG_SIZE);
+            : (sizeof(StrRefer) + column_length + LEAF_NODE_CELL_NULL_FLAG_SIZE);
 }
 
 /* Column Operation. */
