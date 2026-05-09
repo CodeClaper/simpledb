@@ -5,8 +5,6 @@ from support.asserts import assert_all
 client = DbClient("127.0.0.1", 4083)
 client.login("root", "Zc120130211")
 
-_table_created = False
-
 ALL_DATA = [
     {'id': 1, 'a': 10, 'b': 3, 'c': 2.5},
     {'id': 2, 'a': 20, 'b': 5, 'c': 4.0},
@@ -14,23 +12,20 @@ ALL_DATA = [
 ]
 
 
-def setup_data():
-    global _table_created
-    if not _table_created:
-        sql = "create table expr_test_t (id int primary key, a int, b int, c float);\n" \
-              "insert into expr_test_t values (1, 10, 3, 2.5);\n" \
-              "insert into expr_test_t values (2, 20, 5, 4.0);\n" \
-              "insert into expr_test_t values (3, 30, 6, 8.0);"
-        ret = client.execute(sql)
-        assert_all(ret)
-        _table_created = True
+def test_setup_data():
+    sql = "create table expr_test_t (id int primary key, a int, b int, c float);\n" \
+          "insert into expr_test_t values (1, 10, 3, 2.5);\n" \
+          "insert into expr_test_t values (2, 20, 5, 4.0);\n" \
+          "insert into expr_test_t values (3, 30, 6, 8.0);"
+    ret = client.execute(sql)
+    assert_all(ret)
 
 
 # --- Arithmetic expressions in SELECT ---
 
 def test_select_addition():
-    setup_data()
     ret = client.execute("select a + b as v from expr_test_t;")
+    print(ret)
     assert ret["success"] == True
     assert ret["rows"] == 3
     assert ret["data"] == [{'v': 13}, {'v': 25}, {'v': 36}]

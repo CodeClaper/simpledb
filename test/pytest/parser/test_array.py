@@ -82,6 +82,32 @@ def test_string_array_with_null():
     assert ret["data"] == [{'id': 3, 'items': ['x', None, 'z']}]
 
 
+# --- Varchar(1000) Array tests ---
+
+def test_create_table_varchar1000_array():
+    sql = "create table arr_vc1k (id int primary key, notes varchar(1000)[]);\n" \
+          f"insert into arr_vc1k values (1, ['short', '{"a" * 500}', 'end']);"
+    ret = client.execute(sql)
+    assert_all(ret)
+
+
+def test_select_varchar1000_array():
+    ret = client.execute("select * from arr_vc1k;")
+    assert ret["success"] == True
+    long_str = 'a' * 500
+    assert ret["data"] == [{'id': 1, 'notes': ['short', long_str, 'end']}]
+
+
+def test_varchar1000_array_with_null():
+    ret = client.execute(f"insert into arr_vc1k values (2, [null, '{"b" * 999}', null]);")
+    assert ret["success"] == True
+
+    ret = client.execute("select * from arr_vc1k where id = 2;")
+    assert ret["success"] == True
+    long_str = 'b' * 999
+    assert ret["data"] == [{'id': 2, 'notes': [None, long_str, None]}]
+
+
 # --- 2D Array tests ---
 
 def test_create_table_with_two_dim_array():
@@ -225,7 +251,8 @@ def test_cleanup():
           "drop table arr_t4;\n" \
           "drop table arr_t5;\n" \
           "drop table arr_t6;\n" \
-          "drop table arr_str;"
+          "drop table arr_str;\n" \
+          "drop table arr_vc1k;"
     ret = client.execute(sql)
     assert_all(ret)
 
