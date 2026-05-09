@@ -957,25 +957,25 @@ static const yytype_int8 yytranslate[] =
 /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_int16 yyrline[] =
 {
-       0,   193,   193,   198,   205,   211,   217,   223,   230,   237,
-     244,   251,   258,   265,   272,   279,   286,   293,   300,   307,
-     316,   319,   322,   326,   336,   346,   359,   368,   377,   387,
-     395,   407,   418,   424,   434,   443,   449,   459,   468,   477,
-     485,   492,   501,   510,   519,   522,   529,   538,   545,   553,
-     564,   567,   575,   581,   588,   594,   601,   610,   616,   622,
-     629,   632,   638,   646,   653,   662,   667,   674,   683,   689,
-     696,   703,   710,   717,   724,   728,   735,   743,   751,   759,
-     769,   775,   782,   788,   795,   803,   826,   837,   843,   850,
-     858,   864,   870,   876,   883,   889,   895,   901,   907,   913,
-     919,   929,   932,   936,   943,   946,   951,   958,   964,   970,
-     976,   983,   989,   996,  1003,  1012,  1019,  1026,  1034,  1043,
-    1050,  1058,  1066,  1073,  1079,  1086,  1093,  1099,  1108,  1115,
-    1122,  1129,  1136,  1146,  1154,  1163,  1167,  1173,  1179,  1186,
-    1195,  1201,  1210,  1216,  1225,  1232,  1241,  1248,  1256,  1264,
-    1271,  1280,  1288,  1298,  1305,  1312,  1321,  1331,  1339,  1349,
-    1357,  1368,  1371,  1378,  1385,  1394,  1395,  1396,  1397,  1398,
-    1399,  1402,  1409,  1416,  1423,  1430,  1439,  1446,  1453,  1461,
-    1468,  1477,  1478
+       0,   194,   194,   199,   206,   212,   218,   224,   231,   238,
+     245,   252,   259,   266,   273,   280,   287,   294,   301,   308,
+     317,   320,   323,   327,   337,   347,   360,   369,   378,   388,
+     396,   408,   419,   425,   435,   444,   450,   460,   469,   478,
+     486,   493,   502,   511,   520,   523,   530,   539,   546,   554,
+     565,   568,   576,   582,   589,   595,   602,   611,   617,   623,
+     630,   633,   639,   647,   654,   663,   668,   675,   684,   690,
+     697,   704,   711,   718,   725,   729,   736,   744,   752,   760,
+     770,   776,   783,   789,   796,   804,   827,   838,   844,   851,
+     859,   865,   871,   877,   884,   890,   896,   902,   908,   914,
+     920,   930,   933,   937,   944,   947,   952,   959,   965,   971,
+     977,   984,   990,   997,  1004,  1013,  1020,  1027,  1035,  1044,
+    1051,  1059,  1067,  1074,  1080,  1087,  1094,  1100,  1109,  1116,
+    1123,  1130,  1137,  1147,  1155,  1164,  1168,  1174,  1180,  1187,
+    1196,  1202,  1211,  1217,  1226,  1233,  1242,  1249,  1257,  1265,
+    1272,  1281,  1289,  1299,  1306,  1313,  1322,  1332,  1340,  1350,
+    1358,  1369,  1372,  1379,  1386,  1395,  1396,  1397,  1398,  1399,
+    1400,  1403,  1410,  1417,  1424,  1431,  1440,  1447,  1454,  1462,
+    1469,  1478,  1479
 };
 #endif
 
@@ -1044,41 +1044,41 @@ yysymbol_name (yysymbol_kind_t yysymbol)
    STATE-NUM.  */
 static const yytype_int16 yypact[] =
 {
-     427,   -63,   -63,   -63,    55,   105,   232,    35,   -31,    47,
-     -31,   121,    66,    66,    26,   389,  -239,  -239,  -239,  -239,
+     427,   -63,   -63,   -63,    46,    55,   232,    35,   -31,    67,
+     -31,    88,    91,    91,    26,   389,  -239,  -239,  -239,  -239,
     -239,  -239,  -239,  -239,  -239,  -239,  -239,  -239,  -239,  -239,
-    -239,  -239,  -239,    97,  -239,  -239,  -239,   -31,    44,    88,
-     -31,    44,  -239,   294,    84,   140,   156,   173,   179,   181,
-     190,  -239,  -239,  -239,   138,  -239,  -239,  -239,   158,   115,
+    -239,  -239,  -239,    61,  -239,  -239,  -239,   -31,    44,   116,
+     -31,    44,  -239,   294,    84,   156,   173,   179,   181,   190,
+     193,  -239,  -239,  -239,    47,  -239,  -239,  -239,   147,    96,
      154,  -239,  -239,  -239,  -239,  -239,  -239,  -239,   -31,  -239,
-     180,   -31,   -63,   187,   -63,  -239,  -239,   -31,  -239,  -239,
-    -239,   193,  -239,   139,    44,   -63,   -63,     1,   145,    13,
-     131,    84,    10,  -239,    57,    57,    29,    29,    29,   248,
-      15,   314,   -31,   -63,   206,   314,   314,   314,   314,   314,
-     157,   172,    15,   -18,  -239,   -31,  -239,    21,   176,   -31,
-     169,  -239,  -239,   178,  -239,  -239,    84,  -239,   188,  -239,
+     174,   -31,   -63,   150,   -63,  -239,  -239,   -31,  -239,  -239,
+    -239,   201,  -239,   135,    44,   -63,   -63,     1,   145,    13,
+     129,    84,    10,  -239,    57,    57,    29,    29,    29,   248,
+      15,   314,   -31,   -63,   192,   314,   314,   314,   314,   314,
+     149,   172,    15,   -18,  -239,   -31,  -239,    21,   176,   -31,
+     169,  -239,  -239,   152,  -239,  -239,    84,  -239,   183,  -239,
     -239,   259,   275,  -239,  -239,  -239,   280,   281,   291,   263,
-     346,   370,   122,    25,   163,   298,  -239,  -239,   231,  -239,
-    -239,  -239,  -239,  -239,    85,   227,  -239,    23,  -239,   248,
-     290,  -239,   154,    71,    71,   273,   273,  -239,    15,   232,
-     318,   -63,  -239,   264,   -16,  -239,   248,  -239,   -63,   252,
-     255,   -63,  -239,  -239,   309,   323,   343,   329,  -239,    16,
-    -239,  -239,   437,  -239,   347,   -31,    15,  -239,   358,  -239,
+     346,   370,   122,    25,   163,   269,  -239,  -239,   229,  -239,
+    -239,  -239,  -239,  -239,    65,   215,  -239,    23,  -239,   248,
+     282,  -239,   154,   221,   221,  -239,  -239,  -239,    15,   232,
+     315,   -63,  -239,   261,   -16,  -239,   248,  -239,   -63,   252,
+     253,   -63,  -239,  -239,   289,   322,   323,   309,  -239,    16,
+    -239,  -239,   437,  -239,   343,   -31,    15,  -239,   357,  -239,
     -239,  -239,  -239,  -239,   412,   202,   165,  -239,  -239,  -239,
-    -239,  -239,  -239,  -239,   314,   360,    84,   159,   248,  -239,
-     248,   113,  -239,   -31,   285,  -239,  -239,   368,   286,  -239,
-      17,  -239,   158,    84,   284,  -239,    84,    15,   -63,     3,
-    -239,   289,   299,  -239,   374,   299,   248,   376,   -63,   176,
-    -239,  -239,  -239,   377,  -239,  -239,  -239,  -239,  -239,  -239,
-    -239,   405,    15,   378,  -239,  -239,  -239,   154,    84,  -239,
-     379,    84,   298,  -239,   194,  -239,  -239,  -239,   -22,    32,
-      15,  -239,    27,   415,  -239,  -239,  -239,  -239,  -239,   175,
-     299,    30,  -239,   230,   299,  -239,  -239,   335,   413,   184,
-      31,    15,    33,    84,  -239,  -239,   340,   341,   -63,  -239,
-    -239,    84,   344,   345,  -239,    34,  -239,   299,  -239,    36,
-     418,  -239,   443,   422,  -239,   200,   452,   -31,   375,   410,
+    -239,  -239,  -239,  -239,   314,   347,    84,   159,   248,  -239,
+     248,   113,  -239,   -31,   283,  -239,  -239,   366,   284,  -239,
+      17,  -239,   147,    84,   285,  -239,    84,    15,   -63,     3,
+    -239,   286,   287,  -239,   364,   287,   248,   374,   -63,   176,
+    -239,  -239,  -239,   375,  -239,  -239,  -239,  -239,  -239,  -239,
+    -239,   376,    15,   377,  -239,  -239,  -239,   154,    84,  -239,
+     379,    84,   269,  -239,   194,  -239,  -239,  -239,   -22,    32,
+      15,  -239,    27,   407,  -239,  -239,  -239,  -239,  -239,   175,
+     287,    30,  -239,   230,   287,  -239,  -239,   299,   409,   184,
+      31,    15,    33,    84,  -239,  -239,   338,   339,   -63,  -239,
+    -239,    84,   341,   342,  -239,    34,  -239,   287,  -239,    36,
+     418,  -239,   443,   391,  -239,   200,   421,   -31,   372,   410,
      417,  -239,   -63,    37,  -239,    38,  -239,  -239,  -239,    43,
-    -239,  -239,  -239,  -239,   424,  -239,  -239,  -239,  -239,  -239,
+    -239,  -239,  -239,  -239,   419,  -239,  -239,  -239,  -239,  -239,
      248,  -239,  -239,  -239,  -239,  -239,   -63,  -239,  -239,   -31,
      244,  -239,  -239,  -239
 };
@@ -1130,14 +1130,14 @@ static const yytype_uint8 yydefact[] =
 /* YYPGOTO[NTERM-NUM].  */
 static const yytype_int16 yypgoto[] =
 {
-    -239,  -239,   453,  -239,  -239,  -239,  -239,  -239,  -239,  -239,
+    -239,  -239,   448,  -239,  -239,  -239,  -239,  -239,  -239,  -239,
      251,  -239,  -239,  -239,  -239,  -239,  -239,  -239,  -239,  -239,
-    -239,  -239,  -239,   300,   235,  -239,  -239,   247,    -6,   -27,
-     249,   301,  -239,   195,  -239,  -239,   371,    39,  -239,  -194,
-    -239,   234,   242,  -238,  -213,  -239,  -239,  -239,   146,  -239,
-     -79,   -41,   -36,  -239,  -239,   -90,  -239,   250,  -134,   267,
-     266,   348,  -239,  -239,  -239,  -239,  -239,  -239,  -239,  -239,
-     168,   394,    -2
+    -239,  -239,  -239,   297,   235,  -239,  -239,   245,    -6,   -27,
+     246,   295,  -239,   195,  -239,  -239,   371,    39,  -239,  -194,
+    -239,   224,   233,  -238,  -213,  -239,  -239,  -239,   146,  -239,
+     -79,   -41,   -36,  -239,  -239,   -90,  -239,   247,  -134,   265,
+     266,   345,  -239,  -239,  -239,  -239,  -239,  -239,  -239,  -239,
+     168,   392,    -2
 };
 
 /* YYDEFGOTO[NTERM-NUM].  */
@@ -1165,48 +1165,48 @@ static const yytype_int16 yytable[] =
      316,   332,   239,   334,   342,    60,   344,   356,   357,   205,
      143,   169,   315,   358,    69,    93,   319,   120,    77,  -149,
      142,   142,   111,   170,    68,   113,   128,   307,   300,   143,
-     114,   117,   116,   237,    71,    33,   224,   292,   108,   109,
-     142,   292,    88,   121,   122,     6,   143,    37,    38,   231,
-     197,   100,   101,    91,    39,    44,    33,   142,   180,   126,
+     114,   117,   116,   237,    80,    33,   224,   292,    37,    38,
+     142,   292,    88,   121,   122,    39,   143,    40,    41,   231,
+     197,   100,   101,    91,    71,    44,    33,   142,   180,   126,
       54,   158,   126,    90,   343,   249,   280,   333,   225,   178,
-      80,   177,   293,   194,    54,   134,   126,   264,  -149,   317,
-     280,    84,   126,   317,   110,   317,   280,   126,   143,    82,
-     143,   275,   126,    50,    51,    52,    53,    40,    41,   142,
-      60,   142,    54,   129,   162,   163,   164,   165,   166,    94,
-     106,   107,   108,   109,    73,   124,   143,    74,   173,   106,
-     107,   108,   109,    51,    52,    95,   218,   142,   218,   235,
-      55,    56,    57,   219,   105,   266,   240,   222,   204,   243,
-     269,   168,    96,   231,   305,   102,   260,   274,    97,   263,
-      98,   169,   282,   215,   216,   322,   217,    93,   110,    99,
-     284,   309,   118,   170,   105,  -149,  -149,   110,    60,    91,
-     112,    44,   265,   184,   115,   185,   360,   186,   119,   187,
-    -123,   323,   231,   324,   325,   326,   327,   302,   100,   101,
-     270,   271,    93,   218,   159,   304,   286,   287,   328,    42,
-     318,    43,   167,    44,    51,    52,   295,   218,   195,    50,
+       6,   177,   293,   194,    54,   134,   126,   264,  -149,   317,
+     280,    73,   126,   317,    74,   317,   280,   126,   143,    82,
+     143,   275,   126,    50,    51,    52,    53,   100,   101,   142,
+      60,   142,    54,   129,   162,   163,   164,   165,   166,    84,
+     106,   107,   108,   109,   105,   124,   143,   222,   173,   106,
+     107,   108,   109,    51,    52,    94,   218,   142,   218,   235,
+      55,    56,    57,   219,   102,   266,   240,   115,   204,   243,
+     269,   168,    95,   231,   305,   105,   260,   274,    96,   263,
+      97,   169,   282,   215,   216,   322,   217,    93,   110,    98,
+     284,   309,    99,   170,   112,  -149,  -149,   110,    60,    91,
+     118,    44,   265,   184,   119,   185,   360,   186,  -123,   187,
+     159,   323,   231,   324,   325,   326,   327,   302,   108,   109,
+     270,   271,    93,   218,   167,   304,   286,   287,   328,    42,
+     318,    43,   196,    44,    51,    52,   295,   218,   195,    50,
       51,    52,   348,   267,   363,   312,   313,   139,   329,    44,
-     143,   188,   335,    75,    76,   137,   138,    93,   196,   199,
-     339,   142,   139,   198,    44,    93,    45,    46,    47,    48,
+     143,   188,   335,    75,    76,   137,   138,    93,   198,   199,
+     339,   142,   139,   220,    44,    93,    45,    46,    47,    48,
       49,    50,    51,    52,    53,   200,    55,    56,    57,   349,
      201,   202,    45,    46,    47,    48,    49,    50,    51,    52,
-      53,   203,   220,    43,   221,    44,   338,    45,    46,    47,
-      48,    49,    50,    51,    52,    53,   223,    54,    55,    56,
-      57,   351,   140,    43,   228,    44,   110,   233,   241,   236,
-     355,   242,   245,    54,    55,    56,    57,   140,    45,    46,
-      47,    48,    49,    50,    51,    52,    53,   244,    87,    55,
-      56,    57,   246,   362,   361,   139,   262,    44,    45,    46,
-      47,    48,    49,    50,    51,    52,    53,   247,   123,   268,
-     225,   218,   278,   283,   288,   106,   107,   108,   109,    87,
-      55,    56,    57,   290,   188,   294,   297,   301,   303,    78,
+      53,   203,   221,    43,   223,    44,   338,    45,    46,    47,
+      48,    49,    50,    51,    52,    53,   228,    54,    55,    56,
+      57,   351,   140,    43,   233,    44,   236,   244,   241,   242,
+     355,   245,   246,    54,    55,    56,    57,   140,    45,    46,
+      47,    48,    49,    50,    51,    52,    53,   247,    87,    55,
+      56,    57,   262,   362,   361,   139,   268,    44,    45,    46,
+      47,    48,    49,    50,    51,    52,    53,   123,   225,   218,
+     278,   288,   188,   290,   283,   106,   107,   108,   109,    87,
+      55,    56,    57,   294,   297,   320,   301,   298,   303,    78,
       45,    46,    47,    48,    49,    50,    51,    52,    53,    54,
       55,    56,    57,     1,     2,     3,     4,     5,     6,     7,
-       8,     9,    10,    11,    12,    13,   298,   106,   107,   108,
-     109,   320,   124,   110,   311,   321,   336,   337,   345,   340,
-     341,    54,    55,    56,    57,   208,   209,   210,   211,   212,
+       8,     9,    10,    11,    12,    13,   311,   106,   107,   108,
+     109,   321,   124,   110,   336,   337,   340,   341,   345,   347,
+     350,    54,    55,    56,    57,   208,   209,   210,   211,   212,
      213,     1,     2,     3,     4,     5,     6,     7,     8,     9,
       10,    11,    12,    13,   323,   346,   324,   325,   326,   327,
-     347,   350,   353,   352,    14,   110,   359,   281,    79,   232,
-     276,   328,   154,   277,   308,   238,   354,   208,   209,   210,
-     211,   212,   213,   296,   289,   272,   273,   285,   207,   132,
+     352,   359,   353,    79,    14,   110,   232,   281,   276,   238,
+     277,   328,   154,   296,   308,   289,   354,   208,   209,   210,
+     211,   212,   213,   272,   285,   207,   273,   132,     0,     0,
        0,   329,   250,   251,   252,   253,   254,   255,   256,   257,
      258,   259,    14,     0,     0,     0,     0,     0,     0,     0,
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
@@ -1222,48 +1222,48 @@ static const yytype_int16 yycheck[] =
       10,    10,   176,    10,    10,     6,    10,    10,    10,   139,
      140,    19,   290,    10,    85,    91,   294,    84,    32,    34,
      139,   140,    68,    31,    29,    71,     9,    89,   262,   159,
-      72,    77,    74,    89,    27,    93,    53,   290,     7,     8,
-     159,   294,    43,    85,    86,    19,   176,    32,    33,   168,
-     126,    90,    91,     9,    39,    11,    93,   176,    77,    89,
+      72,    77,    74,    89,    13,    93,    53,   290,    32,    33,
+     159,   294,    43,    85,    86,    39,   176,    32,    33,   168,
+     126,    90,    91,     9,    27,    11,    93,   176,    77,    89,
       85,   103,    89,   139,   317,    89,    89,   301,    85,   115,
-      13,   113,   246,   119,    85,    86,    89,   196,    93,    89,
-      89,    33,    89,    89,    53,    89,    89,    89,   218,    85,
-     220,   221,    89,    49,    50,    51,    52,    32,    33,   218,
-     101,   220,    85,    86,   105,   106,   107,   108,   109,     9,
-       5,     6,     7,     8,    33,    10,   246,    36,   237,     5,
+      19,   113,   246,   119,    85,    86,    89,   196,    93,    89,
+      89,    33,    89,    89,    36,    89,    89,    89,   218,    85,
+     220,   221,    89,    49,    50,    51,    52,    90,    91,   218,
+     101,   220,    85,    86,   105,   106,   107,   108,   109,    33,
+       5,     6,     7,     8,    89,    10,   246,    92,   237,     5,
        6,     7,     8,    50,    51,     9,     3,   246,     3,   171,
-      86,    87,    88,    10,    89,    10,   178,    92,   139,   181,
-     216,     9,     9,   262,   274,    27,   192,    74,     9,   195,
+      86,    87,    88,    10,    27,    10,   178,    27,   139,   181,
+     216,     9,     9,   262,   274,    89,   192,    74,     9,   195,
        9,    19,   233,    71,    72,    11,    74,   233,    53,     9,
-     236,   280,     9,    31,    89,     3,     4,    53,   169,     9,
-      30,    11,    10,    37,    27,    39,   350,    41,    79,    43,
-      89,    37,   301,    39,    40,    41,    42,   268,    90,    91,
-      71,    72,   268,     3,    28,   271,   238,   239,    54,     7,
-      10,     9,    85,    11,    50,    51,   248,     3,    79,    49,
+     236,   280,     9,    31,    30,     3,     4,    53,   169,     9,
+       9,    11,    10,    37,    79,    39,   350,    41,    89,    43,
+      28,    37,   301,    39,    40,    41,    42,   268,     7,     8,
+      71,    72,   268,     3,    85,   271,   238,   239,    54,     7,
+      10,     9,    90,    11,    50,    51,   248,     3,    79,    49,
       50,    51,    52,   214,    10,    80,    81,     9,    74,    11,
-     350,    85,   303,    12,    13,    97,    98,   303,    90,    10,
-     311,   350,     9,    85,    11,   311,    44,    45,    46,    47,
+     350,    85,   303,    12,    13,    97,    98,   303,    85,    10,
+     311,   350,     9,     4,    11,   311,    44,    45,    46,    47,
       48,    49,    50,    51,    52,    10,    86,    87,    88,   325,
       10,    10,    44,    45,    46,    47,    48,    49,    50,    51,
-      52,    10,     4,     9,    73,    11,   308,    44,    45,    46,
-      47,    48,    49,    50,    51,    52,    89,    85,    86,    87,
-      88,   327,    74,     9,    34,    11,    53,     9,    76,    65,
-     332,    76,     9,    85,    86,    87,    88,    74,    44,    45,
+      52,    10,    73,     9,    89,    11,   308,    44,    45,    46,
+      47,    48,    49,    50,    51,    52,    34,    85,    86,    87,
+      88,   327,    74,     9,     9,    11,    65,    38,    76,    76,
+     332,     9,     9,    85,    86,    87,    88,    74,    44,    45,
       46,    47,    48,    49,    50,    51,    52,    38,    85,    86,
       87,    88,     9,   359,   356,     9,     9,    11,    44,    45,
-      46,    47,    48,    49,    50,    51,    52,    38,    10,     9,
-      85,     3,    86,    89,    85,     5,     6,     7,     8,    85,
-      86,    87,    88,     9,    85,     9,     9,     9,     9,     0,
+      46,    47,    48,    49,    50,    51,    52,    10,    85,     3,
+      86,    85,    85,     9,    89,     5,     6,     7,     8,    85,
+      86,    87,    88,     9,     9,    86,     9,    11,     9,     0,
       44,    45,    46,    47,    48,    49,    50,    51,    52,    85,
       86,    87,    88,    14,    15,    16,    17,    18,    19,    20,
-      21,    22,    23,    24,    25,    26,    11,     5,     6,     7,
-       8,    86,    10,    53,     9,    12,    86,    86,    10,    85,
-      85,    85,    86,    87,    88,    65,    66,    67,    68,    69,
+      21,    22,    23,    24,    25,    26,     9,     5,     6,     7,
+       8,    12,    10,    53,    86,    86,    85,    85,    10,    38,
+       9,    85,    86,    87,    88,    65,    66,    67,    68,    69,
       70,    14,    15,    16,    17,    18,    19,    20,    21,    22,
       23,    24,    25,    26,    37,    12,    39,    40,    41,    42,
-      38,     9,    52,    88,    75,    53,    42,   232,    15,   169,
-     223,    54,   101,   224,   279,   174,   330,    65,    66,    67,
-      68,    69,    70,   249,   242,   218,   220,   237,   140,    95,
+      88,    42,    52,    15,    75,    53,   169,   232,   223,   174,
+     224,    54,   101,   249,   279,   242,   330,    65,    66,    67,
+      68,    69,    70,   218,   237,   140,   220,    95,    -1,    -1,
       -1,    74,    55,    56,    57,    58,    59,    60,    61,    62,
       63,    64,    75,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
       -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
@@ -2159,7 +2159,7 @@ yyreduce:
   switch (yyn)
     {
   case 2: /* statements: statement  */
-#line 194 "sql.y"
+#line 195 "sql.y"
         {
             append_list(states, (yyvsp[0].statement));
             (yyval.list) = states;
@@ -2168,7 +2168,7 @@ yyreduce:
     break;
 
   case 3: /* statements: statements statement  */
-#line 199 "sql.y"
+#line 200 "sql.y"
         {
             append_list((yyvsp[-1].list), (yyvsp[0].statement));
             (yyval.list) = (yyvsp[-1].list);
@@ -2177,7 +2177,7 @@ yyreduce:
     break;
 
   case 4: /* statement: begin_transaction_statement  */
-#line 206 "sql.y"
+#line 207 "sql.y"
         {
             Statement *statement = instance(Statement);
             statement->statement_type = BEGIN_TRANSACTION_STMT;
@@ -2187,7 +2187,7 @@ yyreduce:
     break;
 
   case 5: /* statement: commit_transaction_statement  */
-#line 212 "sql.y"
+#line 213 "sql.y"
         {
             Statement *statement = instance(Statement);
             statement->statement_type = COMMIT_TRANSACTION_STMT;
@@ -2197,7 +2197,7 @@ yyreduce:
     break;
 
   case 6: /* statement: rollback_transaction_statement  */
-#line 218 "sql.y"
+#line 219 "sql.y"
         {
             Statement *statement = instance(Statement);
             statement->statement_type = ROLLBACK_TRANSACTION_STMT;
@@ -2207,7 +2207,7 @@ yyreduce:
     break;
 
   case 7: /* statement: create_table_statement  */
-#line 224 "sql.y"
+#line 225 "sql.y"
         {
             Statement *statement = instance(Statement);
             statement->statement_type = CREATE_TABLE_STMT;
@@ -2218,7 +2218,7 @@ yyreduce:
     break;
 
   case 8: /* statement: create_index_statement  */
-#line 231 "sql.y"
+#line 232 "sql.y"
         {
             Statement *statement = instance(Statement);
             statement->statement_type = CREATE_INDEX_STMT;
@@ -2229,7 +2229,7 @@ yyreduce:
     break;
 
   case 9: /* statement: drop_table_statement  */
-#line 238 "sql.y"
+#line 239 "sql.y"
         {
             Statement *statement = instance(Statement);
             statement->statement_type = DROP_TABLE_STMT;
@@ -2240,7 +2240,7 @@ yyreduce:
     break;
 
   case 10: /* statement: drop_index_statement  */
-#line 245 "sql.y"
+#line 246 "sql.y"
         {
             Statement *statement = instance(Statement);
             statement->statement_type = DROP_INDEX_STMT;
@@ -2251,7 +2251,7 @@ yyreduce:
     break;
 
   case 11: /* statement: select_statement  */
-#line 252 "sql.y"
+#line 253 "sql.y"
         {
             Statement *statement = instance(Statement);
             statement->statement_type = SELECT_STMT;
@@ -2262,7 +2262,7 @@ yyreduce:
     break;
 
   case 12: /* statement: insert_statement  */
-#line 259 "sql.y"
+#line 260 "sql.y"
         {
             Statement *statement = instance(Statement);
             statement->statement_type = INSERT_STMT;
@@ -2273,7 +2273,7 @@ yyreduce:
     break;
 
   case 13: /* statement: update_statement  */
-#line 266 "sql.y"
+#line 267 "sql.y"
         {
             Statement *statement = instance(Statement);
             statement->statement_type = UPDATE_STMT;
@@ -2284,7 +2284,7 @@ yyreduce:
     break;
 
   case 14: /* statement: delete_statement  */
-#line 273 "sql.y"
+#line 274 "sql.y"
         {
             Statement *statement = instance(Statement);
             statement->statement_type = DELETE_STMT;
@@ -2295,7 +2295,7 @@ yyreduce:
     break;
 
   case 15: /* statement: describe_statement  */
-#line 280 "sql.y"
+#line 281 "sql.y"
         {
             Statement *statement = instance(Statement);
             statement->statement_type = DESCRIBE_STMT;
@@ -2306,7 +2306,7 @@ yyreduce:
     break;
 
   case 16: /* statement: show_statement  */
-#line 287 "sql.y"
+#line 288 "sql.y"
         {
             Statement *statement = instance(Statement);
             statement->statement_type = SHOW_STMT;
@@ -2317,7 +2317,7 @@ yyreduce:
     break;
 
   case 17: /* statement: explain_statement  */
-#line 294 "sql.y"
+#line 295 "sql.y"
         {
             Statement *statement = instance(Statement);
             statement->statement_type = EXPLAIN_STMT;
@@ -2328,7 +2328,7 @@ yyreduce:
     break;
 
   case 18: /* statement: express_statement  */
-#line 301 "sql.y"
+#line 302 "sql.y"
         {
             Statement *statement = instance(Statement);
             statement->statement_type = EXPRESS_STMT;
@@ -2339,7 +2339,7 @@ yyreduce:
     break;
 
   case 19: /* statement: alter_table_statement  */
-#line 308 "sql.y"
+#line 309 "sql.y"
         {
             Statement *statement = instance(Statement);
             statement->statement_type = ALTER_TABLE_STMT;
@@ -2350,7 +2350,7 @@ yyreduce:
     break;
 
   case 23: /* create_table_statement: CREATE TABLE table '(' base_table_element_commalist ')' end  */
-#line 327 "sql.y"
+#line 328 "sql.y"
         {
             CreateTableNode *create_table_node = instance(CreateTableNode);
             create_table_node->table_name = (yyvsp[-4].strVal);
@@ -2361,7 +2361,7 @@ yyreduce:
     break;
 
   case 24: /* create_index_statement: CREATE INDEX index_name ON table '(' columns ')' end  */
-#line 337 "sql.y"
+#line 338 "sql.y"
         {
             CreateIndexNode *create_index_node = instance(CreateIndexNode);
             create_index_node->index_name = (yyvsp[-6].strVal);
@@ -2375,7 +2375,7 @@ yyreduce:
     break;
 
   case 25: /* create_index_statement: CREATE UNIQUE INDEX index_name ON table '(' columns ')' end  */
-#line 347 "sql.y"
+#line 348 "sql.y"
         {
             CreateIndexNode *create_index_node = instance(CreateIndexNode);
             create_index_node->index_name = (yyvsp[-6].strVal);
@@ -2389,7 +2389,7 @@ yyreduce:
     break;
 
   case 26: /* drop_table_statement: DROP TABLE table end  */
-#line 360 "sql.y"
+#line 361 "sql.y"
         {
             DropTableNode *drop_table_node = instance(DropTableNode);
             drop_table_node->table_name = (yyvsp[-1].strVal);
@@ -2399,7 +2399,7 @@ yyreduce:
     break;
 
   case 27: /* drop_index_statement: DROP INDEX index_name end  */
-#line 369 "sql.y"
+#line 370 "sql.y"
         {
             DropIndexNode *drop_index_node = instance(DropIndexNode);
             drop_index_node->index_name = (yyvsp[-1].strVal);
@@ -2409,7 +2409,7 @@ yyreduce:
     break;
 
   case 28: /* select_statement: SELECT selection table_exp end  */
-#line 378 "sql.y"
+#line 379 "sql.y"
         {
             SelectNode *select_node = instance(SelectNode);
             select_node->selection = (yyvsp[-2].selection_node);
@@ -2420,7 +2420,7 @@ yyreduce:
     break;
 
   case 29: /* insert_statement: INSERT INTO table values_or_query_spec end  */
-#line 388 "sql.y"
+#line 389 "sql.y"
         {
             InsertNode *node = instance(InsertNode);
             node->all_column = true;
@@ -2432,7 +2432,7 @@ yyreduce:
     break;
 
   case 30: /* insert_statement: INSERT INTO table '(' columns ')' values_or_query_spec end  */
-#line 396 "sql.y"
+#line 397 "sql.y"
         {
             InsertNode *node = instance(InsertNode);
             node->all_column = false;
@@ -2445,7 +2445,7 @@ yyreduce:
     break;
 
   case 31: /* update_statement: UPDATE table SET assignments opt_where_clause end  */
-#line 408 "sql.y"
+#line 409 "sql.y"
         {
             UpdateNode *node = instance(UpdateNode);
             node->table_name = (yyvsp[-4].strVal);
@@ -2457,7 +2457,7 @@ yyreduce:
     break;
 
   case 32: /* delete_statement: DELETE FROM table end  */
-#line 419 "sql.y"
+#line 420 "sql.y"
         {
             DeleteNode *node = instance(DeleteNode);
             node->table_name = (yyvsp[-1].strVal);
@@ -2467,7 +2467,7 @@ yyreduce:
     break;
 
   case 33: /* delete_statement: DELETE FROM table WHERE search_condition end  */
-#line 425 "sql.y"
+#line 426 "sql.y"
         {
             DeleteNode *node = instance(DeleteNode);
             node->table_name = (yyvsp[-3].strVal);
@@ -2478,7 +2478,7 @@ yyreduce:
     break;
 
   case 34: /* describe_statement: DESCRIBE table end  */
-#line 435 "sql.y"
+#line 436 "sql.y"
         {
             DescribeNode *node = instance(DescribeNode);
             node->table_name = (yyvsp[-1].strVal);
@@ -2488,7 +2488,7 @@ yyreduce:
     break;
 
   case 35: /* show_statement: SHOW TABLES end  */
-#line 444 "sql.y"
+#line 445 "sql.y"
         {
             ShowNode *node = instance(ShowNode);   
             node->type = SHOW_TABLES;
@@ -2498,7 +2498,7 @@ yyreduce:
     break;
 
   case 36: /* show_statement: SHOW INDEX FROM table end  */
-#line 450 "sql.y"
+#line 451 "sql.y"
         {
             ShowNode *node = instance(ShowNode);   
             node->type = SHOW_IDNEXS;
@@ -2509,7 +2509,7 @@ yyreduce:
     break;
 
   case 37: /* explain_statement: EXPLAIN select_statement  */
-#line 460 "sql.y"
+#line 461 "sql.y"
         {
             ExplainNode *node = instance(ExplainNode);
             node->select_node = (yyvsp[0].select_node);
@@ -2519,7 +2519,7 @@ yyreduce:
     break;
 
   case 38: /* express_statement: EXPRESS select_statement  */
-#line 469 "sql.y"
+#line 470 "sql.y"
         {
             ExpressNode *node = instance(ExpressNode);
             node->select_node = (yyvsp[0].select_node);
@@ -2529,7 +2529,7 @@ yyreduce:
     break;
 
   case 39: /* alter_table_statement: ALTER TABLE table alter_table_action end  */
-#line 478 "sql.y"
+#line 479 "sql.y"
         {
             (yyval.alter_table_node) = instance(AlterTableNode);
             (yyval.alter_table_node)->table_name = (yyvsp[-2].strVal);
@@ -2539,7 +2539,7 @@ yyreduce:
     break;
 
   case 40: /* alter_table_action: add_column_def  */
-#line 486 "sql.y"
+#line 487 "sql.y"
         {
             AlterTableAction *action = instance(AlterTableAction);
             action->type = ALTER_TO_ADD_COLUMN;
@@ -2550,7 +2550,7 @@ yyreduce:
     break;
 
   case 41: /* alter_table_action: drop_column_def  */
-#line 493 "sql.y"
+#line 494 "sql.y"
         {
             AlterTableAction *action = instance(AlterTableAction);
             action->type = ALTER_TO_DROP_COLUMN;
@@ -2561,7 +2561,7 @@ yyreduce:
     break;
 
   case 42: /* add_column_def: ADD COLUMN column_def column_position_def  */
-#line 502 "sql.y"
+#line 503 "sql.y"
         {
             AddColumnDef *node = instance(AddColumnDef);
             node->column_def = (yyvsp[-1].column_def_node);
@@ -2572,7 +2572,7 @@ yyreduce:
     break;
 
   case 43: /* drop_column_def: DROP COLUMN IDENTIFIER  */
-#line 511 "sql.y"
+#line 512 "sql.y"
         {
             DropColumnDef *node = instance(DropColumnDef);
             node->column_name = (yyvsp[0].strVal);
@@ -2582,7 +2582,7 @@ yyreduce:
     break;
 
   case 44: /* column_position_def: %empty  */
-#line 519 "sql.y"
+#line 520 "sql.y"
     {
         (yyval.column_position_def) = NULL;
     }
@@ -2590,7 +2590,7 @@ yyreduce:
     break;
 
   case 45: /* column_position_def: BEFORE IDENTIFIER  */
-#line 523 "sql.y"
+#line 524 "sql.y"
         {
             ColumnPositionDef *pos = instance(ColumnPositionDef);
             pos->type = POS_BEFORE;
@@ -2601,7 +2601,7 @@ yyreduce:
     break;
 
   case 46: /* column_position_def: AFTER IDENTIFIER  */
-#line 530 "sql.y"
+#line 531 "sql.y"
         {
             ColumnPositionDef *pos = instance(ColumnPositionDef);
             pos->type = POS_AFTER;
@@ -2612,7 +2612,7 @@ yyreduce:
     break;
 
   case 47: /* selection: scalar_exp_commalist  */
-#line 539 "sql.y"
+#line 540 "sql.y"
         {
             SelectionNode *selection_node = instance(SelectionNode);
             selection_node->all_column = false;
@@ -2623,7 +2623,7 @@ yyreduce:
     break;
 
   case 48: /* selection: '*'  */
-#line 546 "sql.y"
+#line 547 "sql.y"
         {
             SelectionNode *selection_node = instance(SelectionNode);
             selection_node->all_column = true;
@@ -2633,7 +2633,7 @@ yyreduce:
     break;
 
   case 49: /* table_exp: from_clause opt_where_clause limit_clause  */
-#line 554 "sql.y"
+#line 555 "sql.y"
         {
             TableExpNode *table_exp = instance(TableExpNode);
             table_exp->from_clause = (yyvsp[-2].from_clause_node);
@@ -2645,7 +2645,7 @@ yyreduce:
     break;
 
   case 50: /* from_clause: %empty  */
-#line 564 "sql.y"
+#line 565 "sql.y"
         {
             (yyval.from_clause_node) = NULL;
         }
@@ -2653,7 +2653,7 @@ yyreduce:
     break;
 
   case 51: /* from_clause: FROM table_ref_commalist  */
-#line 568 "sql.y"
+#line 569 "sql.y"
         {
             FromClauseNode *from_clause = instance(FromClauseNode);
             from_clause->from = (yyvsp[0].list);
@@ -2663,7 +2663,7 @@ yyreduce:
     break;
 
   case 52: /* table_ref_commalist: table_ref  */
-#line 576 "sql.y"
+#line 577 "sql.y"
         {
             List *list = create_list(NODE_TABLE_REFER);
             append_list(list, (yyvsp[0].table_ref_node));
@@ -2673,7 +2673,7 @@ yyreduce:
     break;
 
   case 53: /* table_ref_commalist: table_ref_commalist ',' table_ref  */
-#line 582 "sql.y"
+#line 583 "sql.y"
         {
             append_list((yyvsp[-2].list), (yyvsp[0].table_ref_node));
             (yyval.list) = (yyvsp[-2].list);
@@ -2682,7 +2682,7 @@ yyreduce:
     break;
 
   case 54: /* table_ref: table  */
-#line 589 "sql.y"
+#line 590 "sql.y"
         {
             TableRefNode *table_ref = instance(TableRefNode);
             table_ref->table = (yyvsp[0].strVal);
@@ -2692,7 +2692,7 @@ yyreduce:
     break;
 
   case 55: /* table_ref: table range_variable  */
-#line 595 "sql.y"
+#line 596 "sql.y"
         {
             TableRefNode *table_ref = instance(TableRefNode);
             table_ref->table = (yyvsp[-1].strVal);
@@ -2703,7 +2703,7 @@ yyreduce:
     break;
 
   case 56: /* table_ref: table AS range_variable  */
-#line 602 "sql.y"
+#line 603 "sql.y"
         {
             TableRefNode *table_ref = instance(TableRefNode);
             table_ref->table = (yyvsp[-2].strVal);
@@ -2714,7 +2714,7 @@ yyreduce:
     break;
 
   case 57: /* table: IDENTIFIER  */
-#line 611 "sql.y"
+#line 612 "sql.y"
         {
             (yyval.strVal) = (yyvsp[0].strVal);
         }
@@ -2722,7 +2722,7 @@ yyreduce:
     break;
 
   case 58: /* index_name: IDENTIFIER  */
-#line 617 "sql.y"
+#line 618 "sql.y"
         {
             (yyval.strVal) = (yyvsp[0].strVal);
         }
@@ -2730,7 +2730,7 @@ yyreduce:
     break;
 
   case 59: /* range_variable: IDENTIFIER  */
-#line 623 "sql.y"
+#line 624 "sql.y"
         {
             (yyval.strVal) = (yyvsp[0].strVal);
         }
@@ -2738,7 +2738,7 @@ yyreduce:
     break;
 
   case 60: /* opt_where_clause: %empty  */
-#line 629 "sql.y"
+#line 630 "sql.y"
         {
             (yyval.where_clause_node) = NULL;
         }
@@ -2746,7 +2746,7 @@ yyreduce:
     break;
 
   case 61: /* opt_where_clause: where_clause  */
-#line 633 "sql.y"
+#line 634 "sql.y"
         {
             (yyval.where_clause_node) = (yyvsp[0].where_clause_node);
         }
@@ -2754,7 +2754,7 @@ yyreduce:
     break;
 
   case 62: /* where_clause: WHERE search_condition  */
-#line 639 "sql.y"
+#line 640 "sql.y"
         {
             WhereClauseNode *where_clause_node = instance(WhereClauseNode);
             where_clause_node->condition = (yyvsp[0].search_condition_node);
@@ -2764,7 +2764,7 @@ yyreduce:
     break;
 
   case 63: /* values_or_query_spec: VALUES opt_values  */
-#line 647 "sql.y"
+#line 648 "sql.y"
         {
             ValuesOrQuerySpecNode *values_or_query_spec = instance(ValuesOrQuerySpecNode);
             values_or_query_spec->type = VQ_VALUES;
@@ -2775,7 +2775,7 @@ yyreduce:
     break;
 
   case 64: /* values_or_query_spec: query_spec  */
-#line 654 "sql.y"
+#line 655 "sql.y"
         {
             ValuesOrQuerySpecNode *values_or_query_spec = instance(ValuesOrQuerySpecNode);
             values_or_query_spec->type = VQ_QUERY_SPEC;
@@ -2786,7 +2786,7 @@ yyreduce:
     break;
 
   case 65: /* opt_values: '(' value_items ')'  */
-#line 663 "sql.y"
+#line 664 "sql.y"
         {
             (yyval.list) = create_list(NODE_LIST);
             append_list((yyval.list), (yyvsp[-1].list));
@@ -2795,7 +2795,7 @@ yyreduce:
     break;
 
   case 66: /* opt_values: opt_values ',' '(' value_items ')'  */
-#line 668 "sql.y"
+#line 669 "sql.y"
         {
             (yyval.list) = (yyvsp[-4].list);
             append_list((yyval.list), (yyvsp[-1].list));
@@ -2804,7 +2804,7 @@ yyreduce:
     break;
 
   case 67: /* query_spec: SELECT selection table_exp  */
-#line 675 "sql.y"
+#line 676 "sql.y"
         {
             QuerySpecNode *query_spec = instance(QuerySpecNode);
             query_spec->selection = (yyvsp[-1].selection_node);
@@ -2815,7 +2815,7 @@ yyreduce:
     break;
 
   case 68: /* scalar_exp_commalist: scalar_exp  */
-#line 684 "sql.y"
+#line 685 "sql.y"
         {
             List *scalar_exp_list = create_list(NODE_SCALAR_EXP);
             append_list(scalar_exp_list, (yyvsp[0].scalar_exp_node));
@@ -2825,7 +2825,7 @@ yyreduce:
     break;
 
   case 69: /* scalar_exp_commalist: scalar_exp_commalist ',' scalar_exp  */
-#line 690 "sql.y"
+#line 691 "sql.y"
         {
             append_list((yyvsp[-2].list), (yyvsp[0].scalar_exp_node));
             (yyval.list) = (yyvsp[-2].list);
@@ -2834,7 +2834,7 @@ yyreduce:
     break;
 
   case 70: /* scalar_exp: calculate  */
-#line 697 "sql.y"
+#line 698 "sql.y"
         {
             ScalarExpNode *scalar_exp_node = instance(ScalarExpNode);
             scalar_exp_node->type = SCALAR_CALCULATE;
@@ -2845,7 +2845,7 @@ yyreduce:
     break;
 
   case 71: /* scalar_exp: column  */
-#line 704 "sql.y"
+#line 705 "sql.y"
         {
             ScalarExpNode *scalar_exp_node = instance(ScalarExpNode);
             scalar_exp_node->type = SCALAR_COLUMN;
@@ -2856,7 +2856,7 @@ yyreduce:
     break;
 
   case 72: /* scalar_exp: function  */
-#line 711 "sql.y"
+#line 712 "sql.y"
         {
             ScalarExpNode *scalar_exp_node = instance(ScalarExpNode);
             scalar_exp_node->type = SCALAR_FUNCTION;
@@ -2867,7 +2867,7 @@ yyreduce:
     break;
 
   case 73: /* scalar_exp: value_item  */
-#line 718 "sql.y"
+#line 719 "sql.y"
         {
             ScalarExpNode *scalar_exp_node = instance(ScalarExpNode);
             scalar_exp_node->type = SCALAR_VALUE;
@@ -2878,7 +2878,7 @@ yyreduce:
     break;
 
   case 74: /* scalar_exp: '(' scalar_exp ')'  */
-#line 725 "sql.y"
+#line 726 "sql.y"
         {
             (yyval.scalar_exp_node) = (yyvsp[-1].scalar_exp_node);
         }
@@ -2886,7 +2886,7 @@ yyreduce:
     break;
 
   case 75: /* scalar_exp: scalar_exp AS IDENTIFIER  */
-#line 729 "sql.y"
+#line 730 "sql.y"
         {
             (yyvsp[-2].scalar_exp_node)->alias = (yyvsp[0].strVal);
             (yyval.scalar_exp_node) = (yyvsp[-2].scalar_exp_node);
@@ -2895,7 +2895,7 @@ yyreduce:
     break;
 
   case 76: /* calculate: scalar_exp '+' scalar_exp  */
-#line 736 "sql.y"
+#line 737 "sql.y"
         {
             CalculateNode *calculate_node = instance(CalculateNode);
             calculate_node->type = CAL_ADD;
@@ -2907,7 +2907,7 @@ yyreduce:
     break;
 
   case 77: /* calculate: scalar_exp '-' scalar_exp  */
-#line 744 "sql.y"
+#line 745 "sql.y"
         {
             CalculateNode *calculate_node = instance(CalculateNode);
             calculate_node->type = CAL_SUB;
@@ -2919,7 +2919,7 @@ yyreduce:
     break;
 
   case 78: /* calculate: scalar_exp '*' scalar_exp  */
-#line 752 "sql.y"
+#line 753 "sql.y"
         {
             CalculateNode *calculate_node = instance(CalculateNode);
             calculate_node->type = CAL_MUL;
@@ -2931,7 +2931,7 @@ yyreduce:
     break;
 
   case 79: /* calculate: scalar_exp '/' scalar_exp  */
-#line 760 "sql.y"
+#line 761 "sql.y"
         {
             CalculateNode *calculate_node = instance(CalculateNode);
             calculate_node->type = CAL_DIV;
@@ -2943,7 +2943,7 @@ yyreduce:
     break;
 
   case 80: /* columns: column  */
-#line 770 "sql.y"
+#line 771 "sql.y"
         {
             List *column_set_node = create_list(NODE_COLUMN);
             append_list(column_set_node, (yyvsp[0].column_node));
@@ -2953,7 +2953,7 @@ yyreduce:
     break;
 
   case 81: /* columns: columns ',' column  */
-#line 776 "sql.y"
+#line 777 "sql.y"
         {
             (yyval.list) = (yyvsp[-2].list);
             append_list((yyval.list), (yyvsp[0].column_node));
@@ -2962,7 +2962,7 @@ yyreduce:
     break;
 
   case 82: /* base_table_element_commalist: base_table_element  */
-#line 783 "sql.y"
+#line 784 "sql.y"
         {
             List *base_table_element_commalist = create_list(NODE_BASE_TABLE_ELEMENT);
             append_list(base_table_element_commalist, (yyvsp[0].base_table_element));
@@ -2972,7 +2972,7 @@ yyreduce:
     break;
 
   case 83: /* base_table_element_commalist: base_table_element_commalist ',' base_table_element  */
-#line 789 "sql.y"
+#line 790 "sql.y"
         {
             append_list((yyvsp[-2].list), (yyvsp[0].base_table_element));
             (yyval.list) = (yyvsp[-2].list);
@@ -2981,7 +2981,7 @@ yyreduce:
     break;
 
   case 84: /* base_table_element: column_def  */
-#line 796 "sql.y"
+#line 797 "sql.y"
         {
             BaseTableElementNode *node = instance(BaseTableElementNode);
             node->column_def = (yyvsp[0].column_def_node);
@@ -2993,7 +2993,7 @@ yyreduce:
     break;
 
   case 85: /* base_table_element: table_contraint_def  */
-#line 804 "sql.y"
+#line 805 "sql.y"
         {
             BaseTableElementNode *node = instance(BaseTableElementNode);
             node->column_def = NULL;
@@ -3005,7 +3005,7 @@ yyreduce:
     break;
 
   case 86: /* column_def: column_def_name data_type array_dim_clause column_def_opt_list  */
-#line 827 "sql.y"
+#line 828 "sql.y"
         {
             ColumnDefNode *column_def = instance(ColumnDefNode);
             column_def->column = (yyvsp[-3].column_def_name);
@@ -3018,7 +3018,7 @@ yyreduce:
     break;
 
   case 87: /* column_def_name_commalist: column_def_name  */
-#line 838 "sql.y"
+#line 839 "sql.y"
         {
             List *list = create_list(NODE_COLUMN_DEF_NAME);
             append_list(list, (yyvsp[0].column_def_name));
@@ -3028,7 +3028,7 @@ yyreduce:
     break;
 
   case 88: /* column_def_name_commalist: column_def_name_commalist ',' column_def_name  */
-#line 844 "sql.y"
+#line 845 "sql.y"
         {
             append_list((yyvsp[-2].list), (yyvsp[0].column_def_name));
             (yyval.list) = (yyvsp[-2].list);
@@ -3037,7 +3037,7 @@ yyreduce:
     break;
 
   case 89: /* column_def_name: IDENTIFIER  */
-#line 851 "sql.y"
+#line 852 "sql.y"
         {
             ColumnDefName *column_def_name = instance(ColumnDefName);
             column_def_name->column = (yyvsp[0].strVal);
@@ -3047,7 +3047,7 @@ yyreduce:
     break;
 
   case 90: /* data_type: INT  */
-#line 859 "sql.y"
+#line 860 "sql.y"
         { 
             DataTypeNode *node = instance(DataTypeNode);                
             node->type = T_INT; 
@@ -3057,7 +3057,7 @@ yyreduce:
     break;
 
   case 91: /* data_type: LONG  */
-#line 865 "sql.y"
+#line 866 "sql.y"
         { 
             DataTypeNode *node = instance(DataTypeNode);                
             node->type = T_LONG;  
@@ -3067,7 +3067,7 @@ yyreduce:
     break;
 
   case 92: /* data_type: CHAR  */
-#line 871 "sql.y"
+#line 872 "sql.y"
         { 
             DataTypeNode *node = instance(DataTypeNode);                
             node->type = T_CHAR; 
@@ -3077,7 +3077,7 @@ yyreduce:
     break;
 
   case 93: /* data_type: VARCHAR '(' INTVALUE ')'  */
-#line 877 "sql.y"
+#line 878 "sql.y"
         {
             DataTypeNode *node = instance(DataTypeNode);                
             node->type = T_VARCHAR; 
@@ -3088,7 +3088,7 @@ yyreduce:
     break;
 
   case 94: /* data_type: STRING  */
-#line 884 "sql.y"
+#line 885 "sql.y"
         { 
             DataTypeNode *node = instance(DataTypeNode);                
             node->type = T_STRING; 
@@ -3098,7 +3098,7 @@ yyreduce:
     break;
 
   case 95: /* data_type: BOOL  */
-#line 890 "sql.y"
+#line 891 "sql.y"
         { 
             DataTypeNode *node = instance(DataTypeNode);                
             node->type = T_BOOL; 
@@ -3108,7 +3108,7 @@ yyreduce:
     break;
 
   case 96: /* data_type: FLOAT  */
-#line 896 "sql.y"
+#line 897 "sql.y"
         { 
             DataTypeNode *node = instance(DataTypeNode);                
             node->type = T_FLOAT; 
@@ -3118,7 +3118,7 @@ yyreduce:
     break;
 
   case 97: /* data_type: DOUBLE  */
-#line 902 "sql.y"
+#line 903 "sql.y"
         { 
             DataTypeNode *node = instance(DataTypeNode);                
             node->type = T_DOUBLE; 
@@ -3128,7 +3128,7 @@ yyreduce:
     break;
 
   case 98: /* data_type: TIMESTAMP  */
-#line 908 "sql.y"
+#line 909 "sql.y"
         { 
             DataTypeNode *node = instance(DataTypeNode);                
             node->type = T_TIMESTAMP; 
@@ -3138,7 +3138,7 @@ yyreduce:
     break;
 
   case 99: /* data_type: DATE  */
-#line 914 "sql.y"
+#line 915 "sql.y"
         { 
             DataTypeNode *node = instance(DataTypeNode);                
             node->type = T_DATE; 
@@ -3148,7 +3148,7 @@ yyreduce:
     break;
 
   case 100: /* data_type: table  */
-#line 920 "sql.y"
+#line 921 "sql.y"
         {
             DataTypeNode *node = instance(DataTypeNode);                
             node->type = T_RID;
@@ -3159,7 +3159,7 @@ yyreduce:
     break;
 
   case 101: /* array_dim_clause: %empty  */
-#line 929 "sql.y"
+#line 930 "sql.y"
         {
             (yyval.intVal) = 0;
         }
@@ -3167,7 +3167,7 @@ yyreduce:
     break;
 
   case 102: /* array_dim_clause: '[' ']'  */
-#line 933 "sql.y"
+#line 934 "sql.y"
         {
             (yyval.intVal) = 1;
         }
@@ -3175,7 +3175,7 @@ yyreduce:
     break;
 
   case 103: /* array_dim_clause: array_dim_clause '[' ']'  */
-#line 937 "sql.y"
+#line 938 "sql.y"
         {
             (yyval.intVal)++;
         }
@@ -3183,7 +3183,7 @@ yyreduce:
     break;
 
   case 104: /* column_def_opt_list: %empty  */
-#line 943 "sql.y"
+#line 944 "sql.y"
         {
             (yyval.list) = NULL;
         }
@@ -3191,7 +3191,7 @@ yyreduce:
     break;
 
   case 105: /* column_def_opt_list: column_def_opt  */
-#line 947 "sql.y"
+#line 948 "sql.y"
         {
             (yyval.list) = create_list(NODE_COLUMN_DEF_OPT);
             append_list((yyval.list), (yyvsp[0].column_def_opt));
@@ -3200,7 +3200,7 @@ yyreduce:
     break;
 
   case 106: /* column_def_opt_list: column_def_opt_list column_def_opt  */
-#line 952 "sql.y"
+#line 953 "sql.y"
         {
             append_list((yyvsp[-1].list), (yyvsp[0].column_def_opt));
             (yyval.list) = (yyvsp[-1].list);
@@ -3209,7 +3209,7 @@ yyreduce:
     break;
 
   case 107: /* column_def_opt: NOT NULLX  */
-#line 959 "sql.y"
+#line 960 "sql.y"
         {
             ColumnDefOptNode *node = instance(ColumnDefOptNode);
             node->opt_type = OPT_NOT_NULL; 
@@ -3219,7 +3219,7 @@ yyreduce:
     break;
 
   case 108: /* column_def_opt: UNIQUE  */
-#line 965 "sql.y"
+#line 966 "sql.y"
         {
             ColumnDefOptNode *node = instance(ColumnDefOptNode);
             node->opt_type = OPT_UNIQUE; 
@@ -3229,7 +3229,7 @@ yyreduce:
     break;
 
   case 109: /* column_def_opt: PRIMARY KEY  */
-#line 971 "sql.y"
+#line 972 "sql.y"
         {
             ColumnDefOptNode *node = instance(ColumnDefOptNode);
             node->opt_type = OPT_PRIMARY_KEY; 
@@ -3239,7 +3239,7 @@ yyreduce:
     break;
 
   case 110: /* column_def_opt: DEFAULT value_item  */
-#line 977 "sql.y"
+#line 978 "sql.y"
         {
             ColumnDefOptNode *node = instance(ColumnDefOptNode);
             node->opt_type = OPT_DEFAULT_VALUE;
@@ -3250,7 +3250,7 @@ yyreduce:
     break;
 
   case 111: /* column_def_opt: DEFAULT NULLX  */
-#line 984 "sql.y"
+#line 985 "sql.y"
         {
             ColumnDefOptNode *node = instance(ColumnDefOptNode);
             node->opt_type = OPT_DEFAULT_NULL;
@@ -3260,7 +3260,7 @@ yyreduce:
     break;
 
   case 112: /* column_def_opt: COMMENT STRINGVALUE  */
-#line 990 "sql.y"
+#line 991 "sql.y"
         {
             ColumnDefOptNode *node = instance(ColumnDefOptNode);
             node->opt_type = OPT_COMMENT;
@@ -3271,7 +3271,7 @@ yyreduce:
     break;
 
   case 113: /* column_def_opt: CHECK '(' search_condition ')'  */
-#line 997 "sql.y"
+#line 998 "sql.y"
         {
             ColumnDefOptNode *node = instance(ColumnDefOptNode);
             node->opt_type = OPT_CHECK_CONDITION;
@@ -3282,7 +3282,7 @@ yyreduce:
     break;
 
   case 114: /* column_def_opt: REFERENCES table  */
-#line 1004 "sql.y"
+#line 1005 "sql.y"
         {
             ColumnDefOptNode *node = instance(ColumnDefOptNode);
             node->opt_type = OPT_REFERENECS;
@@ -3293,7 +3293,7 @@ yyreduce:
     break;
 
   case 115: /* table_contraint_def: UNIQUE '(' column_def_name_commalist ')'  */
-#line 1013 "sql.y"
+#line 1014 "sql.y"
         {
             TableContraintDefNode *node = instance(TableContraintDefNode);
             node->type = TCONTRAINT_UNIQUE;
@@ -3304,7 +3304,7 @@ yyreduce:
     break;
 
   case 116: /* table_contraint_def: PRIMARY KEY '(' column_def_name_commalist ')'  */
-#line 1020 "sql.y"
+#line 1021 "sql.y"
         {
             TableContraintDefNode *node = instance(TableContraintDefNode);
             node->type = TCONTRAINT_PRIMARY_KEY;
@@ -3315,7 +3315,7 @@ yyreduce:
     break;
 
   case 117: /* table_contraint_def: FOREIGN KEY '(' column_def_name_commalist ')' REFERENCES table  */
-#line 1027 "sql.y"
+#line 1028 "sql.y"
         {
             TableContraintDefNode *node = instance(TableContraintDefNode);
             node->type = TCONTRAINT_FOREIGN_KEY;
@@ -3327,7 +3327,7 @@ yyreduce:
     break;
 
   case 118: /* table_contraint_def: CHECK '(' search_condition ')'  */
-#line 1035 "sql.y"
+#line 1036 "sql.y"
         {
             TableContraintDefNode *node = instance(TableContraintDefNode);
             node->type = TCONTRAINT_CHECK;
@@ -3338,7 +3338,7 @@ yyreduce:
     break;
 
   case 119: /* column: IDENTIFIER  */
-#line 1044 "sql.y"
+#line 1045 "sql.y"
         {
             ColumnNode *column_node = instance(ColumnNode);
             column_node->column_name = (yyvsp[0].strVal);
@@ -3349,7 +3349,7 @@ yyreduce:
     break;
 
   case 120: /* column: '(' IDENTIFIER ')' '.' column  */
-#line 1051 "sql.y"
+#line 1052 "sql.y"
         {
             ColumnNode *column_node = instance(ColumnNode);
             column_node->column_name = (yyvsp[-3].strVal);
@@ -3361,7 +3361,7 @@ yyreduce:
     break;
 
   case 121: /* column: IDENTIFIER '{' scalar_exp_commalist '}'  */
-#line 1059 "sql.y"
+#line 1060 "sql.y"
         {
             ColumnNode *column_node = instance(ColumnNode);
             column_node->column_name = (yyvsp[-3].strVal);
@@ -3373,7 +3373,7 @@ yyreduce:
     break;
 
   case 122: /* column: IDENTIFIER '.' column  */
-#line 1067 "sql.y"
+#line 1068 "sql.y"
         {
             (yyval.column_node) = (yyvsp[0].column_node);
             (yyval.column_node)->range_variable = (yyvsp[-2].strVal);
@@ -3382,7 +3382,7 @@ yyreduce:
     break;
 
   case 123: /* value_items: value_item  */
-#line 1074 "sql.y"
+#line 1075 "sql.y"
         {
             List *value_list = create_list(NODE_VALUE_ITEM);
             append_list(value_list, (yyvsp[0].value_item_node));
@@ -3392,7 +3392,7 @@ yyreduce:
     break;
 
   case 124: /* value_items: value_items ',' value_item  */
-#line 1080 "sql.y"
+#line 1081 "sql.y"
         {
             (yyval.list) = (yyvsp[-2].list);
             append_list((yyval.list), (yyvsp[0].value_item_node));
@@ -3401,7 +3401,7 @@ yyreduce:
     break;
 
   case 125: /* value_item: atom  */
-#line 1087 "sql.y"
+#line 1088 "sql.y"
         {
             ValueItemNode *node = instance(ValueItemNode);
             node->type = V_ATOM;
@@ -3412,7 +3412,7 @@ yyreduce:
     break;
 
   case 126: /* value_item: NULLX  */
-#line 1094 "sql.y"
+#line 1095 "sql.y"
         {
             ValueItemNode *node = instance(ValueItemNode);
             node->type = V_NULL;
@@ -3422,7 +3422,7 @@ yyreduce:
     break;
 
   case 127: /* value_item: '[' value_items ']'  */
-#line 1100 "sql.y"
+#line 1101 "sql.y"
         {
             ValueItemNode *node = instance(ValueItemNode);
             node->type = V_ARRAY;
@@ -3433,7 +3433,7 @@ yyreduce:
     break;
 
   case 128: /* atom: INTVALUE  */
-#line 1109 "sql.y"
+#line 1110 "sql.y"
         {
             AtomNode *node = instance(AtomNode);
             node->value.intval = (yyvsp[0].intVal);
@@ -3444,7 +3444,7 @@ yyreduce:
     break;
 
   case 129: /* atom: BOOLVALUE  */
-#line 1116 "sql.y"
+#line 1117 "sql.y"
         {
             AtomNode *node = instance(AtomNode);
             node->value.boolval = (yyvsp[0].boolVal);
@@ -3455,7 +3455,7 @@ yyreduce:
     break;
 
   case 130: /* atom: STRINGVALUE  */
-#line 1123 "sql.y"
+#line 1124 "sql.y"
         {
             AtomNode *node = instance(AtomNode);
             node->value.strval = (yyvsp[0].strVal);
@@ -3466,7 +3466,7 @@ yyreduce:
     break;
 
   case 131: /* atom: FLOATVALUE  */
-#line 1130 "sql.y"
+#line 1131 "sql.y"
         {
             AtomNode *node = instance(AtomNode);
             node->value.floatval = (yyvsp[0].floatVal);
@@ -3477,7 +3477,7 @@ yyreduce:
     break;
 
   case 132: /* atom: REFERVALUE  */
-#line 1137 "sql.y"
+#line 1138 "sql.y"
         {
             AtomNode *node = instance(AtomNode);
             node->value.referval = (yyvsp[0].referVal);
@@ -3488,7 +3488,7 @@ yyreduce:
     break;
 
   case 133: /* REFERVALUE: '(' value_items ')'  */
-#line 1147 "sql.y"
+#line 1148 "sql.y"
         {
             ReferValue *refer = instance(ReferValue);
             refer->type = DIRECTLY;
@@ -3499,7 +3499,7 @@ yyreduce:
     break;
 
   case 134: /* REFERVALUE: REF '(' search_condition ')'  */
-#line 1155 "sql.y"
+#line 1156 "sql.y"
         {
             ReferValue *refer = instance(ReferValue);
             refer->type = INDIRECTLY;
@@ -3510,7 +3510,7 @@ yyreduce:
     break;
 
   case 135: /* BOOLVALUE: TRUE  */
-#line 1164 "sql.y"
+#line 1165 "sql.y"
         {
             (yyval.boolVal) = true;
         }
@@ -3518,7 +3518,7 @@ yyreduce:
     break;
 
   case 136: /* BOOLVALUE: FALSE  */
-#line 1168 "sql.y"
+#line 1169 "sql.y"
         {
             (yyval.boolVal) = false;
         }
@@ -3526,7 +3526,7 @@ yyreduce:
     break;
 
   case 137: /* assignments: assignment  */
-#line 1174 "sql.y"
+#line 1175 "sql.y"
         {
             List *list = create_list(NODE_ASSIGNMENT);
             append_list(list, (yyvsp[0].assignment_node));
@@ -3536,7 +3536,7 @@ yyreduce:
     break;
 
   case 138: /* assignments: assignments ',' assignment  */
-#line 1180 "sql.y"
+#line 1181 "sql.y"
         {
             append_list((yyvsp[-2].list), (yyvsp[0].assignment_node));
             (yyval.list) = (yyvsp[-2].list);
@@ -3545,7 +3545,7 @@ yyreduce:
     break;
 
   case 139: /* assignment: column EQ value_item  */
-#line 1187 "sql.y"
+#line 1188 "sql.y"
         {
             AssignmentNode *node = instance(AssignmentNode);
             node->column = (yyvsp[-2].column_node);
@@ -3556,7 +3556,7 @@ yyreduce:
     break;
 
   case 140: /* search_condition: boolean_term  */
-#line 1196 "sql.y"
+#line 1197 "sql.y"
         {
             SearchConditionNode *condition = instance(SearchConditionNode);
             condition->boolean_term = (yyvsp[0].boolean_term_node);
@@ -3566,7 +3566,7 @@ yyreduce:
     break;
 
   case 141: /* search_condition: search_condition OR boolean_term  */
-#line 1202 "sql.y"
+#line 1203 "sql.y"
         {
             SearchConditionNode *condition = instance(SearchConditionNode);
             condition->or_search_condition = (yyvsp[-2].search_condition_node);
@@ -3577,7 +3577,7 @@ yyreduce:
     break;
 
   case 142: /* boolean_term: boolean_factor  */
-#line 1211 "sql.y"
+#line 1212 "sql.y"
         {
             BooleanTermNode *term_node = instance(BooleanTermNode);
             term_node->boolean_factor = (yyvsp[0].boolean_factor_node);
@@ -3587,7 +3587,7 @@ yyreduce:
     break;
 
   case 143: /* boolean_term: boolean_term AND boolean_factor  */
-#line 1217 "sql.y"
+#line 1218 "sql.y"
         {
             BooleanTermNode *term_node = instance(BooleanTermNode);
             term_node->and_boolean_term = (yyvsp[-2].boolean_term_node);
@@ -3598,7 +3598,7 @@ yyreduce:
     break;
 
   case 144: /* boolean_factor: boolean_test  */
-#line 1226 "sql.y"
+#line 1227 "sql.y"
         {
             BooleanFactorNode *factor_node = instance(BooleanFactorNode);
             factor_node->boolean_test = (yyvsp[0].boolean_test_node);
@@ -3609,7 +3609,7 @@ yyreduce:
     break;
 
   case 145: /* boolean_factor: NOT boolean_test  */
-#line 1233 "sql.y"
+#line 1234 "sql.y"
         {
             BooleanFactorNode *factor_node = instance(BooleanFactorNode);
             factor_node->boolean_test = (yyvsp[0].boolean_test_node);
@@ -3620,7 +3620,7 @@ yyreduce:
     break;
 
   case 146: /* boolean_test: boolean_primary  */
-#line 1242 "sql.y"
+#line 1243 "sql.y"
         {
             BooleanTestNode *test_node = instance(BooleanTestNode);
             test_node->boolean_primary = (yyvsp[0].boolean_primary_node);
@@ -3631,7 +3631,7 @@ yyreduce:
     break;
 
   case 147: /* boolean_test: boolean_primary IS BOOLVALUE  */
-#line 1249 "sql.y"
+#line 1250 "sql.y"
         {
             BooleanTestNode *test_node = instance(BooleanTestNode);
             test_node->boolean_primary = (yyvsp[-2].boolean_primary_node);
@@ -3643,7 +3643,7 @@ yyreduce:
     break;
 
   case 148: /* boolean_test: boolean_primary IS NOT BOOLVALUE  */
-#line 1257 "sql.y"
+#line 1258 "sql.y"
         {
             BooleanTestNode *test_node = instance(BooleanTestNode);
             test_node->boolean_primary = (yyvsp[-3].boolean_primary_node);
@@ -3655,7 +3655,7 @@ yyreduce:
     break;
 
   case 149: /* boolean_test: BOOLVALUE  */
-#line 1265 "sql.y"
+#line 1266 "sql.y"
         {
             BooleanTestNode *test_node = instance(BooleanTestNode);
             test_node->type = DIRECT_TRUE_VALUE;
@@ -3666,7 +3666,7 @@ yyreduce:
     break;
 
   case 150: /* boolean_test: '(' BOOLVALUE ')'  */
-#line 1272 "sql.y"
+#line 1273 "sql.y"
         {
             BooleanTestNode *test_node = instance(BooleanTestNode);
             test_node->type = DIRECT_TRUE_VALUE;
@@ -3677,7 +3677,7 @@ yyreduce:
     break;
 
   case 151: /* boolean_primary: predicate  */
-#line 1281 "sql.y"
+#line 1282 "sql.y"
         {
             BooleanPrimaryNode *primary_node = instance(BooleanPrimaryNode);
             primary_node->type = PREDICATE_BOOLEAN_PRIMAYR;
@@ -3689,7 +3689,7 @@ yyreduce:
     break;
 
   case 152: /* boolean_primary: '(' search_condition ')'  */
-#line 1289 "sql.y"
+#line 1290 "sql.y"
         {
             BooleanPrimaryNode *primary_node = instance(BooleanPrimaryNode);
             primary_node->type = SEARCH_CONDITION_BOOLEAN_PRIMAYR;
@@ -3701,7 +3701,7 @@ yyreduce:
     break;
 
   case 153: /* predicate: comparison_predicate  */
-#line 1299 "sql.y"
+#line 1300 "sql.y"
         {
             PredicateNode *predicate = instance(PredicateNode);
             predicate->type = PRE_COMPARISON;
@@ -3712,7 +3712,7 @@ yyreduce:
     break;
 
   case 154: /* predicate: like_predicate  */
-#line 1306 "sql.y"
+#line 1307 "sql.y"
         {
             PredicateNode *predicate = instance(PredicateNode);
             predicate->type = PRE_LIKE;
@@ -3723,7 +3723,7 @@ yyreduce:
     break;
 
   case 155: /* predicate: in_predicate  */
-#line 1313 "sql.y"
+#line 1314 "sql.y"
         {
             PredicateNode *predicate = instance(PredicateNode);
             predicate->type = PRE_IN;
@@ -3734,7 +3734,7 @@ yyreduce:
     break;
 
   case 156: /* comparison_predicate: scalar_exp compare scalar_exp  */
-#line 1322 "sql.y"
+#line 1323 "sql.y"
         {
             ComparisonNode *comparison_node = instance(ComparisonNode);
             comparison_node->left = (yyvsp[-2].scalar_exp_node);
@@ -3746,7 +3746,7 @@ yyreduce:
     break;
 
   case 157: /* like_predicate: column LIKE value_item  */
-#line 1332 "sql.y"
+#line 1333 "sql.y"
         {
             LikeNode *like_node = instance(LikeNode);
             like_node->column = (yyvsp[-2].column_node);
@@ -3758,7 +3758,7 @@ yyreduce:
     break;
 
   case 158: /* like_predicate: column NOT LIKE value_item  */
-#line 1340 "sql.y"
+#line 1341 "sql.y"
         {
             LikeNode *like_node = instance(LikeNode);
             like_node->column = (yyvsp[-3].column_node);
@@ -3770,7 +3770,7 @@ yyreduce:
     break;
 
   case 159: /* in_predicate: column IN '(' value_items ')'  */
-#line 1350 "sql.y"
+#line 1351 "sql.y"
         {
             InNode *in_node = instance(InNode);
             in_node->column = (yyvsp[-4].column_node);
@@ -3782,7 +3782,7 @@ yyreduce:
     break;
 
   case 160: /* in_predicate: column NOT IN '(' value_items ')'  */
-#line 1358 "sql.y"
+#line 1359 "sql.y"
         {
             InNode *in_node = instance(InNode);
             in_node->column = (yyvsp[-5].column_node);
@@ -3794,7 +3794,7 @@ yyreduce:
     break;
 
   case 161: /* limit_clause: %empty  */
-#line 1368 "sql.y"
+#line 1369 "sql.y"
         {
             (yyval.limit_clause_node) = NULL;
         }
@@ -3802,7 +3802,7 @@ yyreduce:
     break;
 
   case 162: /* limit_clause: LIMIT INTVALUE  */
-#line 1372 "sql.y"
+#line 1373 "sql.y"
         {
             LimitClauseNode *node = instance(LimitClauseNode);
             node->offset = 0;
@@ -3813,7 +3813,7 @@ yyreduce:
     break;
 
   case 163: /* limit_clause: LIMIT INTVALUE ',' INTVALUE  */
-#line 1379 "sql.y"
+#line 1380 "sql.y"
         {
             LimitClauseNode *node = instance(LimitClauseNode);
             node->offset = (yyvsp[-2].intVal);
@@ -3824,7 +3824,7 @@ yyreduce:
     break;
 
   case 164: /* limit_clause: LIMIT INTVALUE OFFSET INTVALUE  */
-#line 1386 "sql.y"
+#line 1387 "sql.y"
         {
             LimitClauseNode *node = instance(LimitClauseNode);
             node->rows = (yyvsp[-2].intVal);
@@ -3835,43 +3835,43 @@ yyreduce:
     break;
 
   case 165: /* compare: EQ  */
-#line 1394 "sql.y"
+#line 1395 "sql.y"
             { (yyval.compare_type) = O_EQ; }
 #line 3841 "y.tab.c"
     break;
 
   case 166: /* compare: NE  */
-#line 1395 "sql.y"
+#line 1396 "sql.y"
             { (yyval.compare_type) = O_NE; }
 #line 3847 "y.tab.c"
     break;
 
   case 167: /* compare: GT  */
-#line 1396 "sql.y"
+#line 1397 "sql.y"
             { (yyval.compare_type) = O_GT; }
 #line 3853 "y.tab.c"
     break;
 
   case 168: /* compare: GE  */
-#line 1397 "sql.y"
+#line 1398 "sql.y"
             { (yyval.compare_type) = O_GE; }
 #line 3859 "y.tab.c"
     break;
 
   case 169: /* compare: LT  */
-#line 1398 "sql.y"
+#line 1399 "sql.y"
             { (yyval.compare_type) = O_LT; }
 #line 3865 "y.tab.c"
     break;
 
   case 170: /* compare: LE  */
-#line 1399 "sql.y"
+#line 1400 "sql.y"
             { (yyval.compare_type) = O_LE; }
 #line 3871 "y.tab.c"
     break;
 
   case 171: /* function: MAX '(' non_all_function_value ')'  */
-#line 1403 "sql.y"
+#line 1404 "sql.y"
         {
             FunctionNode *function_node = instance(FunctionNode);        
             function_node->type = F_MAX;
@@ -3882,7 +3882,7 @@ yyreduce:
     break;
 
   case 172: /* function: MIN '(' non_all_function_value ')'  */
-#line 1410 "sql.y"
+#line 1411 "sql.y"
         {
             FunctionNode *function_node = instance(FunctionNode);        
             function_node->type = F_MIN;
@@ -3893,7 +3893,7 @@ yyreduce:
     break;
 
   case 173: /* function: COUNT '(' function_value ')'  */
-#line 1417 "sql.y"
+#line 1418 "sql.y"
         {
             FunctionNode *function_node = instance(FunctionNode);        
             function_node->type = F_COUNT;
@@ -3904,7 +3904,7 @@ yyreduce:
     break;
 
   case 174: /* function: SUM '(' function_value ')'  */
-#line 1424 "sql.y"
+#line 1425 "sql.y"
         {
             FunctionNode *function_node = instance(FunctionNode);        
             function_node->type = F_SUM;
@@ -3915,7 +3915,7 @@ yyreduce:
     break;
 
   case 175: /* function: AVG '(' function_value ')'  */
-#line 1431 "sql.y"
+#line 1432 "sql.y"
         {
             FunctionNode *function_node = instance(FunctionNode);        
             function_node->type = F_AVG;
@@ -3926,7 +3926,7 @@ yyreduce:
     break;
 
   case 176: /* function_value: INTVALUE  */
-#line 1440 "sql.y"
+#line 1441 "sql.y"
         {
             FunctionValueNode *node = instance(FunctionValueNode);
             node->i_value = (yyvsp[0].intVal);
@@ -3937,7 +3937,7 @@ yyreduce:
     break;
 
   case 177: /* function_value: column  */
-#line 1447 "sql.y"
+#line 1448 "sql.y"
         {
             FunctionValueNode *node = instance(FunctionValueNode);
             node->column = (yyvsp[0].column_node);
@@ -3948,7 +3948,7 @@ yyreduce:
     break;
 
   case 178: /* function_value: '*'  */
-#line 1454 "sql.y"
+#line 1455 "sql.y"
         {
             FunctionValueNode *node = instance(FunctionValueNode);
             node->value_type = V_ALL;
@@ -3958,7 +3958,7 @@ yyreduce:
     break;
 
   case 179: /* non_all_function_value: INTVALUE  */
-#line 1462 "sql.y"
+#line 1463 "sql.y"
         {
             FunctionValueNode *node = instance(FunctionValueNode);
             node->i_value = (yyvsp[0].intVal);
@@ -3969,7 +3969,7 @@ yyreduce:
     break;
 
   case 180: /* non_all_function_value: column  */
-#line 1469 "sql.y"
+#line 1470 "sql.y"
         {
             FunctionValueNode *node = instance(FunctionValueNode);
             node->column = (yyvsp[0].column_node);
@@ -4209,7 +4209,7 @@ yyreturnlab:
   return yyresult;
 }
 
-#line 1480 "sql.y"
+#line 1481 "sql.y"
 
 
 int yyerror(List *states, const char *s) {

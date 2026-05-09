@@ -80,6 +80,7 @@ extern char *current_token;
 
 %left OR
 %left AND
+%left AS
 %left '+' '-'
 %left '*' '/'  
 %left '(' ')'
