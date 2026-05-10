@@ -321,7 +321,7 @@ bool CheckValueIsValid(MetaColumn *meta_column, AtomNode *atom_node) {
             if (value == NULL)
                 return false;
             size_t size = strlen(value);
-            if (size > meta_column->column_length)
+            if (size > meta_column->column_length - 2)
                 logger(ERROR, "Exceed the limit of data length: %d > %d, for column '%s'. ", 
                        size, 
                        meta_column->column_length - 2, 
