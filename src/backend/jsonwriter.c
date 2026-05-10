@@ -53,7 +53,7 @@ static void json_key_value_inner(Oid oid, char *key, void *value, DataType type)
             db_send("\"%s\": %d", key, value ? *(int32_t *)value : 0);
             break;
         case T_LONG: 
-            db_send("\"%s\": %" PRIu64, key, value ? *(int64_t *)value : 0);
+            db_send("\"%s\": %" PRId64, key, value ? *(int64_t *)value : 0);
             break;
         case T_CHAR: 
         case T_VARCHAR: 
