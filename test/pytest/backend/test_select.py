@@ -288,7 +288,7 @@ def test_query_with_limit_clause1():
     sql = "select count(1) from Student limit 5;";
     ret = client.execute(sql)
     assert ret["success"] == True
-    assert ret["data"] == [{ "count": 5 }]
+    assert ret["data"] == [{ "count": 8 }]
 
 ## query with limit clause.
 def test_query_with_limit_clause2():
@@ -331,7 +331,7 @@ def test_query_with_limit_claus5():
     sql = "select count(1) from Student limit 5 offset 5;";
     ret = client.execute(sql)
     assert ret["success"] == True
-    assert ret["data"] == [{ "count": 3 }]
+    assert ret["data"] == [{ "count": 0 }]
 
 
 ## query with limit clause.

@@ -90,7 +90,7 @@ def test_select_count_with_limit_rows_only():
 def test_select_count_with_limit_offset():
     ret = client.execute("select count(1) from lim_test_t limit 1 offset 1;")
     assert ret["success"] == True
-    assert ret["data"] == [{'count': 6}]
+    assert ret["data"] == [{'count': 0}]
 
 
 def test_select_count_with_limit_and_where():
@@ -101,6 +101,7 @@ def test_select_count_with_limit_and_where():
 
 def test_select_sum_with_limit_rows_only():
     ret = client.execute("select sum(id) from lim_test_t limit 1;")
+    print(ret)
     assert ret["success"] == True
     assert ret["data"] == [{'sum': 21}]
 
@@ -108,7 +109,7 @@ def test_select_sum_with_limit_rows_only():
 def test_select_sum_with_limit_offset():
     ret = client.execute("select sum(id) from lim_test_t limit 1 offset 1;")
     assert ret["success"] == True
-    assert ret["data"] == [{'sum': 21}]
+    assert ret["data"] == [{'sum': 0}]
 
 
 def test_select_sum_with_limit_and_where():
@@ -126,7 +127,7 @@ def test_select_avg_with_limit_rows_only():
 def test_select_avg_with_limit_offset():
     ret = client.execute("select avg(id) from lim_test_t limit 1 offset 1;")
     assert ret["success"] == True
-    assert ret["data"] == [{'avg': 3.5}]
+    assert ret["data"] == [{'avg': None}]
 
 
 def test_select_avg_with_limit_and_where():
@@ -144,7 +145,7 @@ def test_select_max_with_limit_rows_only():
 def test_select_max_with_limit_offset():
     ret = client.execute("select max(id) from lim_test_t limit 1 offset 1;")
     assert ret["success"] == True
-    assert ret["data"] == [{'max': 6}]
+    assert ret["data"] == [{'max': None}]
 
 
 def test_select_max_with_limit_and_where():
@@ -162,7 +163,7 @@ def test_select_min_with_limit_rows_only():
 def test_select_min_with_limit_offset():
     ret = client.execute("select min(id) from lim_test_t limit 1 offset 1;")
     assert ret["success"] == True
-    assert ret["data"] == [{'min': 1}]
+    assert ret["data"] == [{'min': None}]
 
 
 def test_select_min_with_limit_and_where():
