@@ -388,22 +388,23 @@ def test_date_boundary_leap_year():
 def test_date_invalid_format():
     """Invalid date format should fail."""
     ret = client.execute("insert into type_date values (6, '2020/01/15');")
+    print(ret)
     assert ret["success"] == False
-    assert "Invalid input" in ret["message"]
+    assert "Try to convert value '2020/01/15' to date value fail." == ret["message"]
 
 
 def test_date_invalid_month():
     """Month > 12 should fail."""
     ret = client.execute("insert into type_date values (7, '2020-13-01');")
     assert ret["success"] == False
-    assert "Invalid input" in ret["message"]
+    assert "date value fail" in ret["message"]
 
 
 def test_date_invalid_day():
     """Day > 31 should fail."""
     ret = client.execute("insert into type_date values (8, '2020-01-32');")
     assert ret["success"] == False
-    assert "Invalid input" in ret["message"]
+    assert "date value fail" in ret["message"]
 
 
 def test_date_comparison():
@@ -440,14 +441,14 @@ def test_timestamp_invalid_format():
     """Invalid timestamp format should fail."""
     ret = client.execute("insert into type_ts values (4, '2025-02-17 12:00:0X');")
     assert ret["success"] == False
-    assert "Invalid input" in ret["message"]
+    assert "timestamp value fail" in ret["message"]
 
 
 def test_timestamp_invalid_date_part():
     """Invalid date portion in timestamp should fail."""
     ret = client.execute("insert into type_ts values (5, '2025-13-01 10:00:00');")
     assert ret["success"] == False
-    assert "Invalid input" in ret["message"]
+    assert "timestamp value fail" in ret["message"]
 
 
 def test_timestamp_comparison():
