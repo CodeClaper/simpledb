@@ -302,8 +302,7 @@ bool CheckValueIsValid(MetaColumn *meta_column, AtomNode *atom_node) {
         case T_FLOAT: {
             if (atom_node->type == A_FLOAT && 
                     (isinff(atom_node->value.floatval) || 
-                        atom_node->value.floatval > FLT_MAX || 
-                            atom_node->value.floatval < FLT_MIN)
+                        atom_node->value.floatval > FLT_MAX)
             ) logger(ERROR, "Value is float overflow for column '%s'.", meta_column->column_name);
             return true;
         }

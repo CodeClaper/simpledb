@@ -363,7 +363,7 @@ ST_FLAG StrToFloat(char *val, float *ret) {
     else if (isinff(converted))
         return ST_OVERFLOW;
 
-    if (converted > FLT_MAX || converted < FLT_MIN) 
+    if (converted > FLT_MAX) 
         return ST_OVERFLOW;
 
     *ret = (float) converted;
@@ -384,7 +384,7 @@ ST_FLAG StrToDouble(char *val, double *ret) {
     else if (isinf(converted))
         return ST_OVERFLOW;
 
-    if (fabs(converted) > DBL_MAX || fabs(converted) < DBL_MIN) 
+    if (fabs(converted) > DBL_MAX) 
         return ST_OVERFLOW;
 
     *ret = converted;
