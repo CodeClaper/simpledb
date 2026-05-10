@@ -119,7 +119,7 @@ static void ReinsertRowForUpdate(Oid oid, void *key, void *tuple) {
  * ----------
  * Update operation is divided into delete and re-insert operation. 
  * It makes transaction rollback operation simpler. */
-static void UpdateTuple(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg) {
+static void UpdateTuple(void *tuple, SelectResult *select_result, SelectPlan *select_plan) {
     Oid oid;
     Table *table;
     void *old_key, *new_key, *new_tuple;
@@ -144,8 +144,7 @@ static void UpdateTuple(void *tuple, SelectResult *select_result, ROW_HANDLER_AR
     DeleteRowForUpdate(oid, old_key);
 
     /* Update tuple for assignment. */
-    Assert(type == ARG_ASSIGNMENT_LIST);
-    UpdateTupleForAssignment(new_tuple, (List *) arg, table->meta_table);
+    UpdateTupleForAssignment(new_tuple, (List *)select_plan->arg, table->meta_table);
 
     /* Get new key. */
     new_key = TupleFindKey(new_tuple, table);

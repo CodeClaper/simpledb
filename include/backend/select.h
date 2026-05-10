@@ -17,10 +17,10 @@ typedef struct SelectFromInternalChildTaskArgs {
 } SelectFromInternalChildTaskArgs;
 
 
-void CountRow(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg);
-void SelectTuple(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg);
-void SelectRow(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg);
-void OutputTuple(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg);
+void CountRow(void *tuple, SelectResult *select_result, SelectPlan *select_plan);
+void SelectTuple(void *tuple, SelectResult *select_result, SelectPlan *select_plan);
+void SelectRow(void *tuple, SelectResult *select_result, SelectPlan *select_plan);
+void OutputTuple(void *tuple, SelectResult *select_result, SelectPlan *select_plan);
 void *DefineTuple(Refer *refer);
 Row *DefineVisibleRow(Oid toid, Rid ref_id);
 bool LeafNodeForSearchCondition(SelectPlan *select_plan, List *meta_columns, void *tuple, SearchConditionNode *search_condition);

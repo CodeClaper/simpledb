@@ -5,6 +5,7 @@
 #include "data.h"
 #include "spinlock.h"
 
+struct SelectPlan;
 typedef enum { EXPR_AND, EXPR_OR, EXPR_NOT, EXPR_VAR, EXPR_AND_SET, EXPR_OR_SET, EXPR_TRUTH_VALUE } ExprType;
 typedef enum { OP_EQ, OP_NE, OP_GT, OP_GE, OP_LT, OP_LE, OP_LIKE, OP_IN, OP_NOT_LIKE, OP_NOT_IN } OprType;
 
@@ -28,7 +29,7 @@ typedef enum ROW_HANDLER_ARG_TYPE {
 } ROW_HANDLER_ARG_TYPE;
 
 /* Function pointer about row handler */
-typedef void (*ROW_HANDLER)(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg);
+typedef void (*ROW_HANDLER)(void *tuple, SelectResult *select_result, struct SelectPlan *select_plan);
 
 /* SelectTable. */
 typedef struct SelectTable {

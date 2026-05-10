@@ -22,9 +22,10 @@
 #include "optimizer.h"
 #include "tuple.h"
 #include "heaptable.h"
+#include "select.h"
 
 /* Delete row */
-void delete_row(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg) {
+void delete_row(void *tuple, SelectResult *select_result, SelectPlan *select_plan) {
     Oid oid;
     Table *table;
     Xid created_xid, expired_xid, current_xid;

@@ -918,7 +918,7 @@ static void ScanForLeafNode(Oid oid, uint32_t page_num, void *boundary_key, Sele
         Xid created_xid = LeafNodeGetCellCreatedXid(leaf_node, key_len, value_len, default_value_len, i);
         Xid expired_xid = LeafNodeGetCellExpiredXid(leaf_node, key_len, value_len, default_value_len, i);
         if (IsVisibleInner(created_xid, expired_xid, current_trans))
-            select_plan->rowHanler(NULL, select_result, select_plan->type, select_plan->arg);
+            select_plan->rowHanler(NULL, select_result, select_plan);
     }
 
     /* The only condition to move to sibling:
@@ -1003,7 +1003,7 @@ static void SelectForLeafNode(Oid oid, uint32_t page_num, void *boundary_key, Se
         
         /* Filt the leaf node. */
         if (LeafNodeForSearchCondition(select_plan, columns, ntuple, select_plan->condition)) 
-            select_plan->rowHanler(ntuple, head, select_plan->type, select_plan->arg);
+            select_plan->rowHanler(ntuple, head, select_plan);
         
         /* When nested not null, means ntuple dalloc new memory. */
         if (head->nested != NULL)
@@ -1367,16 +1367,15 @@ SelectResult *SelectWithColumnValue(Oid oid, MetaColumn *meta_column, void *valu
 }
 
 /* Count number of row, used in the sql function count(1) */
-void CountRow(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg) {
-    if (type == ARG_SELECT_PARAM && ((SelectPlan *) arg)->limitClause != NULL) {
-        SelectPlan *select_plan = (SelectPlan *) arg;
+void CountRow(void *tuple, SelectResult *select_result, SelectPlan *select_plan) {
+    if (select_plan->limitClause != NULL) {
         LimitClauseNode *limit_clause = select_plan->limitClause;
 
         /* If has limit clause, only append row whose pindex > offset and pindex < offset + rows. */
-        if (0 <= limit_clause->offset && 0 < (limit_clause->offset + limit_clause->rows)) {
+        if (limit_clause->offset <= 0 && 0 < (limit_clause->offset + limit_clause->rows)) {
             acquire_spin_lock(&select_plan->slock);
             /* Double check for concurrency. */
-            if (0 <= limit_clause->offset && 0 < (limit_clause->offset + limit_clause->rows)) {
+            if (limit_clause->offset <= 0 && 0 < (limit_clause->offset + limit_clause->rows)) {
                 select_result->row_size++;
             } 
             release_spin_lock(&select_plan->slock);
@@ -1390,12 +1389,25 @@ void CountRow(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE typ
 }
 
 /* Select tuple data. */
-void SelectTuple(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg) {
-    SelectPlan *select_plan = (SelectPlan *) arg;
-    /* If has limit clause. */
-    if (type == ARG_SELECT_PARAM && select_plan->limitClause != NULL) {
-        LimitClauseNode *limit_clause = select_plan->limitClause;
+void SelectTuple(void *tuple, SelectResult *select_result, SelectPlan *select_plan) {
+    LimitClauseNode *limit_clause = select_plan->limitClause;
 
+    /* If has limit clause. */
+    if (select_plan->hasAggFunction && limit_clause != NULL) {
+        /* If has limit clause, only append row whose pindex > offset and pindex < offset + rows. */
+        if (limit_clause->offset <= 0 && 0 < (limit_clause->offset + limit_clause->rows)) {
+            acquire_spin_lock(&select_plan->slock);
+            /* Double check for concurrency. */
+            if (limit_clause->offset <= 0 && 0 < (limit_clause->offset + limit_clause->rows)) {
+                AppendQueue(select_result->tuples, tuple);
+                select_result->row_size++;
+            } 
+            release_spin_lock(&select_plan->slock);
+        }
+
+        __sync_fetch_and_add(&select_plan->offset, 1);
+    } 
+    else if (limit_clause != NULL) {
         /* If has limit clause, only append row whose pindex > offset and pindex < offset + rows. */
         if (select_plan->offset >= limit_clause->offset && 
                 select_plan->offset < (limit_clause->offset + limit_clause->rows)) {
@@ -1409,20 +1421,35 @@ void SelectTuple(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE 
             release_spin_lock(&select_plan->slock);
         }
         __sync_fetch_and_add(&select_plan->offset, 1);
-    } else {
+    } 
+    else {
         AppendQueue(select_result->tuples, tuple);
         select_result->row_size++;
     }
 }
 
 /* Select row data. */
-void SelectRow(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg) {
-    SelectPlan *select_plan = (SelectPlan *) arg;
+void SelectRow(void *tuple, SelectResult *select_result, SelectPlan *select_plan) {
     Row *row = GenerateRowInner(tuple, select_result->columns);
-    /* If has limit clause. */
-    if (type == ARG_SELECT_PARAM && select_plan->limitClause != NULL) {
-        LimitClauseNode *limit_clause = select_plan->limitClause;
+    LimitClauseNode *limit_clause = select_plan->limitClause;
 
+    /* If has limit clause. */
+    if (select_plan->hasAggFunction && limit_clause != NULL) {
+        /* If has limit clause, only append row whose pindex > offset and pindex < offset + rows. */
+        if (limit_clause->offset <= 0 && 0 < (limit_clause->offset + limit_clause->rows)) {
+            acquire_spin_lock(&select_plan->slock);
+            /* Double check for concurrency. */
+            if (limit_clause->offset <= 0 && 0 < (limit_clause->offset + limit_clause->rows)) {
+                AppendQueue(select_result->rows, row);
+                select_result->row_size++;
+            } 
+            release_spin_lock(&select_plan->slock);
+        }
+
+        __sync_fetch_and_add(&select_plan->offset, 1);
+    } 
+    else if (limit_clause != NULL) {
+        LimitClauseNode *limit_clause = select_plan->limitClause;
         /* If has limit clause, only append row whose pindex > offset and pindex < offset + rows. */
         if (select_plan->offset >= limit_clause->offset && 
                 select_plan->offset < (limit_clause->offset + limit_clause->rows)) {
@@ -1436,7 +1463,8 @@ void SelectRow(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE ty
             release_spin_lock(&select_plan->slock);
         }
         __sync_fetch_and_add(&select_plan->offset, 1);
-    } else {
+    } 
+    else {
         AppendQueue(select_result->rows, row);
         select_result->row_size++;
     }
@@ -1446,8 +1474,9 @@ void SelectRow(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE ty
  * --------------
  * This funtion will directly output the tuple data instead of conveting to row data.
  * */
-void OutputTuple(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE type, void *arg) {
+void OutputTuple(void *tuple, SelectResult *select_result, SelectPlan *select_plan) {
     List *display_columns;
+    LimitClauseNode *limit_clause = select_plan->limitClause;
 
     /* Define the display columns. */
     if (select_result->display_colums != NIL) 
@@ -1459,11 +1488,7 @@ void OutputTuple(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE 
     }
 
     /* If has limit clause. */
-    if (type == ARG_SELECT_PARAM && ((SelectPlan *) arg)->limitClause != NULL) 
-    {
-        SelectPlan *select_plan = (SelectPlan *) arg;
-        LimitClauseNode *limit_clause = select_plan->limitClause;
-
+    if (limit_clause != NULL) {
         /* If has limit clause, only append row whose pindex > offset and pindex < offset + rows. */
         if (select_plan->offset >= limit_clause->offset && 
                 select_plan->offset < (limit_clause->offset + limit_clause->rows)) 
@@ -1477,8 +1502,7 @@ void OutputTuple(void *tuple, SelectResult *select_result, ROW_HANDLER_ARG_TYPE 
         }
         __sync_fetch_and_add(&select_plan->offset, 1);
     }
-    else 
-    {
+    else {
         if (select_result->first_row_flag)
             select_result->first_row_flag = false;
         else
@@ -1563,6 +1587,10 @@ static KeyValue *CalcAvgValue(ColumnNode *column, SelectResult *select_result, S
             }
         }
     }
+    
+    /* Deal with the denominator may be zeor.*/
+    if (select_result->row_size == 0)
+        return new_simple_key_value(AVG_NAME, NULL, T_DOUBLE);
     avg = sum / (select_result->rows->size);
     return new_simple_key_value(AVG_NAME, &avg, T_DOUBLE);
 }
@@ -2422,12 +2450,8 @@ static SelectResult *QueryMultiTableUnderSearchCondition(SelectNode *select_node
         current_result->range_variable = table_ref->range_variable 
                                         ? dstrdup(table_ref->range_variable) 
                                         : dstrdup(table_ref->table);
-        if (head == NULL)
-            head = current_result;
-
-        if (pres != NULL)
-            pres->nested = current_result;
-    
+        if (head == NULL) head = current_result;
+        if (pres != NULL) pres->nested = current_result;
         current_result->head = head;
         pres = current_result;
     }
