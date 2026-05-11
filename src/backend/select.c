@@ -2371,8 +2371,7 @@ static KeyValue *QueryRowValue(SelectPlan *select_plan, ScalarExpNode *scalar_ex
 /* Query a Row of Selection,
  * Actually, the Selection is pure-column scalars. */
 static Row *QueryColumnsSelectOneRow(SelectPlan *select_plan, List *scalar_exp_list, Row *row) {
-    if (IsNull(row)) 
-        return NULL;
+    if (IsNull(row)) return NULL;
     
     Row *sub_row = NewRow();
 
