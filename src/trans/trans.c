@@ -254,12 +254,7 @@ void BeginTransaction() {
            entry->xid, entry->pid);
 }
 
-/* Commit transaction manually. */
-void CommitTransaction() {
-    TransEntry *entry = FindTransaction();
-    if (IsNull(entry) || entry->auto_commit)
-        logger(ERROR, "Not in any transaction, please begin a transaction");
-
+static void CommitTransactionInner() {
     /* Commit Xlog. */
     CommitXlog();
 
@@ -268,8 +263,15 @@ void CommitTransaction() {
 
     /* Destroy transaction. */
     DestroyTransaction(); 
+}
+
+/* Commit transaction manually. */
+void CommitTransaction() {
+    TransEntry *entry = FindTransaction();
+    if (IsNull(entry) || entry->auto_commit)
+        logger(ERROR, "Not in any transaction, please begin a transaction");
     
-    /* Print out success log. */
+    CommitTransactionInner();
     logger(INFO, "Commit the transaction xid: %"PRId64" successfully.", entry->xid);
     logger(SUCCESS, "Commit the transaction successfully");
 }
@@ -280,19 +282,8 @@ void AutoCommitTransaction() {
 
     /* Only deal with auto-commit transaction. */
     if (entry != NULL && entry->auto_commit) {
-        /* Commit Xlog. */
-        CommitXlog();
-
-        /* Release all row locks. */
-        ReleaseAllRowLock();
-
-        /* Destroy transaction. */
-        DestroyTransaction();
-        logger(
-            SUCCESS, 
-            "Auto commit the transaction xid: %"PRId64" successfully.", 
-            entry->xid
-        );
+        CommitTransactionInner();
+        logger(SUCCESS, "Auto commit the transaction xid: %"PRId64" successfully.", entry->xid);
     }
 }
 
