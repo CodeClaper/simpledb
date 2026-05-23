@@ -28,6 +28,7 @@
 #include "log.h"
 #include "tablelock.h"
 #include "fdesc.h"
+#include "trans.h"
 #include "compres.h"
 #include "heaptable.h"
 #include "sidcreate.h"
@@ -403,6 +404,9 @@ Table *open_table(char *table_name) {
     return open_table_inner(oid);
 }
 
+static bool DropTableFromDisk(void *arg) {
+    return remove((char *)arg) == 0;
+}
 
 /* Drop an existed table. */
 bool drop_table(char *table_name) {
@@ -428,7 +432,7 @@ bool drop_table(char *table_name) {
         RemoveObject(oid) &&
         RemoveTableCache(oid) &&
         RemoveTableBuffer(oid) &&
-        remove(file_path) == 0 
+        RegisterCommitEvent(DropTableFromDisk, file_path)
     ) {
         /* Unregister fdesc. */
         unregister_fdesc(oid);

@@ -1,5 +1,6 @@
 #include <fcntl.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
@@ -11,6 +12,7 @@
 #include "log.h"
 #include "bufmgr.h"
 #include "fdesc.h"
+#include "trans.h"
 
 /* Rid create. */
 bool CreateRidTableInner(Oid roid) {
@@ -58,6 +60,11 @@ bool CreateRidTable(Oid roid, Oid toid, char *table_name) {
     return CreateRidTableInner(roid) && SaveObject(entity);
 }
 
+/* Drop table file drom disk. */
+static bool DropRidTableFromDisk(void *arg) {
+    return remove((char *)arg) == 0;
+}
+
 /* Drop the rid table. */
 bool DropRidTable(Oid roid) {
     char *heap_table_file;
@@ -71,8 +78,13 @@ bool DropRidTable(Oid roid) {
         return false;
     }
 
-    /* Delete physically. */
-    if (remove(heap_table_file) == 0 && RemoveObject(roid)) {
+    /* Todo list:
+     * (1) Regster the DropRidTableFromDisk to trans commit event. 
+     * (2) Remove object systable. */
+    if (
+        RegisterCommitEvent(DropRidTableFromDisk,heap_table_file) && 
+        RemoveObject(roid)
+    ) {
         /* Unregister fdesc. */
         unregister_fdesc(roid);
         return true;

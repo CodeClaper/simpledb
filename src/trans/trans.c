@@ -109,6 +109,7 @@ static void *NewTransEntry(Xid xid, Pid pid, bool auto_commit, TransEntry *next)
     entry->pid = pid;
     entry->auto_commit = auto_commit;
     entry->next = next;
+    entry->commit_event = NULL;
     switch_local();
     return entry;
 }
@@ -168,7 +169,6 @@ Xid GetCurrentXid() {
     return transEntity->xid;
 }
 
-
 /* Register transaction. */
 static void RegisterTransaction(TransEntry *entry) {
     Assert(entry != NULL);
@@ -201,6 +201,33 @@ static void DestroyTransaction() {
 
     switch_local();
     release_spin_lock(xlock);
+}
+
+/* Register commit event. */
+bool RegisterCommitEvent(COMMIT_EVENT hanler, void *arg) {
+    TransEntry *trans;
+    TransCommitEventEntry *event_entry;
+
+    trans = FindTransaction();
+    Assert(trans != NULL);
+    event_entry = instance(TransCommitEventEntry);
+    event_entry->hanler = hanler;
+    event_entry->arg = arg;
+    event_entry->next = trans->commit_event;
+    trans->commit_event = event_entry;
+
+    return true;
+}
+
+/* Execute commit events. */
+static void ExecuteCommitEvent() {
+    TransEntry *trans = FindTransaction();
+    Assert(trans != NULL);
+    TransCommitEventEntry *commit_event = trans->commit_event;
+    while (commit_event) {
+        if(commit_event->hanler(commit_event->arg)) commit_event = commit_event->next;
+        else logger(ERROR, "Execute commit event fail");
+    }
 }
 
 /* Check if a transaction is active()
@@ -254,7 +281,11 @@ void BeginTransaction() {
            entry->xid, entry->pid);
 }
 
+/* Commit transaction inner. */
 static void CommitTransactionInner() {
+    /* Execute commit event. */
+    ExecuteCommitEvent();
+
     /* Commit Xlog. */
     CommitXlog();
 

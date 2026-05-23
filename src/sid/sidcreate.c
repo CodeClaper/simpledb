@@ -11,6 +11,7 @@
 #include "log.h"
 #include "bufmgr.h"
 #include "fdesc.h"
+#include "trans.h"
 
 /* Sid create. */
 bool CreateSidTableInner(Oid soid) {
@@ -58,6 +59,11 @@ bool CreateSidTable(Oid soid, Oid toid, char *table_name) {
     return CreateSidTableInner(soid) && SaveObject(entity);
 }
 
+/* Drop table file drom disk. */
+static bool DropSidTableFromDisk(void *arg) {
+    return remove((char *)arg) == 0;
+}
+
 /* Drop the sid table. */
 bool DropSidTable(Oid soid) {
     char *heap_table_file;
@@ -71,8 +77,13 @@ bool DropSidTable(Oid soid) {
         return false;
     }
 
-    /* Delete physically. */
-    if (remove(heap_table_file) == 0 && RemoveObject(soid)) {
+    /* Todo list:
+     * (1) Regster the DropSidTableFromDisk to trans commit event. 
+     * (2) Remove from systable. */
+    if (
+        RegisterCommitEvent(DropSidTableFromDisk, heap_table_file) && 
+        RemoveObject(soid)
+    ) {
         /* Unregister fdesc. */
         unregister_fdesc(soid);
         return true;

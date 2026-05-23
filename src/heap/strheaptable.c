@@ -16,6 +16,7 @@
 #include "fdesc.h"
 #include "systable.h"
 #include "instance.h"
+#include "trans.h"
 
 /* Compare two StrRefers. */
 int CompareStrRefer(StrRefer *source, StrRefer *target) {
@@ -312,6 +313,11 @@ char *QueryStringValue(StrRefer *strRefer) {
         : QueryNotCrossPage(strRefer);
 }
 
+/* Drop string heap table from */
+static bool DropStrHeapTableFromDisk(void *arg) {
+    return remove((char *)arg) == 0;
+}
+
 /* Drop the string heap table. */
 bool DropStrHeapTable(char *table_name) {
     Oid oid;
@@ -327,8 +333,13 @@ bool DropStrHeapTable(char *table_name) {
         return false;
     }
 
-    /* Delete physically. */
-    if (remove(str_table_file) == 0 && RemoveObject(oid)) {
+    /* Todo list:
+     * (1) Regster the DropHeapTableFromDisk to trans commit event. 
+     * (2) Remove object systable. */
+    if (
+        RegisterCommitEvent(DropStrHeapTableFromDisk, str_table_file) && 
+        RemoveObject(oid)
+    ) {
         /* Unregister fdesc. */
         unregister_fdesc(oid);
         return true;

@@ -16,6 +16,7 @@
 #include "bufmgr.h"
 #include "copy.h"
 #include "list.h"
+#include "trans.h"
 
 #define ARRAY_TABLE_ROOT_PAGE   0
 #define ARRAY_TABLE_FIRST_NUM   1
@@ -517,6 +518,10 @@ ArrayValue *QueryArrayValue(Refer *refer, MetaColumn *meta_column) {
     else return QueryArrayValueNotCrossPage(refer, meta_column, bound);
 }
 
+/* Drop array heap table from */
+static bool DropArrayHeapTableFromDisk(void *arg) {
+    return remove((char *)arg) == 0;
+}
 
 /* Drop the array value table vai table name
  * table_name:  Table name.
@@ -536,8 +541,13 @@ bool DropArrayHeapTable(char *table_name) {
         return false;
     }
 
-    /* Delete physically. */
-    if (remove(str_table_file) == 0 && RemoveObject(oid)) {
+    /* Todo list:
+     * (1) Regster the DropArrayHeapTableFromDisk to trans commit event. 
+     * (2) Remove object systable. */
+    if (
+        RegisterCommitEvent(DropArrayHeapTableFromDisk, str_table_file) && 
+        RemoveObject(oid)
+    ) {
         /* Unregister fdesc. */
         unregister_fdesc(oid);
         return true;

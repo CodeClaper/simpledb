@@ -17,6 +17,7 @@
 #include "pager.h"
 #include "systable.h"
 #include "index.h"
+#include "trans.h"
 
 /* Set bin root node index type. */
 static void BinRootNodeSetIndexType(void *root_node, IndexType type) {
@@ -486,6 +487,10 @@ MetaIndex *BinLoad(Oid oid, Table *table) {
     return meta_index;
 }
 
+static bool BinDropFromDisk(void *arg) {
+    return remove((char *)arg) == 0;
+}
+
 /* Btree index drop. */
 bool BinDrop(Oid oid) {
     Assert(NON_ZERO_OID(oid));
@@ -498,8 +503,13 @@ bool BinDrop(Oid oid) {
         return false;
     }
 
-    /* Remove from disk and remove the object. */
-    if (remove(file_path) == 0 && RemoveObject(oid)) {
+    /* Todo list:
+     * (1) Regster the BinDropFromDisk to trans commit event. 
+     * (2) Remove object systable. */
+    if (
+        RegisterCommitEvent(BinDropFromDisk, file_path) && 
+        RemoveObject(oid)
+    ) {
         /* Unregister fdesc. */
         unregister_fdesc(oid);
         return true;

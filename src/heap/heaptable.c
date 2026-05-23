@@ -20,6 +20,7 @@
 #include "bufmgr.h"
 #include "fdesc.h"
 #include "instance.h"
+#include "trans.h"
 
 /* Heap table header length */
 #define HEAP_TABLE_HEADER_LEN (NODE_STATE_SIZE + CELL_NUM_SIZE + REFER_SIZE)
@@ -302,6 +303,11 @@ void HeapTableUpdateRowExpiredXid(Table *table, Refer *refer, Xid expiredXid) {
     ReleaseBuffer(buffer);
 }
 
+/* Drop heap table from */
+static bool DropHeapTableFromDisk(void *arg) {
+    return remove((char *)arg) == 0;
+}
+
 /* Drop the heap table. */
 bool DropHeapTable(Oid hoid) {
     char *heap_table_file;
@@ -315,8 +321,13 @@ bool DropHeapTable(Oid hoid) {
         return false;
     }
 
-    /* Delete physically. */
-    if (remove(heap_table_file) == 0 && RemoveObject(hoid)) {
+    /* Todo list:
+     * (1) Regster the DropHeapTableFromDisk to trans commit event. 
+     * (2) Remove object systable. */
+    if (
+        RegisterCommitEvent(DropHeapTableFromDisk, heap_table_file) && 
+        RemoveObject(hoid)
+    ) {
         /* Unregister fdesc. */
         unregister_fdesc(hoid);
         return true;

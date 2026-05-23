@@ -825,14 +825,6 @@ typedef struct {
     bool hasOutput;
 } DBResult;
 
-/* TransactionHandle */
-typedef struct TransEntry {
-    Xid xid;                    /* Transaction id. */ 
-    Pid pid;                    /* Processor id. */
-    bool auto_commit;           /* Auto commit. */
-    struct TransEntry *next;    /* Next */
-} TransEntry;
-
 /* AliasEntry */
 typedef struct AliasEntry {
     char *name;
