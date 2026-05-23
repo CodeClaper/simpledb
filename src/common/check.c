@@ -754,8 +754,7 @@ static bool CheckForSearchCondition(SearchConditionNode *condition_node, AliasMa
 
 /* Check TableRefNode. */
 static bool CheckForTableRef(TableRefNode *table_ref) {
-    Table *table = open_table(table_ref->table);
-    if (table == NULL) {
+    if (!check_table_exist(table_ref->table)) {
         logger(ERROR, "Table '%s' not exist.", table_ref->table);
         return false;
     }
