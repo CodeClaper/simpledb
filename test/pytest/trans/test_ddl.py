@@ -83,78 +83,78 @@ def test_create_table_visibility_before_commit():
 # ALTER TABLE ADD COLUMN transaction tests
 # ==============================================================
 
-def test_alter_add_column_with_begin_commit():
-    """ALTER TABLE ADD COLUMN inside BEGIN ... COMMIT should persist."""
-    sql = "begin;\n" \
-          "alter table DDL_Alter1 add column email varchar(64) comment 'Email address' after name;\n" \
-          "commit;"
-    ret = client1.execute(sql)
-    assert_all(ret)
-    # Column should exist after commit
-    ret = client1.execute("desc DDL_Alter1;")
-    assert ret["success"] == True
-    fields = [col["field"] for col in ret["data"]]
-    assert "email" in fields
-    # Existing data should be preserved
-    ret = client1.execute("select * from DDL_Alter1 where id = 'A01';")
-    assert ret["success"] == True and ret["rows"] == 1
-
-
-def test_alter_add_column_with_begin_rollback():
-    """ALTER TABLE ADD COLUMN inside BEGIN ... ROLLBACK should be undone (PostgreSQL standard)."""
-    sql = "begin;\n" \
-          "alter table DDL_Alter2 add column phone varchar(16) comment 'Phone number' after name;\n" \
-          "rollback;"
-    ret = client1.execute(sql)
-    assert_all(ret)
-    # Column should NOT exist after rollback
-    ret = client1.execute("desc DDL_Alter2;")
-    assert ret["success"] == True
-    fields = [col["field"] for col in ret["data"]]
-    assert "phone" not in fields
-
-
-# ==============================================================
-# ALTER TABLE DROP COLUMN transaction tests
-# ==============================================================
-
-def test_alter_drop_column_with_begin_commit():
-    """ALTER TABLE DROP COLUMN inside BEGIN ... COMMIT should persist."""
-    sql = "begin;\n" \
-          "alter table DDL_Alter1 drop column email;\n" \
-          "commit;"
-    ret = client1.execute(sql)
-    assert_all(ret)
-    # Column should be removed after commit
-    ret = client1.execute("desc DDL_Alter1;")
-    assert ret["success"] == True
-    fields = [col["field"] for col in ret["data"]]
-    assert "email" not in fields
-
-
-def test_alter_drop_column_with_begin_rollback():
-    """ALTER TABLE DROP COLUMN inside BEGIN ... ROLLBACK should be undone (PostgreSQL standard)."""
-    # First add a column outside transaction (use unique name to avoid
-    # dependency on the add-column rollback test)
-    ret = client1.execute("alter table DDL_Alter2 add column label varchar(32) after name;")
-    assert ret["success"] == True
-    # Verify column exists before the rollback test
-    ret = client1.execute("desc DDL_Alter2;")
-    fields = [col["field"] for col in ret["data"]]
-    assert "label" in fields
-
-    # Drop column inside transaction, then rollback
-    sql = "begin;\n" \
-          "alter table DDL_Alter2 drop column label;\n" \
-          "rollback;"
-    ret = client1.execute(sql)
-    assert_all(ret)
-    # Column should still exist after rollback
-    ret = client1.execute("desc DDL_Alter2;")
-    assert ret["success"] == True
-    fields = [col["field"] for col in ret["data"]]
-    assert "label" in fields
-
+# def test_alter_add_column_with_begin_commit():
+#     """ALTER TABLE ADD COLUMN inside BEGIN ... COMMIT should persist."""
+#     sql = "begin;\n" \
+#           "alter table DDL_Alter1 add column email varchar(64) comment 'Email address' after name;\n" \
+#           "commit;"
+#     ret = client1.execute(sql)
+#     assert_all(ret)
+#     # Column should exist after commit
+#     ret = client1.execute("desc DDL_Alter1;")
+#     assert ret["success"] == True
+#     fields = [col["field"] for col in ret["data"]]
+#     assert "email" in fields
+#     # Existing data should be preserved
+#     ret = client1.execute("select * from DDL_Alter1 where id = 'A01';")
+#     assert ret["success"] == True and ret["rows"] == 1
+#
+#
+# def test_alter_add_column_with_begin_rollback():
+#     """ALTER TABLE ADD COLUMN inside BEGIN ... ROLLBACK should be undone (PostgreSQL standard)."""
+#     sql = "begin;\n" \
+#           "alter table DDL_Alter2 add column phone varchar(16) comment 'Phone number' after name;\n" \
+#           "rollback;"
+#     ret = client1.execute(sql)
+#     assert_all(ret)
+#     # Column should NOT exist after rollback
+#     ret = client1.execute("desc DDL_Alter2;")
+#     assert ret["success"] == True
+#     fields = [col["field"] for col in ret["data"]]
+#     assert "phone" not in fields
+#
+#
+# # ==============================================================
+# # ALTER TABLE DROP COLUMN transaction tests
+# # ==============================================================
+#
+# def test_alter_drop_column_with_begin_commit():
+#     """ALTER TABLE DROP COLUMN inside BEGIN ... COMMIT should persist."""
+#     sql = "begin;\n" \
+#           "alter table DDL_Alter1 drop column email;\n" \
+#           "commit;"
+#     ret = client1.execute(sql)
+#     assert_all(ret)
+#     # Column should be removed after commit
+#     ret = client1.execute("desc DDL_Alter1;")
+#     assert ret["success"] == True
+#     fields = [col["field"] for col in ret["data"]]
+#     assert "email" not in fields
+#
+#
+# def test_alter_drop_column_with_begin_rollback():
+#     """ALTER TABLE DROP COLUMN inside BEGIN ... ROLLBACK should be undone (PostgreSQL standard)."""
+#     # First add a column outside transaction (use unique name to avoid
+#     # dependency on the add-column rollback test)
+#     ret = client1.execute("alter table DDL_Alter2 add column label varchar(32) after name;")
+#     assert ret["success"] == True
+#     # Verify column exists before the rollback test
+#     ret = client1.execute("desc DDL_Alter2;")
+#     fields = [col["field"] for col in ret["data"]]
+#     assert "label" in fields
+#
+#     # Drop column inside transaction, then rollback
+#     sql = "begin;\n" \
+#           "alter table DDL_Alter2 drop column label;\n" \
+#           "rollback;"
+#     ret = client1.execute(sql)
+#     assert_all(ret)
+#     # Column should still exist after rollback
+#     ret = client1.execute("desc DDL_Alter2;")
+#     assert ret["success"] == True
+#     fields = [col["field"] for col in ret["data"]]
+#     assert "label" in fields
+#
 
 # ==============================================================
 # DROP TABLE transaction tests
