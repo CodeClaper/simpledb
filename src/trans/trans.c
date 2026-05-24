@@ -341,7 +341,7 @@ void AutoRollbackTransaction() {
         /* Rollback Xlog. */
         ExecuteRollback();
         CommitTransactionInner(true);
-        logger(SUCCESS, "Transaction xid: %"PRId64" auto rollbacked and commited successfully.", entry->xid);
+        logger(DEBUGER, "Transaction xid: %"PRId64" auto rollbacked and commited successfully.", entry->xid);
     }
 }
 
