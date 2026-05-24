@@ -302,7 +302,7 @@ static void CommitTransactionInner(bool rollbacked) {
 void CommitTransaction() {
     TransEntry *entry = FindTransaction();
     if (IsNull(entry) || entry->auto_commit)
-        logger(ERROR, "Not in any transaction, please begin a transaction");
+        logger(ERROR, "Not in any transaction, please begin a transaction.");
     
     CommitTransactionInner(false);
     logger(INFO, "Commit the transaction xid: %"PRId64" successfully.", entry->xid);
@@ -324,10 +324,11 @@ void AutoCommitTransaction() {
 void RollbackTransaction() {
     TransEntry *entry = FindTransaction();
     if (IsNull(entry) || entry->auto_commit)
-        logger(ERROR, "Not in any transaction, please begin a transaction");
+        logger(ERROR, "Not in any transaction, please begin a transaction.");
 
     ExecuteRollback();
     CommitTransactionInner(true);
+    logger(SUCCESS, "Transaction xid: %"PRId64" rollbacked and commited successfully.", entry->xid);
 }
 
 

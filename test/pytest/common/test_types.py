@@ -466,7 +466,6 @@ def test_cleanup():
     sql = "drop table type_bool;\n" \
           "drop table type_char;\n" \
           "drop table type_varchar;\n" \
-          "drop table type_varchar2;\n" \
           "drop table type_int;\n" \
           "drop table type_long;\n" \
           "drop table type_float;\n" \

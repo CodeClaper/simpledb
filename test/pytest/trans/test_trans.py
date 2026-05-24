@@ -73,7 +73,8 @@ def test_auto_rollback():
 def test_commit_after_auto_rollback():
     sql = "commit;\n" 
     ret = client.execute(sql)
-    assert ret["success"] == True
+    assert ret["success"] == False
+    assert ret["message"] == "Not in any transaction, please begin a transaction."
 
 
 ## test query data after commit

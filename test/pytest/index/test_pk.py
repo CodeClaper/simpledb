@@ -35,7 +35,8 @@ def test_insert_duplicate_key():
 def test_commit():
     sql = "commit;"
     ret = client.execute(sql)
-    assert ret["success"] == True
+    ## Auto rollback will commit.
+    assert ret["success"] == False
 
 def test_select_after_duplicate_key():
     sql = "select * from Student;"
@@ -64,7 +65,8 @@ def test_keep_insert_duplicate_key():
 def test_commit2():
     sql = "commit;"
     ret = client.execute(sql)
-    assert ret["success"] == True
+    ## Auto rollback will commit.
+    assert ret["success"] == False
 
 ## test drop table
 def test_drop_mock_tables():

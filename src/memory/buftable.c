@@ -166,10 +166,8 @@ bool RemoveTableBuffer(Oid oid) {
         for (current = slot->next, pres = current; current != NULL; pres = current, current = current->next) {
             BufferTag tag = current->tag;
             if (tag.oid == oid) {
-                if (current == slot->next) 
-                    slot->next = current->next;
-                else 
-                    pres->next = current->next;
+                if (current == slot->next) slot->next = current->next;
+                else pres->next = current->next;
                 /* Necessary to free the shared memory. */
                 dfree(current);
             }

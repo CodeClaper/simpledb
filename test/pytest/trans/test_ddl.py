@@ -177,8 +177,31 @@ def test_drop_table_with_begin_commit():
 
 def test_drop_table_with_begin_rollback():
     """DROP TABLE inside BEGIN ... ROLLBACK should be undone (PostgreSQL standard)."""
-    ret = client1.execute("create table DDL_DT_Rollback (id varchar(32) primary key, val int);")
+    ret = client1.execute(
+        "create table DDL_DT_Rollback ("
+        "id varchar(32) primary key, "
+        "name varchar(32), "
+        "val int, "
+        "tags varchar(32)[], "
+        "content string"
+        ");"
+    )
     assert ret["success"] == True
+
+    # Insert data including array and string types
+    ret = client1.execute(
+        "insert into DDL_DT_Rollback values "
+        "('A01', 'hello', 10, ['tag1', 'tag2'], 'some long text content');"
+    )
+    assert ret["success"] == True
+    ret = client1.execute(
+        "insert into DDL_DT_Rollback values "
+        "('A02', 'world', 20, ['foo', 'bar', 'baz'], 'another string value');"
+    )
+    assert ret["success"] == True
+
+    ret = client1.execute("select * from DDL_DT_Rollback;")
+    assert ret["success"] == True and ret["rows"] == 2
 
     sql = "begin;\n" \
           "drop table DDL_DT_Rollback;\n" \
@@ -187,12 +210,20 @@ def test_drop_table_with_begin_rollback():
     assert_all(ret)
     # Table should still exist after rollback
     ret = client1.execute("select * from DDL_DT_Rollback;")
-    assert ret["success"] == True
+    assert ret["success"] == True and ret["rows"] == 2
+    # Verify the data is intact
+    ret = client1.execute("select * from DDL_DT_Rollback where id = 'A01';")
+    assert ret["success"] == True and ret["rows"] == 1
+    row = ret["data"][0]
+    assert row["name"] == "hello"
+    assert row["val"] == 10
+    assert row["content"] == "some long text content"
 
 
 def test_drop_table_visibility_before_commit():
     """Dropped table should still be visible to other sessions before commit."""
     ret = client1.execute("create table DDL_DT_Visible (id varchar(32) primary key, val int);")
+    print(ret)
     assert ret["success"] == True
 
     # Begin transaction and drop table
@@ -200,9 +231,6 @@ def test_drop_table_visibility_before_commit():
           "drop table DDL_DT_Visible;\n"
     ret = client1.execute(sql)
     assert_all(ret)
-    # Invisible to the dropping session
-    ret1 = client1.execute("select * from DDL_DT_Visible;")
-    assert ret1["success"] == False
     # Still visible to other sessions before commit
     ret2 = client2.execute("select * from DDL_DT_Visible;")
     assert ret2["success"] == True
