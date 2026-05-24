@@ -387,14 +387,13 @@ static Oid RelnameAndReltypeFindOid(char *relname, ObjectType reltype) {
     );
 
     /* The rows number maybe zero, which means the table not exists. 
-     * But rows number can`t be more than one. */
+     * But rows number can`t be more than one, it's logic error. */
     if (result->row_size == 0) 
         return OID_ZERO;
     if (result->row_size > 1) 
         THROW("Logic error, found more than one object by relname '%s' and reltype '%d' in system table.", relname, reltype);
     
     tuple = (void *) qfirst(QueueHead(result->tuples));
-
     entity = TupleConvertObject(tuple);
 
     return entity.oid;

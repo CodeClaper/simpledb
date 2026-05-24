@@ -281,10 +281,12 @@ void BeginTransaction() {
            entry->xid, entry->pid);
 }
 
-/* Commit transaction inner. */
-static void CommitTransactionInner() {
+/* Commit transaction inner. 
+ * rollback: if it's rollbacked, it will not execute the commit events.
+ * */
+static void CommitTransactionInner(bool rollbacked) {
     /* Execute commit event. */
-    ExecuteCommitEvent();
+    if (!rollbacked) ExecuteCommitEvent();
 
     /* Commit Xlog. */
     CommitXlog();
@@ -302,7 +304,7 @@ void CommitTransaction() {
     if (IsNull(entry) || entry->auto_commit)
         logger(ERROR, "Not in any transaction, please begin a transaction");
     
-    CommitTransactionInner();
+    CommitTransactionInner(false);
     logger(INFO, "Commit the transaction xid: %"PRId64" successfully.", entry->xid);
     logger(SUCCESS, "Commit the transaction successfully");
 }
@@ -313,7 +315,7 @@ void AutoCommitTransaction() {
 
     /* Only deal with auto-commit transaction. */
     if (entry != NULL && entry->auto_commit) {
-        CommitTransactionInner();
+        CommitTransactionInner(false);
         logger(SUCCESS, "Auto commit the transaction xid: %"PRId64" successfully.", entry->xid);
     }
 }
@@ -325,7 +327,7 @@ void RollbackTransaction() {
         logger(ERROR, "Not in any transaction, please begin a transaction");
 
     ExecuteRollback();
-    CommitTransaction();
+    CommitTransactionInner(true);
     logger(
         SUCCESS, 
         "Transaction xid: %"PRId64" rollbacked and commited successfully.", 
