@@ -391,7 +391,8 @@ static Oid RelnameAndReltypeFindOid(char *relname, ObjectType reltype) {
     if (result->row_size == 0) 
         return OID_ZERO;
     if (result->row_size > 1) 
-        THROW("Logic error, found more than one object by relname '%s' and reltype '%d' in system table.", relname, reltype);
+        THROW("Logic error, found more than one object by relname '%s' and reltype '%s' in system table.", 
+              relname, GetObjectTypeName(reltype));
     
     tuple = (void *) qfirst(QueueHead(result->tuples));
     entity = TupleConvertObject(tuple);
@@ -424,7 +425,8 @@ static Oid ToidAndRelTypeFindOid(Oid toid, ObjectType reltype) {
     if (result->row_size == 0)
         return OID_ZERO;
     if (result->row_size > 1)
-        THROW("Logic error, found more than one object by toid '%ld' and reltype '%d' in system table.", toid, reltype);
+        THROW("Logic error, found more than one object by toid '%ld' and reltype '%d' in system table.", 
+              toid, GetObjectTypeName(reltype));
     
     tuple = (void *) qfirst(QueueHead(result->tuples));
 

@@ -225,7 +225,7 @@ static void ExecuteCommitEvent() {
     Assert(trans != NULL);
     TransCommitEventEntry *commit_event = trans->commit_event;
     while (commit_event) {
-        if(commit_event->hanler(commit_event->arg)) commit_event = commit_event->next;
+        if (commit_event->hanler(commit_event->arg)) commit_event = commit_event->next;
         else logger(ERROR, "Execute commit event fail");
     }
 }
@@ -328,11 +328,6 @@ void RollbackTransaction() {
 
     ExecuteRollback();
     CommitTransactionInner(true);
-    logger(
-        SUCCESS, 
-        "Transaction xid: %"PRId64" rollbacked and commited successfully.", 
-        entry->xid
-    );
 }
 
 
@@ -341,18 +336,13 @@ void AutoRollbackTransaction() {
     if (conf->auto_rollback) {
         /* Return if not exists transaction. */
         TransEntry *entry = FindTransaction();
-        if (IsNull(entry))
-            return;
+        if (IsNull(entry)) return;
 
         /* Rollback Xlog. */
         ExecuteRollback();
-        logger(
-            INFO, 
-            "Transaction xid: %"PRId64" rollbacked and commited successfully.", 
-            entry->xid
-        );
+        CommitTransactionInner(true);
+        logger(SUCCESS, "Transaction xid: %"PRId64" auto rollbacked and commited successfully.", entry->xid);
     }
-    
 }
 
 /* 
