@@ -12,6 +12,7 @@
 #include "mmgr.h"
 #include "meta.h"
 #include "bufmgr.h"
+#include "buftable.h"
 #include "fdesc.h"
 #include "refer.h"
 #include "pager.h"
@@ -487,35 +488,40 @@ MetaIndex *BinLoad(Oid oid, Table *table) {
     return meta_index;
 }
 
-static bool BinDropFromDisk(void *arg) {
-    return remove((char *)arg) == 0;
-}
-
-/* Btree index drop. */
-bool BinDrop(Oid oid) {
-    Assert(NON_ZERO_OID(oid));
-
-    char *file_path;
-
-    file_path = table_file_path(oid);
+static bool BinDropFromDisk(Oid oid) {
+    char *file_path = table_file_path(oid);
     if (!table_file_exist(file_path)) {
         logger(ERROR, "Logic error, not found index file %ld", oid);
         return false;
     }
 
-    /* Todo list:
-     * (1) Regster the BinDropFromDisk to trans commit event. 
-     * (2) Remove object systable. */
-    if (
-        RegisterCommitEvent(BinDropFromDisk, file_path) && 
-        RemoveObject(oid)
+    /* It will do:
+     * (1) Remove table buffer. 
+     * (2) Remove file from disk. 
+     * */
+    if ( 
+        RemoveTableBuffer(oid) &&
+        remove(file_path) == 0
     ) {
         /* Unregister fdesc. */
         unregister_fdesc(oid);
         return true;
-    }
+    } 
 
-    logger(ERROR, "Index file %s deleted fail, error: %s", oid, strerror(errno));
     return false;
+}
+
+/* Btree index drop. */
+bool BinDrop(Oid oid) {
+    /* Todo list:
+     * (1) Regster the BinDropFromDisk to trans commit event. 
+     * (2) Remove object systable. */
+    if (
+        RemoveObject(oid) &&
+        RegisterCommitEvent(BinDropFromDisk, oid) 
+    ) return true;
+
+    UNREACHABLE(false, "Index file %s deleted fail, error: %s", 
+                oid, strerror(errno));
 }
 

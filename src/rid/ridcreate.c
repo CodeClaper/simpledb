@@ -11,6 +11,7 @@
 #include "mmgr.h"
 #include "log.h"
 #include "bufmgr.h"
+#include "buftable.h"
 #include "fdesc.h"
 #include "trans.h"
 
@@ -61,34 +62,39 @@ bool CreateRidTable(Oid roid, Oid toid, char *table_name) {
 }
 
 /* Drop table file drom disk. */
-static bool DropRidTableFromDisk(void *arg) {
-    return remove((char *)arg) == 0;
-}
-
-/* Drop the rid table. */
-bool DropRidTable(Oid roid) {
-    char *heap_table_file;
-
-    AssertFalse(ZERO_OID(roid));
-    heap_table_file = table_file_path(roid);
-
+static bool DropRidTableFromDisk(Oid roid) {
+    char *heap_table_file = table_file_path(roid);
     if (!check_table_exist_direct(roid)) {
         logger(ERROR, "Heap table file '%s' not exists, error : %s", 
                heap_table_file, strerror(errno));
         return false;
     }
-
-    /* Todo list:
-     * (1) Regster the DropRidTableFromDisk to trans commit event. 
-     * (2) Remove object systable. */
+    
+    /* It will do:
+     * (1) Remove table buffer. 
+     * (2) Remove file from disk. 
+     * */
     if (
-        RegisterCommitEvent(DropRidTableFromDisk,heap_table_file) && 
-        RemoveObject(roid)
+        RemoveTableBuffer(roid) &&
+        remove(heap_table_file) == 0
     ) {
         /* Unregister fdesc. */
         unregister_fdesc(roid);
         return true;
     }
+
+    return false;
+}
+
+/* Drop the rid table. */
+bool DropRidTable(Oid roid) {
+    /* Todo list:
+     * (1) Regster the DropRidTableFromDisk to trans commit event. 
+     * (2) Remove object systable. */
+    if (
+        RemoveObject(roid) &&
+        RegisterCommitEvent(DropRidTableFromDisk, roid) 
+    ) return true;
 
     /* Not reach here logically. */
     logger(ERROR, "Try to drop rid file '%ld' fail, error : %s", 

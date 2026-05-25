@@ -6,13 +6,14 @@
 #include <unistd.h>
 #include <errno.h>
 #include "strheaptable.h"
-#include "bufpool.h"
 #include "data.h"
 #include "table.h"
 #include "log.h"
 #include "mmgr.h"
 #include "refer.h"
 #include "bufmgr.h"
+#include "bufpool.h"
+#include "buftable.h"
 #include "fdesc.h"
 #include "systable.h"
 #include "instance.h"
@@ -314,36 +315,41 @@ char *QueryStringValue(StrRefer *strRefer) {
 }
 
 /* Drop string heap table from */
-static bool DropStrHeapTableFromDisk(void *arg) {
-    return remove((char *)arg) == 0;
-}
-
-/* Drop the string heap table. */
-bool DropStrHeapTable(char *table_name) {
-    Oid oid;
-    char *str_table_file;
-
-    oid = StrTableNameFindOid(table_name);
-    AssertFalse(ZERO_OID(oid));
-    str_table_file = table_file_path(oid);
-
+static bool DropStrHeapTableFromDisk(Oid oid) {
+    char *str_table_file = table_file_path(oid);
     if (!check_table_exist_direct(oid)) {
         logger(ERROR, "Table file '%s' not exists, error : %s", 
                str_table_file, strerror(errno));
         return false;
     }
 
-    /* Todo list:
-     * (1) Regster the DropHeapTableFromDisk to trans commit event. 
-     * (2) Remove object systable. */
-    if (
-        RegisterCommitEvent(DropStrHeapTableFromDisk, str_table_file) && 
-        RemoveObject(oid)
+    /* It will do:
+     * (1) Remove table buffer. 
+     * (2) Remove file from disk. 
+     * */
+    if ( 
+        RemoveTableBuffer(oid) &&
+        remove(str_table_file) == 0
     ) {
         /* Unregister fdesc. */
         unregister_fdesc(oid);
         return true;
-    }
+    } 
+
+    return false;
+}
+
+/* Drop the string heap table. */
+bool DropStrHeapTable(char *table_name) {
+    Oid oid = StrTableNameFindOid(table_name);
+    AssertFalse(ZERO_OID(oid));
+    /* Todo list:
+     * (1) Regster the DropHeapTableFromDisk to trans commit event. 
+     * (2) Remove object systable. */
+    if (
+        RemoveObject(oid) &&
+        RegisterCommitEvent(DropStrHeapTableFromDisk, oid)
+    ) return true;
 
     /* Not reach here logically. */
     logger(ERROR, 

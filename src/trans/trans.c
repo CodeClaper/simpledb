@@ -204,7 +204,7 @@ static void DestroyTransaction() {
 }
 
 /* Register commit event. */
-bool RegisterCommitEvent(COMMIT_EVENT hanler, void *arg) {
+bool RegisterCommitEvent(COMMIT_EVENT hanler, Oid oid) {
     TransEntry *trans;
     TransCommitEventEntry *event_entry;
 
@@ -212,7 +212,7 @@ bool RegisterCommitEvent(COMMIT_EVENT hanler, void *arg) {
     Assert(trans != NULL);
     event_entry = instance(TransCommitEventEntry);
     event_entry->hanler = hanler;
-    event_entry->arg = arg;
+    event_entry->oid = oid;
     event_entry->next = trans->commit_event;
     trans->commit_event = event_entry;
 
@@ -225,8 +225,10 @@ static void ExecuteCommitEvent() {
     Assert(trans != NULL);
     TransCommitEventEntry *commit_event = trans->commit_event;
     while (commit_event) {
-        if (commit_event->hanler(commit_event->arg)) commit_event = commit_event->next;
-        else logger(ERROR, "Execute commit event fail");
+        if (commit_event->hanler(commit_event->oid)) 
+            commit_event = commit_event->next;
+        else 
+            logger(ERROR, "Execute commit event fail");
     }
 }
 

@@ -18,6 +18,7 @@
 #include "refer.h"
 #include "meta.h"
 #include "bufmgr.h"
+#include "buftable.h"
 #include "fdesc.h"
 #include "instance.h"
 #include "trans.h"
@@ -304,34 +305,39 @@ void HeapTableUpdateRowExpiredXid(Table *table, Refer *refer, Xid expiredXid) {
 }
 
 /* Drop heap table from */
-static bool DropHeapTableFromDisk(void *arg) {
-    return remove((char *)arg) == 0;
-}
-
-/* Drop the heap table. */
-bool DropHeapTable(Oid hoid) {
-    char *heap_table_file;
-
-    AssertFalse(ZERO_OID(hoid));
-    heap_table_file = table_file_path(hoid);
-
+static bool DropHeapTableFromDisk(Oid hoid) {
+    char *heap_table_file = table_file_path(hoid);
     if (!check_table_exist_direct(hoid)) {
         logger(ERROR, "Heap table file '%s' not exists, error : %s", 
                heap_table_file, strerror(errno));
         return false;
     }
-
-    /* Todo list:
-     * (1) Regster the DropHeapTableFromDisk to trans commit event. 
-     * (2) Remove object systable. */
-    if (
-        RegisterCommitEvent(DropHeapTableFromDisk, heap_table_file) && 
-        RemoveObject(hoid)
+    
+    /* It will do:
+     * (1) Remove table buffer. 
+     * (2) Remove file from disk. 
+     * */
+    if ( 
+        RemoveTableBuffer(hoid) &&
+        remove(heap_table_file) == 0
     ) {
         /* Unregister fdesc. */
         unregister_fdesc(hoid);
         return true;
-    }
+    } 
+
+    return false;
+}
+
+/* Drop the heap table. */
+bool DropHeapTable(Oid hoid) {
+    /* Todo list:
+     * (1) Regster the DropHeapTableFromDisk to trans commit event. 
+     * (2) Remove object systable. */
+    if (
+        RemoveObject(hoid) &&
+        RegisterCommitEvent(DropHeapTableFromDisk, hoid)  
+    ) return true;
 
     /* Not reach here logically. */
     logger(ERROR, "Try to drop heap file '%ld' fail, error : %s", 

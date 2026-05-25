@@ -129,7 +129,6 @@ void InsertBufferTableEntry(BufferTag *tag, Buffer buffer) {
 }
 
 /* Delete the BufferTableEntry by tag.
- * ------------
  * Note: This <DeleteBufferTableEntry> need acquire the rwlock in exclusive mode. 
  * But not acquire itself, and by the caller.
  * */
@@ -166,6 +165,9 @@ bool RemoveTableBuffer(Oid oid) {
         for (current = slot->next, pres = current; current != NULL; pres = current, current = current->next) {
             tag = current->tag;
             if (tag.oid == oid) {
+                /* It's not Necessary to flush buffer to disk, 
+                 * when table buffer removed. */
+                MakeBufferNormalIfDirty(current->buffer);
                 if (current == slot->next) slot->next = current->next;
                 else pres->next = current->next;
                 /* Necessary to free the shared memory. */

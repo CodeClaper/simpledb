@@ -14,6 +14,7 @@
 #include "log.h"
 #include "fdesc.h"
 #include "bufmgr.h"
+#include "buftable.h"
 #include "copy.h"
 #include "list.h"
 #include "trans.h"
@@ -519,8 +520,28 @@ ArrayValue *QueryArrayValue(Refer *refer, MetaColumn *meta_column) {
 }
 
 /* Drop array heap table from */
-static bool DropArrayHeapTableFromDisk(void *arg) {
-    return remove((char *)arg) == 0;
+static bool DropArrayHeapTableFromDisk(Oid oid) {
+    char *str_table_file = table_file_path(oid);
+    if (!check_table_exist_direct(oid)) {
+        logger(ERROR, "Table file '%s' not exists, error : %s", 
+               str_table_file, strerror(errno));
+        return false;
+    }
+
+    /* It will do:
+     * (1) Remove table buffer. 
+     * (2) Remove file from disk. 
+     * */
+    if ( 
+        RemoveTableBuffer(oid) &&
+        remove(str_table_file) == 0
+    ) {
+        /* Unregister fdesc. */
+        unregister_fdesc(oid);
+        return true;
+    } 
+
+    return false;
 }
 
 /* Drop the array value table vai table name
@@ -528,31 +549,17 @@ static bool DropArrayHeapTableFromDisk(void *arg) {
  * Return:      Success or fail.
  * */
 bool DropArrayHeapTable(char *table_name) {
-    Oid oid;
-    char *str_table_file;
-
-    oid = ArrayTableNameFindOid(table_name);
+    Oid oid = ArrayTableNameFindOid(table_name);
     AssertFalse(ZERO_OID(oid));
-    str_table_file = table_file_path(oid);
-
-    if (!check_table_exist_direct(oid)) {
-        logger(ERROR, "Table file '%s' not exists, error : %s", 
-               str_table_file, strerror(errno));
-        return false;
-    }
 
     /* Todo list:
      * (1) Regster the DropArrayHeapTableFromDisk to trans commit event. 
      * (2) Remove object systable. */
     if (
-        RegisterCommitEvent(DropArrayHeapTableFromDisk, str_table_file) && 
-        RemoveObject(oid)
-    ) {
-        /* Unregister fdesc. */
-        unregister_fdesc(oid);
-        return true;
-    }
-
+        RemoveObject(oid) &&
+        RegisterCommitEvent(DropArrayHeapTableFromDisk, oid) 
+    ) return true;
+    
     /* Not reach here logically. */
     UNREACHABLE(false, "Try to drop array heap table '%s' fail, error : %s", 
                 table_name, strerror(errno));

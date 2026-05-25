@@ -70,6 +70,7 @@ void PinBufferInner(BufferDesc *desc);
 void UnpinBuffer(BufferDesc *desc);
 void MakeBufferDirty(Buffer buffer);
 void MakeBufferNormal(Buffer buffer);
+void MakeBufferNormalIfDirty(Buffer buffer);
 RWLockMode GetLockModeBuffer(Buffer buffer);
 List *GetLockedBufferDescList();
 void UnlockAndReleaseBufferViaPid(Pid pid);

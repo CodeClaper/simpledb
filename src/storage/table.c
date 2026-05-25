@@ -404,18 +404,7 @@ Table *open_table(char *table_name) {
     return open_table_inner(oid);
 }
 
-static bool DropTableFromDisk(void *arg) {
-    return remove((char *)arg) == 0;
-}
-
-/* Drop an existed table. */
-bool drop_table(char *table_name) {
-    Oid oid;
-
-    /* Check if exist the table. */
-    oid = TableNameFindOid(table_name);
-    Assert(NON_ZERO_OID(oid));
-
+static bool DropTableFromDisk(Oid oid) {
     char *file_path = table_file_path(oid);
     if (!table_file_exist(file_path)) {
         dfree(file_path);
@@ -423,21 +412,37 @@ bool drop_table(char *table_name) {
     }
 
     /* It will do:
-     * (1) Remove systable object.
-     * (3) Remove table cache.
-     * (4) Remove table buffer. 
-     * (5) Remove table file from disk. 
+     * (1) Remove table cache.
+     * (2) Remove table buffer. 
+     * (3) Remove table file from disk. 
      * */
     if (
-        RemoveObject(oid) &&
         RemoveTableCache(oid) &&
         RemoveTableBuffer(oid) &&
-        RegisterCommitEvent(DropTableFromDisk, file_path)
+        remove(file_path) == 0
     ) {
         /* Unregister fdesc. */
         unregister_fdesc(oid);
         return true;
     }
+
+    return false;
+}
+
+/* Drop an existed table. */
+bool drop_table(char *table_name) {
+    /* Check if exist the table. */
+    Oid oid = TableNameFindOid(table_name);
+    Assert(NON_ZERO_OID(oid));
+
+    /* It will do:
+     * (1) Remove systable object.
+     * (2) Register the commit event. 
+     * */
+    if (
+        RemoveObject(oid) &&
+        RegisterCommitEvent(DropTableFromDisk, oid)
+    ) return true;
 
     /* Not reach here logically. */
     logger(ERROR, "Table '%s' deleted fail, error: %s", 

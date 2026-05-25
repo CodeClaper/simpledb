@@ -4,11 +4,11 @@
 
 #define XID_NIL ((Xid) 0)
 
-typedef bool (*COMMIT_EVENT)(void *arg);
+typedef bool (*COMMIT_EVENT)(Oid oid);
 
 typedef struct TransCommitEventEntry {
     COMMIT_EVENT                    hanler;         /* Commit event handler.*/
-    void                            *arg;           /* Input arguement. */
+    Oid                             oid;            /* Input arguement. */
     struct TransCommitEventEntry    *next;          /* Next. */
 } TransCommitEventEntry;
 
@@ -28,7 +28,7 @@ bool IsVisible(Xid created_xid, Xid expired_xid);
 bool RowIsVisible(Row *row);
 bool RowIsDeleted(Row *row);
 bool AnyTransactionRunning();
-bool RegisterCommitEvent(COMMIT_EVENT hanler, void *arg);
+bool RegisterCommitEvent(COMMIT_EVENT hanler, Oid oid);
 void AutoBeginTransaction();
 void BeginTransaction();
 TransEntry *FindTransaction();

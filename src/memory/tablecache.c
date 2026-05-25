@@ -164,7 +164,6 @@ Table *NameFindTableCache(char *tableName) {
 
 /* Remove table cache. */
 bool RemoveTableCache(Oid oid) {
-    bool ret = false;
     acquire_spin_lock(tlock);
     ListCell *lc;
     foreach (lc, TableCache) {
@@ -174,10 +173,9 @@ bool RemoveTableCache(Oid oid) {
             list_delete(TableCache, current);
             free_table(current);
             switch_local();
-            ret = true;
         }
     }
     release_spin_lock(tlock);
-    return ret;
+    return true;
 }
 

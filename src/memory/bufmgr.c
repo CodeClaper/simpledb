@@ -298,6 +298,13 @@ inline void MakeBufferNormal(Buffer buffer) {
     SetNodeState(page, NORMAL_STATE);
 }
 
+/* Make Buffer normal if dirty. */
+void MakeBufferNormalIfDirty(Buffer buffer) {
+    void *page = GetBufferPage(buffer);
+    if (NodeIsDirty(page)) 
+        SetNodeState(page, NORMAL_STATE);
+}
+
 /* Release Buffer.
  * -----------------
  * Release Buffer after using. 

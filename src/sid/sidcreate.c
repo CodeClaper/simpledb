@@ -1,5 +1,6 @@
 #include <fcntl.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
@@ -10,6 +11,7 @@
 #include "mmgr.h"
 #include "log.h"
 #include "bufmgr.h"
+#include "buftable.h"
 #include "fdesc.h"
 #include "trans.h"
 
@@ -60,35 +62,40 @@ bool CreateSidTable(Oid soid, Oid toid, char *table_name) {
 }
 
 /* Drop table file drom disk. */
-static bool DropSidTableFromDisk(void *arg) {
-    return remove((char *)arg) == 0;
-}
-
-/* Drop the sid table. */
-bool DropSidTable(Oid soid) {
-    char *heap_table_file;
-
-    AssertFalse(ZERO_OID(soid));
-    heap_table_file = table_file_path(soid);
-
+static bool DropSidTableFromDisk(Oid soid) {
+    char *heap_table_file = table_file_path(soid);
     if (!check_table_exist_direct(soid)) {
         logger(ERROR, "Heap table file '%s' not exists, error : %s", 
                heap_table_file, strerror(errno));
         return false;
     }
-
-    /* Todo list:
-     * (1) Regster the DropSidTableFromDisk to trans commit event. 
-     * (2) Remove from systable. */
+    
+    /* It will do:
+     * (1) Remove table buffer. 
+     * (2) Remove file from disk. 
+     * */
     if (
-        RegisterCommitEvent(DropSidTableFromDisk, heap_table_file) && 
-        RemoveObject(soid)
+        RemoveTableBuffer(soid) &&
+        remove(heap_table_file) == 0
     ) {
         /* Unregister fdesc. */
         unregister_fdesc(soid);
         return true;
     }
+    
+    return false;
+}
 
+/* Drop the sid table. */
+bool DropSidTable(Oid soid) {
+    /* Todo list:
+     * (1) Regster the DropSidTableFromDisk to trans commit event. 
+     * (2) Remove from systable. */
+    if (
+        RemoveObject(soid) &&
+        RegisterCommitEvent(DropSidTableFromDisk, soid) 
+    ) return true; 
+    
     /* Not reach here logically. */
     logger(ERROR, "Try to drop sid file '%ld' fail, error : %s", 
            soid, strerror(errno));
