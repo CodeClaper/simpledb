@@ -549,3 +549,15 @@ void print_binary(void *data, Size size) {
     }
     printf("\n");
 }
+
+/* Compare binary. */
+bool compare_binary(void *src, void *tar, Size size) {
+    bool ret = true;
+    for (int i = 0; i < size; i++) {
+        if (*((unsigned char *) src + i) != *((unsigned char *) tar + i)) {
+            printf("Offset: %d, src: %02X != tar: %02X \t", i, *((unsigned char *) src + i), *((unsigned char *) tar + i));
+            ret = false;
+        }
+    }
+    return ret;
+}

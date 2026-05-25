@@ -48,6 +48,7 @@ char *EscapStr(char *str, bool strict_utf8);
 int get_line(int sock, char *buf, int size);
 void show_bytes(byte_pointer start, size_t len);
 void print_binary(void *data, Size size);
+bool compare_binary(void *src, void *tar, Size size);
 
 /* Return true if pointer is NULL. */
 static inline bool IsNull(void *ptr) { return ptr == NULL; }
