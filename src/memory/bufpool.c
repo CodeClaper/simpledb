@@ -42,10 +42,7 @@ void BufferReadBlock(BufferTag *tag, Buffer buffer) {
 
     lseek(fdesc, tag->blockNum * PAGE_SIZE, SEEK_SET);
     ssize_t read_bytes = read(fdesc, block, PAGE_SIZE);
-    if (read_bytes == -1) {
-        logger(PANIC, "Table file read error: %s", strerror(errno));
-        exit(1);
-    }
+    if (read_bytes == -1) THROW("Table file read error: %s", strerror(errno));
 }
 
 /* Write Buffer Block. 

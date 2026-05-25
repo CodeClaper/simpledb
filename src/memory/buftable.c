@@ -138,7 +138,7 @@ void DeleteBufferTableEntry(BufferTag *tag) {
     BufferTableEntry *pres, *current;
 
     slot = GetBufferTableSlot(tag);
-
+    
     switch_shared();
     for (current = slot->next, pres = current; current != NULL; pres = current, current = current->next) {
         if (BufferTagEquals(&current->tag, tag)) {
@@ -161,6 +161,7 @@ bool RemoveTableBuffer(Oid oid) {
     switch_shared();
     for (i = 0; i < BUFFER_SLOT_NUM; i++) {
         slot = GetBufferTableSlotByIndex(i);
+        acquire_spin_lock(slot->lock);
         current = slot->next;
         for (current = slot->next, pres = current; current != NULL; pres = current, current = current->next) {
             tag = current->tag;
@@ -171,6 +172,7 @@ bool RemoveTableBuffer(Oid oid) {
                 dfree(current);
             }
         }
+        release_spin_lock(slot->lock);
     }
     switch_local();
     return true;
