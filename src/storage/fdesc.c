@@ -29,8 +29,7 @@ static FDesc find_fdesc(Oid oid) {
     ListCell *lc;
     foreach(lc, fdCache) {
         FDescEntry *entry = lfirst(lc);
-        if (entry->oid == oid)
-            return entry->desc;
+        if (entry->oid == oid) return entry->desc;
     }
 
     return -1;
@@ -42,16 +41,14 @@ static FDesc find_fdesc(Oid oid) {
 static FDesc load_file_desc(char *file_path) {
     FDesc desc= open(file_path, O_RDWR, S_IRUSR | S_IWUSR);
     if (desc == -1) 
-        logger(PANIC, "Open table file %s fail: %s.", 
-               file_path, 
-               strerror(errno));
+        THROW("Open table file %s fail: %s.", file_path, strerror(errno));
     return desc;
 }
 
 /* Close the file descriptor. */
 static void close_file_desc(FDesc fdesc) {
     if (close(fdesc) == -1) {
-        logger(PANIC, "Close table file fail: %s.", strerror(errno));
+        THROW("Close table file fail: %s.", strerror(errno));
     }
 }
 
