@@ -99,6 +99,7 @@ void *RowFindKey(Row *row, Table *table) {
     foreach (lc, pri_meta_index->meta_columns) {
         MetaColumn *meta_column = (MetaColumn *) lfirst(lc);
         void *value = RowGetValueOrDefault(row, meta_column);
+        Assert(value != NULL);
         memcpy(key + offset, value, meta_column->column_length);
         offset += meta_column->column_length;
     }
