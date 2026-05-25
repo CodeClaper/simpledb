@@ -23,7 +23,7 @@ def test_nothing_to_do_rollback():
     sql = "rollback;"
     ret = client1.execute(sql)
     assert ret["success"] == False
-    assert ret["message"] == "Not in any transaction, please begin a transaction"
+    assert ret["message"] == "Not in any transaction, please begin a transaction."
 
 
 ## begin transaction and insert one row data.
