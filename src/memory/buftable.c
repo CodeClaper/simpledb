@@ -142,11 +142,8 @@ void DeleteBufferTableEntry(BufferTag *tag) {
     switch_shared();
     for (current = slot->next, pres = current; current != NULL; pres = current, current = current->next) {
         if (BufferTagEquals(&current->tag, tag)) {
-            if (current == slot->next) 
-                slot->next = current->next;
-            else 
-                pres->next = current->next;
-            
+            if (current == slot->next) slot->next = current->next;
+            else pres->next = current->next;
             /* Necessary to free the shared memory. */
             dfree(current);
         }
@@ -156,15 +153,17 @@ void DeleteBufferTableEntry(BufferTag *tag) {
 
 /* Remove all the table-relative buffer entry. */
 bool RemoveTableBuffer(Oid oid) {
-    switch_shared();
-    for (Index i = 0; i < BUFFER_SLOT_NUM; i++) {
-        BufferTableEntrySlot *slot; 
-        BufferTableEntry *pres, *current;
+    Index i;
+    BufferTag tag;
+    BufferTableEntrySlot *slot; 
+    BufferTableEntry *pres, *current;
 
+    switch_shared();
+    for (i = 0; i < BUFFER_SLOT_NUM; i++) {
         slot = GetBufferTableSlotByIndex(i);
         current = slot->next;
         for (current = slot->next, pres = current; current != NULL; pres = current, current = current->next) {
-            BufferTag tag = current->tag;
+            tag = current->tag;
             if (tag.oid == oid) {
                 if (current == slot->next) slot->next = current->next;
                 else pres->next = current->next;

@@ -272,7 +272,6 @@ Buffer ReadBuffer(Oid oid, BlockNum blockNum) {
   
     /* Missing in the entry buffer, then load new buffer desc. */
     desc = LoadNewBufferDesc(&tag);
-
     return desc->buffer;
 }
 
