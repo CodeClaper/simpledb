@@ -39,6 +39,7 @@ char *GetKeyTypeName(MetaColumn *meta_column);
 MetaColumn *NameFindMetaColumnInner(List *meta_columns, char *column_name);
 MetaColumn *TableColumnNameFindMetaColumn(List *meta_columns, Oid toid, char *column_name);
 MetaColumn *NameFindMetaColumn(MetaTable *meta_table, char *name);
+MetaColumn *PostionFindMetaColumn(MetaTable *meta_table, int pos);
 int NameFindMetaColumnPostion(MetaTable *meta_table, char *column_name);
 MetaColumn *NameFindAllMetaColumn(MetaTable *meta_table, char *name);
 MetaColumn *MetaTableFindPrimaryKey(MetaTable *meta_table);
