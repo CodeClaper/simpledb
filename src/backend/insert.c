@@ -10,7 +10,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <strings.h>
-#include <time.h>
 #include <unistd.h>
 #define _XOPEN_SOURCE
 #define __USE_XOPEN
@@ -74,6 +73,11 @@ InsertNode *GenerateInsertNode(char *table_name, List *value_list) {
     insert_node->all_column = true;
     insert_node->values_or_query_spec = GenerateValuesOrQuerySpc(value_list);
     return insert_node;
+}
+
+static QuerySpecNode *GetQuerySpec(InsertNode *insert_node) {
+    Assert(insert_node->values_or_query_spec->type == VQ_QUERY_SPEC);
+    return insert_node->values_or_query_spec->query_spec;
 }
 
 /* Convert QuerySpecNode to SelectionNode. 
@@ -469,35 +473,35 @@ List *InsertForValues(InsertNode *insert_node) {
 
 /* Insert for query spec case. */
 static List *InsertForQuerySpec(InsertNode *insert_node) {
-    /* Check if table exists. */
-    Table *table = open_table(insert_node->table_name);
-    if (!table) {
-        logger(ERROR, "Try to open table '%s' fail.", insert_node->table_name);
-        return NULL;
-    }
-    
-    List *list = create_list(NODE_LONG);
+    Table *table;
+    List *list;
+    QuerySpecNode *query_spec;
+    SelectNode *select_node;
+    DBResult *result;
 
-    ValuesOrQuerySpecNode *values_or_query_spec = insert_node->values_or_query_spec;
+    table = open_table(insert_node->table_name);
+    if (!table) UNREACHABLE(NULL, "Try to open table '%s' fail.", insert_node->table_name);
+    list = create_list(NODE_LONG);
 
-    /* Make select statement to get safisfied rows. */
-    SelectNode *select_node = QuerySpceToSelection(values_or_query_spec->query_spec);
-
-    /* Make a DBResult to store query result. */
-    DBResult *result = new_db_result();
+    query_spec = GetQuerySpec(insert_node);
+    select_node = QuerySpceToSelection(query_spec);
+    result = new_db_result();
     result->stmt_type = INSERT_STMT;
 
+    /* Execute the select statement. */
     exec_select_statement(select_node, result);
 
     if (result->success) {
-        SelectResult *select_result = (SelectResult *)result->data;
-
-        /* Insert into rows. */
         QueueCell *qc;
+        SelectResult *select_result;
+        Row *insert_row;
+        Rid ref_id;
+
+        select_result = (SelectResult *)result->data;
         qforeach (qc, select_result->rows) {
-            Row *insert_row = SelectRowToInsertRow((Row *)qfirst(qc), table);
-            Rid ref_id = InsertForRow(table, insert_row);
-            append_list_long(list, ref_id);
+            insert_row = SelectRowToInsertRow((Row *)qfirst(qc), table);
+            ref_id = InsertForRow(table, insert_row);
+            append_list(list, &ref_id);
             free_row(insert_row);
         }
     }
