@@ -456,6 +456,12 @@ MetaColumn *NameFindMetaColumn(MetaTable *meta_table, char *column_name) {
     return NameFindMetaColumnInner(meta_table->meta_columns, column_name);
 }
 
+/* Get meta column info by postion. */
+MetaColumn *PostionFindMetaColumn(MetaTable *meta_table, int pos) {
+    ListCell *lc = list_nth_cell(meta_table->meta_columns, pos);
+    return lfirst(lc);
+}
+
 /* Get meta columnn postion by column name.
  * Return -1 if missing. 
  * */

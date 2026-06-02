@@ -25,7 +25,6 @@
 #include "asserts.h"
 #include "session.h"
 #include "create.h"
-#include "select.h"
 #include "check.h"
 #include "copy.h"
 #include "free.h"
@@ -273,15 +272,15 @@ static List *GenerateInsertRow(InsertNode *insert_node) {
             : GenerateInsertRowForPart(insert_node);
 }
 
-/* Convert to insert row. */
-static Row *SelectRowToInsertRow(Row *select_row, Table *table) {
-    Row *insert_row = NewRow();
 
-    /* Copy data. */
+/* Convert to insert row. */
+static Row *SelectRowToInsertRowForAllColumns(Row *select_row, Table *table) {
+    Row *insert_row = NewRow();
     ListCell *lc;
     foreach (lc, select_row->data) {
         KeyValue *current = (KeyValue *)lfirst(lc);
-        KeyValue *key_value = new_key_value(current->key, 
+        MetaColumn *meta_column = PostionFindMetaColumn(table->meta_table, __i);
+        KeyValue *key_value = new_key_value(meta_column->column_name, 
                                             current->value, 
                                             current->data_type, 
                                             GET_TABLE_OID(table), 
@@ -294,6 +293,36 @@ static Row *SelectRowToInsertRow(Row *select_row, Table *table) {
     MakeupReservedColumns(GET_TABLE_OID(table), insert_row);
 
     return insert_row;
+}
+
+static Row *SelectRowToInsertRowForPart(List *column_list, Row *select_row, Table *table) {
+    Row *insert_row = NewRow();
+    ListCell *lc;
+    foreach (lc, select_row->data) {
+        KeyValue *current = (KeyValue *)lfirst(lc);
+        ColumnNode *column_node = lfirst(list_nth_cell(column_list, __i));
+        if (column_node == NULL) THROW("Logic error");
+        KeyValue *key_value = new_key_value(column_node->column_name, 
+                                            current->value, 
+                                            current->data_type, 
+                                            GET_TABLE_OID(table), 
+                                            current->type_id, 
+                                            current->array_dim);
+        append_list(insert_row->data, key_value);
+    }
+
+    /* Make up the reserved columns. */
+    MakeupReservedColumns(GET_TABLE_OID(table), insert_row);
+
+    return insert_row;
+}
+
+
+/* Convert to insert row. */
+static Row *SelectRowToInsertRow(InsertNode *insert_node, Row *select_row, Table *table) {
+    return insert_node->all_column 
+        ? SelectRowToInsertRowForAllColumns(select_row, table)
+        : SelectRowToInsertRowForPart(insert_node->column_list, select_row, table);
 }
 
 /* Wait for duplicate key to release.
@@ -499,7 +528,7 @@ static List *InsertForQuerySpec(InsertNode *insert_node) {
 
         select_result = (SelectResult *)result->data;
         qforeach (qc, select_result->rows) {
-            insert_row = SelectRowToInsertRow((Row *)qfirst(qc), table);
+            insert_row = SelectRowToInsertRow(insert_node, qfirst(qc), table);
             ref_id = InsertForRow(table, insert_row);
             append_list(list, &ref_id);
             free_row(insert_row);

@@ -1228,7 +1228,7 @@ static bool CheckInsertForValuesOrQuerySpec(InsertNode *insert_node, ValuesOrQue
         case VQ_VALUES:
             return CheckInsertForValues(insert_node, values_or_query_spec->values);
         case VQ_QUERY_SPEC:
-            return CheckInsertForQuerySpec(insert_node, values_or_query_spec->query_spec);
+            return true;
         default:
             logger(ERROR, "Unknown ValuesOrQuerySpecNode type");
             return false;
