@@ -10,6 +10,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <strings.h>
+#include <time.h>
 #include <unistd.h>
 #define _XOPEN_SOURCE
 #define __USE_XOPEN
@@ -527,8 +528,7 @@ List *ExecuteInsertStatement(InsertNode *insert_node) {
             return InsertForQuerySpec(insert_node);
         }
         default: {
-            logger(ERROR, "Unknown ValuesOrQuerySpecNode type.");
-            return NULL;
+            UNREACHABLE(NULL, "Unknown ValuesOrQuerySpecNode type.");
         }
     }
 }
