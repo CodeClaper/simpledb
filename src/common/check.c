@@ -116,54 +116,6 @@ static InsertNode *MockInsertNodeForReference(MetaColumn *meta_column) {
     return node;
 }
 
-static bool CheckQuerySpecMatchColumn(MetaColumn *meta_column, QuerySpecNode *query_spec) {
-    SelectionNode *selection = query_spec->selection;
-    List *list = query_spec->table_exp->from_clause->from;
-    if (selection->all_column) {
-        MetaColumn *target_meta_column = TableRefListFindMetaColumn(list, meta_column->column_name);
-        if (!target_meta_column) {
-            logger(ERROR, "Lack column '%s' in query spec. ", 
-                   meta_column->column_name);
-            return false;
-        }
-        if (meta_column->column_type != target_meta_column->column_type) {
-            logger(ERROR, "Column '%s' data type is %s, but support data type %s in query spec.", 
-                   meta_column->column_name,
-                   GET_DATA_TYPE_NAME(meta_column->column_type),
-                   GET_DATA_TYPE_NAME(target_meta_column->column_type));
-            return false;
-        }
-        return true;
-    } else {
-        MetaColumn *target_meta_column = NULL;
-
-        ListCell *lc;
-        foreach (lc, selection->scalar_exp_list) {
-            ScalarExpNode *scalar_exp = lfirst(lc);
-            char *alias_name = scalar_exp->alias;
-            char *column_name = scalar_exp->column->column_name;
-            if (alias_name) {
-                if (StrEq(meta_column->column_name, alias_name)) 
-                    target_meta_column = TableRefListFindMetaColumn(list, column_name);
-            } else {
-               if (StrEq(meta_column->column_name, column_name)) 
-                    target_meta_column = TableRefListFindMetaColumn(list, column_name);
-            }
-        }
-        if (!target_meta_column) {
-            logger(ERROR, "Lack column '%s' in query spec. ", meta_column->column_name);
-            return false;
-        }
-        if (meta_column->column_type != target_meta_column->column_type) {
-            logger(ERROR, "Column '%s' data type is %s, but support data type %s in query spec.", 
-                   meta_column->column_name,
-                   GET_DATA_TYPE_NAME(meta_column->column_type),
-                   GET_DATA_TYPE_NAME(target_meta_column->column_type));
-            return false;
-        }
-        return true;
-    }
-}
 
 /* Confirm MetaTable via ColumnNode. */
 static MetaTable *ColumnFindMetaTable(ColumnNode *column, AliasMap alias_map) {
@@ -1190,34 +1142,6 @@ static bool CheckInsertForValues(InsertNode *insert_node, List *value_list) {
         List *value_item_list = lfirst(lc);
         if (!CheckInsertForValueItems(insert_node, value_item_list))
             return false;
-    }
-    return true;
-}
-
-
-/* Check InsertNode for QUERY_SPEC. */
-static bool CheckInsertForQuerySpec(InsertNode *insert_node, QuerySpecNode *query_spec) {
-    /* Check table exist.*/
-    Table *table = open_table(insert_node->table_name);
-    if (table == NULL)
-        return false;
-
-    if (insert_node->all_column) {
-        MetaTable *meta_table = table->meta_table;
-        ListCell *lc;
-        foreach (lc, meta_table->meta_columns) {
-            MetaColumn *meta_column = (MetaColumn *)lfirst(lc);
-            if (!CheckQuerySpecMatchColumn(meta_column, query_spec))
-                return false;
-        }
-    } else {
-        ListCell *lc;
-        foreach (lc, insert_node->column_list) {
-            ColumnNode *column_node = lfirst(lc);
-            MetaColumn *meta_column = NameFindMetaColumn(table->meta_table, column_node->column_name);
-            if (!CheckQuerySpecMatchColumn(meta_column, query_spec))
-                return false;
-        }
     }
     return true;
 }

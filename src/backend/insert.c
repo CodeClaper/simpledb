@@ -7,6 +7,7 @@
  * (1) Plain insert values statment, includes all column or special part column.
  * (2) Insert with subselect statment.
  *********************************************************************************************/
+#include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <strings.h>
@@ -275,11 +276,17 @@ static List *GenerateInsertRow(InsertNode *insert_node) {
 
 /* Convert to insert row. */
 static Row *SelectRowToInsertRowForAllColumns(Row *select_row, Table *table) {
+    MetaTable *meta_table = table->meta_table;
+    if (meta_table->column_size != len_list(select_row->data))
+        logger(ERROR, "Column count doesn`t match value count: %d != %d",
+               meta_table->column_size,
+               len_list(select_row->data));
+
     Row *insert_row = NewRow();
     ListCell *lc;
     foreach (lc, select_row->data) {
         KeyValue *current = (KeyValue *)lfirst(lc);
-        MetaColumn *meta_column = PostionFindMetaColumn(table->meta_table, __i);
+        MetaColumn *meta_column = PostionFindMetaColumn(meta_table, __i);
         KeyValue *key_value = new_key_value(meta_column->column_name, 
                                             current->value, 
                                             current->data_type, 
@@ -296,6 +303,11 @@ static Row *SelectRowToInsertRowForAllColumns(Row *select_row, Table *table) {
 }
 
 static Row *SelectRowToInsertRowForPart(List *column_list, Row *select_row, Table *table) {
+    if (len_list(column_list) != len_list(select_row->data))
+        logger(ERROR, "Column count doesn`t match value count: %d != %d",
+               len_list(column_list), 
+               len_list(select_row->data));
+
     Row *insert_row = NewRow();
     ListCell *lc;
     foreach (lc, select_row->data) {
@@ -509,7 +521,7 @@ static List *InsertForQuerySpec(InsertNode *insert_node) {
     DBResult *result;
 
     table = open_table(insert_node->table_name);
-    if (!table) UNREACHABLE(NULL, "Try to open table '%s' fail.", insert_node->table_name);
+    if (!table) logger(ERROR, "Try to open table '%s' fail.", insert_node->table_name);
     list = create_list(NODE_LONG);
 
     query_spec = GetQuerySpec(insert_node);
@@ -545,11 +557,8 @@ static List *InsertForQuerySpec(InsertNode *insert_node) {
  * otherwise, return NULL. */
 List *ExecuteInsertStatement(InsertNode *insert_node) {
     /* Check if insert node valid. */
-    if (!CheckForInsert(insert_node)) 
-        return NULL;
-
+    if (!CheckForInsert(insert_node)) return NULL;
     ValuesOrQuerySpecNode *values_or_query_spec = insert_node->values_or_query_spec;
-
     switch (values_or_query_spec->type) {
         case VQ_VALUES: {
             /* Insert with values. */
@@ -560,9 +569,8 @@ List *ExecuteInsertStatement(InsertNode *insert_node) {
              * Note, maybe used in multi-values which will be supported. */
             return InsertForQuerySpec(insert_node);
         }
-        default: {
+        default: 
             UNREACHABLE(NULL, "Unknown ValuesOrQuerySpecNode type.");
-        }
     }
 }
 
