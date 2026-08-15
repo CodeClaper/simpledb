@@ -1,7 +1,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "assert.h"
+#include <assert.h>
 
 #ifdef DEBUG
 #define Assert(condition) assert(condition)
